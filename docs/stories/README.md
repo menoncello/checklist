@@ -10,14 +10,14 @@ stories/
 ├── README.md                          (this file)
 ├── story-0.0-environment-setup.md     ⚡ START HERE
 ├── tui-spike-mitigation-plan.md       🚨 Risk Mitigation
-├── epic-1/ (10 stories)               Foundation & Core Architecture
+├── epic-1/ (12 stories)               Foundation & Core Architecture (EXPANDED)
 ├── epic-2/ (8 stories)                User Interface & Interaction
 ├── epic-3/ (8 stories)                Template System & Security
-├── epic-4/ (7 stories)                Production Readiness
+├── epic-4/ (9 stories)                Production Readiness
 └── epic-5/ (5 stories)                Community & Collaboration (Post-MVP)
 ```
 
-**Total: 38 user stories + 1 setup story across 5 epics**
+**Total: 42 user stories + 1 setup story across 5 epics** (4 new critical stories added)
 
 ## Implementation Order
 
@@ -25,25 +25,27 @@ stories/
 - [x] [Story 0.0: Environment Setup](story-0.0-environment-setup.md) - **START HERE**
 
 ### 📦 Phase 1: Foundation (Epic 1)
-**Timeline: Weeks 1-2**
+**Timeline: Weeks 1-3** (extended due to critical additions)
 - [ ] [Epic 1: Foundation & Core Architecture](epic-1/epic-1-overview.md)
+  - [ ] [Story 1.0: Database/State Store Setup](epic-1/story-1.0-database-state-setup.md) 🚨 **NEW - CRITICAL FOUNDATION**
   - [ ] [Story 1.1: Project Setup and Structure](epic-1/story-1.1-project-setup.md)
-  - [ ] [Story 1.2: CI/CD Pipeline Foundation](epic-1/story-1.2-cicd-pipeline.md)
-  - [ ] [Story 1.3: TUI Technology Spike](epic-1/story-1.3-tui-spike.md) ⚠️ **CRITICAL PATH**
-  - [ ] [Story 1.4: Core Workflow Engine](epic-1/story-1.4-workflow-engine.md) 🔄 (can run in parallel)
-  - [ ] [Story 1.5: Performance Monitoring](epic-1/story-1.5-performance-monitoring.md)
-  - [ ] [Story 1.6: State Management Implementation](epic-1/story-1.6-state-management.md)
+  - [ ] [Story 1.2: CI/CD Pipeline + Third-Party Integration](epic-1/story-1.2-cicd-pipeline.md) 🔧 **ENHANCED**
+  - [ ] [Story 1.3: Testing Framework Setup](epic-1/story-1.3-testing-framework.md) 🚨 **MOVED FROM 4.1 - ENABLES TDD**
+  - [ ] [Story 1.4: TUI Technology Spike](epic-1/story-1.4-tui-spike.md) ⚠️ **CRITICAL PATH** (formerly 1.3)
+  - [ ] [Story 1.5: State Management Implementation](epic-1/story-1.5-state-management.md) (moved up from 1.6)
+  - [ ] [Story 1.6: Core Workflow Engine](epic-1/story-1.6-workflow-engine.md) (moved down from 1.4)
   - [ ] [Story 1.6a: State Transaction Management](epic-1/story-1.6a-state-transactions.md) 🚨 **NEW**
   - [ ] [Story 1.6b: Schema Migration System](epic-1/story-1.6b-schema-migration.md) 🚨 **NEW**
-  - [ ] [Story 1.7: Terminal Canvas System](epic-1/story-1.7-terminal-canvas.md) (if TUI succeeds)
-  - [ ] [Story 1.8: Component Architecture](epic-1/story-1.8-component-architecture.md) (if TUI succeeds)
+  - [ ] [Story 1.7: Performance Monitoring](epic-1/story-1.7-performance-monitoring.md) (moved up from 1.5)
+  - [ ] [Story 1.8: Terminal Canvas System](epic-1/story-1.8-terminal-canvas.md) (formerly 1.7)
+  - [ ] [Story 1.9: Component Architecture](epic-1/story-1.9-component-architecture.md) (formerly 1.8)
 
-**⚠️ CRITICAL DECISION POINT**: After Story 1.2
+**⚠️ CRITICAL DECISION POINT**: After Story 1.4 (TUI Spike)
 - If TUI spike succeeds → Continue with Epic 2
 - If TUI spike fails → Activate [Mitigation Plan](tui-spike-mitigation-plan.md)
 
 ### 🎨 Phase 2: User Interface (Epic 2)
-**Timeline: Weeks 3-4**
+**Timeline: Weeks 4-5** (adjusted for Epic 1 extension)
 - [ ] [Epic 2: User Interface & Interaction](epic-2/epic-2-overview.md)
   - [ ] [Story 2.1: CLI Core Interface](epic-2/story-2.1-cli-core-interface.md)
   - [ ] [Story 2.2: Interactive Selection System](epic-2/story-2.2-interactive-selection.md)
@@ -69,13 +71,14 @@ stories/
 ### 🛡️ Phase 4: Production Readiness (Epic 4)
 **Timeline: Weeks 7-8**
 - [ ] [Epic 4: Production Readiness](epic-4/epic-4-overview.md)
-  - [ ] [Story 4.1: Integration Testing](epic-4/story-4.1-integration-testing.md)
-  - [ ] [Story 4.2: Performance Testing](epic-4/story-4.2-performance-testing.md) **MOVED TO EPIC 1**
+  - [ ] [Story 4.1: Testing Framework](epic-4/story-4.1-testing-framework.md) ⚠️ **MOVED TO EPIC 1 AS 1.3**
+  - [ ] [Story 4.2: Performance Testing](epic-4/story-4.2-performance-testing.md)
   - [ ] [Story 4.3: Build & Package System](epic-4/story-4.3-build-package.md)
   - [ ] [Story 4.4: Installation & Updates](epic-4/story-4.4-installation-updates.md)
   - [ ] [Story 4.5: Error Recovery System](epic-4/story-4.5-error-recovery.md) 🚨 **NEW**
   - [ ] [Story 4.6: Telemetry & Analytics](epic-4/story-4.6-telemetry-analytics.md) *(Post-MVP)*
   - [ ] [Story 4.7: Command Safety](epic-4/story-4.7-command-safety.md)
+  - [ ] [Story 4.8: API Documentation Generation](epic-4/story-4.8-api-documentation.md)
   - [ ] [Story 4.9: User Documentation](epic-4/story-4.9-user-documentation.md)
 
 ### 🚢 Phase 5: Community & Collaboration (Epic 5)
@@ -133,13 +136,13 @@ stories/
 | Epic | Duration | Dependencies | Risk Level |
 |------|----------|--------------|------------|
 | Epic 0 (Setup) | 2-4 hours | None | Low |
-| Epic 1 (Foundation) | 2 weeks | Story 0.0 | High (TUI spike) |
+| Epic 1 (Foundation) | 3 weeks | Story 0.0 | High (TUI spike) - EXTENDED |
 | Epic 2 (UI/Interaction) | 2 weeks | Epic 1 success | Medium |
 | Epic 3 (Templates) | 2 weeks | Epic 1 | Medium |
-| Epic 4 (Production) | 2 weeks | Epics 1-3 | Low |
+| Epic 4 (Production) | 2 weeks | Epics 1-3 | Low (TDD enabled) |
 | Epic 5 (Community) | Post-MVP | All epics | Low |
 
-**Total Estimated Duration**: 8 weeks for MVP (without Epic 5)
+**Total Estimated Duration**: 8-9 weeks for MVP (without Epic 5) - extended due to critical additions
 
 ## MVP Adjustment Options
 
@@ -163,18 +166,26 @@ stories/
 
 ## Notes for Project Manager
 
-1. **Story 1.3 (TUI Spike) is the critical decision point** - Have stakeholders available on Day 3 of the spike
-2. **New critical stories added:**
+1. **Story 1.4 (TUI Spike) is the critical decision point** - Have stakeholders available after Story 1.3 completion (formerly numbered 1.3, now 1.4)
+2. **CRITICAL: New foundation stories added based on PO validation:**
+   - Story 1.0: Database/State Store Setup - MUST complete before any state operations
+   - Story 1.3: Testing Framework moved from Epic 4 to enable TDD from day 1
+   - Story 1.2: Enhanced with third-party integration requirements
+3. **Additional new stories:**
    - Story 1.6a/b: State transactions and migrations for data integrity
    - Story 3.8: Template documentation for user enablement
    - Story 4.5: Error recovery for reliability
-3. **Story reordering applied:**
-   - Security sandbox moved earlier (3.2) before template execution
-   - API documentation moved to Epic 2 for developer reference
-   - Performance testing moved to Epic 1 for baseline establishment
-4. **Epic 5 deferred to post-MVP** - reduces timeline by 2 weeks
-5. **Parallel work opportunities** exist between Epic 2 and Epic 3
-6. **Each epic has clear "Definition of Done"** in its overview file
+4. **Story reordering applied:**
+   - Critical path: 1.0 → 1.5 → 1.6 (Database → State → Workflow)
+   - Testing moved early for TDD adoption
+   - Performance monitoring moved up for early warning
+5. **Epic 5 deferred to post-MVP** - reduces timeline by 2 weeks
+6. **Parallel work opportunities** exist between Epic 2 and Epic 3
+7. **Risk mitigation achieved:**
+   - File corruption prevented (Story 1.0)
+   - Third-party integration failures mitigated (Story 1.2)
+   - Late testing debt prevented (Story 1.3)
+8. **Each epic has clear "Definition of Done"** in its overview file
 
 ## Contributing
 
@@ -188,6 +199,7 @@ When creating new stories:
 
 ---
 
-*Last Updated: 2025-09-04* ✅ **PO Validation Complete**
-*Next Review: After Story 1.3 (TUI Spike) completion*
-*Changes Applied: 4 new stories added, story reordering implemented, Epic 5 deferred to post-MVP*
+*Last Updated: 2025-09-04* ✅ **PO Validation Complete & Stories Updated**
+*Next Review: After Story 1.4 (TUI Spike) completion*
+*Changes Applied: 4 new critical stories added, story reordering implemented, Epic 5 deferred to post-MVP*
+*Critical Fixes: Database foundation, testing framework, third-party integrations*

@@ -1,4 +1,4 @@
-# Story 1.3: Core Workflow Engine ✨
+# Story 1.6: Core Workflow Engine ✨
 
 ## Story
 **As a** developer,  

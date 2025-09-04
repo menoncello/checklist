@@ -1,4 +1,4 @@
-# Story 1.6: View System Architecture
+# Story 1.9: Component Architecture
 
 ## Overview
 Implement the view system that manages different application screens, layouts, and view states, providing navigation between different parts of the application.

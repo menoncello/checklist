@@ -138,7 +138,7 @@ export class TransactionLog {
 
 ## Dependencies
 - **Depends on**: Story 1.1 (Project Setup)
-- **Blocks**: Story 1.4 (Workflow Engine), Story 1.6 (State Management)
+- **Blocks**: Story 1.5 (State Management), Story 1.6 (Workflow Engine)
 
 ## Risk Mitigation
 - **File Corruption**: Automatic checksums and backup rotation

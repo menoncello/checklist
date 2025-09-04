@@ -1,4 +1,4 @@
-# Story 1.5: Main UI Setup
+# Story 1.8: Terminal Canvas System
 
 ## Overview
 Establish the main user interface framework based on the TUI spike decision, creating the foundational UI architecture that all other interface components will build upon.

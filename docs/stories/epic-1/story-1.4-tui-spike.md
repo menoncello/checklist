@@ -1,4 +1,4 @@
-# Story 1.2: TUI Technology Spike ⚠️ CRITICAL PATH
+# Story 1.4: TUI Technology Spike ⚠️ CRITICAL PATH
 
 ## Story
 **As a** developer,  

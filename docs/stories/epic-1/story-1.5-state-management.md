@@ -1,4 +1,4 @@
-# Story 1.4: State Management Implementation
+# Story 1.5: State Management Implementation
 
 ## Story
 **As a** developer,  
@@ -311,7 +311,7 @@ describe('StateManager', () => {
 
 ## Dependencies
 - Can start after Story 1.1 (project setup)
-- Required by Story 1.3 (workflow engine)
+- Required by Story 1.6 (workflow engine)
 
 ## Notes
 - Use YAML for human readability
