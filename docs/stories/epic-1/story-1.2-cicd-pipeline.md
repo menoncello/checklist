@@ -38,6 +38,13 @@
 4. ✅ Binary assets attached to releases
 5. ✅ npm package publishing prepared
 
+### Third-Party Integration Setup
+1. ✅ System clipboard integration configured
+2. ✅ Terminal API compatibility tested (ANSI escape codes)
+3. ✅ Cross-platform file system operations validated
+4. ✅ Git integration setup and tested
+5. ✅ External service authentication scaffolding
+
 ## Technical Implementation
 
 ### Main Workflow Configuration
@@ -115,6 +122,7 @@ jobs:
 
 ## Development Tasks
 
+### CI/CD Pipeline
 - [ ] Create `.github/workflows/` directory structure
 - [ ] Configure branch protection rules in GitHub settings
 - [ ] Set up required secrets (NPM_TOKEN, etc.)
@@ -126,8 +134,19 @@ jobs:
 - [ ] Validate binary compilation
 - [ ] Document CI/CD processes
 
+### Third-Party Integration Setup
+- [ ] Implement cross-platform clipboard access utilities
+- [ ] Create terminal capability detection system
+- [ ] Set up Git repository integration (status, commit detection)
+- [ ] Add file system watch utilities for state changes
+- [ ] Configure environment detection (CI, terminal type, OS)
+- [ ] Create fallback mechanisms for limited environments
+- [ ] Test integration across all target platforms (macOS, Linux, Windows)
+- [ ] Document third-party dependency requirements
+
 ## Definition of Done
 
+### CI/CD Requirements
 - [ ] All workflows passing on main branch
 - [ ] Pull request checks enforced
 - [ ] Test coverage >80%
@@ -135,6 +154,14 @@ jobs:
 - [ ] Binary builds under 20MB
 - [ ] Release process documented
 - [ ] Team can trigger releases via tags
+
+### Third-Party Integration Requirements
+- [ ] Clipboard integration tested on all platforms
+- [ ] Terminal compatibility verified across emulators
+- [ ] Git operations working in diverse repository states
+- [ ] Fallback mechanisms functional in limited environments
+- [ ] Cross-platform file operations validated
+- [ ] External service error handling implemented
 
 ## Time Estimate
 **8-12 hours** for complete pipeline setup
