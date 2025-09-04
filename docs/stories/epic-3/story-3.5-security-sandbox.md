@@ -13,6 +13,57 @@ Implement a secure sandbox environment for template execution that prevents mali
 ## Description
 Create a comprehensive security sandbox that isolates template execution, prevents file system access outside designated areas, blocks network calls, prevents command execution, and enforces resource limits.
 
+## Security Threat Model
+
+### Threat Categories
+| Threat | Risk Level | Impact | Mitigation |
+|--------|------------|--------|------------|
+| **Code Injection** | Critical | Remote code execution | Sandbox execution, no eval() |
+| **Path Traversal** | High | Access sensitive files | Path validation, chroot to .checklist/ |
+| **Command Injection** | Critical | System compromise | Block shell commands, whitelist only |
+| **Resource Exhaustion** | Medium | DoS, system hang | CPU/Memory limits, timeouts |
+| **Data Exfiltration** | High | Sensitive data leak | Block network access |
+| **Privilege Escalation** | Critical | Admin access | Run with minimal privileges |
+| **Template Poisoning** | High | Malicious template spread | Template validation, signing |
+| **Supply Chain** | Medium | Compromised dependencies | Dependency scanning, vendoring |
+| **Information Disclosure** | Medium | Leak system info | Sanitize error messages |
+| **TOCTOU** | Low | Race conditions | Atomic operations |
+
+### Attack Vectors
+1. **Malicious Template Import**
+   - User imports template with embedded malicious code
+   - Mitigation: Template validation, sandboxed execution
+
+2. **Expression Injection**
+   - Attacker crafts expression to escape sandbox
+   - Mitigation: AST validation, no eval()
+
+3. **Resource Bombing**
+   - Template consumes excessive resources
+   - Mitigation: Hard limits, kill switches
+
+4. **File System Attack**
+   - Template attempts to read/write sensitive files
+   - Mitigation: Strict path validation, permissions
+
+5. **Network Exfiltration**
+   - Template attempts to send data externally
+   - Mitigation: Network isolation
+
+### Security Controls
+| Control | Implementation | Priority |
+|---------|---------------|----------|
+| Input Validation | Strict schema validation | P0 |
+| Sandboxing | VM2 or similar isolation | P0 |
+| Resource Limits | Memory/CPU/Time caps | P0 |
+| Audit Logging | All security events logged | P0 |
+| Least Privilege | Minimal permissions | P0 |
+| Defense in Depth | Multiple security layers | P1 |
+| Security Headers | CSP, HSTS where applicable | P1 |
+| Regular Updates | Dependency updates | P1 |
+| Security Testing | Penetration testing | P2 |
+| Incident Response | Security playbooks | P2 |
+
 ## Acceptance Criteria
 - [ ] Restrict file system access to .checklist/ directory only
 - [ ] Block all network calls from templates

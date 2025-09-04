@@ -70,6 +70,30 @@ interface ValidationError {
 
 ### Validation Rules
 
+#### Comprehensive Validation Rules
+| Rule Category | Rule | Severity | Action |
+|--------------|------|----------|--------|
+| **Structure** | Template must have id, name, version | Critical | Block |
+| **Structure** | Version must follow semver (x.y.z) | Error | Block |
+| **Structure** | Item IDs must be unique | Critical | Block |
+| **Structure** | Items must have title and type | Error | Block |
+| **Dependencies** | No circular dependencies allowed | Critical | Block |
+| **Dependencies** | All referenced items must exist | Error | Block |
+| **Dependencies** | Max dependency depth: 10 levels | Warning | Allow |
+| **Variables** | All variable references must exist | Error | Block |
+| **Variables** | Variable names must be alphanumeric+underscore | Error | Block |
+| **Variables** | Required variables must have no default | Warning | Allow |
+| **Expressions** | Valid JavaScript syntax required | Error | Block |
+| **Expressions** | No eval() or Function() allowed | Critical | Block |
+| **Expressions** | Max expression complexity: 10 | Warning | Allow |
+| **Security** | No shell injection patterns | Critical | Block |
+| **Security** | No path traversal (../) | Critical | Block |
+| **Security** | No dangerous commands (rm -rf, sudo) | Critical | Block |
+| **Security** | Max command length: 1000 chars | Warning | Allow |
+| **Performance** | Max items: 1000 | Warning | Allow |
+| **Performance** | Max template size: 1MB | Error | Block |
+| **Performance** | Max nesting depth: 5 | Warning | Allow |
+
 #### Schema Validation
 ```typescript
 const templateSchema = {

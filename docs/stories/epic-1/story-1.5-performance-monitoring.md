@@ -31,6 +31,22 @@
 4. ✅ TUI renders at 60fps
 5. ✅ File operations <50ms
 
+### Explicit Performance Benchmarks
+| Operation | Target | P95 Target | Critical |
+|-----------|--------|------------|----------|
+| Command Execution | <100ms | <150ms | Yes |
+| Application Startup | <500ms | <750ms | Yes |
+| Template Parsing (1000 lines) | <100ms | <200ms | Yes |
+| State Save | <50ms | <75ms | Yes |
+| State Load | <30ms | <50ms | Yes |
+| TUI Frame Render | <16.67ms | <20ms | Yes |
+| Checklist Navigation | <10ms | <15ms | No |
+| Search (10000 items) | <50ms | <100ms | No |
+| Template Validation | <100ms | <150ms | No |
+| File System Operations | <50ms | <75ms | Yes |
+| Memory Baseline | <30MB | <40MB | Yes |
+| Memory Peak (10 checklists) | <50MB | <75MB | Yes |
+
 ### Reporting & Alerts
 1. ✅ Performance dashboard in development mode
 2. ✅ Performance reports in CI/CD
