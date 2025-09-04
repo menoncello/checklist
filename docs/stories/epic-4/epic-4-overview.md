@@ -1,40 +1,46 @@
-# Epic 4: Intelligence & Safety
+# Epic 4: Production Readiness
 
 ## Goal
-Implement intelligent command handling with safety checks, clear differentiation between command types, and seamless shell integration.
+Establish comprehensive testing, documentation, packaging, and distribution systems to ensure the checklist manager is production-ready and maintainable.
 
 ## Success Criteria
-- ✅ Commands clearly differentiated (Claude vs Bash)
-- ✅ Dangerous commands require confirmation
-- ✅ Clipboard integration working
-- ✅ Shell auto-detection functional
-- ✅ Command history and replay working
+- ✅ Testing framework with >80% coverage
+- ✅ Performance testing and benchmarks in place
+- ✅ Binary packaging and distribution working
+- ✅ Comprehensive documentation (API and User)
+- ✅ Installation processes for all platforms
+- ✅ Telemetry and analytics framework ready
 
 ## Stories
-1. [Story 4.1: Command Differentiation System](story-4.1-differentiation.md)
-2. [Story 4.2: Command Safety Validation](story-4.2-safety.md)
-3. [Story 4.3: Clipboard Integration with Fallbacks](story-4.3-clipboard.md)
-4. [Story 4.4: Command Preview with Validation](story-4.4-preview.md)
-5. [Story 4.5: Auto-loading Shell Integration](story-4.5-shell.md)
-6. [Story 4.6: Command History Recording](story-4.6-history.md)
-7. [Story 4.7: History Replay and Undo](story-4.7-replay.md)
+1. [Story 4.1: Testing Framework](story-4.1-testing-framework.md)
+2. [Story 4.2: Performance Testing](story-4.2-performance-testing.md)
+3. [Story 4.3: Build and Package System](story-4.3-build-package.md)
+4. [Story 4.4: Installation and Updates](story-4.4-installation-updates.md)
+5. [Story 4.5: Documentation Suite](story-4.5-documentation-suite.md)
+6. [Story 4.6: Telemetry and Analytics](story-4.6-telemetry-analytics.md)
+7. [Story 4.7: Command Safety System](story-4.7-command-safety.md) ⚠️ MOVED FROM OLD STRUCTURE
+8. [Story 4.8: API Documentation Generation](story-4.8-api-documentation.md) ⚠️ NEW
+9. [Story 4.9: User Help & Tutorial System](story-4.9-user-documentation.md) ⚠️ NEW
 
 ## Dependencies
-- Epics 1-2 complete
-- Core engine and UI functional
+- Epics 1-3 complete (core functionality to test and document)
+- Story 1.2 (CI/CD) supports automated testing
+- Story 1.5 (Performance Monitoring) feeds into 4.2
 
 ## Risk Factors
-- 🟡 Clipboard access varies by platform
-- 🟡 Shell integration may conflict with user setup
-- 🟡 Safety checks could be too restrictive
+- 🟡 Cross-platform packaging complexity
+- 🟡 Documentation maintenance overhead
+- 🟢 Testing coverage gaps
 
 ## Timeline Estimate
-**1-2 weeks**
+**2-3 weeks** with new documentation stories (was 1-2 weeks)
 
 ## Definition of Done
-- [ ] All command types handled
-- [ ] Safety measures in place
-- [ ] Clipboard works cross-platform
-- [ ] Shell integration optional
-- [ ] History fully functional
-- [ ] Undo/redo working
+- [ ] All tests passing with >80% coverage
+- [ ] Performance benchmarks established and met
+- [ ] Binary packages building for all platforms
+- [ ] API documentation complete and published
+- [ ] User documentation and tutorials ready
+- [ ] Installation tested on macOS, Linux, Windows
+- [ ] Telemetry framework operational
+- [ ] Command safety measures in place
