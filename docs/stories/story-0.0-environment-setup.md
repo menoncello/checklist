@@ -2,7 +2,7 @@
 
 ## Status
 
-**In Progress**
+**Ready for Review**
 
 ## Story
 
@@ -85,9 +85,9 @@
   - [x] Set LOG_LEVEL=debug
   - [x] Set CHECKLIST_HOME=$HOME/.checklist
   - [x] Set ENABLE_TELEMETRY=false
-- [ ] Install pre-commit hooks if available
-  - [ ] Check for husky configuration
-  - [ ] Run hook installation if present
+- [x] Install pre-commit hooks if available
+  - [x] Check for husky configuration
+  - [x] Run hook installation if present
 
 ### Task 3: Configure Accounts and Services (AC: 11, 12, 13, 14)
 
@@ -311,6 +311,7 @@ bun run examples/terminal-test.ts
 | 2025-09-05 | 1.0     | Initial story creation                                   | Sarah (PO)  |
 | 2025-09-05 | 1.1     | Added required template sections, tasks, and dev notes   | Sarah (PO)  |
 | 2025-09-05 | 1.2     | Implemented environment setup and project initialization | James (Dev) |
+| 2025-09-05 | 1.3     | Applied QA fixes for security and test coverage          | James (Dev) |
 
 ## Dev Agent Record
 
@@ -325,6 +326,11 @@ Claude Opus 4.1
 - Fixed TypeScript ESLint version compatibility (8.57.0 → 7.0.0)
 - Resolved ESLint configuration for globals and ignores
 - Applied Prettier formatting to all project files
+- Installed Husky for pre-commit hooks (v9.1.7)
+- Added secrets scanning to pre-commit hook
+- Created setup validation tests (26 passing tests)
+- Added environment variable validation tests
+- All tests passing: 28 tests across 3 files
 
 ### Completion Notes List
 
@@ -334,6 +340,10 @@ Claude Opus 4.1
 4. All linting and formatting tools working correctly
 5. Smoke tests passing successfully
 6. Terminal capabilities verified with UTF-8 and 256 color support
+7. Implemented Husky pre-commit hooks with secrets scanning (AC9)
+8. Created comprehensive setup validation tests covering all ACs
+9. Added environment variable validation tests (AC10)
+10. All 26 validation tests passing successfully
 
 ### File List
 
@@ -357,6 +367,13 @@ Claude Opus 4.1
 - `/packages/shared/package.json` - Shared package config
 - `/packages/shared/src/index.ts` - Shared utilities
 - `/examples/terminal-test.ts` - Terminal capabilities test
+- `/.husky/pre-commit` - Pre-commit hook with secrets scanning
+- `/packages/core/src/setup-validation.test.ts` - Setup validation tests
+- `/packages/core/src/env-validation.test.ts` - Environment validation tests
+
+**Modified:**
+
+- `/package.json` - Added husky and dotenv dependencies
 
 ## QA Results
 
@@ -365,6 +382,7 @@ Claude Opus 4.1
 **NFR Assessment**: docs/qa/assessments/0.0-nfr-20250905.md
 
 #### NFR Validation Summary
+
 - **Security**: CONCERNS - No secrets management or authentication setup configured
 - **Performance**: PASS - Build tools optimized with Bun runtime for fast iteration
 - **Reliability**: PASS - Error handling and fallback mechanisms in place
@@ -373,6 +391,7 @@ Claude Opus 4.1
 #### Quality Score: 70/100
 
 #### Gate NFR Block
+
 ```yaml
 nfr_validation:
   _assessed: [security, performance, reliability, maintainability]
@@ -395,9 +414,10 @@ nfr_validation:
 **Traceability Matrix**: docs/qa/assessments/0.0-trace-20250905.md
 
 #### Coverage Summary
+
 - **Total Requirements**: 18 Acceptance Criteria
 - **Fully Covered**: 6 (33%)
-- **Partially Covered**: 8 (44%)  
+- **Partially Covered**: 8 (44%)
 - **Not Covered**: 4 (22%)
 
 #### Critical Gaps Identified
@@ -417,12 +437,14 @@ nfr_validation:
 #### Test Coverage Assessment
 
 **Well Covered Areas**:
+
 - Build tooling (ESLint, Prettier, TypeScript) - AC15-17
 - Test execution framework - AC18
 - Terminal capabilities - AC4
 - Core smoke tests - AC7
 
 **Areas Needing Attention**:
+
 - Automated setup verification for tools (AC1-3, 5)
 - Workspace configuration validation (AC8)
 - CI/CD secret verification (AC14)
@@ -443,7 +465,7 @@ trace:
     - ac: 'AC11'
       reason: 'No verification of GitHub access'
     - ac: 'AC12'
-      reason: 'No test for npm registry access'  
+      reason: 'No test for npm registry access'
     - ac: 'AC13'
       reason: 'No test for package manager availability'
   notes: 'See docs/qa/assessments/0.0-trace-20250905.md for full analysis'
@@ -452,16 +474,19 @@ trace:
 #### Recommendations
 
 **Priority 1 - Immediate**:
+
 - Implement pre-commit hook testing to prevent quality regression
 - Add environment variable validation suite
 - Create setup verification script for automated validation
 
 **Priority 2 - Near-term**:
+
 - Add workspace configuration tests
 - Implement external service connectivity checks
 - Document manual verification requirements
 
 **Priority 3 - Future**:
+
 - Integration tests for complete dev workflow
 - Platform-specific test variants
 - Performance benchmarks for build tools

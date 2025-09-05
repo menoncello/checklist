@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# Run linting
+echo "Running linter..."
+bun run lint || {
+    echo "❌ Linting failed. Please fix errors before committing."
+    exit 1
+}
+
+# Run format check
+echo "Checking code formatting..."
+bun run format:check || {
+    echo "❌ Code formatting issues found. Run 'bun run format' to fix."
+    exit 1
+}
+
+# Run type checking
+echo "Running type check..."
+bun run typecheck || {
+    echo "❌ TypeScript errors found. Please fix before committing."
+    exit 1
+}
+
+# Scan for secrets (basic patterns)
+echo "Scanning for potential secrets..."
+has_secrets=0
+for file in $(git diff --cached --name-only); do
+    if [ -f "$file" ]; then
+        # Check for common secret patterns
+        if grep -E "(api[_-]?key|secret|token|password|pwd|auth|credential)[[:space:]]*[=:][[:space:]]*['\"][^'\"]+['\"]" "$file" 2>/dev/null; then
+            echo "❌ Potential secret found in $file"
+            echo "Please remove sensitive data before committing."
+            has_secrets=1
+        fi
+        # Check for AWS keys
+        if grep -E "AKIA[0-9A-Z]{16}" "$file" 2>/dev/null; then
+            echo "❌ Potential AWS key found in $file"
+            has_secrets=1
+        fi
+    fi
+done
+
+if [ $has_secrets -eq 1 ]; then
+    exit 1
+fi
+
+echo "✅ Pre-commit checks passed"
