@@ -6,9 +6,10 @@
 checklist/
 ├── packages/                    # Monorepo workspace packages
 │   ├── core/                   # Core business logic
-│   │   ├── src/
-│   │   │   ├── index.ts        # Main entry point
-│   │   │   ├── index.test.ts   # Core tests
+│   │   ├── src/                # Source code
+│   │   │   └── index.ts        # Main entry point
+│   │   ├── tests/              # Test files
+│   │   │   ├── index.test.ts
 │   │   │   ├── env-validation.test.ts
 │   │   │   └── setup-validation.test.ts
 │   │   └── dist/               # Compiled output
@@ -16,16 +17,19 @@ checklist/
 │   ├── tui/                    # Terminal UI components
 │   │   ├── src/
 │   │   │   └── index.ts
+│   │   ├── tests/              # Test files
 │   │   └── dist/
 │   │
 │   ├── shared/                 # Shared utilities
 │   │   ├── src/
 │   │   │   └── index.ts
+│   │   ├── tests/              # Test files
 │   │   └── dist/
 │   │
 │   └── cli/                    # CLI application
 │       ├── src/
 │       │   └── index.ts
+│       ├── tests/              # Test files
 │       └── dist/
 │
 ├── docs/                        # Documentation
@@ -62,12 +66,12 @@ checklist/
 ├── .bmad-core/               # BMAD framework
 │
 ├── package.json              # Root package configuration
-├── vitest.config.ts          # Test configuration
+├── bunfig.toml              # Bun configuration
+├── test-setup.ts            # Test setup file
 ├── eslint.config.js          # Linting rules
 ├── .prettierrc.js           # Code formatting
 ├── tsconfig.json            # TypeScript config
 ├── tsconfig.base.json       # Base TS config
-├── bunfig.toml              # Bun configuration
 └── README.md                # Project documentation
 ```
 

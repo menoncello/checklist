@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 
 describe('State Manager', () => {
   describe('State Initialization', () => {
@@ -215,7 +215,7 @@ describe('State Manager', () => {
         subscribe: function (callback: (state: unknown) => void) {
           this.subscribers.push(callback);
         },
-        setState: function (newState: unknown) {
+        setState: function (newState: { count: number }) {
           this.state = newState;
           this.subscribers.forEach((cb) => cb(this.state));
         },
@@ -227,7 +227,7 @@ describe('State Manager', () => {
       });
 
       manager.setState({ count: 1 });
-      expect(notifiedState).toEqual({ count: 1 });
+      expect(notifiedState!).toEqual({ count: 1 });
     });
 
     it('should support unsubscribe', () => {

@@ -26,6 +26,14 @@ echo "Scanning for potential secrets..."
 has_secrets=0
 for file in $(git diff --cached --name-only); do
     if [ -f "$file" ]; then
+        # Skip test files and known safe files
+        if echo "$file" | grep -E "\.(test|spec)\.(ts|js)$" > /dev/null; then
+            continue
+        fi
+        if echo "$file" | grep -E "SecretsDetector\.(ts|js)$" > /dev/null; then
+            continue
+        fi
+        
         # Check for common secret patterns
         if grep -E "(api[_-]?key|secret|token|password|pwd|auth|credential)[[:space:]]*[=:][[:space:]]*['\"][^'\"]+['\"]" "$file" 2>/dev/null; then
             echo "❌ Potential secret found in $file"

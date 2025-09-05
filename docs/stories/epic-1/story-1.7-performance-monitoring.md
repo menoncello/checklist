@@ -193,7 +193,7 @@ class WorkflowEngine {
 
 ```typescript
 // benchmarks/core.bench.ts
-import { bench, describe } from 'vitest';
+import { bench, describe } from 'tinybench';
 
 describe('Core Operations', () => {
   bench(
@@ -254,7 +254,7 @@ jobs:
       - name: Compare with baseline
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          tool: 'vitest'
+          tool: 'bun-test'
           output-file-path: bench-results.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           alert-threshold: '110%'
@@ -266,7 +266,7 @@ jobs:
 
 - [ ] Create PerformanceMonitor class
 - [ ] Implement timing decorators
-- [ ] Set up benchmark suite with Vitest
+- [ ] Set up benchmark suite with Tinybench
 - [ ] Define performance budgets
 - [ ] Add performance tracking to core operations
 - [ ] Create performance dashboard

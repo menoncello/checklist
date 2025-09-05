@@ -42,7 +42,7 @@ BMAD Checklist Manager is a terminal-first workflow management tool that transfo
 - **Runtime:** Bun 1.1.x
 - **Language:** TypeScript 5.3.x
 - **Architecture:** Monorepo with Bun workspaces
-- **Testing:** Vitest with StrykerJS
+- **Testing:** Bun's native test runner
 - **State:** YAML-based file storage
 
 ### Performance Requirements
@@ -141,9 +141,9 @@ bun dev:cli
 
 # Run tests
 bun test              # All tests
-bun test:unit        # Unit tests only
-bun test:e2e         # End-to-end tests
 bun test:watch       # Watch mode
+bun test:coverage    # Coverage report
+bun test:smoke       # Smoke tests only
 
 # Code quality
 bun lint             # Run ESLint
@@ -224,7 +224,7 @@ try {
 ### Test Structure
 
 ```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test';
 
 describe('WorkflowEngine', () => {
   let engine: WorkflowEngine;

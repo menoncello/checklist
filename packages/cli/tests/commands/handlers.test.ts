@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 
 describe('CLI Command Handlers', () => {
   describe('Command Parsing', () => {

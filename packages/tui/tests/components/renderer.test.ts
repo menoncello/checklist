@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 
 describe('TUI Renderer', () => {
   describe('Terminal Capabilities', () => {

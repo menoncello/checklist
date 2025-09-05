@@ -146,7 +146,8 @@ checklist/
 ├── tsconfig.json           # TypeScript configuration
 ├── eslint.config.js        # ESLint configuration (flat config)
 ├── .prettierrc.js          # Prettier configuration
-├── vitest.config.ts        # Vitest test configuration
+├── bunfig.toml            # Bun configuration
+├── test-setup.ts          # Test setup file
 ├── docs/
 │   ├── prd/               # Product requirements (sharded)
 │   ├── architecture/      # Architecture documents (sharded)
@@ -166,7 +167,7 @@ From architecture docs, the project uses:
 
 - **Runtime**: Bun 1.1.x (primary), Node.js (fallback)
 - **Language**: TypeScript 5.3.x
-- **Testing**: Vitest 1.6.x with coverage-v8
+- **Testing**: Bun Test (native) with built-in coverage
 - **Linting**: ESLint 8.57.x with TypeScript plugin
 - **Formatting**: Prettier 3.2.x
 - **State Management**: YAML with js-yaml 4.1.x
@@ -229,13 +230,13 @@ Based on architecture documentation:
    - E2E tests: `e2e/*.e2e.ts` files
 
 2. **Testing Framework**:
-   - Vitest 1.6.x for all testing
+   - Bun Test (native) for all testing
    - Use `describe`, `it`, `expect` syntax
    - Snapshot testing for TUI output validation
 
 3. **Test Coverage Requirements**:
    - Minimum 80% code coverage
-   - Coverage reports via `@vitest/coverage-v8`
+   - Coverage reports via Bun's built-in coverage
    - Run: `bun run test:coverage`
 
 4. **Test Data Management**:
@@ -347,7 +348,7 @@ Claude Opus 4.1
 
 1. Environment verification complete - Bun 1.2.21, Git 2.50.1, Node.js 22.14.0 installed
 2. Created project structure with workspace packages (core, cli, tui, shared)
-3. Configured TypeScript, ESLint, Prettier, and Vitest
+3. Configured TypeScript, ESLint, Prettier, and Bun Test
 4. All linting and formatting tools working correctly
 5. Smoke tests passing successfully
 6. Terminal capabilities verified with UTF-8 and 256 color support
@@ -374,7 +375,8 @@ Claude Opus 4.1
 - `/tsconfig.json` - TypeScript configuration
 - `/eslint.config.js` - ESLint flat config
 - `/.prettierrc.js` - Prettier formatting config
-- `/vitest.config.ts` - Vitest test configuration
+- `/bunfig.toml` - Bun configuration
+- `/test-setup.ts` - Test setup file
 - `/.env.example` - Environment variables template
 - `/.env` - Development environment variables
 - `/.gitignore` - Git ignore rules
@@ -662,7 +664,7 @@ Gate: CONCERNS → docs/qa/gates/0.0-environment-setup.yml
 
 ### Code Quality Assessment
 
-The development environment setup shows good foundational implementation with well-configured tooling (TypeScript strict mode, ESLint, Prettier, Vitest). However, actual implementation depth is minimal with only placeholder code in packages. Test coverage is critically low at 5.38% vs 80% target. Core infrastructure is functional but lacks production readiness.
+The development environment setup shows good foundational implementation with well-configured tooling (TypeScript strict mode, ESLint, Prettier, Bun Test). However, actual implementation depth is minimal with only placeholder code in packages. Test coverage is critically low at 5.38% vs 80% target. Core infrastructure is functional but lacks production readiness.
 
 ### Refactoring Performed
 

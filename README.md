@@ -8,7 +8,7 @@ A high-performance, terminal-based interactive checklist application built with 
 - 📝 **Interactive TUI**: Rich terminal interface with keyboard navigation
 - 🔄 **State Management**: YAML-based state persistence with automatic saves
 - 📦 **Modular Architecture**: Clean separation between core, TUI, and CLI layers
-- 🧪 **Well-Tested**: Comprehensive test coverage with Vitest
+- 🧪 **Well-Tested**: Comprehensive test coverage with Bun's native test runner
 - 🎨 **Customizable**: Template-based checklist system
 
 ## Quick Start
@@ -96,7 +96,7 @@ bun run type-check   # TypeScript type checking
 bun test            # Run all tests
 bun test:watch      # Watch mode
 bun test:coverage   # Generate coverage report
-bun test:ui         # Open Vitest UI
+bun test:smoke      # Run smoke tests only
 
 # Performance
 bun run perf        # Run performance benchmarks
@@ -148,7 +148,7 @@ cat coverage/perf-report.json
 
 ### Test Structure
 
-- **Unit Tests**: Core business logic (`*.test.ts`)
+- **Unit Tests**: Located in `packages/*/tests/` directories
 - **Integration Tests**: Package interactions
 - **Snapshot Tests**: TUI output validation
 - **Performance Tests**: Benchmark critical paths
@@ -179,6 +179,6 @@ Built with:
 
 - [Bun](https://bun.sh) - Fast JavaScript runtime
 - [TypeScript](https://www.typescriptlang.org) - Type safety
-- [Vitest](https://vitest.dev) - Testing framework
+- [Bun Test](https://bun.sh/docs/cli/test) - Native test runner
 - [ESLint](https://eslint.org) - Code quality
 - [Prettier](https://prettier.io) - Code formatting
