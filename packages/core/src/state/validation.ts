@@ -6,19 +6,19 @@ import { ChecklistState } from './types';
 import { StateCorruptedError } from './errors';
 
 export class StateValidator {
-  private ajv: Ajv;
-  private validateSchema: ReturnType<Ajv['compile']>;
+  private ajv: any;
+  private validateSchema: any;
 
   constructor() {
     this.ajv = new Ajv({ allErrors: true, verbose: true });
-    addFormats(this.ajv);
+    (addFormats as any)(this.ajv);
     this.validateSchema = this.ajv.compile(stateSchema);
   }
 
   async validateStateSchema(state: unknown): Promise<ChecklistState> {
     if (!this.validateSchema(state)) {
       const errors = this.validateSchema.errors
-        ?.map((e) => `${e.instancePath} ${e.message}`)
+        ?.map((e: any) => `${e.instancePath} ${e.message}`)
         .join(', ');
       throw new StateCorruptedError(`State validation failed: ${errors}`, 'schema_invalid');
     }

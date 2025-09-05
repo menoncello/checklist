@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+bun.lockb
+bun.lock
+package-lock.json
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Git
+.git/
+.gitignore
+.husky/
+
+# Environment
+.env
+.env.*
+
+# Config files
+*.json
+*.toml
+*.config.js
+*.config.ts
+.prettierignore
+
+# BMAD and other folders
+.bmad-core/
+prompts/
+docs/
+scripts/
+examples/
+tests/
+templates/
+~
+
+# File types
+*.md
+*.yaml
+*.yml
+*.xml
+*.sh
