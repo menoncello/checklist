@@ -21,21 +21,15 @@ export class StateManager {
   constructor(baseDir: string = '.checklist') {
     this.baseDir = baseDir;
     this.directoryManager = new DirectoryManager(baseDir);
-    this.concurrencyManager = new ConcurrencyManager(
-      this.directoryManager.getLockPath()
-    );
-    this.transactionCoordinator = new TransactionCoordinator(
-      this.directoryManager.getLogPath()
-    );
+    this.concurrencyManager = new ConcurrencyManager(this.directoryManager.getLockPath());
+    this.transactionCoordinator = new TransactionCoordinator(this.directoryManager.getLogPath());
     this.validator = new StateValidator();
-    this.backupManager = new BackupManager(
-      this.directoryManager.getBackupPath()
-    );
+    this.backupManager = new BackupManager(this.directoryManager.getBackupPath());
   }
 
   async initializeState(): Promise<ChecklistState> {
     await this.concurrencyManager.acquireLock('state');
-    
+
     try {
       await this.directoryManager.initialize();
 
@@ -53,9 +47,9 @@ export class StateManager {
       initialState.checksum = checksum;
 
       await this.saveStateInternal(initialState);
-      
+
       await this.backupManager.initializeManifest();
-      
+
       this.currentState = initialState;
       return initialState;
     } finally {
@@ -65,12 +59,12 @@ export class StateManager {
 
   async loadState(): Promise<ChecklistState> {
     await this.concurrencyManager.acquireLock('state', 10000);
-    
+
     try {
       const statePath = this.directoryManager.getStatePath();
       const stateFile = Bun.file(statePath);
 
-      if (!await stateFile.exists()) {
+      if (!(await stateFile.exists())) {
         return await this.initializeState();
       }
 
@@ -80,19 +74,18 @@ export class StateManager {
       try {
         state = yaml.load(content);
       } catch (error) {
-        throw new StateCorruptedError(
-          `Failed to parse state file: ${error}`,
-          'parse_error'
-        );
+        throw new StateCorruptedError(`Failed to parse state file: ${error}`, 'parse_error');
       }
 
       try {
         const validatedState = await this.validator.validate(state);
-        
-        if (!this.validator.isValidSchemaVersion(
-          validatedState.schemaVersion,
-          [SCHEMA_VERSION, '0.9.0']
-        )) {
+
+        if (
+          !this.validator.isValidSchemaVersion(validatedState.schemaVersion, [
+            SCHEMA_VERSION,
+            '0.9.0',
+          ])
+        ) {
           if (this.validator.canMigrate(validatedState.schemaVersion, SCHEMA_VERSION)) {
             return await this.migrateState(validatedState);
           } else {
@@ -123,12 +116,7 @@ export class StateManager {
     );
 
     try {
-      await this.transactionCoordinator.addOperation(
-        transactionId,
-        'SAVE',
-        '/',
-        state
-      );
+      await this.transactionCoordinator.addOperation(transactionId, 'SAVE', '/', state);
 
       const isValid = await this.transactionCoordinator.validateTransaction(
         transactionId,
@@ -146,19 +134,16 @@ export class StateManager {
         throw new StateError('State validation failed', 'VALIDATION_FAILED');
       }
 
-      await this.transactionCoordinator.commitTransaction(
-        transactionId,
-        async () => {
-          const checksum = this.validator.calculateChecksum(state);
-          state.checksum = checksum;
+      await this.transactionCoordinator.commitTransaction(transactionId, async () => {
+        const checksum = this.validator.calculateChecksum(state);
+        state.checksum = checksum;
 
-          await this.saveStateInternal(state);
-          await this.backupManager.createBackup(state);
+        await this.saveStateInternal(state);
+        await this.backupManager.createBackup(state);
 
-          this.currentState = state;
-          return state;
-        }
-      );
+        this.currentState = state;
+        return state;
+      });
     } catch (error) {
       await this.transactionCoordinator.rollbackTransaction(transactionId);
       throw error;
@@ -183,7 +168,7 @@ export class StateManager {
     const tempFile = Bun.file(tempPath);
     const writtenContent = await tempFile.text();
     const writtenState = yaml.load(writtenContent) as ChecklistState;
-    
+
     if (writtenState.checksum !== state.checksum) {
       await tempFile.unlink();
       throw new StateError('State write verification failed', 'WRITE_FAILED');
@@ -200,7 +185,7 @@ export class StateManager {
   async updateState(
     updater: (state: ChecklistState) => ChecklistState | Promise<ChecklistState>
   ): Promise<ChecklistState> {
-    const currentState = this.currentState || await this.loadState();
+    const currentState = this.currentState || (await this.loadState());
     const updatedState = await updater(structuredClone(currentState));
     await this.saveState(updatedState);
     return updatedState;
@@ -214,10 +199,7 @@ export class StateManager {
         throw new StateError('No state to archive', 'NO_STATE');
       }
 
-      const archivePath = join(
-        this.directoryManager.getBackupPath(),
-        `archive-${Date.now()}.yaml`
-      );
+      const archivePath = join(this.directoryManager.getBackupPath(), `archive-${Date.now()}.yaml`);
 
       const content = yaml.dump(this.currentState, {
         indent: 2,
@@ -227,21 +209,19 @@ export class StateManager {
       });
 
       await Bun.write(archivePath, content);
-      
+
       await this.initializeState();
     } finally {
       await this.concurrencyManager.releaseLock('state');
     }
   }
 
-  private async handleCorruptedState(
-    error: StateCorruptedError
-  ): Promise<ChecklistState> {
+  private async handleCorruptedState(error: StateCorruptedError): Promise<ChecklistState> {
     console.error('State corruption detected:', error.message);
 
     try {
       const recoveredState = await this.backupManager.recoverFromLatestBackup();
-      
+
       recoveredState.recovery = {
         lastCorruption: new Date().toISOString(),
         corruptionType: error.corruptionType,
@@ -251,11 +231,11 @@ export class StateManager {
 
       await this.saveStateInternal(recoveredState);
       this.currentState = recoveredState;
-      
+
       return recoveredState;
     } catch (backupError) {
       console.error('Backup recovery failed:', backupError);
-      
+
       const shouldReset = await this.promptUserForReset();
       if (shouldReset) {
         const freshState = await this.initializeState();
@@ -265,23 +245,18 @@ export class StateManager {
           recoveryMethod: 'reset',
           dataLoss: true,
         };
-        
+
         await this.saveStateInternal(freshState);
         return freshState;
       }
-      
-      throw new RecoveryError(
-        'Failed to recover from corrupted state',
-        true
-      );
+
+      throw new RecoveryError('Failed to recover from corrupted state', true);
     }
   }
 
-  private async migrateState(
-    oldState: ChecklistState
-  ): Promise<ChecklistState> {
+  private async migrateState(oldState: ChecklistState): Promise<ChecklistState> {
     console.log(`Migrating state from ${oldState.schemaVersion} to ${SCHEMA_VERSION}`);
-    
+
     const migratedState: ChecklistState = {
       ...oldState,
       schemaVersion: SCHEMA_VERSION,
@@ -292,7 +267,7 @@ export class StateManager {
 
     await this.saveStateInternal(migratedState);
     this.currentState = migratedState;
-    
+
     return migratedState;
   }
 
@@ -301,7 +276,7 @@ export class StateManager {
   }
 
   async exportState(): Promise<string> {
-    const state = this.currentState || await this.loadState();
+    const state = this.currentState || (await this.loadState());
     return yaml.dump(state, {
       indent: 2,
       lineWidth: -1,
@@ -316,14 +291,12 @@ export class StateManager {
     try {
       const importedState = yaml.load(yamlContent) as unknown;
       const validatedState = await this.validator.validate(importedState);
-      
-      await this.backupManager.createBackup(
-        this.currentState || validatedState
-      );
-      
+
+      await this.backupManager.createBackup(this.currentState || validatedState);
+
       await this.saveStateInternal(validatedState);
       this.currentState = validatedState;
-      
+
       return validatedState;
     } finally {
       await this.concurrencyManager.releaseLock('state');

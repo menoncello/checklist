@@ -20,10 +20,7 @@ export class StateValidator {
       const errors = this.validateSchema.errors
         ?.map((e) => `${e.instancePath} ${e.message}`)
         .join(', ');
-      throw new StateCorruptedError(
-        `State validation failed: ${errors}`,
-        'schema_invalid'
-      );
+      throw new StateCorruptedError(`State validation failed: ${errors}`, 'schema_invalid');
     }
     return state as ChecklistState;
   }
@@ -31,18 +28,20 @@ export class StateValidator {
   calculateChecksum(state: ChecklistState): string {
     const stateWithoutChecksum = { ...state };
     delete (stateWithoutChecksum as Record<string, unknown>).checksum;
-    
+
     const sortObject = (obj: unknown): unknown => {
       if (obj === null || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(sortObject);
-      
+
       const sorted: Record<string, unknown> = {};
-      Object.keys(obj).sort().forEach(key => {
-        sorted[key] = sortObject((obj as Record<string, unknown>)[key]);
-      });
+      Object.keys(obj)
+        .sort()
+        .forEach((key) => {
+          sorted[key] = sortObject((obj as Record<string, unknown>)[key]);
+        });
       return sorted;
     };
-    
+
     const sortedState = sortObject(stateWithoutChecksum);
     const jsonString = JSON.stringify(sortedState);
     const hash = createHash('sha256').update(jsonString).digest('hex');
@@ -63,8 +62,12 @@ export class StateValidator {
 
   async validate(state: unknown): Promise<ChecklistState> {
     const validatedState = await this.validateStateSchema(state);
-    
-    if (validatedState.checksum && validatedState.checksum !== 'sha256:0000000000000000000000000000000000000000000000000000000000000000') {
+
+    if (
+      validatedState.checksum &&
+      validatedState.checksum !==
+        'sha256:0000000000000000000000000000000000000000000000000000000000000000'
+    ) {
       await this.verifyChecksum(validatedState);
     }
 
@@ -78,7 +81,7 @@ export class StateValidator {
   canMigrate(fromVersion: string, toVersion: string): boolean {
     const [fromMajor] = fromVersion.split('.').map(Number);
     const [toMajor] = toVersion.split('.').map(Number);
-    
-    return fromMajor === toMajor || (fromMajor + 1 === toMajor);
+
+    return fromMajor === toMajor || fromMajor + 1 === toMajor;
   }
 }

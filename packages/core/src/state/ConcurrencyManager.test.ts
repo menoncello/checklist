@@ -34,16 +34,14 @@ describe('ConcurrencyManager', () => {
 
     it('should prevent concurrent lock acquisition', async () => {
       await manager1.acquireLock('test', 1000);
-      
-      await expect(manager2.acquireLock('test', 500)).rejects.toThrow(
-        LockAcquisitionError
-      );
+
+      await expect(manager2.acquireLock('test', 500)).rejects.toThrow(LockAcquisitionError);
     });
 
     it('should allow different lock names', async () => {
       const lock1 = await manager1.acquireLock('lock1', 1000);
       const lock2 = await manager2.acquireLock('lock2', 1000);
-      
+
       expect(lock1).toBeDefined();
       expect(lock2).toBeDefined();
       expect(lock1).not.toEqual(lock2);
@@ -53,9 +51,7 @@ describe('ConcurrencyManager', () => {
       await manager1.acquireLock('test', 1000);
 
       const start = Date.now();
-      await expect(manager2.acquireLock('test', 200)).rejects.toThrow(
-        LockAcquisitionError
-      );
+      await expect(manager2.acquireLock('test', 200)).rejects.toThrow(LockAcquisitionError);
       const duration = Date.now() - start;
 
       expect(duration).toBeGreaterThanOrEqual(190);
@@ -142,7 +138,7 @@ describe('ConcurrencyManager', () => {
       await Bun.write(staleLockPath, yaml.dump(staleLock));
 
       await Bun.sleep(100);
-      
+
       const file = Bun.file(staleLockPath);
       expect(await file.exists()).toBe(true);
 
@@ -154,13 +150,13 @@ describe('ConcurrencyManager', () => {
   describe('Waiting Queue', () => {
     it('should add process to waiting queue', async () => {
       await manager1.acquireLock('test', 1000);
-      
+
       const waitPromise = manager2.acquireLock('test', 200).catch(() => {});
       await Bun.sleep(100);
 
       const info = await manager1.getLockInfo('test');
       const waitingPids = info?.concurrency.waitingProcesses.map((p) => p.pid) || [];
-      
+
       expect(waitingPids).toContain(process.pid);
 
       await waitPromise;

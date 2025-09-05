@@ -27,10 +27,7 @@ export class ConcurrencyManager {
     process.on('SIGTERM', () => this.releaseLock());
   }
 
-  async acquireLock(
-    lockName: string = 'state',
-    timeout: number = LOCK_TIMEOUT
-  ): Promise<string> {
+  async acquireLock(lockName: string = 'state', timeout: number = LOCK_TIMEOUT): Promise<string> {
     const lockPath = this.getLockPath(lockName);
     const startTime = Date.now();
     const lockUuid = crypto.randomUUID();
@@ -84,19 +81,19 @@ export class ConcurrencyManager {
       };
 
       const lockContent = yaml.dump(lockFile);
-      
+
       const file = Bun.file(lockPath);
       if (await file.exists()) {
         return false;
       }
 
       await Bun.write(lockPath, lockContent, { createPath: false });
-      
+
       const writtenContent = await Bun.file(lockPath).text();
       const writtenLock = yaml.load(writtenContent) as LockFile;
-      
+
       return writtenLock.lockId === lockId;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -111,9 +108,7 @@ export class ConcurrencyManager {
 
         if (lockFile.lockId === lockId) {
           lockFile.timing.renewedAt = new Date().toISOString();
-          lockFile.timing.expiresAt = new Date(
-            Date.now() + LOCK_EXPIRY_TIME
-          ).toISOString();
+          lockFile.timing.expiresAt = new Date(Date.now() + LOCK_EXPIRY_TIME).toISOString();
 
           await Bun.write(lockPath, yaml.dump(lockFile));
         }
@@ -167,7 +162,7 @@ export class ConcurrencyManager {
       } catch {
         return true;
       }
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -185,9 +180,7 @@ export class ConcurrencyManager {
       const lockContent = await Bun.file(lockPath).text();
       const lockFile = yaml.load(lockContent) as LockFile;
 
-      const alreadyWaiting = lockFile.concurrency.waitingProcesses.some(
-        (p) => p.pid === this.pid
-      );
+      const alreadyWaiting = lockFile.concurrency.waitingProcesses.some((p) => p.pid === this.pid);
 
       if (!alreadyWaiting) {
         lockFile.concurrency.waitingProcesses.push({
@@ -213,7 +206,7 @@ export class ConcurrencyManager {
 
   async getLockInfo(lockName: string = 'state'): Promise<LockFile | null> {
     const lockPath = this.getLockPath(lockName);
-    
+
     try {
       const lockContent = await Bun.file(lockPath).text();
       return yaml.load(lockContent) as LockFile;

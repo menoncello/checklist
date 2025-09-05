@@ -14,7 +14,15 @@
     },
     "activeInstance": {
       "type": "object",
-      "required": ["id", "templateId", "templateVersion", "projectPath", "status", "startedAt", "lastModifiedAt"],
+      "required": [
+        "id",
+        "templateId",
+        "templateVersion",
+        "projectPath",
+        "status",
+        "startedAt",
+        "lastModifiedAt"
+      ],
       "properties": {
         "id": { "type": "string", "format": "uuid" },
         "templateId": { "type": "string" },

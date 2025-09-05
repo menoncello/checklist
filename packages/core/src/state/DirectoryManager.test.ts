@@ -54,7 +54,7 @@ describe('DirectoryManager', () => {
 
     it('should cleanup on failure', async () => {
       const invalidDirManager = new DirectoryManager('/root/invalid-path');
-      
+
       try {
         await invalidDirManager.initialize();
       } catch (error) {
@@ -77,10 +77,10 @@ describe('DirectoryManager', () => {
   describe('Cleanup', () => {
     it('should clean up directories on request', async () => {
       await directoryManager.initialize();
-      
+
       const testFile = join(testBaseDir, '.cache', 'test.txt');
       await Bun.write(testFile, 'test content');
-      
+
       await directoryManager.cleanup();
 
       expect(existsSync(testFile)).toBe(false);

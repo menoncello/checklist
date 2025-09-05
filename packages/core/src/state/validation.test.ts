@@ -173,16 +173,14 @@ describe('StateValidator', () => {
         checksum: 'sha256:badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadb',
       };
 
-      await expect(validator.validate(stateWithBadData)).rejects.toThrow(
-        StateCorruptedError
-      );
+      await expect(validator.validate(stateWithBadData)).rejects.toThrow(StateCorruptedError);
     });
   });
 
   describe('Version Management', () => {
     it('should validate supported schema versions', () => {
       const supported = ['1.0.0', '1.1.0', '2.0.0'];
-      
+
       expect(validator.isValidSchemaVersion('1.0.0', supported)).toBe(true);
       expect(validator.isValidSchemaVersion('1.1.0', supported)).toBe(true);
       expect(validator.isValidSchemaVersion('3.0.0', supported)).toBe(false);

@@ -69,9 +69,9 @@ export class BackupManager {
   private async updateManifest(entry: BackupManifestEntry): Promise<void> {
     const manifest = await this.loadManifest();
     manifest.backups.push(entry);
-    
-    manifest.backups.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+
+    manifest.backups.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
     await Bun.write(this.manifestPath, yaml.dump(manifest));
@@ -101,7 +101,7 @@ export class BackupManager {
     }
 
     const backupsToDelete = manifest.backups.slice(maxCount);
-    
+
     for (const backup of backupsToDelete) {
       const backupPath = join(this.backupDir, backup.filename);
       try {
@@ -143,23 +143,20 @@ export class BackupManager {
     const backupPath = join(this.backupDir, filename);
     const file = Bun.file(backupPath);
 
-    if (!await file.exists()) {
+    if (!(await file.exists())) {
       throw new RecoveryError(`Backup file not found: ${filename}`, false);
     }
 
     try {
       const content = await file.text();
       const state = yaml.load(content) as unknown;
-      
+
       const validatedState = await this.validator.validate(state);
-      
+
       return validatedState;
     } catch (error) {
       if (error instanceof StateCorruptedError) {
-        throw new RecoveryError(
-          `Backup ${filename} is corrupted: ${error.message}`,
-          false
-        );
+        throw new RecoveryError(`Backup ${filename} is corrupted: ${error.message}`, false);
       }
       throw error;
     }
@@ -184,7 +181,7 @@ export class BackupManager {
 
     for (const backup of manifest.backups) {
       const backupTime = new Date(backup.createdAt).getTime();
-      
+
       if (backupTime < cutoffTime) {
         const backupPath = join(this.backupDir, backup.filename);
         try {
@@ -214,13 +211,13 @@ export class BackupManager {
       const backupPath = join(this.backupDir, filename);
       const file = Bun.file(backupPath);
 
-      if (!await file.exists()) {
+      if (!(await file.exists())) {
         return false;
       }
 
       const content = await file.text();
       const state = yaml.load(content) as unknown;
-      
+
       await this.validator.validate(state);
       return true;
     } catch {

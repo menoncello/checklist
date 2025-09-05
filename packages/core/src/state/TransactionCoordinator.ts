@@ -35,17 +35,11 @@ export class TransactionCoordinator {
   ): Promise<void> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(
-        `Transaction ${transactionId} not found`,
-        transactionId
-      );
+      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
     }
 
     if (transaction.status !== 'active') {
-      throw new TransactionError(
-        `Transaction ${transactionId} is not active`,
-        transactionId
-      );
+      throw new TransactionError(`Transaction ${transactionId} is not active`, transactionId);
     }
 
     const operation: Operation = {
@@ -66,10 +60,7 @@ export class TransactionCoordinator {
   ): Promise<boolean> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(
-        `Transaction ${transactionId} not found`,
-        transactionId
-      );
+      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
     }
 
     try {
@@ -90,23 +81,17 @@ export class TransactionCoordinator {
   ): Promise<ChecklistState> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(
-        `Transaction ${transactionId} not found`,
-        transactionId
-      );
+      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
     }
 
     if (transaction.status !== 'active') {
-      throw new TransactionError(
-        `Transaction ${transactionId} is not active`,
-        transactionId
-      );
+      throw new TransactionError(`Transaction ${transactionId} is not active`, transactionId);
     }
 
     try {
       const newState = await applyChanges(transaction.operations);
       transaction.status = 'committed';
-      
+
       await this.logTransaction('COMMIT', transactionId, {
         operationCount: transaction.operations.length,
         duration: Date.now() - transaction.startedAt.getTime(),
@@ -126,10 +111,7 @@ export class TransactionCoordinator {
   async rollbackTransaction(transactionId: string): Promise<ChecklistState> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(
-        `Transaction ${transactionId} not found`,
-        transactionId
-      );
+      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
     }
 
     transaction.status = 'rolled-back';
@@ -149,9 +131,7 @@ export class TransactionCoordinator {
   }
 
   async getActiveTransactions(): Promise<Transaction[]> {
-    return Array.from(this.transactions.values()).filter(
-      (t) => t.status === 'active'
-    );
+    return Array.from(this.transactions.values()).filter((t) => t.status === 'active');
   }
 
   private async logTransaction(
@@ -170,11 +150,9 @@ export class TransactionCoordinator {
     try {
       const existingLog = await this.readLog();
       existingLog.push(logEntry);
-      
-      const logContent = existingLog
-        .map((entry) => JSON.stringify(entry))
-        .join('\n') + '\n';
-      
+
+      const logContent = existingLog.map((entry) => JSON.stringify(entry)).join('\n') + '\n';
+
       await Bun.write(this.logPath, logContent);
     } catch (error) {
       console.error('Failed to write to audit log:', error);
@@ -184,7 +162,7 @@ export class TransactionCoordinator {
   private async readLog(): Promise<unknown[]> {
     try {
       const file = Bun.file(this.logPath);
-      if (!await file.exists()) {
+      if (!(await file.exists())) {
         return [];
       }
 
@@ -212,7 +190,7 @@ export class TransactionCoordinator {
     setInterval(async () => {
       try {
         const file = Bun.file(this.logPath);
-        if (!await file.exists()) return;
+        if (!(await file.exists())) return;
 
         const size = file.size;
         if (size > maxLogSize) {
@@ -228,7 +206,7 @@ export class TransactionCoordinator {
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const archivePath = this.logPath.replace('.log', `-${timestamp}.log`);
-      
+
       const currentContent = await Bun.file(this.logPath).text();
       await Bun.write(archivePath, currentContent);
       await Bun.write(this.logPath, '');
