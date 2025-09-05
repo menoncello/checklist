@@ -215,7 +215,7 @@ describe('State Manager', () => {
         subscribe: function (callback: (state: unknown) => void) {
           this.subscribers.push(callback);
         },
-        setState: function (newState: unknown) {
+        setState: function (newState: { count: number }) {
           this.state = newState;
           this.subscribers.forEach((cb) => cb(this.state));
         },
