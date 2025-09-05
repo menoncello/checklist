@@ -73,13 +73,35 @@ cat > package.json << 'EOF'
     "test:watch": "bun test --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
-    "format": "prettier --write ."
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "quality": "bun run lint && bun run format:check && bun run typecheck",
+    "quality:fix": "bun run lint:fix && bun run format && bun run typecheck",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{md,json,yaml,yml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
-    "typescript": "^5.3.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.0",
-    "prettier": "^3.2.0"
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-unused-imports": "^3.0.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.0"
   }
 }
 EOF
@@ -98,7 +120,12 @@ for pkg in core cli tui shared; do
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "bun build ./src/index.ts --outdir=dist --target=bun",
-    "test": "bun test"
+    "test": "bun test",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "type-check": "tsc --noEmit"
   }
 }
 EOF
@@ -109,11 +136,157 @@ console.log('Package @checklist/$pkg initialized');
 EOF
 done
 
-# 6. Set up ESLint and Prettier
+# 6. Set up ESLint and Prettier (MANDATORY)
 bun add -d eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
 bun add -d prettier eslint-config-prettier eslint-plugin-prettier
+bun add -d eslint-plugin-import eslint-plugin-unused-imports
+bun add -d husky lint-staged
 
-# 7. Create .gitignore
+# 7. Configure ESLint (ESLint 9.x Flat Config)
+cat > eslint.config.js << 'EOF'
+import typescriptEslint from '@typescript-eslint/eslint-plugin';
+import parser from '@typescript-eslint/parser';
+import importPlugin from 'eslint-plugin-import';
+import unusedImportsPlugin from 'eslint-plugin-unused-imports';
+
+export default [
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      parser,
+      parserOptions: {
+        project: './tsconfig.json'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': typescriptEslint,
+      'import': importPlugin,
+      'unused-imports': unusedImportsPlugin
+    },
+    rules: {
+      // TypeScript-specific rules (MANDATORY)
+      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/strict-boolean-expressions': 'error',
+      
+      // Import organization (MANDATORY)
+      'import/order': ['error', {
+        'groups': [
+          'builtin',
+          'external', 
+          'internal',
+          'parent',
+          'sibling',
+          'index'
+        ],
+        'alphabetize': { 'order': 'asc' }
+      }],
+      'unused-imports/no-unused-imports': 'error',
+      
+      // Code quality (MANDATORY)
+      'no-console': 'warn', // Use debug logger instead
+      'no-debugger': 'error',
+      'no-alert': 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      
+      // Bun-specific patterns (MANDATORY)
+      'no-restricted-syntax': ['error', {
+        'selector': "CallExpression[callee.object.name='process'][callee.property.name='env']",
+        'message': 'Use Bun.env instead of process.env for better performance'
+      }],
+      
+      // Security rules (MANDATORY)
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error'
+    }
+  }
+];
+EOF
+
+# 8. Configure Prettier (MANDATORY)
+cat > .prettierrc.js << 'EOF'
+module.exports = {
+  // Basic formatting (MANDATORY)
+  semi: true,
+  singleQuote: true,
+  tabWidth: 2,
+  useTabs: false,
+  trailingComma: 'es5',
+  
+  // Line length for readability (MANDATORY)
+  printWidth: 80,
+  
+  // TypeScript specific (MANDATORY)
+  parser: 'typescript',
+  
+  // Specific overrides
+  overrides: [
+    {
+      files: '*.md',
+      options: {
+        printWidth: 100,
+        proseWrap: 'preserve'
+      }
+    }
+  ]
+};
+EOF
+
+# 9. Configure Pre-commit hooks (MANDATORY)
+npx husky init
+cat > .husky/pre-commit << 'EOF'
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run quality checks
+bun run quality
+
+# Run tests on changed files
+bun test --changed
+
+# Security audit
+bun audit --audit-level moderate
+EOF
+chmod +x .husky/pre-commit
+
+# 10. Create VSCode settings for team consistency (MANDATORY)
+mkdir -p .vscode
+cat > .vscode/settings.json << 'EOF'
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "eslint.workingDirectories": ["packages/*"],
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/*.tsbuildinfo": true
+  }
+}
+EOF
+
+cat > .vscode/extensions.json << 'EOF'
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-typescript-next",
+    "usernamehw.errorlens"
+  ]
+}
+EOF
+
+# 11. Create .gitignore
 cat > .gitignore << 'EOF'
 # Dependencies
 node_modules/
@@ -197,10 +370,16 @@ export const PERFORMANCE_BUDGET = {
 - [ ] `bun install` completes without errors
 - [ ] `bun test` runs smoke tests successfully
 - [ ] `bun run typecheck` passes
+- [ ] `bun run lint` passes without errors
+- [ ] `bun run format:check` passes
+- [ ] `bun run quality` passes all checks
 - [ ] All 4 packages created and linked
 - [ ] Git repository initialized with proper .gitignore
+- [ ] ESLint and Prettier configurations active
+- [ ] Pre-commit hooks configured and working
 - [ ] README includes setup instructions
 - [ ] Performance budgets defined and documented
+- [ ] VSCode settings configured for team consistency
 
 ## Time Estimate
 **4-6 hours**
