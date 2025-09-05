@@ -14,7 +14,7 @@ on:
       - 'bun.lockb'
 
 env:
-  BUN_VERSION: 1.1.x
+  BUN_VERSION: 1.1
 
 jobs:
   compile:

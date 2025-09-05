@@ -1,0 +1,8 @@
+# Gitleaks ignore file
+# These are false positives from deleted Bun cache files that were 
+# accidentally committed in earlier commits and later removed
+
+# Ignore all findings in ~/.bun/cache path (removed in commit 3e3a2f8)
+# These were TypeScript definition files, not actual secrets
+29e8d4b:~/.bun/cache/
+e39533a:~/.bun/cache/

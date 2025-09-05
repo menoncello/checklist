@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BUN_VERSION: 1.1.x
+  BUN_VERSION: 1.1
   # Enforce HTTPS for all requests (Security fix)
   NODE_TLS_REJECT_UNAUTHORIZED: 1
 
