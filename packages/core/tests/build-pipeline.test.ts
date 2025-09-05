@@ -37,9 +37,9 @@ describe('Build Pipeline Configuration', () => {
     
     expect(sizeValidationSteps.length).toBeGreaterThan(0);
     
-    // Check for 20MB limit
+    // Check for 100MB limit
     const hasLimitCheck = sizeValidationSteps.some((step: any) => 
-      step.run && step.run.includes('20')
+      step.run && step.run.includes('100')
     );
     expect(hasLimitCheck).toBe(true);
   });
