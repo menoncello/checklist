@@ -150,7 +150,7 @@ jobs:
 - Rationale: Native GitHub integration, free for public repos
 
 ### Testing Requirements
-**Test Suite Configuration** [Source: architecture/testing-strategy-complete-with-all-testing-utilities.md]
+**Test Suite Configuration** [Source: architecture/tech-stack.md#Testing Suite]
 - Unit Testing: Bun Test (built-in)
 - Mutation Testing: StrykerJS 8.2.x for test quality validation
 - Coverage Tool: Bun Coverage (built-in) with >80% target
@@ -259,15 +259,17 @@ jobs:
 - [ ] Integration test: Coverage threshold enforcement
 
 ### Task 8: Configure Branch Protection (AC: GitHub Actions Setup 3, 4)
-- [ ] Enable branch protection on main branch
-- [ ] Require PR reviews before merge
-- [ ] Require status checks to pass
-- [ ] Require branches to be up to date
-- [ ] Disable force pushes and deletions
-- [ ] Document protection rules in CONTRIBUTING.md
+- [ ] Document branch protection requirements in CONTRIBUTING.md
+- [ ] Create setup script with GitHub CLI commands for protection rules
+- [ ] Manual step: Enable branch protection on main branch via GitHub UI
+- [ ] Manual step: Configure required PR reviews before merge
+- [ ] Manual step: Set required status checks to pass
+- [ ] Manual step: Require branches to be up to date before merge
+- [ ] Manual step: Disable force pushes and deletions
+- [ ] Verify protection rules are active
 
 ### Task 9: Implement Third-Party Integrations (AC: Third-Party Integration Setup 1-5)
-- [ ] Create clipboard utilities using clipboardy in `packages/shared/src/clipboard.ts`
+- [ ] Create clipboard utilities using clipboardy 4.0.x in `packages/shared/src/clipboard.ts` [Source: tech-stack.md]
 - [ ] Implement terminal capability detection with supports-color
 - [ ] Set up Git integration utilities in `packages/core/src/git/`
 - [ ] Add file system watchers using Bun.watch
@@ -330,3 +332,46 @@ jobs:
 - Benchmark results stored in `.performance/` (gitignored but cached in CI)
 - Coverage reports in `coverage/` directory per standard conventions
 - All third-party integrations in shared package for reusability
+
+## Testing
+
+### Testing Standards
+[Source: architecture/tech-stack.md, architecture/coding-standards.md]
+
+- **Test File Locations:** `packages/*/tests/` directories for each package
+- **Test Naming:** `*.test.ts` for unit tests, `*.bench.ts` for benchmarks
+- **Test Framework:** Bun Test (built-in) for all unit and integration tests
+- **Coverage Requirements:** Minimum 80% code coverage enforced in CI
+- **Performance Tests:** Use Tinybench 2.5.x for micro-benchmarks
+- **Visual Tests:** Use pixelmatch 5.3.x for terminal output comparison
+- **Test Commands:**
+  - `bun test` - Run all tests
+  - `bun test --watch` - Watch mode
+  - `bun test --coverage` - Generate coverage report
+  - `bun test --changed` - Test only changed files
+- **CI Testing Matrix:** Test on ubuntu-latest, macos-latest, windows-latest
+
+## Change Log
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2025-01-05 | 1.0 | Initial draft created | Sarah (PO) |
+| 2025-01-05 | 1.1 | Fixed testing tools references, added missing sections | Sarah (PO) |
+
+## Dev Agent Record
+
+### Agent Model Used
+_To be populated during implementation_
+
+### Debug Log References
+_To be populated during implementation_
+
+### Completion Notes List
+_To be populated during implementation_
+
+### File List
+_To be populated during implementation_
+
+## QA Results
+
+_To be populated after QA review_
