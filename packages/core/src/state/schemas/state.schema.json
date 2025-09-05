@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChecklistState",
+  "type": "object",
+  "required": ["schemaVersion", "checksum", "completedSteps", "recovery", "conflicts"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "activeInstance": {
+      "type": "object",
+      "required": ["id", "templateId", "templateVersion", "projectPath", "status", "startedAt", "lastModifiedAt"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "templateId": { "type": "string" },
+        "templateVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "projectPath": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "completed", "failed"]
+        },
+        "currentStepId": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "lastModifiedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "completedSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stepId", "completedAt", "executionTime", "result", "commandResults"],
+        "properties": {
+          "stepId": { "type": "string" },
+          "completedAt": { "type": "string", "format": "date-time" },
+          "executionTime": { "type": "number", "minimum": 0 },
+          "result": {
+            "type": "string",
+            "enum": ["success", "failure", "skipped"]
+          },
+          "commandResults": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["command", "exitCode", "stdout", "stderr", "duration"],
+              "properties": {
+                "command": { "type": "string" },
+                "exitCode": { "type": "integer" },
+                "stdout": { "type": "string" },
+                "stderr": { "type": "string" },
+                "duration": { "type": "number", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "required": ["dataLoss"],
+      "properties": {
+        "lastCorruption": { "type": "string", "format": "date-time" },
+        "corruptionType": {
+          "type": "string",
+          "enum": ["checksum_mismatch", "schema_invalid", "parse_error"]
+        },
+        "recoveryMethod": {
+          "type": "string",
+          "enum": ["backup", "reset", "manual"]
+        },
+        "dataLoss": { "type": "boolean" }
+      }
+    },
+    "conflicts": {
+      "type": "object",
+      "properties": {
+        "detected": { "type": "string", "format": "date-time" },
+        "resolution": {
+          "type": "string",
+          "enum": ["local", "remote", "merge"]
+        }
+      }
+    }
+  }
+}
