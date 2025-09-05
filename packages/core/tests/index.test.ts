@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { core, initialize } from './index';
+import { describe, it, expect } from 'bun:test';
+import { core, initialize } from '../src/index';
 
 describe('Core smoke tests', () => {
   it('should export core object with version', () => {

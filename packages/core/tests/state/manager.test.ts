@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 
 describe('State Manager', () => {
   describe('State Initialization', () => {
@@ -227,7 +227,7 @@ describe('State Manager', () => {
       });
 
       manager.setState({ count: 1 });
-      expect(notifiedState).toEqual({ count: 1 });
+      expect(notifiedState!).toEqual({ count: 1 });
     });
 
     it('should support unsubscribe', () => {

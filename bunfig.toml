@@ -1,0 +1,83 @@
+# Bun Configuration File
+
+# Test Configuration
+[test]
+# Run test setup file before all tests
+preload = ["./test-setup.ts"]
+
+# Enable coverage reporting
+coverage = true
+
+# Coverage output directories and formats
+coverageDirectory = "coverage"
+coverageReporter = ["text", "lcov"]
+
+# Test file patterns
+root = "./packages"
+# Match test files in tests directories
+patterns = ["**/tests/**/*.test.ts", "**/tests/**/*.spec.ts"]
+
+# Timeout for tests (ms)
+timeout = 5000
+
+# Path Aliases (matching tsconfig paths)
+[test.alias]
+"@checklist/core" = "./packages/core/src"
+"@checklist/cli" = "./packages/cli/src"  
+"@checklist/tui" = "./packages/tui/src"
+"@checklist/shared" = "./packages/shared/src"
+
+# Coverage thresholds
+coverageThreshold = { lines = 80, functions = 80, branches = 80, statements = 80 }
+
+# Files to exclude from coverage
+coverageExclude = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/*.config.ts",
+  "**/*.config.js",
+  "**/tests/**",
+  "**/examples/**",
+  "**/scripts/**",
+  ".prettierrc.js",
+  "eslint.config.js"
+]
+
+# Files to include in coverage
+coverageInclude = ["packages/*/src/**/*.ts"]
+
+# Development Configuration
+[dev]
+# Watch for file changes
+watch = true
+
+# Install Configuration
+[install]
+# Package manager settings
+lockfile = true
+optional = true
+dev = true
+peer = true
+
+# Auto-install missing packages
+auto = false
+
+# Cache Configuration
+[install.cache]
+# Cache directory
+dir = "~/.bun/cache"
+
+# Runtime Configuration
+[run]
+# Silent mode for scripts
+silent = false
+
+# JSX Configuration (if needed for TUI)
+[jsx]
+# JSX runtime
+runtime = "automatic"
+
+# Macro Configuration
+[macro]
+# Enable macros
+enabled = false

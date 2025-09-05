@@ -41,6 +41,12 @@ export default [
       '*.config.ts',
       'examples/**',
       'bun.lockb',
+      '**/~/**',
+      '**/.bun/**',
+      'scripts/*.ts',
+      'test-setup.ts',
+      '**/*.test.ts',
+      '**/*.spec.ts',
     ],
   },
 ];

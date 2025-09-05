@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { ConcurrencyManager } from './ConcurrencyManager';
-import { LockAcquisitionError } from './errors';
+import { ConcurrencyManager } from '../../src/state/ConcurrencyManager';
+import { LockAcquisitionError } from '../../src/state/errors';
 
 describe('ConcurrencyManager', () => {
   const testLockDir = '.test-locks';

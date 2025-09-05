@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { StateValidator } from './validation';
-import { ChecklistState } from './types';
-import { StateCorruptedError } from './errors';
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { StateValidator } from '../../src/state/validation';
+import { ChecklistState } from '../../src/state/types';
+import { StateCorruptedError } from '../../src/state/errors';
 
 describe('StateValidator', () => {
   let validator: StateValidator;

@@ -13,7 +13,7 @@
    - State management implementation
 
 3. **Testing Infrastructure:**
-   - Set up Vitest with StrykerJS
+   - Set up Bun Test with StrykerJS
    - Create test data factories
    - Implement flaky test detection
    - Configure CI/CD pipeline

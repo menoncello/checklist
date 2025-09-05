@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { existsSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { DirectoryManager } from './DirectoryManager';
+import { DirectoryManager } from '../../src/state/DirectoryManager';
 
 describe('DirectoryManager', () => {
   const testBaseDir = '.test-checklist';

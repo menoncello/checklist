@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "build": "bun run --filter '*' build",
-    "test": "vitest",
-    "test:watch": "vitest watch",
-    "test:coverage": "vitest --coverage",
-    "test:smoke": "vitest --run --testNamePattern='smoke'",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "test:smoke": "bun test --grep 'smoke'",
+    "test:unit": "bun test packages/*/tests/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -27,13 +28,11 @@
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
-    "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.2.2",
     "eslint": "^9.34.0",
     "husky": "^9.1.7",
     "prettier": "^3.6.2",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "typescript": "^5.9.2"
   },
   "engines": {
     "bun": ">=1.1.0",

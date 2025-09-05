@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { existsSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
-import { BackupManager } from './BackupManager';
-import { ChecklistState, BackupManifest } from './types';
-import { RecoveryError, BackupError } from './errors';
+import { BackupManager } from '../../src/state/BackupManager';
+import { ChecklistState, BackupManifest } from '../../src/state/types';
+import { RecoveryError, BackupError } from '../../src/state/errors';
 
 describe('BackupManager', () => {
   const testBackupDir = '.test-backups';
@@ -79,7 +79,11 @@ describe('BackupManager', () => {
       const backedUpState = yaml.load(content) as ChecklistState;
 
       expect(backedUpState.schemaVersion).toBe(testState.schemaVersion);
-      expect(backedUpState.activeInstance?.id).toBe(testState.activeInstance?.id);
+      if (testState.activeInstance) {
+        expect(backedUpState.activeInstance?.id).toBe(testState.activeInstance.id);
+      } else {
+        expect(backedUpState.activeInstance).toBeUndefined();
+      }
     });
 
     it('should update manifest after backup', async () => {
@@ -163,7 +167,11 @@ describe('BackupManager', () => {
       const filename = backupPath.split('/').pop()!;
 
       const recovered = await backupManager.recoverFromBackup(filename);
-      expect(recovered.activeInstance?.id).toBe(testState.activeInstance?.id);
+      if (testState.activeInstance) {
+        expect(recovered.activeInstance?.id).toBe(testState.activeInstance.id);
+      } else {
+        expect(recovered.activeInstance).toBeUndefined();
+      }
     });
 
     it('should handle missing backup gracefully', async () => {
@@ -207,7 +215,11 @@ describe('BackupManager', () => {
       await backupManager.createBackup(testState);
 
       const recovered = await backupManager.recoverFromLatestBackup();
-      expect(recovered.activeInstance?.id).toBe(testState.activeInstance?.id);
+      if (testState.activeInstance) {
+        expect(recovered.activeInstance?.id).toBe(testState.activeInstance.id);
+      } else {
+        expect(recovered.activeInstance).toBeUndefined();
+      }
     });
 
     it('should throw when no backups available', async () => {

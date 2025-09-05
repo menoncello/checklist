@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { existsSync, rmSync, mkdirSync } from 'node:fs';
-import { TransactionCoordinator } from './TransactionCoordinator';
-import { ChecklistState, Operation } from './types';
-import { TransactionError } from './errors';
+import { TransactionCoordinator } from '../../src/state/TransactionCoordinator';
+import { ChecklistState, Operation } from '../../src/state/types';
+import { TransactionError } from '../../src/state/errors';
 
 describe('TransactionCoordinator', () => {
   const testLogDir = '.test-logs';
