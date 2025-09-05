@@ -8,7 +8,8 @@ export class SecretsDetector {
     // API Keys and Tokens
     {
       name: 'API Key',
-      regex: /(?:api[_-]?key|apikey|api[_-]?secret)[\s:=]*['"]?([a-zA-Z0-9_-]{20,})['"]?/gi,
+      regex:
+        /(?:api[_-]?key|apikey|api[_-]?secret)[\s:=]*['"]?([a-zA-Z0-9_-]{20,})['"]?/gi,
     },
     {
       name: 'Auth Token',
@@ -22,7 +23,8 @@ export class SecretsDetector {
     },
     {
       name: 'AWS Secret Key',
-      regex: /aws[_-]?secret[_-]?access[_-]?key[\s:=]*['"]?([a-zA-Z0-9/+=]{40})['"]?/gi,
+      regex:
+        /aws[_-]?secret[_-]?access[_-]?key[\s:=]*['"]?([a-zA-Z0-9/+=]{40})['"]?/gi,
     },
     // Database URLs
     {
@@ -46,16 +48,19 @@ export class SecretsDetector {
     // Generic Secrets
     {
       name: 'Generic Secret',
-      regex: /(?:secret|password|passwd|pwd|pass)[\s:=]*['"]?([^\s'"]{8,})['"]?/gi,
+      regex:
+        /(?:secret|password|passwd|pwd|pass)[\s:=]*['"]?([^\s'"]{8,})['"]?/gi,
     },
     {
       name: 'Private Key',
-      regex: /(?:private[_-]?key|priv[_-]?key)[\s:=]*['"]?([a-zA-Z0-9/+=]{20,})['"]?/gi,
+      regex:
+        /(?:private[_-]?key|priv[_-]?key)[\s:=]*['"]?([a-zA-Z0-9/+=]{20,})['"]?/gi,
     },
     // OAuth
     {
       name: 'OAuth Client Secret',
-      regex: /(?:client[_-]?secret|client[_-]?id)[\s:=]*['"]?([a-zA-Z0-9_-]{20,})['"]?/gi,
+      regex:
+        /(?:client[_-]?secret|client[_-]?id)[\s:=]*['"]?([a-zA-Z0-9_-]{20,})['"]?/gi,
     },
     // Slack
     {
@@ -134,7 +139,10 @@ export class SecretsDetector {
   /**
    * Get line and column position from index
    */
-  private static getLineColumn(content: string, index: number): { line: number; column: number } {
+  private static getLineColumn(
+    content: string,
+    index: number
+  ): { line: number; column: number } {
     const lines = content.substring(0, index).split('\n');
     return {
       line: lines.length,
@@ -201,7 +209,7 @@ export class SecretsDetector {
     const secretsByType = new Map<string, number>();
 
     for (const secret of detectedSecrets) {
-      secretsByType.set(secret.type, (secretsByType.get(secret.type) || 0) + 1);
+      secretsByType.set(secret.type, (secretsByType.get(secret.type) ?? 0) + 1);
     }
 
     const summary = Array.from(secretsByType.entries())
@@ -210,14 +218,18 @@ export class SecretsDetector {
 
     const locations = detectedSecrets
       .slice(0, 5) // Show first 5 locations
-      .map((s) => `  - ${s.type} at line ${s.line}, column ${s.column}: ${s.match}`)
+      .map(
+        (s) => `  - ${s.type} at line ${s.line}, column ${s.column}: ${s.match}`
+      )
       .join('\n');
 
     return (
       `Detected potential secrets in state content:\n` +
       `Summary: ${summary}\n` +
       `Locations:\n${locations}` +
-      (detectedSecrets.length > 5 ? `\n  ... and ${detectedSecrets.length - 5} more` : '')
+      (detectedSecrets.length > 5
+        ? `\n  ... and ${detectedSecrets.length - 5} more`
+        : '')
     );
   }
 }

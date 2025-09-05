@@ -18,8 +18,8 @@ module.exports = {
       files: '*.md',
       options: {
         printWidth: 100,
-        proseWrap: 'preserve'
-      }
-    }
-  ]
+        proseWrap: 'preserve',
+      },
+    },
+  ],
 };

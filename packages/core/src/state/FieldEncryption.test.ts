@@ -128,21 +128,33 @@ describe('FieldEncryption', () => {
 
   describe('shouldEncrypt', () => {
     test('should identify sensitive field paths', () => {
-      expect(FieldEncryption.shouldEncrypt('activeInstance.apiKeys')).toBe(true);
-      expect(FieldEncryption.shouldEncrypt('activeInstance.credentials')).toBe(true);
+      expect(FieldEncryption.shouldEncrypt('activeInstance.apiKeys')).toBe(
+        true
+      );
+      expect(FieldEncryption.shouldEncrypt('activeInstance.credentials')).toBe(
+        true
+      );
       expect(FieldEncryption.shouldEncrypt('config.apiKey')).toBe(true);
       expect(FieldEncryption.shouldEncrypt('config.databaseUrl')).toBe(true);
     });
 
     test('should match wildcard patterns', () => {
-      expect(FieldEncryption.shouldEncrypt('completedSteps.0.secrets')).toBe(true);
-      expect(FieldEncryption.shouldEncrypt('completedSteps.123.credentials')).toBe(true);
+      expect(FieldEncryption.shouldEncrypt('completedSteps.0.secrets')).toBe(
+        true
+      );
+      expect(
+        FieldEncryption.shouldEncrypt('completedSteps.123.credentials')
+      ).toBe(true);
     });
 
     test('should not encrypt non-sensitive fields', () => {
       expect(FieldEncryption.shouldEncrypt('activeInstance.id')).toBe(false);
-      expect(FieldEncryption.shouldEncrypt('activeInstance.status')).toBe(false);
-      expect(FieldEncryption.shouldEncrypt('completedSteps.0.stepId')).toBe(false);
+      expect(FieldEncryption.shouldEncrypt('activeInstance.status')).toBe(
+        false
+      );
+      expect(FieldEncryption.shouldEncrypt('completedSteps.0.stepId')).toBe(
+        false
+      );
     });
   });
 
@@ -275,7 +287,11 @@ describe('FieldEncryption', () => {
       await FieldEncryption.updateMetadata(paths2);
 
       metadata = JSON.parse(await fs.readFile(metadataFile, 'utf8'));
-      expect(metadata.encryptedFields.sort()).toEqual(['field1', 'field2', 'field3']);
+      expect(metadata.encryptedFields.sort()).toEqual([
+        'field1',
+        'field2',
+        'field3',
+      ]);
     });
   });
 });

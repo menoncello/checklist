@@ -45,7 +45,10 @@ globalThis.testHelpers = {
 
   // Helper to create temp test directories
   async createTempDir(prefix = 'test-') {
-    const tempDir = await Bun.write(`/tmp/${prefix}${Date.now()}/test.txt`, 'test');
+    const tempDir = await Bun.write(
+      `/tmp/${prefix}${Date.now()}/test.txt`,
+      'test'
+    );
     return tempDir;
   },
 

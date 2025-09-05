@@ -1,6 +1,6 @@
-import { ChecklistState, Transaction, Operation } from './types';
-import { TransactionError } from './errors';
 import { join } from 'node:path';
+import { TransactionError } from './errors';
+import { ChecklistState, Transaction, Operation } from './types';
 
 export class TransactionCoordinator {
   private transactions: Map<string, Transaction> = new Map();
@@ -35,11 +35,17 @@ export class TransactionCoordinator {
   ): Promise<void> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
+      throw new TransactionError(
+        `Transaction ${transactionId} not found`,
+        transactionId
+      );
     }
 
     if (transaction.status !== 'active') {
-      throw new TransactionError(`Transaction ${transactionId} is not active`, transactionId);
+      throw new TransactionError(
+        `Transaction ${transactionId} is not active`,
+        transactionId
+      );
     }
 
     const operation: Operation = {
@@ -60,7 +66,10 @@ export class TransactionCoordinator {
   ): Promise<boolean> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
+      throw new TransactionError(
+        `Transaction ${transactionId} not found`,
+        transactionId
+      );
     }
 
     try {
@@ -70,7 +79,9 @@ export class TransactionCoordinator {
       }
       return isValid;
     } catch (error) {
-      await this.logTransaction('VALIDATION_ERROR', transactionId, { error: String(error) });
+      await this.logTransaction('VALIDATION_ERROR', transactionId, {
+        error: String(error),
+      });
       return false;
     }
   }
@@ -81,11 +92,17 @@ export class TransactionCoordinator {
   ): Promise<ChecklistState> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
+      throw new TransactionError(
+        `Transaction ${transactionId} not found`,
+        transactionId
+      );
     }
 
     if (transaction.status !== 'active') {
-      throw new TransactionError(`Transaction ${transactionId} is not active`, transactionId);
+      throw new TransactionError(
+        `Transaction ${transactionId} is not active`,
+        transactionId
+      );
     }
 
     try {
@@ -111,7 +128,10 @@ export class TransactionCoordinator {
   async rollbackTransaction(transactionId: string): Promise<ChecklistState> {
     const transaction = this.transactions.get(transactionId);
     if (!transaction) {
-      throw new TransactionError(`Transaction ${transactionId} not found`, transactionId);
+      throw new TransactionError(
+        `Transaction ${transactionId} not found`,
+        transactionId
+      );
     }
 
     transaction.status = 'rolled-back';
@@ -126,12 +146,16 @@ export class TransactionCoordinator {
     return restoredState;
   }
 
-  async getTransaction(transactionId: string): Promise<Transaction | undefined> {
+  async getTransaction(
+    transactionId: string
+  ): Promise<Transaction | undefined> {
     return this.transactions.get(transactionId);
   }
 
   async getActiveTransactions(): Promise<Transaction[]> {
-    return Array.from(this.transactions.values()).filter((t) => t.status === 'active');
+    return Array.from(this.transactions.values()).filter(
+      (t) => t.status === 'active'
+    );
   }
 
   private async logTransaction(
@@ -151,7 +175,8 @@ export class TransactionCoordinator {
       const existingLog = await this.readLog();
       existingLog.push(logEntry);
 
-      const logContent = existingLog.map((entry) => JSON.stringify(entry)).join('\n') + '\n';
+      const logContent =
+        existingLog.map((entry) => JSON.stringify(entry)).join('\n') + '\n';
 
       await Bun.write(this.logPath, logContent);
     } catch (error) {
@@ -221,7 +246,10 @@ export class TransactionCoordinator {
       try {
         await this.rollbackTransaction(transaction.id);
       } catch (error) {
-        console.error(`Failed to rollback transaction ${transaction.id}:`, error);
+        console.error(
+          `Failed to rollback transaction ${transaction.id}:`,
+          error
+        );
       }
     }
     this.transactions.clear();

@@ -22,7 +22,10 @@ export class DirectoryManager {
     }
   }
 
-  private async createDirectory(dirPath: string, permissions: number): Promise<void> {
+  private async createDirectory(
+    dirPath: string,
+    permissions: number
+  ): Promise<void> {
     try {
       if (!existsSync(dirPath)) {
         mkdirSync(dirPath, { recursive: true });

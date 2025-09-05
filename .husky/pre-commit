@@ -1,8 +1,30 @@
+echo "🔍 Scanning for potential secrets..."
+# Check for potential secrets
+if git diff --staged --name-only | xargs grep -E 'api[_-]?key|secret|token|password|AKIA[0-9A-Z]{16}' 2>/dev/null; then
+  echo "❌ Potential secrets detected! Please remove sensitive data before committing."
+  exit 1
+fi
+
+# Run linting
+echo "🎨 Running linting..."
+bun run lint
+
+# Run format check
+echo "📝 Checking code formatting..."
+bun run format:check
+
+# Run type checking
+echo "🔧 Running type checking..."
+bun run typecheck
+
 # Run quality checks
+echo "✨ Running quality checks..."
 bun run quality
 
 # Run tests on changed files
+echo "🧪 Running tests..."
 bun test --changed
 
 # Security audit
+echo "🔒 Running security audit..."
 bun audit --audit-level moderate

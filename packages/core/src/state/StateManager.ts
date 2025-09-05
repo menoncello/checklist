@@ -1,16 +1,16 @@
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
-import { ChecklistState } from './types';
-import { DirectoryManager } from './DirectoryManager';
-import { ConcurrencyManager } from './ConcurrencyManager';
-import { TransactionCoordinator } from './TransactionCoordinator';
-import { StateValidator } from './validation';
 import { BackupManager } from './BackupManager';
-import { StateError, StateCorruptedError, RecoveryError } from './errors';
-import { SCHEMA_VERSION } from './constants';
-import { SecretsDetector } from './SecretsDetector';
+import { ConcurrencyManager } from './ConcurrencyManager';
+import { DirectoryManager } from './DirectoryManager';
 import { FieldEncryption } from './FieldEncryption';
+import { SecretsDetector } from './SecretsDetector';
 import { SecurityAudit } from './SecurityAudit';
+import { TransactionCoordinator } from './TransactionCoordinator';
+import { SCHEMA_VERSION } from './constants';
+import { StateError, StateCorruptedError, RecoveryError } from './errors';
+import { ChecklistState } from './types';
+import { StateValidator } from './validation';
 
 export class StateManager {
   private directoryManager: DirectoryManager;
@@ -24,10 +24,16 @@ export class StateManager {
   constructor(baseDir: string = '.checklist') {
     this.baseDir = baseDir;
     this.directoryManager = new DirectoryManager(baseDir);
-    this.concurrencyManager = new ConcurrencyManager(this.directoryManager.getLockPath());
-    this.transactionCoordinator = new TransactionCoordinator(this.directoryManager.getLogPath());
+    this.concurrencyManager = new ConcurrencyManager(
+      this.directoryManager.getLockPath()
+    );
+    this.transactionCoordinator = new TransactionCoordinator(
+      this.directoryManager.getLogPath()
+    );
     this.validator = new StateValidator();
-    this.backupManager = new BackupManager(this.directoryManager.getBackupPath());
+    this.backupManager = new BackupManager(
+      this.directoryManager.getBackupPath()
+    );
 
     // Initialize security features
     this.initializeSecurity();
@@ -46,7 +52,8 @@ export class StateManager {
 
       const initialState: ChecklistState = {
         schemaVersion: SCHEMA_VERSION,
-        checksum: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+        checksum:
+          'sha256:0000000000000000000000000000000000000000000000000000000000000000',
         completedSteps: [],
         recovery: {
           dataLoss: false,
@@ -93,8 +100,13 @@ export class StateManager {
       try {
         state = yaml.load(content);
       } catch (error) {
-        await SecurityAudit.logStateAccess('READ', false, { error: String(error) });
-        throw new StateCorruptedError(`Failed to parse state file: ${error}`, 'parse_error');
+        await SecurityAudit.logStateAccess('READ', false, {
+          error: String(error),
+        });
+        throw new StateCorruptedError(
+          `Failed to parse state file: ${error}`,
+          'parse_error'
+        );
       }
 
       // Decrypt sensitive fields after parsing
@@ -112,7 +124,12 @@ export class StateManager {
             '0.9.0',
           ])
         ) {
-          if (this.validator.canMigrate(validatedState.schemaVersion, SCHEMA_VERSION)) {
+          if (
+            this.validator.canMigrate(
+              validatedState.schemaVersion,
+              SCHEMA_VERSION
+            )
+          ) {
             return await this.migrateState(validatedState);
           } else {
             throw new StateError(
@@ -138,11 +155,16 @@ export class StateManager {
   async saveState(state: ChecklistState): Promise<void> {
     await this.concurrencyManager.acquireLock('state');
     const transactionId = await this.transactionCoordinator.beginTransaction(
-      this.currentState || state
+      this.currentState ?? state
     );
 
     try {
-      await this.transactionCoordinator.addOperation(transactionId, 'SAVE', '/', state);
+      await this.transactionCoordinator.addOperation(
+        transactionId,
+        'SAVE',
+        '/',
+        state
+      );
 
       const isValid = await this.transactionCoordinator.validateTransaction(
         transactionId,
@@ -160,16 +182,19 @@ export class StateManager {
         throw new StateError('State validation failed', 'VALIDATION_FAILED');
       }
 
-      await this.transactionCoordinator.commitTransaction(transactionId, async () => {
-        const checksum = this.validator.calculateChecksum(state);
-        state.checksum = checksum;
+      await this.transactionCoordinator.commitTransaction(
+        transactionId,
+        async () => {
+          const checksum = this.validator.calculateChecksum(state);
+          state.checksum = checksum;
 
-        await this.saveStateInternal(state);
-        await this.backupManager.createBackup(state);
+          await this.saveStateInternal(state);
+          await this.backupManager.createBackup(state);
 
-        this.currentState = state;
-        return state;
-      });
+          this.currentState = state;
+          return state;
+        }
+      );
     } catch (error) {
       await this.transactionCoordinator.rollbackTransaction(transactionId);
       throw error;
@@ -183,7 +208,8 @@ export class StateManager {
     const tempPath = `${statePath}.tmp`;
 
     // Encrypt sensitive fields before saving
-    const { data: encryptedState, encryptedPaths } = await FieldEncryption.encryptObject(state);
+    const { data: encryptedState, encryptedPaths } =
+      await FieldEncryption.encryptObject(state);
     if (encryptedPaths.length > 0) {
       await FieldEncryption.updateMetadata(encryptedPaths);
       await SecurityAudit.logEncryption('ENCRYPT', true, encryptedPaths.length);
@@ -231,7 +257,7 @@ export class StateManager {
   async updateState(
     updater: (state: ChecklistState) => ChecklistState | Promise<ChecklistState>
   ): Promise<ChecklistState> {
-    const currentState = this.currentState || (await this.loadState());
+    const currentState = this.currentState ?? (await this.loadState());
     const updatedState = await updater(structuredClone(currentState));
     await this.saveState(updatedState);
     return updatedState;
@@ -245,7 +271,10 @@ export class StateManager {
         throw new StateError('No state to archive', 'NO_STATE');
       }
 
-      const archivePath = join(this.directoryManager.getBackupPath(), `archive-${Date.now()}.yaml`);
+      const archivePath = join(
+        this.directoryManager.getBackupPath(),
+        `archive-${Date.now()}.yaml`
+      );
 
       const content = yaml.dump(this.currentState, {
         indent: 2,
@@ -262,7 +291,9 @@ export class StateManager {
     }
   }
 
-  private async handleCorruptedState(error: StateCorruptedError): Promise<ChecklistState> {
+  private async handleCorruptedState(
+    error: StateCorruptedError
+  ): Promise<ChecklistState> {
     console.error('State corruption detected:', error.message);
 
     try {
@@ -300,8 +331,12 @@ export class StateManager {
     }
   }
 
-  private async migrateState(oldState: ChecklistState): Promise<ChecklistState> {
-    console.log(`Migrating state from ${oldState.schemaVersion} to ${SCHEMA_VERSION}`);
+  private async migrateState(
+    oldState: ChecklistState
+  ): Promise<ChecklistState> {
+    console.log(
+      `Migrating state from ${oldState.schemaVersion} to ${SCHEMA_VERSION}`
+    );
 
     const migratedState: ChecklistState = {
       ...oldState,
@@ -322,7 +357,7 @@ export class StateManager {
   }
 
   async exportState(): Promise<string> {
-    const state = this.currentState || (await this.loadState());
+    const state = this.currentState ?? (await this.loadState());
     return yaml.dump(state, {
       indent: 2,
       lineWidth: -1,
@@ -338,7 +373,9 @@ export class StateManager {
       const importedState = yaml.load(yamlContent) as unknown;
       const validatedState = await this.validator.validate(importedState);
 
-      await this.backupManager.createBackup(this.currentState || validatedState);
+      await this.backupManager.createBackup(
+        this.currentState ?? validatedState
+      );
 
       await this.saveStateInternal(validatedState);
       this.currentState = validatedState;
