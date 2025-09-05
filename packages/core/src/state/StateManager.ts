@@ -8,6 +8,9 @@ import { StateValidator } from './validation';
 import { BackupManager } from './BackupManager';
 import { StateError, StateCorruptedError, RecoveryError } from './errors';
 import { SCHEMA_VERSION } from './constants';
+import { SecretsDetector } from './SecretsDetector';
+import { FieldEncryption } from './FieldEncryption';
+import { SecurityAudit } from './SecurityAudit';
 
 export class StateManager {
   private directoryManager: DirectoryManager;
@@ -25,6 +28,14 @@ export class StateManager {
     this.transactionCoordinator = new TransactionCoordinator(this.directoryManager.getLogPath());
     this.validator = new StateValidator();
     this.backupManager = new BackupManager(this.directoryManager.getBackupPath());
+
+    // Initialize security features
+    this.initializeSecurity();
+  }
+
+  private async initializeSecurity(): Promise<void> {
+    await FieldEncryption.initializeKey();
+    await SecurityAudit.initialize();
   }
 
   async initializeState(): Promise<ChecklistState> {
@@ -69,13 +80,28 @@ export class StateManager {
       }
 
       const content = await stateFile.text();
+
+      // Check for secrets before processing
+      const detectedSecrets = SecretsDetector.scan(content);
+      if (detectedSecrets.length > 0) {
+        await SecurityAudit.logSecretsDetection(detectedSecrets, 'WARNED');
+        console.warn('WARNING: Potential secrets detected in state file');
+      }
+
       let state: unknown;
 
       try {
         state = yaml.load(content);
       } catch (error) {
+        await SecurityAudit.logStateAccess('READ', false, { error: String(error) });
         throw new StateCorruptedError(`Failed to parse state file: ${error}`, 'parse_error');
       }
+
+      // Decrypt sensitive fields after parsing
+      state = await FieldEncryption.decryptObject(state);
+
+      // Log successful state read
+      await SecurityAudit.logStateAccess('READ', true);
 
       try {
         const validatedState = await this.validator.validate(state);
@@ -156,12 +182,29 @@ export class StateManager {
     const statePath = this.directoryManager.getStatePath();
     const tempPath = `${statePath}.tmp`;
 
-    const content = yaml.dump(state, {
+    // Encrypt sensitive fields before saving
+    const { data: encryptedState, encryptedPaths } = await FieldEncryption.encryptObject(state);
+    if (encryptedPaths.length > 0) {
+      await FieldEncryption.updateMetadata(encryptedPaths);
+      await SecurityAudit.logEncryption('ENCRYPT', true, encryptedPaths.length);
+    }
+
+    const content = yaml.dump(encryptedState, {
       indent: 2,
       lineWidth: -1,
       noRefs: true,
       sortKeys: true,
     });
+
+    // Check for secrets before writing
+    const detectedSecrets = SecretsDetector.scan(content);
+    if (detectedSecrets.length > 0) {
+      await SecurityAudit.logSecretsDetection(detectedSecrets, 'BLOCKED');
+      throw new StateError(
+        `Cannot save state: ${SecretsDetector.createErrorMessage(detectedSecrets)}`,
+        'SECRETS_DETECTED'
+      );
+    }
 
     await Bun.write(tempPath, content);
 
@@ -180,6 +223,9 @@ export class StateManager {
     }
 
     await Bun.write(statePath, content);
+
+    // Log successful state write
+    await SecurityAudit.logStateAccess('WRITE', true);
   }
 
   async updateState(
