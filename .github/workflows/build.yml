@@ -1,0 +1,207 @@
+name: Build Pipeline
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'tsconfig*.json'
+      - 'package.json'
+      - 'bun.lockb'
+
+env:
+  BUN_VERSION: 1.1.x
+
+jobs:
+  compile:
+    name: Compile Binary (${{ matrix.os }}-${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            runner: ubuntu-latest
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            runner: macos-latest
+          - os: macos-13
+            platform: darwin
+            arch: x64
+            runner: macos-13
+          - os: windows-latest
+            platform: win32
+            arch: x64
+            runner: windows-latest
+    
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+      
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      
+      - name: Build TypeScript
+        run: bun run build
+      
+      - name: Compile Binary
+        run: |
+          echo "Compiling for ${{ matrix.platform }}-${{ matrix.arch }}..."
+          bun build ./packages/cli/src/index.ts \
+            --compile \
+            --target=bun-${{ matrix.platform }}-${{ matrix.arch }} \
+            --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.platform == 'win32' && '.exe' || '' }}
+      
+      - name: Validate Binary Size (Unix)
+        if: matrix.platform != 'win32'
+        run: |
+          BINARY_PATH="dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}"
+          SIZE=$(stat -f%z "$BINARY_PATH" 2>/dev/null || stat -c%s "$BINARY_PATH" 2>/dev/null || echo 0)
+          SIZE_MB=$((SIZE / 1048576))
+          echo "📦 Binary size: ${SIZE_MB}MB"
+          echo "BINARY_SIZE=${SIZE_MB}MB" >> $GITHUB_ENV
+          if [ $SIZE_MB -gt 20 ]; then
+            echo "❌ Binary size exceeds 20MB limit (${SIZE_MB}MB)"
+            exit 1
+          fi
+          echo "✅ Binary size is within limits"
+      
+      - name: Validate Binary Size (Windows)
+        if: matrix.platform == 'win32'
+        shell: powershell
+        run: |
+          $binaryPath = "dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe"
+          $size = (Get-Item $binaryPath).Length
+          $sizeMB = [math]::Round($size / 1MB, 2)
+          Write-Host "📦 Binary size: ${sizeMB}MB"
+          echo "BINARY_SIZE=${sizeMB}MB" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          if ($sizeMB -gt 20) {
+            Write-Host "❌ Binary size exceeds 20MB limit (${sizeMB}MB)"
+            exit 1
+          }
+          Write-Host "✅ Binary size is within limits"
+      
+      - name: Test Binary Execution
+        run: |
+          if [ "${{ matrix.platform }}" == "win32" ]; then
+            ./dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe --version
+            ./dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe --help
+          else
+            chmod +x ./dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}
+            ./dist/checklist-${{ matrix.platform }}-${{ matrix.arch }} --version
+            ./dist/checklist-${{ matrix.platform }}-${{ matrix.arch }} --help
+          fi
+        shell: bash
+      
+      - name: Generate Checksum
+        run: |
+          cd dist
+          if [ "${{ matrix.platform }}" == "win32" ]; then
+            sha256sum checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe > checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe.sha256
+          else
+            sha256sum checklist-${{ matrix.platform }}-${{ matrix.arch }} > checklist-${{ matrix.platform }}-${{ matrix.arch }}.sha256
+          fi
+        shell: bash
+      
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.platform == 'win32' && '.exe' || '' }}
+            dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}*.sha256
+          retention-days: 30
+      
+      - name: Add Build Summary
+        run: |
+          echo "### Build Summary for ${{ matrix.platform }}-${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | ${{ matrix.platform }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Architecture | ${{ matrix.arch }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Binary Size | ${{ env.BINARY_SIZE }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Status | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+
+  validate-builds:
+    name: Validate All Builds
+    needs: compile
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: dist/
+      
+      - name: List All Binaries
+        run: |
+          echo "📦 Built binaries:"
+          find dist -type f -name "checklist-*" | sort
+      
+      - name: Verify All Platforms Built
+        run: |
+          EXPECTED_BINARIES=(
+            "checklist-linux-x64"
+            "checklist-darwin-arm64"
+            "checklist-darwin-x64"
+            "checklist-win32-x64.exe"
+          )
+          
+          MISSING=()
+          for binary in "${EXPECTED_BINARIES[@]}"; do
+            if ! find dist -name "*$binary*" | grep -q .; then
+              MISSING+=("$binary")
+            fi
+          done
+          
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "❌ Missing binaries: ${MISSING[*]}"
+            exit 1
+          fi
+          
+          echo "✅ All platform binaries built successfully!"
+      
+      - name: Create Release Summary
+        run: |
+          echo "## 🚀 Build Pipeline Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts Generated:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Binary | Checksum |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          
+          for sha_file in dist/*/*.sha256; do
+            if [ -f "$sha_file" ]; then
+              binary_name=$(basename "$sha_file" .sha256)
+              checksum=$(cat "$sha_file" | cut -d' ' -f1 | cut -c1-16)...
+              echo "| $binary_name | $checksum |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done

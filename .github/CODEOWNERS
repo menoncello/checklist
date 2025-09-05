@@ -1,0 +1,25 @@
+# CODEOWNERS file for automatic PR review assignments
+
+# Default owners for everything in the repo
+* @eduardomenoncello
+
+# Architecture and documentation
+/docs/architecture/ @eduardomenoncello
+/docs/prd/ @eduardomenoncello
+/README.md @eduardomenoncello
+
+# Core packages
+/packages/core/ @eduardomenoncello
+/packages/cli/ @eduardomenoncello
+/packages/tui/ @eduardomenoncello
+/packages/shared/ @eduardomenoncello
+
+# CI/CD configuration
+/.github/ @eduardomenoncello
+/.husky/ @eduardomenoncello
+
+# Configuration files
+/tsconfig*.json @eduardomenoncello
+/eslint.config.js @eduardomenoncello
+/.prettierrc.js @eduardomenoncello
+/bunfig.toml @eduardomenoncello

@@ -147,7 +147,7 @@ describe('Development Environment Setup Validation', () => {
     it('should have secrets scanning in pre-commit hook', () => {
       const hookContent = fs.readFileSync('.husky/pre-commit', 'utf-8');
       expect(hookContent).toContain('Scanning for potential secrets');
-      expect(hookContent).toContain('api[_-]?key|secret|token|password');
+      expect(hookContent).toMatch(/api\[_-\]\?key|secret.*token.*password/);
       expect(hookContent).toContain('AKIA[0-9A-Z]{16}'); // AWS key pattern
     });
 

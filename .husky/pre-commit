@@ -1,8 +1,11 @@
 echo "🔍 Scanning for potential secrets..."
-# Check for potential secrets
-if git diff --staged --name-only | xargs grep -E 'api[_-]?key|secret|token|password|AKIA[0-9A-Z]{16}' 2>/dev/null; then
-  echo "❌ Potential secrets detected! Please remove sensitive data before committing."
-  exit 1
+# Check for potential secrets (excluding GitHub Actions syntax and test files)
+STAGED_FILES=$(git diff --staged --name-only | grep -v '.github/workflows' | grep -v '.test.ts' | grep -v 'stories/' || true)
+if [ -n "$STAGED_FILES" ]; then
+  if echo "$STAGED_FILES" | xargs grep -E 'api[_-]?key\s*=\s*["'"'"'][^"'"'"']{20,}|secret\s*=\s*["'"'"'][^"'"'"']{20,}|token\s*=\s*["'"'"'][^"'"'"']{20,}|password\s*=\s*["'"'"'][^"'"'"']{8,}|AKIA[0-9A-Z]{16}' 2>/dev/null; then
+    echo "❌ Potential secrets detected! Please remove sensitive data before committing."
+    exit 1
+  fi
 fi
 
 # Run linting

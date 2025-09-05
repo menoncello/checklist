@@ -14,6 +14,7 @@
     "build:tui": "cd packages/tui && bun run build",
     "test": "bun test",
     "test:watch": "bun test --watch",
+    "type-check": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -21,6 +22,9 @@
     "format:check": "prettier --check .",
     "quality": "bun run lint && bun run format:check && bun run typecheck",
     "quality:fix": "bun run lint:fix && bun run format && bun run typecheck",
+    "bench": "bun run packages/core/tests/benchmarks/startup.bench.ts",
+    "bench:assert": "bun run bench --assert",
+    "bench:compare": "bun run packages/core/tests/benchmarks/compare.ts",
     "prepare": "husky"
   },
   "lint-staged": {
