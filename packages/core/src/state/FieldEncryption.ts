@@ -149,8 +149,10 @@ export class FieldEncryption {
     const authTag = Buffer.from(encryptedField.authTag, 'base64');
     const encrypted = Buffer.from(encryptedField.data, 'base64');
 
-    // Create decipher
-    const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
+    // Create decipher with explicit authTagLength to avoid deprecation warning
+    const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv, {
+      authTagLength: 16, // 16 bytes = 128 bits
+    } as crypto.CipherGCMOptions);
     decipher.setAuthTag(authTag);
 
     // Decrypt data
