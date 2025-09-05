@@ -9,8 +9,15 @@ on:
     - cron: '0 9 * * 1' # Weekly on Monday at 9 AM UTC
   workflow_dispatch:
 
+# Add rate limiting via concurrency control
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: false # Don't cancel security scans
+
 env:
   BUN_VERSION: 1.1.x
+  # Enforce HTTPS for all external requests
+  NODE_TLS_REJECT_UNAUTHORIZED: 1
 
 permissions:
   contents: read

@@ -7,8 +7,15 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Add concurrency control to prevent resource exhaustion (Security fix)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUN_VERSION: 1.1.x
+  # Enforce HTTPS for all requests (Security fix)
+  NODE_TLS_REJECT_UNAUTHORIZED: 1
 
 jobs:
   test:

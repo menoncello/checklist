@@ -1,0 +1,107 @@
+name: Coverage
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.1.x
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run tests with coverage
+        run: bun test --coverage
+
+      - name: Generate coverage report
+        run: |
+          # Create coverage summary
+          echo "## Coverage Report" > coverage-summary.md
+          echo "" >> coverage-summary.md
+          
+          # Parse coverage output (Bun coverage format)
+          bun test --coverage 2>&1 | grep -E "(Statements|Branches|Functions|Lines)" >> coverage-summary.md || true
+          
+          # Check coverage threshold (80%)
+          COVERAGE=$(bun test --coverage 2>&1 | grep "Lines" | grep -oE "[0-9]+\.[0-9]+" | head -1)
+          if [ -z "$COVERAGE" ]; then
+            echo "WARNING: Could not parse coverage percentage"
+            COVERAGE=0
+          fi
+          
+          echo "" >> coverage-summary.md
+          echo "**Total Coverage: ${COVERAGE}%**" >> coverage-summary.md
+          
+          # Fail if below 80%
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "" >> coverage-summary.md
+            echo "❌ Coverage is below 80% threshold" >> coverage-summary.md
+            cat coverage-summary.md
+            exit 1
+          else
+            echo "" >> coverage-summary.md
+            echo "✅ Coverage meets 80% threshold" >> coverage-summary.md
+          fi
+          
+          cat coverage-summary.md
+
+      - name: Upload coverage to Codecov
+        if: github.event_name == 'push'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = fs.readFileSync('coverage-summary.md', 'utf8');
+            
+            // Find and update or create comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('## Coverage Report')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: coverage
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: coverage
+              });
+            }
+
+      - name: Add coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          # This would typically update README with coverage badge
+          echo "Coverage badge would be updated here"
