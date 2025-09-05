@@ -1,16 +1,19 @@
 # Story 1.2: CI/CD Pipeline Foundation
 
 ## Story
+
 **As a** development team,  
 **I want** automated testing and deployment pipelines from the start,  
 **so that** all code is continuously validated and releases are automated.
 
 ## Priority
+
 **HIGH** - Must be established before significant development begins
 
 ## Acceptance Criteria
 
 ### GitHub Actions Setup
+
 1. ✅ Main workflow file created (`.github/workflows/main.yml`)
 2. ✅ PR validation workflow running on all pull requests
 3. ✅ Branch protection rules enforced on main
@@ -18,6 +21,7 @@
 5. ✅ Automated security scanning enabled
 
 ### Test Automation
+
 1. ✅ Unit tests run on every push
 2. ✅ TypeScript compilation verified
 3. ✅ Linting and formatting checks enforced
@@ -25,6 +29,7 @@
 5. ✅ Performance benchmarks executed
 
 ### Build Pipeline
+
 1. ✅ Bun binary compilation tested
 2. ✅ Multi-platform builds (macOS, Linux, Windows)
 3. ✅ Binary size validation (<20MB)
@@ -32,6 +37,7 @@
 5. ✅ Build caching optimized
 
 ### Release Automation
+
 1. ✅ Semantic versioning enforced
 2. ✅ Changelog generation automated
 3. ✅ GitHub Releases created automatically
@@ -39,6 +45,7 @@
 5. ✅ npm package publishing prepared
 
 ### Third-Party Integration Setup
+
 1. ✅ System clipboard integration configured
 2. ✅ Terminal API compatibility tested (ANSI escape codes)
 3. ✅ Cross-platform file system operations validated
@@ -48,6 +55,7 @@
 ## Technical Implementation
 
 ### Main Workflow Configuration
+
 ```yaml
 name: CI/CD Pipeline
 on:
@@ -66,7 +74,7 @@ jobs:
       - run: bun test
       - run: bun run typecheck
       - run: bun run lint
-      
+
   build:
     needs: test
     strategy:
@@ -94,6 +102,7 @@ jobs:
 ```
 
 ### Release Workflow
+
 ```yaml
 name: Release
 on:
@@ -123,6 +132,7 @@ jobs:
 ## Development Tasks
 
 ### CI/CD Pipeline
+
 - [ ] Create `.github/workflows/` directory structure
 - [ ] Configure branch protection rules in GitHub settings
 - [ ] Set up required secrets (NPM_TOKEN, etc.)
@@ -135,6 +145,7 @@ jobs:
 - [ ] Document CI/CD processes
 
 ### Third-Party Integration Setup
+
 - [ ] Implement cross-platform clipboard access utilities
 - [ ] Create terminal capability detection system
 - [ ] Set up Git repository integration (status, commit detection)
@@ -147,6 +158,7 @@ jobs:
 ## Definition of Done
 
 ### CI/CD Requirements
+
 - [ ] All workflows passing on main branch
 - [ ] Pull request checks enforced
 - [ ] Test coverage >80%
@@ -156,6 +168,7 @@ jobs:
 - [ ] Team can trigger releases via tags
 
 ### Third-Party Integration Requirements
+
 - [ ] Clipboard integration tested on all platforms
 - [ ] Terminal compatibility verified across emulators
 - [ ] Git operations working in diverse repository states
@@ -164,13 +177,16 @@ jobs:
 - [ ] External service error handling implemented
 
 ## Time Estimate
+
 **8-12 hours** for complete pipeline setup
 
 ## Dependencies
+
 - Story 1.1 must be complete (project structure)
 - Blocks all other development (quality gate)
 
 ## Notes
+
 - Use Bun's native compilation for binaries
 - Consider GitHub Actions cache for dependencies
 - Monitor GitHub Actions usage/billing

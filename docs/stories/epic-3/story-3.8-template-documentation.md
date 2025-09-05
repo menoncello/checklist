@@ -1,16 +1,19 @@
 # Story 3.8: Template Creator Documentation
 
 ## Story
+
 **As a** template creator,  
 **I want** comprehensive documentation and examples,  
 **So that** I can create custom templates for my team's workflows.
 
 ## Priority
+
 **MEDIUM** - Complete with Epic 3
 
 ## Acceptance Criteria
 
 ### Documentation Coverage
+
 1. ✅ Complete template syntax reference
 2. ✅ Variable system documentation with all types
 3. ✅ Conditional logic patterns and examples
@@ -20,6 +23,7 @@
 7. ✅ Troubleshooting common issues
 
 ### Example Templates
+
 1. ✅ At least 10 real-world examples
 2. ✅ Progressive complexity (simple → advanced)
 3. ✅ Industry-specific templates (dev, QA, DevOps)
@@ -29,6 +33,7 @@
 ## Documentation Structure
 
 ### Template Documentation Tree
+
 ```
 docs/templates/
 ├── README.md                    # Template system overview
@@ -66,6 +71,7 @@ docs/templates/
 ## Content Examples
 
 ### Quick Start Guide
+
 ```markdown
 # Template Quick Start
 
@@ -81,12 +87,10 @@ description: A simple daily checklist
 version: 1.0.0
 
 sections:
-  - name: Morning Tasks
-    items:
-      - text: Review calendar for the day
-      - text: Check priority emails
-      - text: Update task board
-\`\`\`
+
+- name: Morning Tasks
+  items: - text: Review calendar for the day - text: Check priority emails - text: Update task board
+  \`\`\`
 
 ## 2. Use Your Template
 
@@ -101,105 +105,115 @@ Make your template dynamic:
 
 \`\`\`yaml
 variables:
-  project_name:
-    type: text
-    prompt: "What project are you working on?"
-    default: "My Project"
+project_name:
+type: text
+prompt: "What project are you working on?"
+default: "My Project"
 
 sections:
-  - name: "{{ project_name }} Tasks"
-    items:
-      - text: "Update {{ project_name }} documentation"
-\`\`\`
+
+- name: "{{ project_name }} Tasks"
+  items: - text: "Update {{ project_name }} documentation"
+  \`\`\`
 ```
 
 ### Variable System Documentation
+
 ```markdown
 # Template Variables
 
 ## Variable Types
 
 ### Text Variables
+
 \`\`\`yaml
 variables:
-  username:
-    type: text
-    prompt: "Enter your name"
-    default: "User"
-    validation: "^[A-Za-z ]+$"  # Letters and spaces only
+username:
+type: text
+prompt: "Enter your name"
+default: "User"
+validation: "^[A-Za-z ]+$" # Letters and spaces only
 \`\`\`
 
 ### Choice Variables
+
 \`\`\`yaml
 variables:
-  environment:
-    type: choice
-    prompt: "Select deployment environment"
-    options:
-      - development
-      - staging
-      - production
-    default: development
+environment:
+type: choice
+prompt: "Select deployment environment"
+options: - development - staging - production
+default: development
 \`\`\`
 
 ### Boolean Variables
+
 \`\`\`yaml
 variables:
-  include_tests:
-    type: boolean
-    prompt: "Include test steps?"
-    default: true
+include_tests:
+type: boolean
+prompt: "Include test steps?"
+default: true
 \`\`\`
 
 ### Number Variables
+
 \`\`\`yaml
 variables:
-  team_size:
-    type: number
-    prompt: "How many team members?"
-    min: 1
-    max: 100
-    default: 5
+team_size:
+type: number
+prompt: "How many team members?"
+min: 1
+max: 100
+default: 5
 \`\`\`
 
 ### Date Variables
+
 \`\`\`yaml
 variables:
-  deadline:
-    type: date
-    prompt: "Project deadline"
-    format: "YYYY-MM-DD"
-    default: "{{ today() + days(7) }}"  # 7 days from now
+deadline:
+type: date
+prompt: "Project deadline"
+format: "YYYY-MM-DD"
+default: "{{ today() + days(7) }}" # 7 days from now
 \`\`\`
 
 ## Using Variables
 
 ### In Text
+
 \`\`\`yaml
 items:
-  - text: "Deploy to {{ environment }} environment"
-  - text: "Team of {{ team_size }} developers"
-\`\`\`
+
+- text: "Deploy to {{ environment }} environment"
+- text: "Team of {{ team_size }} developers"
+  \`\`\`
 
 ### In Conditionals
+
 \`\`\`yaml
 items:
-  - text: "Run unit tests"
-    condition: "{{ include_tests == true }}"
-  
-  - text: "Run integration tests"
-    condition: "{{ include_tests && environment != 'production' }}"
-\`\`\`
+
+- text: "Run unit tests"
+  condition: "{{ include_tests == true }}"
+
+- text: "Run integration tests"
+  condition: "{{ include_tests && environment != 'production' }}"
+  \`\`\`
 
 ### In Commands
+
 \`\`\`yaml
 items:
-  - text: "Deploy application"
-    command: "deploy.sh {{ environment }} --team-size={{ team_size }}"
-\`\`\`
+
+- text: "Deploy application"
+  command: "deploy.sh {{ environment }} --team-size={{ team_size }}"
+  \`\`\`
 ```
 
 ### Advanced Template Example
+
 ```yaml
 # Advanced Multi-Stage Deployment Template
 name: advanced-deployment
@@ -209,29 +223,29 @@ version: 2.0.0
 variables:
   app_name:
     type: text
-    prompt: "Application name"
-    validation: "^[a-z0-9-]+$"
-  
+    prompt: 'Application name'
+    validation: '^[a-z0-9-]+$'
+
   environment:
     type: choice
-    prompt: "Target environment"
+    prompt: 'Target environment'
     options: [staging, production]
     default: staging
-  
+
   deployment_type:
     type: choice
-    prompt: "Deployment strategy"
+    prompt: 'Deployment strategy'
     options: [blue-green, canary, rolling]
     default: blue-green
-  
+
   rollback_enabled:
     type: boolean
-    prompt: "Enable automatic rollback?"
+    prompt: 'Enable automatic rollback?'
     default: true
-  
+
   canary_percentage:
     type: number
-    prompt: "Canary traffic percentage"
+    prompt: 'Canary traffic percentage'
     condition: "{{ deployment_type == 'canary' }}"
     min: 1
     max: 50
@@ -240,32 +254,32 @@ variables:
 sections:
   - name: Pre-Deployment Checks
     items:
-      - text: "Verify CI/CD pipeline passed"
+      - text: 'Verify CI/CD pipeline passed'
         required: true
-        
-      - text: "Check system health metrics"
-        command: "check-health.sh {{ environment }}"
+
+      - text: 'Check system health metrics'
+        command: 'check-health.sh {{ environment }}'
         required: true
-        
-      - text: "Backup database"
+
+      - text: 'Backup database'
         condition: "{{ environment == 'production' }}"
-        command: "backup-db.sh {{ app_name }}"
+        command: 'backup-db.sh {{ app_name }}'
         required: true
-        
-      - text: "Notify team of deployment"
+
+      - text: 'Notify team of deployment'
         command: "slack-notify.sh 'Deploying {{ app_name }} to {{ environment }}'"
 
   - name: Deployment
     condition: "{{ all_required_complete('Pre-Deployment Checks') }}"
     items:
-      - text: "Pull latest Docker image"
-        command: "docker pull {{ app_name }}:{{ git_sha }}"
-        
-      - text: "Run database migrations"
-        command: "migrate-db.sh {{ environment }}"
-        rollback: "migrate-db.sh {{ environment }} --rollback"
-        
-      - text: "Deploy using {{ deployment_type }} strategy"
+      - text: 'Pull latest Docker image'
+        command: 'docker pull {{ app_name }}:{{ git_sha }}'
+
+      - text: 'Run database migrations'
+        command: 'migrate-db.sh {{ environment }}'
+        rollback: 'migrate-db.sh {{ environment }} --rollback'
+
+      - text: 'Deploy using {{ deployment_type }} strategy'
         command: |
           {% if deployment_type == 'blue-green' %}
             deploy-blue-green.sh {{ app_name }} {{ environment }}
@@ -274,63 +288,65 @@ sections:
           {% else %}
             deploy-rolling.sh {{ app_name }} {{ environment }}
           {% endif %}
-        rollback: "rollback.sh {{ app_name }} {{ environment }}"
+        rollback: 'rollback.sh {{ app_name }} {{ environment }}'
 
   - name: Post-Deployment Validation
     items:
-      - text: "Run smoke tests"
-        command: "smoke-test.sh {{ environment }}"
+      - text: 'Run smoke tests'
+        command: 'smoke-test.sh {{ environment }}'
         required: true
-        timeout: 300  # 5 minutes
-        
-      - text: "Monitor error rates (5 minutes)"
-        command: "monitor-errors.sh {{ app_name }} --duration=5m"
+        timeout: 300 # 5 minutes
+
+      - text: 'Monitor error rates (5 minutes)'
+        command: 'monitor-errors.sh {{ app_name }} --duration=5m'
         condition: "{{ environment == 'production' }}"
-        
-      - text: "Validate canary metrics"
+
+      - text: 'Validate canary metrics'
         condition: "{{ deployment_type == 'canary' }}"
-        command: "validate-canary.sh {{ canary_percentage }}"
-        
-      - text: "Full rollout approval"
+        command: 'validate-canary.sh {{ canary_percentage }}'
+
+      - text: 'Full rollout approval'
         condition: "{{ deployment_type == 'canary' }}"
         type: approval
-        approvers: ["team-lead", "qa-lead"]
+        approvers: ['team-lead', 'qa-lead']
 
   - name: Cleanup
     items:
-      - text: "Remove old deployments"
-        command: "cleanup-old.sh {{ app_name }} --keep=3"
-        
-      - text: "Update documentation"
-        command: "update-docs.sh {{ app_name }} {{ version }}"
-        
-      - text: "Send deployment report"
-        command: "generate-report.sh | send-report.sh"
+      - text: 'Remove old deployments'
+        command: 'cleanup-old.sh {{ app_name }} --keep=3'
+
+      - text: 'Update documentation'
+        command: 'update-docs.sh {{ app_name }} {{ version }}'
+
+      - text: 'Send deployment report'
+        command: 'generate-report.sh | send-report.sh'
 
 hooks:
   on_failure:
-    - condition: "{{ rollback_enabled }}"
+    - condition: '{{ rollback_enabled }}'
       action: rollback
-      notify: ["oncall@team.com"]
-    
+      notify: ['oncall@team.com']
+
   on_success:
     - action: notify
-      message: "✅ {{ app_name }} deployed to {{ environment }}"
-      channels: ["#deployments", "#{{ app_name }}"]
-  
+      message: '✅ {{ app_name }} deployed to {{ environment }}'
+      channels: ['#deployments', '#{{ app_name }}']
+
   on_timeout:
     - action: alert
       severity: high
-      message: "Deployment timeout for {{ app_name }}"
+      message: 'Deployment timeout for {{ app_name }}'
 ```
 
 ### Template Validation Documentation
+
 ```markdown
 # Template Validation
 
 ## Validation Rules
 
 ### Required Fields
+
 - `name`: Unique template identifier
 - `version`: Semantic version (x.y.z)
 - `sections`: At least one section with items
@@ -346,55 +362,60 @@ checklist validate my-template.yaml
 ### Common Validation Errors
 
 #### Missing Required Field
+
 \`\`\`
 ❌ Error: Missing required field 'version'
-   Line 2: name: my-template
-   
+Line 2: name: my-template
+
 Fix: Add version field:
-  version: 1.0.0
+version: 1.0.0
 \`\`\`
 
 #### Invalid Variable Reference
+
 \`\`\`
 ❌ Error: Unknown variable 'project_namee'
-   Line 15: text: "Deploy {{ project_namee }}"
-   
+Line 15: text: "Deploy {{ project_namee }}"
+
 Fix: Check variable name spelling
 \`\`\`
 
 #### Circular Dependency
+
 \`\`\`
 ❌ Error: Circular dependency detected
-   Section 'Deploy' depends on 'Test'
-   Section 'Test' depends on 'Deploy'
-   
+Section 'Deploy' depends on 'Test'
+Section 'Test' depends on 'Deploy'
+
 Fix: Remove one of the dependencies
 \`\`\`
 
 ## Testing Templates
 
 ### Unit Testing
+
 \`\`\`typescript
 import { validateTemplate, runTemplate } from '@checklist/core';
 
 describe('My Template', () => {
-  it('should validate successfully', async () => {
-    const template = await loadTemplate('my-template.yaml');
-    const result = await validateTemplate(template);
-    expect(result.valid).toBe(true);
-  });
-  
-  it('should handle all variable combinations', async () => {
-    const scenarios = [
-      { environment: 'staging', include_tests: true },
-      { environment: 'production', include_tests: false }
-    ];
-    
+it('should validate successfully', async () => {
+const template = await loadTemplate('my-template.yaml');
+const result = await validateTemplate(template);
+expect(result.valid).toBe(true);
+});
+
+it('should handle all variable combinations', async () => {
+const scenarios = [
+{ environment: 'staging', include_tests: true },
+{ environment: 'production', include_tests: false }
+];
+
     for (const vars of scenarios) {
       const result = await runTemplate('my-template.yaml', vars);
       expect(result.errors).toHaveLength(0);
     }
-  });
+
+});
 });
 \`\`\`
 ```
@@ -402,6 +423,7 @@ describe('My Template', () => {
 ## Technical Tasks
 
 ### Phase 1: Core Documentation
+
 - [ ] Write README.md with overview
 - [ ] Create quick-start guide
 - [ ] Write complete syntax reference
@@ -409,6 +431,7 @@ describe('My Template', () => {
 - [ ] Create conditional logic guide
 
 ### Phase 2: Examples and Tutorials
+
 - [ ] Create 10+ example templates
 - [ ] Write step-by-step tutorials
 - [ ] Build progressive learning path
@@ -416,6 +439,7 @@ describe('My Template', () => {
 - [ ] Create troubleshooting guide
 
 ### Phase 3: Tools and Integration
+
 - [ ] Generate JSON schema for validation
 - [ ] Create TypeScript type definitions
 - [ ] Build template testing framework
@@ -423,6 +447,7 @@ describe('My Template', () => {
 - [ ] Create template generator CLI
 
 ## Definition of Done
+
 - [ ] All syntax documented with examples
 - [ ] 10+ complete template examples
 - [ ] Template validator documented
@@ -432,18 +457,22 @@ describe('My Template', () => {
 - [ ] Template playground available
 
 ## Time Estimate
+
 **3-4 days** for comprehensive documentation
 
 ## Dependencies
+
 - Complete after Story 3.1-3.7 (Template system implementation)
 - Before public release
 
 ## Risk Factors
+
 - 🟢 Documentation can evolve with feedback
 - 🟡 Examples must stay in sync with implementation
 - 🟢 Can leverage existing template systems for patterns
 
 ## Notes for Developers
+
 - Keep examples working with CI tests
 - Update docs when template syntax changes
 - Include real-world use cases from beta users

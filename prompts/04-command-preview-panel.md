@@ -1,6 +1,7 @@
 # AI UI Prompt: Command Preview Panel
 
 ## High-Level Goal
+
 Create an interactive command preview panel that shows resolved commands with variable substitution, syntax highlighting, and safety validation. The panel should clearly indicate command type (Claude/Bash), highlight dangerous operations, and provide a safe preview before execution or copying to clipboard.
 
 ## Detailed Step-by-Step Instructions
@@ -104,11 +105,14 @@ interface CommandPreview {
       data?: string[];
     };
   };
-  variables: Map<string, {
-    value: string | undefined;
-    source: 'env' | 'state' | 'user' | 'default';
-    required: boolean;
-  }>;
+  variables: Map<
+    string,
+    {
+      value: string | undefined;
+      source: 'env' | 'state' | 'user' | 'default';
+      required: boolean;
+    }
+  >;
   context: {
     workDir: string;
     shell: string;
@@ -120,69 +124,57 @@ interface CommandPreview {
 // Danger patterns to detect
 const dangerPatterns = {
   destructive: [
-    /rm\s+-rf?\s+\//,          // rm -rf on root paths
+    /rm\s+-rf?\s+\//, // rm -rf on root paths
     /DROP\s+(TABLE|DATABASE)/i,
     /DELETE\s+FROM/i,
     /truncate/i,
-    /format\s+\/dev/
+    /format\s+\/dev/,
   ],
-  sudo: [
-    /^sudo\s+/,
-    /\bsu\s+-/,
-    /chmod\s+777/,
-    /chown\s+root/
-  ],
+  sudo: [/^sudo\s+/, /\bsu\s+-/, /chmod\s+777/, /chown\s+root/],
   credential: [
     /password\s*=\s*["']?[^"'\s]+/i,
     /api[_-]?key\s*=\s*["']?[^"'\s]+/i,
     /secret\s*=\s*["']?[^"'\s]+/i,
-    /private[_-]?key/i
+    /private[_-]?key/i,
   ],
-  network: [
-    /0\.0\.0\.0/,
-    /--publish\s+\d+:\d+/,
-    /EXPOSE\s+\d+/,
-    /-p\s+\d+:\d+/
-  ]
+  network: [/0\.0\.0\.0/, /--publish\s+\d+:\d+/, /EXPOSE\s+\d+/, /-p\s+\d+:\d+/],
 };
 
 // Syntax highlighting for different languages
 const syntaxHighlight = {
   bash: (text: string) => {
     return text
-      .replace(/\$\w+/g, match => `${ansi.yellow}${match}${ansi.reset}`)
-      .replace(/--?\w+/g, match => `${ansi.cyan}${match}${ansi.reset}`)
-      .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, match => `${ansi.green}${match}${ansi.reset}`)
-      .replace(/^\s*#.*/gm, match => `${ansi.gray}${match}${ansi.reset}`);
+      .replace(/\$\w+/g, (match) => `${ansi.yellow}${match}${ansi.reset}`)
+      .replace(/--?\w+/g, (match) => `${ansi.cyan}${match}${ansi.reset}`)
+      .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => `${ansi.green}${match}${ansi.reset}`)
+      .replace(/^\s*#.*/gm, (match) => `${ansi.gray}${match}${ansi.reset}`);
   },
   sql: (text: string) => {
     const keywords = /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE|JOIN|ON|AND|OR)\b/gi;
-    return text.replace(keywords, match => `${ansi.blue}${match.toUpperCase()}${ansi.reset}`);
-  }
+    return text.replace(keywords, (match) => `${ansi.blue}${match.toUpperCase()}${ansi.reset}`);
+  },
 };
 
 // Variable resolution with fallback
 function resolveVariables(
-  command: string, 
+  command: string,
   variables: Record<string, any>
 ): { resolved: string; missing: string[] } {
   const missing: string[] = [];
-  const resolved = command.replace(
-    /\$\{([^}]+)\}/g,
-    (match, varName) => {
-      if (varName in variables) {
-        return variables[varName];
-      } else {
-        missing.push(varName);
-        return `${ansi.red}[UNDEFINED:${varName}]${ansi.reset}`;
-      }
+  const resolved = command.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+    if (varName in variables) {
+      return variables[varName];
+    } else {
+      missing.push(varName);
+      return `${ansi.red}[UNDEFINED:${varName}]${ansi.reset}`;
     }
-  );
+  });
   return { resolved, missing };
 }
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - MUST validate all commands before allowing copy/execute
 - MUST clearly indicate danger level with explanations
 - DO NOT execute commands directly - preview only
@@ -195,6 +187,7 @@ function resolveVariables(
 ## Strict Scope
 
 You should ONLY create:
+
 - Command preview and resolution display
 - Variable substitution visualization
 - Danger level analysis and warnings
@@ -203,6 +196,7 @@ You should ONLY create:
 - Simulation/dry-run display
 
 You should NOT create:
+
 - Actual command execution
 - File system modifications
 - Network requests
@@ -213,6 +207,7 @@ You should NOT create:
 ## Visual Examples
 
 **Safe Command Preview:**
+
 ```
 ┌─ Command Preview ──────────────────────────────────────────┐
 │ Type: [Bash] $ │ Status: 🟢 Safe │ Time: ~2s              │
@@ -244,6 +239,7 @@ You should NOT create:
 ```
 
 **Dangerous Command Preview:**
+
 ```
 ┌─ Command Preview ──────────────────────────────────────────┐
 │ Type: [Bash] $ │ Status: 🔴 DANGEROUS │ Time: instant     │
@@ -279,6 +275,7 @@ You should NOT create:
 ```
 
 **Claude AI Command Preview:**
+
 ```
 ┌─ Command Preview ──────────────────────────────────────────┐
 │ Type: [Claude] 🤖 │ Status: 🟢 Safe │ Tokens: ~150       │

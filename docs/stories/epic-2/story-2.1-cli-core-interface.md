@@ -1,9 +1,11 @@
 # Story 2.1: CLI Core Interface
 
 ## Overview
+
 Implement the base CLI command structure and argument parsing system that will serve as the foundation for all user interactions with the checklist manager.
 
 ## Story Details
+
 - **Epic**: 2 - User Interface & Interaction
 - **Type**: Feature
 - **Priority**: Critical
@@ -11,9 +13,11 @@ Implement the base CLI command structure and argument parsing system that will s
 - **Dependencies**: [1.1, 1.3, 1.4]
 
 ## Description
+
 Build the core command-line interface that handles all primary commands and global options. This story establishes the fundamental interaction pattern that users will experience, whether using CLI-only mode or the full TUI.
 
 ## Acceptance Criteria
+
 - [ ] Parse and execute main commands:
   - `checklist init` - Initialize new checklist project
   - `checklist run [template]` - Run a checklist workflow
@@ -35,25 +39,27 @@ Build the core command-line interface that handles all primary commands and glob
 ## Technical Requirements
 
 ### Architecture
+
 ```typescript
 interface CLICommand {
-  name: string
-  aliases?: string[]
-  description: string
-  options: CommandOption[]
-  action: (options: ParsedOptions) => Promise<void>
+  name: string;
+  aliases?: string[];
+  description: string;
+  options: CommandOption[];
+  action: (options: ParsedOptions) => Promise<void>;
 }
 
 interface CommandOption {
-  flag: string
-  description: string
-  required?: boolean
-  default?: any
-  validator?: (value: any) => boolean
+  flag: string;
+  description: string;
+  required?: boolean;
+  default?: any;
+  validator?: (value: any) => boolean;
 }
 ```
 
 ### Implementation Notes
+
 - Use Bun's built-in arg parser or lightweight alternative (not heavy frameworks)
 - Keep bundle size minimal (<1MB for CLI module)
 - Implement command registry pattern for extensibility
@@ -66,12 +72,14 @@ interface CommandOption {
   - 127: Command not found
 
 ### Error Handling
+
 - Catch all errors at top level
 - Display user-friendly messages
 - Include `--debug` flag for stack traces
 - Suggest corrections for typos (did you mean...?)
 
 ## Testing Requirements
+
 - [ ] Unit tests for argument parsing
 - [ ] Integration tests for each command
 - [ ] Test error scenarios and messages
@@ -80,6 +88,7 @@ interface CommandOption {
 - [ ] Validate help text generation
 
 ## Definition of Done
+
 - [ ] All commands implemented and working
 - [ ] Help text is clear and comprehensive
 - [ ] Error messages are helpful

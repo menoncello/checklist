@@ -1,16 +1,19 @@
 # Story 4.9: User Help & Tutorial System
 
 ## Story
+
 **As a** new user of the checklist manager,  
 **I want** comprehensive help documentation and interactive tutorials,  
 **so that** I can quickly learn to use the tool effectively.
 
 ## Priority
+
 **HIGH** - Critical for user adoption and self-service support
 
 ## Acceptance Criteria
 
 ### Built-in Help System
+
 1. ✅ `checklist help` displays all available commands
 2. ✅ `checklist help [command]` shows detailed command help
 3. ✅ `--help` flag works on all commands
@@ -18,6 +21,7 @@
 5. ✅ Context-sensitive help in TUI mode
 
 ### Interactive Tutorial
+
 1. ✅ `checklist tutorial` launches interactive learning mode
 2. ✅ Step-by-step walkthrough of basic features
 3. ✅ Hands-on practice with sample checklist
@@ -25,6 +29,7 @@
 5. ✅ Tutorial can be resumed if interrupted
 
 ### User Documentation
+
 1. ✅ Getting Started guide created
 2. ✅ User manual with all features documented
 3. ✅ FAQ section addressing common issues
@@ -32,6 +37,7 @@
 5. ✅ Video tutorials for visual learners
 
 ### In-App Guidance
+
 1. ✅ First-run experience with onboarding
 2. ✅ Tooltips for complex features
 3. ✅ Error messages include helpful suggestions
@@ -41,6 +47,7 @@
 ## Technical Implementation
 
 ### Help System Architecture
+
 ```typescript
 // Help system structure
 interface HelpSystem {
@@ -89,8 +96,8 @@ class HelpManager {
         'basic-commands',
         'managing-state',
         'using-templates',
-        'advanced-features'
-      ]
+        'advanced-features',
+      ],
     });
 
     await tutorial.start(section);
@@ -99,6 +106,7 @@ class HelpManager {
 ```
 
 ### Tutorial Implementation
+
 ```typescript
 class InteractiveTutorial {
   private sections = [
@@ -107,18 +115,18 @@ class InteractiveTutorial {
       title: 'Welcome to BMAD Checklist Manager',
       steps: [
         {
-          instruction: 'Let\'s start by initializing a new checklist',
+          instruction: "Let's start by initializing a new checklist",
           command: 'checklist init',
           validation: () => fs.existsSync('.checklist/'),
-          hint: 'Type "checklist init" and press Enter'
+          hint: 'Type "checklist init" and press Enter',
         },
         {
-          instruction: 'Now let\'s check the status',
+          instruction: "Now let's check the status",
           command: 'checklist status',
           validation: (output) => output.includes('Current step:'),
-          hint: 'The status command shows your current progress'
-        }
-      ]
+          hint: 'The status command shows your current progress',
+        },
+      ],
     },
     {
       id: 'basic-commands',
@@ -127,37 +135,38 @@ class InteractiveTutorial {
         {
           instruction: 'View your current checklist item',
           command: 'checklist current',
-          validation: (output) => output.length > 0
+          validation: (output) => output.length > 0,
         },
         {
           instruction: 'Mark the current item as complete',
           command: 'checklist done',
-          validation: (state) => state.currentStep > 0
+          validation: (state) => state.currentStep > 0,
         },
         {
           instruction: 'Go back to the previous item',
           command: 'checklist back',
-          validation: (state) => state.canGoBack
-        }
-      ]
-    }
+          validation: (state) => state.canGoBack,
+        },
+      ],
+    },
   ];
 
   async runSection(sectionId: string): Promise<void> {
-    const section = this.sections.find(s => s.id === sectionId);
-    
+    const section = this.sections.find((s) => s.id === sectionId);
+
     console.log(chalk.blue(`\n=== ${section.title} ===\n`));
-    
+
     for (const step of section.steps) {
       await this.runStep(step);
     }
-    
+
     this.saveProgress(sectionId);
   }
 }
 ```
 
 ### Documentation Structure
+
 ```
 docs/user/
 ├── README.md                    # Documentation overview
@@ -191,6 +200,7 @@ docs/user/
 ```
 
 ### In-App Help Messages
+
 ```typescript
 // Contextual help messages
 const helpMessages = {
@@ -234,11 +244,12 @@ Recovery options:
 Your work is backed up in .checklist/backups/
 
 See 'checklist help recovery' for details.
-`
+`,
 };
 ```
 
 ### Man Page Generation
+
 ```bash
 # Generate man pages from help content
 checklist generate-man > checklist.1
@@ -269,13 +280,16 @@ man ./checklist.1
 - [ ] Tutorial completion rate >80%
 
 ## Time Estimate
+
 **16-20 hours** for complete help and tutorial system
 
 ## Dependencies
+
 - Stories 4.1-4.7 complete (commands to document)
 - Integrates with Story 4.8 (API documentation)
 
 ## Notes
+
 - Keep help text concise and actionable
 - Use progressive disclosure for complex topics
 - Include real-world examples

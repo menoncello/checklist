@@ -1,6 +1,7 @@
 # AI UI Prompt: Template Selection Screen
 
 ## High-Level Goal
+
 Create an intuitive template selection interface that allows users to browse, preview, and initialize checklists from templates. The screen should feel like a package manager UI (npm, brew) with categories, search, previews, and clear metadata about each template's purpose and requirements.
 
 ## Detailed Step-by-Step Instructions
@@ -65,9 +66,10 @@ Create an intuitive template selection interface that allows users to browse, pr
 
 4. **Add the search and filter system:**
    - Implement real-time search with highlighting:
+
      ```
      Search: [docker     ] 🔍
-     
+
      Results (3):
      • Docker Container Setup - Full containerization
        └─ Matches: title, tags: docker, container
@@ -76,6 +78,7 @@ Create an intuitive template selection interface that allows users to browse, pr
      • Microservices Template - Docker-based services
        └─ Matches: requirements: Docker 20+
      ```
+
    - Support filters:
      - By difficulty: Beginner, Intermediate, Advanced
      - By duration: <30min, 30-60min, >1hr
@@ -197,7 +200,7 @@ class TemplateGallery {
   renderCard(template: Template, selected: boolean): string {
     const rating = '⭐'.repeat(Math.floor(template.stats.rating));
     const highlight = selected ? ansi.inverse : '';
-    
+
     return `
     ${highlight}┌─────────────────────────────────────────┐${ansi.reset}
     ${highlight}│ ${template.icon} ${template.name.padEnd(25)} ${rating} │${ansi.reset}
@@ -206,27 +209,27 @@ class TemplateGallery {
     ${highlight}└─────────────────────────────────────────┘${ansi.reset}
     `;
   }
-  
+
   renderPreview(template: Template): string {
     const sections = template.sections
       .map(s => `├─ ${s.name} (${s.stepCount} steps)`)
       .join('\n');
-    
+
     const variables = template.variables
       .filter(v => v.required)
       .map(v => `• ${v.name} - ${v.description}`)
       .join('\n');
-    
+
     return `
     Description:
     ${wrapText(template.description, 50)}
-    
+
     Sections:
     ${sections}
-    
+
     Required Variables:
     ${variables}
-    
+
     Author: ${template.author.name} │ Updated: ${relativeTime(template.stats.lastUpdated)}
     `;
   }
@@ -239,7 +242,7 @@ interface InitWizard {
   template: Template;
   values: Record<string, any>;
   validation: Record<string, boolean>;
-  
+
   canProceed(): boolean {
     return Object.values(this.validation).every(v => v);
   }
@@ -247,6 +250,7 @@ interface InitWizard {
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - MUST handle 100+ templates efficiently
 - MUST validate all variables before initialization
 - DO NOT allow initialization with missing required vars
@@ -259,6 +263,7 @@ interface InitWizard {
 ## Strict Scope
 
 You should ONLY create:
+
 - Template gallery with cards/list view
 - Search and filter interface
 - Template preview panel
@@ -267,6 +272,7 @@ You should ONLY create:
 - Keyboard shortcuts for selection
 
 You should NOT create:
+
 - Template creation/editing
 - Template upload/publishing
 - User authentication
@@ -277,6 +283,7 @@ You should NOT create:
 ## Visual Examples
 
 **Main Template Gallery:**
+
 ```
 ╔════════════════════ Checklist Templates ═══════════════════════╗
 ║ 📚 Browse Templates         Search: [          ] 🔍           ║
@@ -307,6 +314,7 @@ You should NOT create:
 ```
 
 **Template Detail Preview:**
+
 ```
 ╔═══════════════ Template: Node.js API Setup ════════════════╗
 ║ 📦 Production-Ready Node.js API                           ║
@@ -347,6 +355,7 @@ You should NOT create:
 ```
 
 **Initialization Wizard:**
+
 ```
 ╔════════════ Initialize: Node.js API Setup ═════════════╗
 ║ Step 2 of 3: Configure Options                        ║
@@ -387,6 +396,7 @@ You should NOT create:
 ```
 
 **Search Results:**
+
 ```
 ╔═════════════ Search: "docker" - 4 results ═════════════╗
 ║                                                         ║

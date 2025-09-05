@@ -1,6 +1,7 @@
 # Goals and Background Context
 
 ## Goals
+
 • Enable developers to maintain workflow context across multiple concurrent BMAD projects without productivity loss
 • Transform static BMAD checklists into dynamic, interactive workflows with persistent local state management
 • Reduce context switch time from 15-30 minutes to under 2 minutes when resuming work on projects
@@ -18,6 +19,7 @@ The BMAD (Build, Measure, Adjust, Deploy) methodology has emerged as a structure
 Generic task management tools fail to address these needs because they treat checklists as static, linear lists rather than dynamic workflows with conditional branching and command differentiation. The BMAD Checklist Manager solves this by creating a terminal-native tool that stores workflow state alongside code in a `.checklist/` directory, transforming BMAD workflows from static documentation into interactive, stateful checklists that preserve context, prevent errors, and enable seamless project switching. With AI-assisted development becoming mainstream, proper workflow tooling is no longer optional—it's critical infrastructure for maintaining development velocity.
 
 ## Change Log
-| Date | Version | Description | Author |
-|------|---------|-------------|---------|
-| 2025-09-04 | 1.0 | Initial PRD creation | John (PM) |
+
+| Date       | Version | Description          | Author    |
+| ---------- | ------- | -------------------- | --------- |
+| 2025-09-04 | 1.0     | Initial PRD creation | John (PM) |

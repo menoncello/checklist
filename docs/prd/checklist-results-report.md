@@ -1,3 +1,3 @@
 # Checklist Results Report
 
-*[To be completed after checklist execution]*
+_[To be completed after checklist execution]_

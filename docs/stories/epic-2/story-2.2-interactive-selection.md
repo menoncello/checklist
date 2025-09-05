@@ -1,9 +1,11 @@
 # Story 2.2: Interactive Selection System
 
 ## Overview
+
 Build an interactive menu selection system that allows users to navigate and interact with checklist items using keyboard controls, adaptable to either CLI or TUI based on the spike decision.
 
 ## Story Details
+
 - **Epic**: 2 - User Interface & Interaction
 - **Type**: Feature
 - **Priority**: High
@@ -11,9 +13,11 @@ Build an interactive menu selection system that allows users to navigate and int
 - **Dependencies**: [2.1, 1.2-decision]
 
 ## Description
+
 Create a robust selection system that provides intuitive navigation through checklist items, supporting multiple selection modes and keyboard shortcuts. The implementation will adapt based on whether we're using CLI (enquirer-style) or TUI (Ink/Blessed) approach.
 
 ## Acceptance Criteria
+
 - [ ] Navigate checklist items with arrow keys (↑/↓)
 - [ ] Multi-select capability with spacebar
 - [ ] Single-select with enter key
@@ -34,60 +38,65 @@ Create a robust selection system that provides intuitive navigation through chec
 ## Technical Requirements
 
 ### Architecture
+
 ```typescript
 interface SelectionSystem {
-  items: SelectableItem[]
-  currentIndex: number
-  selectedIndices: Set<number>
-  
+  items: SelectableItem[];
+  currentIndex: number;
+  selectedIndices: Set<number>;
+
   // Navigation
-  moveUp(): void
-  moveDown(): void
-  moveToTop(): void
-  moveToBottom(): void
-  
+  moveUp(): void;
+  moveDown(): void;
+  moveToTop(): void;
+  moveToBottom(): void;
+
   // Selection
-  toggleSelection(): void
-  selectAll(): void
-  clearSelection(): void
-  
+  toggleSelection(): void;
+  selectAll(): void;
+  clearSelection(): void;
+
   // Filtering
-  setFilter(query: string): void
-  clearFilter(): void
-  
+  setFilter(query: string): void;
+  clearFilter(): void;
+
   // Rendering
-  render(): string | ReactElement
+  render(): string | ReactElement;
 }
 
 interface SelectableItem {
-  id: string
-  label: string
-  description?: string
-  status: 'pending' | 'active' | 'completed' | 'blocked'
-  selectable: boolean
-  children?: SelectableItem[]
+  id: string;
+  label: string;
+  description?: string;
+  status: 'pending' | 'active' | 'completed' | 'blocked';
+  selectable: boolean;
+  children?: SelectableItem[];
 }
 ```
 
 ### Implementation Approaches
 
 #### CLI Mode (Fallback)
+
 - Use ANSI escape sequences for cursor control
 - Implement custom readline interface
 - Manual screen buffer management
 
 #### TUI Mode (If spike succeeds)
+
 - Use framework's built-in list components
 - Leverage framework's event system
 - Native scrolling and rendering
 
 ### Performance Requirements
+
 - List rendering <50ms for 1000 items
 - Keystroke response <16ms (60fps)
 - Smooth scrolling without flicker
 - Memory usage <10MB for large lists
 
 ## Testing Requirements
+
 - [ ] Unit tests for selection logic
 - [ ] Integration tests for keyboard handling
 - [ ] Visual regression tests for rendering
@@ -96,6 +105,7 @@ interface SelectableItem {
 - [ ] Cross-platform terminal testing
 
 ## Edge Cases to Handle
+
 - Empty list states
 - Single item lists
 - Very long item labels
@@ -104,6 +114,7 @@ interface SelectableItem {
 - Rapid key inputs (debouncing)
 
 ## Definition of Done
+
 - [ ] All navigation methods working smoothly
 - [ ] Selection state properly managed
 - [ ] Visual feedback clear and responsive

@@ -1,9 +1,11 @@
 # Story 3.7: Template Import/Export
 
 ## Overview
+
 Implement template import and export functionality to enable sharing templates between projects and users, with support for versioning and dependency resolution.
 
 ## Story Details
+
 - **Epic**: 3 - Template System & Security
 - **Type**: Feature
 - **Priority**: Medium
@@ -11,9 +13,11 @@ Implement template import and export functionality to enable sharing templates b
 - **Dependencies**: [3.1, 3.4]
 
 ## Description
+
 Create a system for packaging, exporting, and importing templates with their dependencies, supporting both file-based and URL-based imports. This enables template sharing and reuse across projects.
 
 ## Acceptance Criteria
+
 - [ ] Export template to file (single or bundled)
 - [ ] Import template from file
 - [ ] Import template from URL
@@ -28,59 +32,61 @@ Create a system for packaging, exporting, and importing templates with their dep
 ## Technical Requirements
 
 ### Import/Export Architecture
+
 ```typescript
 interface TemplatePortability {
   // Export
-  exportTemplate(templateId: string, options?: ExportOptions): TemplatePackage
-  exportBundle(templateIds: string[], options?: ExportOptions): TemplateBundle
-  
+  exportTemplate(templateId: string, options?: ExportOptions): TemplatePackage;
+  exportBundle(templateIds: string[], options?: ExportOptions): TemplateBundle;
+
   // Import
-  importTemplate(source: string | File | URL, options?: ImportOptions): ImportResult
-  importBundle(source: string | File | URL, options?: ImportOptions): ImportResult
-  
+  importTemplate(source: string | File | URL, options?: ImportOptions): ImportResult;
+  importBundle(source: string | File | URL, options?: ImportOptions): ImportResult;
+
   // Validation
-  validatePackage(package: TemplatePackage): ValidationResult
-  verifySignature(package: TemplatePackage): boolean
-  
+  validatePackage(package: TemplatePackage): ValidationResult;
+  verifySignature(package: TemplatePackage): boolean;
+
   // Dependency Management
-  resolveDependencies(template: Template): Dependency[]
-  checkCompatibility(template: Template): CompatibilityResult
-  
+  resolveDependencies(template: Template): Dependency[];
+  checkCompatibility(template: Template): CompatibilityResult;
+
   // Version Management
-  upgradeTemplate(current: Template, target: Template): UpgradeResult
-  migrateTemplate(template: Template, fromVersion: string): Template
+  upgradeTemplate(current: Template, target: Template): UpgradeResult;
+  migrateTemplate(template: Template, fromVersion: string): Template;
 }
 
 interface TemplatePackage {
   // Metadata
-  format: 'checklist/template'
-  version: '1.0.0'
-  exported: Date
+  format: 'checklist/template';
+  version: '1.0.0';
+  exported: Date;
   exporter: {
-    tool: string
-    version: string
-  }
-  
+    tool: string;
+    version: string;
+  };
+
   // Content
-  template: Template
-  dependencies?: Template[]
-  assets?: Asset[]
-  
+  template: Template;
+  dependencies?: Template[];
+  assets?: Asset[];
+
   // Security
-  checksum: string
-  signature?: string
-  
+  checksum: string;
+  signature?: string;
+
   // Compatibility
   requires: {
-    checklistVersion: string
-    features?: string[]
-  }
+    checklistVersion: string;
+    features?: string[];
+  };
 }
 ```
 
 ### Export Formats
 
 #### Single Template Export
+
 ```yaml
 # sprint-planning.ctpl (Checklist Template Package)
 ---
@@ -97,9 +103,9 @@ metadata:
   version: 2.1.0
   author: BMAD Team
   license: MIT
-  
+
 requires:
-  checklistVersion: ">=1.0.0"
+  checklistVersion: '>=1.0.0'
   features:
     - variables
     - conditionals
@@ -114,8 +120,8 @@ template:
 
 dependencies:
   - id: bmad-common
-    version: "^1.0.0"
-    
+    version: '^1.0.0'
+
 checksum: sha256:abcdef1234567890
 signature: |
   -----BEGIN PGP SIGNATURE-----
@@ -124,6 +130,7 @@ signature: |
 ```
 
 #### Bundle Export (Tar/Zip)
+
 ```
 template-bundle.tgz/
 ├── manifest.yaml
@@ -143,18 +150,19 @@ template-bundle.tgz/
 ### Import Process
 
 #### Import Workflow
+
 ```typescript
 class TemplateImporter {
   async importTemplate(source: string | URL): Promise<ImportResult> {
     // 1. Fetch template
     const package = await this.fetchPackage(source);
-    
+
     // 2. Validate package
     const validation = await this.validatePackage(package);
     if (!validation.valid) {
       return { success: false, errors: validation.errors };
     }
-    
+
     // 3. Check signature (if required)
     if (this.config.requireSignature) {
       const verified = await this.verifySignature(package);
@@ -162,13 +170,13 @@ class TemplateImporter {
         return { success: false, error: 'Invalid signature' };
       }
     }
-    
+
     // 4. Check compatibility
     const compat = this.checkCompatibility(package);
     if (!compat.compatible) {
       return { success: false, error: compat.reason };
     }
-    
+
     // 5. Resolve dependencies
     const deps = await this.resolveDependencies(package);
     if (deps.missing.length > 0) {
@@ -177,7 +185,7 @@ class TemplateImporter {
         return { success: false, error: 'Missing dependencies' };
       }
     }
-    
+
     // 6. Check for conflicts
     const conflicts = this.checkConflicts(package);
     if (conflicts.length > 0) {
@@ -186,7 +194,7 @@ class TemplateImporter {
         return { success: false, error: 'Unresolved conflicts' };
       }
     }
-    
+
     // 7. Install template
     try {
       await this.installTemplate(package);
@@ -200,6 +208,7 @@ class TemplateImporter {
 ```
 
 #### Conflict Resolution
+
 ```typescript
 interface ConflictResolution {
   type: 'version' | 'name' | 'dependency'
@@ -224,6 +233,7 @@ How would you like to proceed?
 ```
 
 ### URL Import
+
 ```typescript
 // Import from URL
 checklist template import https://templates.bmad.dev/sprint-planning
@@ -245,17 +255,18 @@ checklist template import https://example.com/template.yaml \
 ```
 
 ### Template Registry Integration
+
 ```yaml
 # .checklist/registry.yaml
 registries:
   - name: bmad-official
     url: https://templates.bmad.dev
     trusted: true
-    
+
   - name: company
     url: https://templates.company.com
     apiKey: ${TEMPLATE_API_KEY}
-    
+
   - name: community
     url: https://community.bmad.dev/templates
     requireSignature: true
@@ -265,7 +276,7 @@ installed:
     version: 2.1.0
     source: bmad-official
     installed: 2024-01-04
-    
+
   - id: custom-workflow
     version: 1.0.0
     source: local
@@ -273,6 +284,7 @@ installed:
 ```
 
 ## Testing Requirements
+
 - [ ] Export single template tests
 - [ ] Export bundle tests
 - [ ] Import from file tests
@@ -284,6 +296,7 @@ installed:
 - [ ] Rollback functionality tests
 
 ## Security Requirements
+
 - Validate all imported templates
 - Sandbox template execution
 - Verify signatures for trusted sources
@@ -292,6 +305,7 @@ installed:
 - Validate URLs before fetching
 
 ## Definition of Done
+
 - [ ] Export functionality implemented
 - [ ] Import from file working
 - [ ] Import from URL functional

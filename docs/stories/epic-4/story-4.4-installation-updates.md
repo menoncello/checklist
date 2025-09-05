@@ -1,9 +1,11 @@
 # Story 4.4: Installation & Updates
 
 ## Overview
+
 Create seamless installation experience and auto-update functionality for keeping the application current.
 
 ## Story Details
+
 - **Epic**: 4 - Production Readiness
 - **Type**: Feature
 - **Priority**: Medium
@@ -12,9 +14,11 @@ Create seamless installation experience and auto-update functionality for keepin
 - **Note**: POST-MVP
 
 ## Description
+
 Implement one-line installation scripts, auto-update checking, version migration support, and rollback capability.
 
 ## Acceptance Criteria
+
 - [ ] One-line installation script for all platforms
 - [ ] Auto-update checking on startup
 - [ ] Version comparison and notification
@@ -29,6 +33,7 @@ Implement one-line installation scripts, auto-update checking, version migration
 ## Technical Requirements
 
 ### Installation Script
+
 ```bash
 #!/bin/sh
 # install.sh - One-line installer
@@ -67,41 +72,41 @@ checklist --version
 ```
 
 ### Auto-Update System
+
 ```typescript
 class AutoUpdater {
   async checkForUpdates(): Promise<UpdateInfo | null> {
     const current = getCurrentVersion();
     const latest = await fetchLatestVersion();
-    
+
     if (semver.gt(latest.version, current)) {
       return {
         current,
         latest: latest.version,
         changelog: latest.changelog,
-        downloadUrl: latest.downloadUrl
+        downloadUrl: latest.downloadUrl,
       };
     }
-    
+
     return null;
   }
-  
+
   async performUpdate(update: UpdateInfo): Promise<void> {
     // Backup current version
     await this.backup();
-    
+
     try {
       // Download new version
       const binary = await this.download(update.downloadUrl);
-      
+
       // Verify checksum
       await this.verify(binary, update.checksum);
-      
+
       // Replace binary
       await this.replace(binary);
-      
+
       // Migrate configuration
       await this.migrate(update.current, update.latest);
-      
     } catch (error) {
       await this.rollback();
       throw error;
@@ -111,6 +116,7 @@ class AutoUpdater {
 ```
 
 ### Version Migration
+
 ```typescript
 // migrations/1.0.0-to-2.0.0.ts
 export async function migrate(config: V1Config): Promise<V2Config> {
@@ -121,13 +127,14 @@ export async function migrate(config: V1Config): Promise<V2Config> {
     templates: config.workflows, // Renamed field
     settings: {
       ...config.preferences, // Moved settings
-      new_feature: true // New default
-    }
+      new_feature: true, // New default
+    },
   };
 }
 ```
 
 ## Testing Requirements
+
 - [ ] Installation script testing on all platforms
 - [ ] Update mechanism testing
 - [ ] Migration testing between versions
@@ -135,6 +142,7 @@ export async function migrate(config: V1Config): Promise<V2Config> {
 - [ ] Offline scenario testing
 
 ## Definition of Done
+
 - [ ] One-line installer working
 - [ ] Auto-update checking functional
 - [ ] Version migrations tested

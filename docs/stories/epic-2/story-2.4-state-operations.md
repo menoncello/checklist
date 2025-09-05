@@ -1,9 +1,11 @@
 # Story 2.4: State Operations Interface
 
 ## Overview
+
 Create the user interface for state management operations, allowing users to save, load, manipulate, and inspect checklist state through intuitive commands and visualizations.
 
 ## Story Details
+
 - **Epic**: 2 - User Interface & Interaction
 - **Type**: Feature
 - **Priority**: High
@@ -11,9 +13,11 @@ Create the user interface for state management operations, allowing users to sav
 - **Dependencies**: [2.1, 1.4]
 
 ## Description
+
 Implement comprehensive UI for all state management operations including saving/loading named states, viewing state history, performing undo/redo operations, and exporting state for sharing or backup purposes.
 
 ## Acceptance Criteria
+
 - [ ] Save current state with custom names
 - [ ] Load previously saved states
 - [ ] List all available saved states with metadata
@@ -29,48 +33,50 @@ Implement comprehensive UI for all state management operations including saving/
 ## Technical Requirements
 
 ### State Operations Interface
+
 ```typescript
 interface StateOperationsUI {
   // Basic Operations
-  saveState(name?: string): Promise<void>
-  loadState(name: string): Promise<void>
-  listStates(): StateInfo[]
-  deleteState(name: string): Promise<void>
-  
+  saveState(name?: string): Promise<void>;
+  loadState(name: string): Promise<void>;
+  listStates(): StateInfo[];
+  deleteState(name: string): Promise<void>;
+
   // History Operations
-  undo(): void
-  redo(): void
-  getHistory(): HistoryEntry[]
-  jumpToHistoryPoint(index: number): void
-  
+  undo(): void;
+  redo(): void;
+  getHistory(): HistoryEntry[];
+  jumpToHistoryPoint(index: number): void;
+
   // Import/Export
-  exportState(format: 'yaml' | 'json'): string
-  importState(data: string, format: 'yaml' | 'json'): Promise<void>
-  
+  exportState(format: 'yaml' | 'json'): string;
+  importState(data: string, format: 'yaml' | 'json'): Promise<void>;
+
   // Advanced
-  diffStates(state1: string, state2: string): StateDiff
-  mergeStates(states: string[]): State
-  createBranch(baseName: string, branchName: string): void
+  diffStates(state1: string, state2: string): StateDiff;
+  mergeStates(states: string[]): State;
+  createBranch(baseName: string, branchName: string): void;
 }
 
 interface StateInfo {
-  name: string
-  created: Date
-  modified: Date
-  size: number
-  checksum: string
+  name: string;
+  created: Date;
+  modified: Date;
+  size: number;
+  checksum: string;
   metadata: {
-    totalItems: number
-    completedItems: number
-    templateName: string
-    templateVersion: string
-  }
+    totalItems: number;
+    completedItems: number;
+    templateName: string;
+    templateVersion: string;
+  };
 }
 ```
 
 ### UI Components
 
 #### State Management Screen
+
 ```
 ┌─────────────────────────────────────┐
 │ State Management                    │
@@ -89,6 +95,7 @@ interface StateInfo {
 ```
 
 #### State Diff View
+
 ```
 State Diff: sprint-1 → sprint-2
 ─────────────────────────────────
@@ -101,6 +108,7 @@ Summary: 3 completed, 2 modified, 1 added
 ```
 
 #### History Browser
+
 ```
 History (newest first):
 ─────────────────────────
@@ -115,6 +123,7 @@ Press number to jump to state, [u]ndo, [r]edo
 ```
 
 ### Auto-save Configuration
+
 ```yaml
 autosave:
   enabled: true
@@ -125,6 +134,7 @@ autosave:
 ```
 
 ## Implementation Notes
+
 - Use YAML as primary format (human-readable)
 - Implement state compression for large files
 - Use checksums to detect changes
@@ -133,6 +143,7 @@ autosave:
 - Implement file locking for concurrent access
 
 ## Testing Requirements
+
 - [ ] Unit tests for all state operations
 - [ ] Integration tests for file I/O
 - [ ] Concurrency tests for simultaneous access
@@ -141,12 +152,14 @@ autosave:
 - [ ] Import/export format validation
 
 ## Error Handling
+
 - Graceful handling of corrupted state files
 - Clear messages for version mismatches
 - Automatic backup before risky operations
 - Recovery suggestions for common issues
 
 ## Definition of Done
+
 - [ ] All state operations implemented
 - [ ] UI components working smoothly
 - [ ] Auto-save functioning reliably

@@ -1,9 +1,11 @@
 # Story 2.3: Progress Visualization
 
 ## Overview
+
 Create comprehensive progress visualization system that displays checklist completion status, current location in workflow, and provides clear visual feedback on task states.
 
 ## Story Details
+
 - **Epic**: 2 - User Interface & Interaction
 - **Type**: Feature
 - **Priority**: High
@@ -11,9 +13,11 @@ Create comprehensive progress visualization system that displays checklist compl
 - **Dependencies**: [2.2, 1.4]
 
 ## Description
+
 Implement visual progress indicators that help users understand their position in the workflow, what's been completed, what's active, and what remains. The visualization should be terminal-responsive and work across different display modes.
 
 ## Acceptance Criteria
+
 - [ ] Show overall completion percentage (e.g., "45% Complete")
 - [ ] Display progress bar with visual representation
 - [ ] Show current location in workflow hierarchy
@@ -32,27 +36,29 @@ Implement visual progress indicators that help users understand their position i
 ## Technical Requirements
 
 ### Visual Components
+
 ```typescript
 interface ProgressVisualization {
   // Overall progress
-  totalItems: number
-  completedItems: number
-  activeItems: number
-  blockedItems: number
-  
+  totalItems: number;
+  completedItems: number;
+  activeItems: number;
+  blockedItems: number;
+
   // Current context
-  currentPath: string[] // ["Epic 1", "Story 1.2", "Task 3"]
-  currentItem: ChecklistItem
-  
+  currentPath: string[]; // ["Epic 1", "Story 1.2", "Task 3"]
+  currentItem: ChecklistItem;
+
   // Display modes
-  mode: 'compact' | 'detailed' | 'minimal'
-  
+  mode: 'compact' | 'detailed' | 'minimal';
+
   // Rendering
-  render(width: number): string
+  render(width: number): string;
 }
 ```
 
 ### Progress Bar Styles
+
 ```
 Compact Mode (< 80 cols):
 [████████░░░░░░░] 45% (5/12)
@@ -67,6 +73,7 @@ Minimal Mode (< 60 cols):
 ```
 
 ### Status Indicators
+
 ```
 ✓ Completed task
 ◉ Active task
@@ -77,6 +84,7 @@ Minimal Mode (< 60 cols):
 ```
 
 ### Implementation Notes
+
 - Use Unicode box-drawing characters with ASCII fallback
 - Implement responsive breakpoints (60, 80, 120 columns)
 - Cache rendered output to avoid recalculation
@@ -84,6 +92,7 @@ Minimal Mode (< 60 cols):
 - Provide plain text alternative for CI environments
 
 ## Testing Requirements
+
 - [ ] Unit tests for progress calculations
 - [ ] Visual tests for different terminal widths
 - [ ] Test color and no-color modes
@@ -92,12 +101,14 @@ Minimal Mode (< 60 cols):
 - [ ] Performance tests with large checklists
 
 ## Accessibility Considerations
+
 - Screen reader friendly output in minimal mode
 - High contrast color choices
 - Option for symbols instead of colors only
 - Clear textual descriptions alongside visual elements
 
 ## Definition of Done
+
 - [ ] All visualization modes implemented
 - [ ] Responsive to terminal width
 - [ ] Color coding working with fallbacks

@@ -1,23 +1,27 @@
 # Story 4.7: Command Safety System
 
 ## Story
+
 **As a** user executing commands from checklists,  
 **I want** clear differentiation between command types and safety validation,  
 **so that** I don't accidentally execute dangerous or incorrect commands.
 
 ## Priority
+
 **HIGH** - Critical for user safety and trust
 
 ## Acceptance Criteria
 
 ### Command Differentiation
+
 1. ✅ Claude commands clearly marked with `[Claude]` prefix
-2. ✅ Bash commands marked with `[$]` prefix  
+2. ✅ Bash commands marked with `[$]` prefix
 3. ✅ Visual distinction through colors/icons
 4. ✅ Copy mechanism prevents wrong destination
 5. ✅ Warning for ambiguous commands
 
 ### Safety Validation
+
 1. ✅ Dangerous commands require confirmation
 2. ✅ Destructive operations highlighted
 3. ✅ Dry-run mode for testing
@@ -25,6 +29,7 @@
 5. ✅ Rollback information provided
 
 ### Command Categories
+
 1. ✅ Safe commands execute immediately
 2. ✅ Caution commands show warning
 3. ✅ Dangerous commands require confirmation
@@ -32,6 +37,7 @@
 5. ✅ Custom safety rules configurable
 
 ### Clipboard Integration
+
 1. ✅ Smart clipboard routing based on command type
 2. ✅ Fallback for unsupported clipboard access
 3. ✅ Visual confirmation of copy success
@@ -41,16 +47,17 @@
 ## Technical Implementation
 
 ### Command Safety Classifier
+
 ```typescript
 export class CommandSafetyValidator {
   private dangerousPatterns = [
     /rm\s+-rf/,
     /dd\s+if=/,
     /format\s+/,
-    /:(){ :|:& };:/,  // Fork bomb
+    /:(){ :|:& };:/, // Fork bomb
     /> \/dev\/sda/,
     /chmod\s+777\s+\//,
-    /chown\s+-R/
+    /chown\s+-R/,
   ];
 
   private cautionPatterns = [
@@ -60,7 +67,7 @@ export class CommandSafetyValidator {
     /cp\s+-r/,
     /git\s+push\s+--force/,
     /npm\s+publish/,
-    /docker\s+rm/
+    /docker\s+rm/,
   ];
 
   /**
@@ -73,12 +80,12 @@ export class CommandSafetyValidator {
     }
 
     // Check for dangerous patterns
-    if (this.dangerousPatterns.some(p => p.test(command))) {
+    if (this.dangerousPatterns.some((p) => p.test(command))) {
       return SafetyLevel.DANGEROUS;
     }
 
     // Check for caution patterns
-    if (this.cautionPatterns.some(p => p.test(command))) {
+    if (this.cautionPatterns.some((p) => p.test(command))) {
       return SafetyLevel.CAUTION;
     }
 
@@ -90,13 +97,13 @@ export class CommandSafetyValidator {
    */
   async validateCommand(command: string): Promise<ValidationResult> {
     const level = this.classifyCommand(command);
-    
+
     return {
       level,
       safe: level === SafetyLevel.SAFE,
       requiresConfirmation: level >= SafetyLevel.CAUTION,
       message: this.getSafetyMessage(level, command),
-      suggestions: this.getSafetySuggestions(command)
+      suggestions: this.getSafetySuggestions(command),
     };
   }
 
@@ -119,6 +126,7 @@ export class CommandSafetyValidator {
 ```
 
 ### Command Type Detection
+
 ```typescript
 export class CommandTypeDetector {
   /**
@@ -145,30 +153,31 @@ export class CommandTypeDetector {
 
   private isClaudeCommand(command: string): boolean {
     const claudePatterns = [
-      /^\/[a-z]+/,           // Slash commands
-      /@Claude/i,            // Direct mentions
-      /\[Claude\]/,          // Explicit markup
-      /^(explain|analyze|review|generate)/i
+      /^\/[a-z]+/, // Slash commands
+      /@Claude/i, // Direct mentions
+      /\[Claude\]/, // Explicit markup
+      /^(explain|analyze|review|generate)/i,
     ];
 
-    return claudePatterns.some(p => p.test(command));
+    return claudePatterns.some((p) => p.test(command));
   }
 
   private isShellCommand(command: string): boolean {
     const shellPatterns = [
-      /^\$/,                 // Shell prompt
-      /^[a-z]+\s+/,         // Unix commands
-      /\|/,                 // Pipes
-      /&&|\|\|/,            // Shell operators
-      />|<|>>/              // Redirections
+      /^\$/, // Shell prompt
+      /^[a-z]+\s+/, // Unix commands
+      /\|/, // Pipes
+      /&&|\|\|/, // Shell operators
+      />|<|>>/, // Redirections
     ];
 
-    return shellPatterns.some(p => p.test(command));
+    return shellPatterns.some((p) => p.test(command));
   }
 }
 ```
 
 ### Interactive Safety Prompt
+
 ```typescript
 export class SafetyPrompt {
   /**
@@ -176,19 +185,19 @@ export class SafetyPrompt {
    */
   async confirmExecution(command: string, level: SafetyLevel): Promise<boolean> {
     const ui = new ConfirmationUI();
-    
+
     ui.showWarning(level);
     ui.showCommand(command);
     ui.showConsequences(this.analyzeConsequences(command));
-    
+
     const response = await ui.prompt({
       message: 'Do you want to proceed?',
       choices: [
         { key: 'y', label: 'Yes, execute', value: true },
         { key: 'n', label: 'No, cancel', value: false },
-        { key: 'd', label: 'Dry run first', value: 'dry-run' }
+        { key: 'd', label: 'Dry run first', value: 'dry-run' },
       ],
-      default: 'n'
+      default: 'n',
     });
 
     if (response === 'dry-run') {
@@ -206,7 +215,7 @@ export class SafetyPrompt {
     console.log(chalk.blue('🧪 Dry Run Mode'));
     console.log(chalk.gray('The following would be executed:'));
     console.log(chalk.white(command));
-    
+
     // Simulate execution
     const simulation = await this.simulateCommand(command);
     console.log(chalk.gray('\nExpected changes:'));
@@ -216,6 +225,7 @@ export class SafetyPrompt {
 ```
 
 ### Clipboard Router
+
 ```typescript
 export class ClipboardRouter {
   /**
@@ -223,7 +233,7 @@ export class ClipboardRouter {
    */
   async copyCommand(command: string, type: CommandType): Promise<void> {
     const processedCommand = this.processCommand(command, type);
-    
+
     try {
       await this.copyToClipboard(processedCommand);
       this.showSuccessFeedback(type);
@@ -279,13 +289,16 @@ export class ClipboardRouter {
 - [ ] Documentation includes safety guidelines
 
 ## Time Estimate
+
 **12-16 hours** for complete safety system
 
 ## Dependencies
+
 - Stories 1-3.x complete (core functionality)
 - Integrates with Story 4.6 (telemetry for safety events)
 
 ## Notes
+
 - Balance safety with usability
 - Allow power users to customize rules
 - Consider adding learning mode

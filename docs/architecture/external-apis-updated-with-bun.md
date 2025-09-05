@@ -9,6 +9,7 @@
 - **Rate Limits:** Bun's internal optimizations handle this
 
 **Key Commands Used:**
+
 - `bunx @bmad/checklist` - Run without installation
 - `bun add -g @bmad/checklist` - Global installation
 - `bun pm cache` - Manage package cache
@@ -23,6 +24,7 @@
 - **Rate Limits:** None
 
 **Key APIs Used:**
+
 - `Bun.env` - Environment variables (faster than process.env)
 - `Bun.version` - Bun version detection
 - `Bun.which()` - Detect available commands
@@ -38,6 +40,7 @@
 - **Rate Limits:** OS-dependent throttling
 
 **Key Endpoints Used:**
+
 - `osascript -e 'display notification'` (macOS) - Native notifications
 - `notify-send` (Linux) - Desktop notifications
 - `powershell -Command "New-BurntToastNotification"` (Windows) - Toast notifications

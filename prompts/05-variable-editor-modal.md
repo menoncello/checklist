@@ -1,6 +1,7 @@
 # AI UI Prompt: Variable Editor Modal
 
 ## High-Level Goal
+
 Create an interactive modal dialog for editing checklist variables with type validation, real-time preview of affected commands, and support for different variable types (string, number, boolean, array, object). The modal should feel like a native terminal form with keyboard-driven interaction and immediate feedback.
 
 ## Detailed Step-by-Step Instructions
@@ -34,7 +35,7 @@ Create an interactive modal dialog for editing checklist variables with type val
    - Use arrow keys to navigate, Enter to edit
 
 3. **Implement type-specific editors:**
-   - **String editor**: 
+   - **String editor**:
      - Single-line text input with cursor
      - Support backspace, delete, arrow keys
      - Show character count and max length
@@ -146,8 +147,8 @@ interface Variable {
       label: string;
       description?: string;
     }>;
-    itemType?: string;  // for arrays
-    properties?: Record<string, Variable>;  // for objects
+    itemType?: string; // for arrays
+    properties?: Record<string, Variable>; // for objects
   };
   validation?: (value: any) => { valid: boolean; error?: string };
 }
@@ -180,22 +181,26 @@ class FieldEditor {
     └─────────────────────────────────────────┘
     `;
   }
-  
+
   renderSelect(variable: Variable, value: any): string {
     const options = variable.constraints?.options || [];
-    const selected = options.findIndex(o => o.value === value);
-    
-    return options.map((opt, i) => {
-      const prefix = i === selected ? '▶' : ' ';
-      const check = i === selected ? '●' : '○';
-      return `${prefix} ${check} ${opt.label}`;
-    }).join('\n');
+    const selected = options.findIndex((o) => o.value === value);
+
+    return options
+      .map((opt, i) => {
+        const prefix = i === selected ? '▶' : ' ';
+        const check = i === selected ? '●' : '○';
+        return `${prefix} ${check} ${opt.label}`;
+      })
+      .join('\n');
   }
-  
+
   renderArray(variable: Variable, value: any[]): string {
-    return value.map((item, i) => {
-      return `  ${i + 1}. ${JSON.stringify(item)}`;
-    }).join('\n');
+    return value
+      .map((item, i) => {
+        return `  ${i + 1}. ${JSON.stringify(item)}`;
+      })
+      .join('\n');
   }
 }
 
@@ -209,20 +214,21 @@ const validators = {
       return { valid: false, error: 'Invalid URL format' };
     }
   },
-  
+
   email: (value: string) => {
     const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
     return { valid, error: valid ? undefined : 'Invalid email format' };
   },
-  
+
   port: (value: number) => {
     const valid = value >= 1 && value <= 65535;
     return { valid, error: valid ? undefined : 'Port must be 1-65535' };
-  }
+  },
 };
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - MUST validate all input before allowing save
 - MUST show real-time preview of changes
 - DO NOT allow invalid data to be saved
@@ -235,6 +241,7 @@ const validators = {
 ## Strict Scope
 
 You should ONLY create:
+
 - Modal overlay with variable list
 - Type-specific input editors
 - Validation and constraint system
@@ -243,6 +250,7 @@ You should ONLY create:
 - Save/cancel functionality
 
 You should NOT create:
+
 - Actual variable persistence
 - Command execution
 - File system operations
@@ -253,6 +261,7 @@ You should NOT create:
 ## Visual Examples
 
 **Main Variable List Modal:**
+
 ```
 ╔════════════════════ Variable Editor ═══════════════════════╗
 ║ Search: [                    ] 🔍  [a] Add  [?] Help      ║
@@ -276,6 +285,7 @@ You should NOT create:
 ```
 
 **String Variable Editor:**
+
 ```
 ╔═══════════ Editing: PROJECT_NAME ══════════╗
 ║ Type: String (Required)                    ║
@@ -303,6 +313,7 @@ You should NOT create:
 ```
 
 **Array Variable Editor:**
+
 ```
 ╔════════ Editing: API_ENDPOINTS ═══════╗
 ║ Type: Array of URLs                   ║
@@ -331,6 +342,7 @@ You should NOT create:
 ```
 
 **Validation Error Display:**
+
 ```
 ╔═══════════ Editing: PORT ══════════════╗
 ║ Type: Number (Required)                ║

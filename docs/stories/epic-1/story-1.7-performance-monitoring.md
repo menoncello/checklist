@@ -1,16 +1,19 @@
 # Story 1.7: Performance Monitoring Framework
 
 ## Story
+
 **As a** development team,  
 **I want** performance monitoring built into the application from the start,  
 **so that** we can ensure all operations meet the <100ms requirement throughout development.
 
 ## Priority
+
 **HIGH** - Essential for maintaining performance goals
 
 ## Acceptance Criteria
 
 ### Performance Infrastructure
+
 1. ✅ Performance measurement utilities created
 2. ✅ Benchmark suite established
 3. ✅ Performance budgets defined and enforced
@@ -18,6 +21,7 @@
 5. ✅ Performance regression detection
 
 ### Monitoring Points
+
 1. ✅ Command execution time tracked
 2. ✅ File I/O operations measured
 3. ✅ TUI rendering performance monitored
@@ -25,6 +29,7 @@
 5. ✅ Startup time measured
 
 ### Performance Targets
+
 1. ✅ All commands complete in <100ms
 2. ✅ Startup time <500ms
 3. ✅ Memory usage <50MB
@@ -32,22 +37,24 @@
 5. ✅ File operations <50ms
 
 ### Explicit Performance Benchmarks
-| Operation | Target | P95 Target | Critical |
-|-----------|--------|------------|----------|
-| Command Execution | <100ms | <150ms | Yes |
-| Application Startup | <500ms | <750ms | Yes |
-| Template Parsing (1000 lines) | <100ms | <200ms | Yes |
-| State Save | <50ms | <75ms | Yes |
-| State Load | <30ms | <50ms | Yes |
-| TUI Frame Render | <16.67ms | <20ms | Yes |
-| Checklist Navigation | <10ms | <15ms | No |
-| Search (10000 items) | <50ms | <100ms | No |
-| Template Validation | <100ms | <150ms | No |
-| File System Operations | <50ms | <75ms | Yes |
-| Memory Baseline | <30MB | <40MB | Yes |
-| Memory Peak (10 checklists) | <50MB | <75MB | Yes |
+
+| Operation                     | Target   | P95 Target | Critical |
+| ----------------------------- | -------- | ---------- | -------- |
+| Command Execution             | <100ms   | <150ms     | Yes      |
+| Application Startup           | <500ms   | <750ms     | Yes      |
+| Template Parsing (1000 lines) | <100ms   | <200ms     | Yes      |
+| State Save                    | <50ms    | <75ms      | Yes      |
+| State Load                    | <30ms    | <50ms      | Yes      |
+| TUI Frame Render              | <16.67ms | <20ms      | Yes      |
+| Checklist Navigation          | <10ms    | <15ms      | No       |
+| Search (10000 items)          | <50ms    | <100ms     | No       |
+| Template Validation           | <100ms   | <150ms     | No       |
+| File System Operations        | <50ms    | <75ms      | Yes      |
+| Memory Baseline               | <30MB    | <40MB      | Yes      |
+| Memory Peak (10 checklists)   | <50MB    | <75MB      | Yes      |
 
 ### Reporting & Alerts
+
 1. ✅ Performance dashboard in development mode
 2. ✅ Performance reports in CI/CD
 3. ✅ Regression alerts on PR
@@ -57,6 +64,7 @@
 ## Technical Implementation
 
 ### Performance Monitoring Class
+
 ```typescript
 export class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric> = new Map();
@@ -67,11 +75,11 @@ export class PerformanceMonitor {
    */
   startTimer(operation: string): () => void {
     const start = performance.now();
-    
+
     return () => {
       const duration = performance.now() - start;
       this.recordMetric(operation, duration);
-      
+
       const budget = this.budgets.get(operation);
       if (budget && duration > budget) {
         this.handleBudgetExceeded(operation, duration, budget);
@@ -88,7 +96,7 @@ export class PerformanceMonitor {
       total: 0,
       min: Infinity,
       max: -Infinity,
-      average: 0
+      average: 0,
     };
 
     metric.count++;
@@ -112,7 +120,7 @@ export class PerformanceMonitor {
    */
   generateReport(): PerformanceReport {
     const violations: BudgetViolation[] = [];
-    
+
     for (const [operation, metric] of this.metrics) {
       const budget = this.budgets.get(operation);
       if (budget && metric.max > budget) {
@@ -120,7 +128,7 @@ export class PerformanceMonitor {
           operation,
           budget,
           actual: metric.max,
-          exceedance: ((metric.max - budget) / budget) * 100
+          exceedance: ((metric.max - budget) / budget) * 100,
         });
       }
     }
@@ -131,25 +139,26 @@ export class PerformanceMonitor {
       summary: {
         totalOperations: this.metrics.size,
         budgetViolations: violations.length,
-        overallHealth: violations.length === 0 ? 'HEALTHY' : 'DEGRADED'
-      }
+        overallHealth: violations.length === 0 ? 'HEALTHY' : 'DEGRADED',
+      },
     };
   }
 }
 ```
 
 ### Performance Decorators
+
 ```typescript
 /**
  * Decorator to automatically measure method performance
  */
 export function Timed(budgetMs?: number) {
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
-    
-    descriptor.value = async function(...args: any[]) {
+
+    descriptor.value = async function (...args: any[]) {
       const timer = performanceMonitor.startTimer(propertyKey);
-      
+
       try {
         const result = await originalMethod.apply(this, args);
         return result;
@@ -157,11 +166,11 @@ export function Timed(budgetMs?: number) {
         timer();
       }
     };
-    
+
     if (budgetMs) {
       performanceMonitor.setBudget(propertyKey, budgetMs);
     }
-    
+
     return descriptor;
   };
 }
@@ -181,35 +190,51 @@ class WorkflowEngine {
 ```
 
 ### Benchmark Suite
+
 ```typescript
 // benchmarks/core.bench.ts
 import { bench, describe } from 'vitest';
 
 describe('Core Operations', () => {
-  bench('workflow initialization', async () => {
-    const engine = new WorkflowEngine();
-    await engine.initialize({ template: 'default' });
-  }, {
-    time: 100 // Must complete in 100ms
-  });
+  bench(
+    'workflow initialization',
+    async () => {
+      const engine = new WorkflowEngine();
+      await engine.initialize({ template: 'default' });
+    },
+    {
+      time: 100, // Must complete in 100ms
+    }
+  );
 
-  bench('state persistence', async () => {
-    const state = new StateManager();
-    await state.save({ /* data */ });
-  }, {
-    time: 50 // Must complete in 50ms
-  });
+  bench(
+    'state persistence',
+    async () => {
+      const state = new StateManager();
+      await state.save({
+        /* data */
+      });
+    },
+    {
+      time: 50, // Must complete in 50ms
+    }
+  );
 
-  bench('template parsing', () => {
-    const parser = new TemplateParser();
-    parser.parse(largeTemplate);
-  }, {
-    time: 100
-  });
+  bench(
+    'template parsing',
+    () => {
+      const parser = new TemplateParser();
+      parser.parse(largeTemplate);
+    },
+    {
+      time: 100,
+    }
+  );
 });
 ```
 
 ### CI/CD Integration
+
 ```yaml
 # .github/workflows/performance.yml
 name: Performance Tests
@@ -222,10 +247,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
       - run: bun install
-      
+
       - name: Run benchmarks
         run: bun run bench
-        
+
       - name: Compare with baseline
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -261,14 +286,17 @@ jobs:
 - [ ] Performance report generated on each build
 
 ## Time Estimate
+
 **8-10 hours** for complete performance framework
 
 ## Dependencies
+
 - Story 1.1 must be complete (project setup)
 - Story 1.2 must be complete (CI/CD for automation)
 - Blocks performance-sensitive stories
 
 ## Notes
+
 - Use native performance.now() for precision
 - Consider flame graphs for bottleneck analysis
 - Monitor both average and P95 latencies

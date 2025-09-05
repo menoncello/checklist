@@ -1,6 +1,7 @@
 # AI UI Prompt: Help Overlay
 
 ## High-Level Goal
+
 Create a context-sensitive help overlay that displays keyboard shortcuts, command descriptions, and usage tips relevant to the current screen. The overlay should feel like a native terminal help screen (similar to vim, less, or htop help) with organized sections and quick navigation.
 
 ## Detailed Step-by-Step Instructions
@@ -118,7 +119,7 @@ interface HelpContent {
         category?: 'navigation' | 'action' | 'command';
       }>;
     }>;
-    content?: string;  // For single-column sections
+    content?: string; // For single-column sections
   }>;
   tips: string[];
   context: {
@@ -165,7 +166,7 @@ const shortcuts = {
     { cmd: ':%s/old/new/g', desc: 'Replace all occurrences' },
     { cmd: ':set', desc: 'Set variable value' },
     { cmd: ':help', desc: 'Show this help' },
-  ]
+  ],
 };
 
 // Help layout calculator
@@ -176,11 +177,11 @@ function calculateHelpLayout(
   const maxWidth = Math.min(termWidth - 4, 100);
   const maxHeight = termHeight - 4;
   const columns = termWidth >= 100 ? 3 : termWidth >= 60 ? 2 : 1;
-  
+
   return {
     columns,
     width: maxWidth,
-    height: maxHeight
+    height: maxHeight,
   };
 }
 
@@ -198,6 +199,7 @@ function detectContext(): HelpContext {
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - MUST be readable in 80x24 minimum terminal
 - MUST organize shortcuts logically by function
 - DO NOT overwhelm with too much information
@@ -210,6 +212,7 @@ function detectContext(): HelpContext {
 ## Strict Scope
 
 You should ONLY create:
+
 - Help overlay with keyboard shortcuts
 - Context-sensitive help content
 - Command reference documentation
@@ -218,6 +221,7 @@ You should ONLY create:
 - Navigation within help
 
 You should NOT create:
+
 - Interactive tutorials
 - External documentation
 - Video/animation content
@@ -228,6 +232,7 @@ You should NOT create:
 ## Visual Examples
 
 **Main Help Overlay:**
+
 ```
 ┌────────────────────── BMad Checklist Help ──────────────────── ? to close ┐
 │                                                                             │
@@ -262,6 +267,7 @@ You should NOT create:
 ```
 
 **Context-Sensitive Help (Edit Mode):**
+
 ```
 ┌──────────────── Variable Editor Help ────────────────┐
 │ Currently editing: PROJECT_NAME (string)             │
@@ -288,6 +294,7 @@ You should NOT create:
 ```
 
 **Command Reference Section:**
+
 ```
 ┌─────────────── Command Reference ────────────────┐
 │ Format: :<command> [options] [arguments]        │
@@ -320,6 +327,7 @@ You should NOT create:
 ```
 
 **Symbol Legend:**
+
 ```
 ┌──────────── Symbol & Status Legend ────────────┐
 │ TASK STATUS          INDICATORS                │

@@ -1,4 +1,5 @@
 # Table of Contents
+
 1. [Introduction](#introduction)
 2. [High Level Architecture](#high-level-architecture)
 3. [Tech Stack](#tech-stack)

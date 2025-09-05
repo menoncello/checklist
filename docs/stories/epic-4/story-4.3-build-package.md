@@ -1,9 +1,11 @@
 # Story 4.3: Build & Package System
 
 ## Overview
+
 Create multi-platform build pipeline for single binary compilation and distribution through multiple package managers.
 
 ## Story Details
+
 - **Epic**: 4 - Production Readiness
 - **Type**: Infrastructure
 - **Priority**: Critical
@@ -11,9 +13,11 @@ Create multi-platform build pipeline for single binary compilation and distribut
 - **Dependencies**: [1.1, 4.1]
 
 ## Description
+
 Implement build system using Bun's compilation features to create standalone binaries for Mac, Linux, and Windows, with packaging for npm, Homebrew, and direct downloads.
 
 ## Acceptance Criteria
+
 - [ ] Single binary compilation with Bun
 - [ ] Multi-platform builds (Mac/Linux/Windows)
 - [ ] npm package publication ready
@@ -28,6 +32,7 @@ Implement build system using Bun's compilation features to create standalone bin
 ## Technical Requirements
 
 ### Build Configuration
+
 ```typescript
 // build.config.ts
 export const buildConfig = {
@@ -35,30 +40,31 @@ export const buildConfig = {
     {
       platform: 'darwin',
       arch: ['x64', 'arm64'],
-      output: 'checklist-macos'
+      output: 'checklist-macos',
     },
     {
       platform: 'linux',
       arch: ['x64', 'arm64'],
-      output: 'checklist-linux'
+      output: 'checklist-linux',
     },
     {
       platform: 'windows',
       arch: ['x64'],
-      output: 'checklist-windows.exe'
-    }
+      output: 'checklist-windows.exe',
+    },
   ],
-  
+
   compilation: {
     minify: true,
     sourcemap: false,
     target: 'bun',
-    entrypoint: 'src/cli.ts'
-  }
+    entrypoint: 'src/cli.ts',
+  },
 };
 ```
 
 ### Build Script
+
 ```bash
 #!/bin/bash
 # build.sh
@@ -83,6 +89,7 @@ shasum -a 256 dist/* > dist/checksums.txt
 ```
 
 ### GitHub Actions Workflow
+
 ```yaml
 name: Build and Release
 
@@ -96,26 +103,26 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-    
+
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - uses: actions/checkout@v3
       - uses: oven-sh/setup-bun@v1
-      
+
       - name: Build binary
         run: bun run build
-        
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: binaries-${{ matrix.os }}
           path: dist/*
-  
+
   release:
     needs: build
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -127,6 +134,7 @@ jobs:
 ### Package Distribution
 
 #### NPM Package
+
 ```json
 {
   "name": "@bmad/checklist",
@@ -134,19 +142,18 @@ jobs:
   "bin": {
     "checklist": "./dist/cli.js"
   },
-  "files": [
-    "dist/"
-  ]
+  "files": ["dist/"]
 }
 ```
 
 #### Homebrew Formula
+
 ```ruby
 class Checklist < Formula
   desc "Terminal-based checklist manager for BMAD workflows"
   homepage "https://github.com/bmad/checklist"
   version "1.0.0"
-  
+
   if OS.mac? && Hardware::CPU.arm?
     url "https://github.com/bmad/checklist/releases/download/v1.0.0/checklist-macos-arm64"
     sha256 "..."
@@ -157,7 +164,7 @@ class Checklist < Formula
     url "https://github.com/bmad/checklist/releases/download/v1.0.0/checklist-linux-x64"
     sha256 "..."
   end
-  
+
   def install
     bin.install "checklist"
   end
@@ -165,6 +172,7 @@ end
 ```
 
 ## Testing Requirements
+
 - [ ] Build process tested on all platforms
 - [ ] Binary execution verified
 - [ ] Package installation tested
@@ -172,6 +180,7 @@ end
 - [ ] Distribution channels tested
 
 ## Definition of Done
+
 - [ ] Multi-platform builds working
 - [ ] Binaries under 20MB
 - [ ] npm package ready

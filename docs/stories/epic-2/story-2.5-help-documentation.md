@@ -1,9 +1,11 @@
 # Story 2.5: Help & Documentation System
 
 ## Overview
+
 Implement a comprehensive help and documentation system that provides context-sensitive assistance, interactive tutorials, and quick reference guides directly within the application.
 
 ## Story Details
+
 - **Epic**: 2 - User Interface & Interaction
 - **Type**: Feature
 - **Priority**: Medium
@@ -11,9 +13,11 @@ Implement a comprehensive help and documentation system that provides context-se
 - **Dependencies**: [2.1]
 
 ## Description
+
 Create an integrated help system that makes it easy for users to learn and use the application effectively. This includes command-specific help, interactive tutorials for new users, man page generation for system integration, and contextual tips during usage.
 
 ## Acceptance Criteria
+
 - [ ] Command-specific help text (`checklist help [command]`)
 - [ ] Interactive tutorial mode for first-time users
 - [ ] Man page generation for Unix/Linux systems
@@ -28,42 +32,44 @@ Create an integrated help system that makes it easy for users to learn and use t
 ## Technical Requirements
 
 ### Help System Architecture
+
 ```typescript
 interface HelpSystem {
   // Help Content
-  getCommandHelp(command: string): HelpContent
-  getTopicHelp(topic: string): HelpContent
-  searchHelp(query: string): HelpContent[]
-  
+  getCommandHelp(command: string): HelpContent;
+  getTopicHelp(topic: string): HelpContent;
+  searchHelp(query: string): HelpContent[];
+
   // Interactive Elements
-  startTutorial(): Tutorial
-  showTip(context: string): Tip
-  showKeybindings(): KeybindingReference
-  
+  startTutorial(): Tutorial;
+  showTip(context: string): Tip;
+  showKeybindings(): KeybindingReference;
+
   // Documentation Generation
-  generateManPage(): string
-  generateMarkdown(): string
-  generateHTML(): string
-  
+  generateManPage(): string;
+  generateMarkdown(): string;
+  generateHTML(): string;
+
   // Context Awareness
-  getContextualHelp(screen: string, element?: string): HelpContent
-  getSuggestions(errorCode: string): Suggestion[]
+  getContextualHelp(screen: string, element?: string): HelpContent;
+  getSuggestions(errorCode: string): Suggestion[];
 }
 
 interface HelpContent {
-  title: string
-  summary: string
-  description: string
-  usage?: string
-  examples?: Example[]
-  related?: string[]
-  keybindings?: KeyBinding[]
+  title: string;
+  summary: string;
+  description: string;
+  usage?: string;
+  examples?: Example[];
+  related?: string[];
+  keybindings?: KeyBinding[];
 }
 ```
 
 ### Help Screens
 
 #### Main Help Screen
+
 ```
 CHECKLIST HELP                                     Press / to search
 
@@ -72,22 +78,23 @@ COMMANDS
   run [checklist]    Run a checklist workflow
   status            Show current progress
   list              List available templates
-  
+
 NAVIGATION
   ↑/↓ or j/k       Navigate items
   Enter            Select item
   Space            Toggle selection
   Esc              Go back
-  
+
 QUICK TIPS
   • Use 'checklist init' to start a new project
   • Press '?' anywhere for context help
   • Use '--no-color' for CI/CD pipelines
-  
+
 Press [t] for tutorial, [k] for keybindings, [q] to quit help
 ```
 
 #### Interactive Tutorial
+
 ```
 INTERACTIVE TUTORIAL                           Step 1 of 5
 
@@ -106,6 +113,7 @@ $ checklist init sprint-planning
 ```
 
 #### Context-Sensitive Help
+
 ```typescript
 // Example: User is on template selection screen
 getContextualHelp('template-browser') =>
@@ -123,6 +131,7 @@ getSuggestions('TEMPLATE_NOT_FOUND') =>
 ### Documentation Formats
 
 #### Man Page Format
+
 ```roff
 .TH CHECKLIST 1 "January 2024" "Version 1.0.0"
 .SH NAME
@@ -136,20 +145,25 @@ development workflows using the BMAD methodology...
 ```
 
 #### Markdown Documentation
+
 ```markdown
 # Checklist Manager Documentation
 
 ## Quick Start
+
 1. Install: `npm install -g @bmad/checklist`
 2. Initialize: `checklist init`
 3. Run: `checklist run`
 
 ## Commands Reference
+
 ### init
+
 Initialize a new checklist project...
 ```
 
 ## Implementation Notes
+
 - Store help content in structured YAML/JSON files
 - Support i18n for internationalization
 - Cache rendered help content
@@ -158,6 +172,7 @@ Initialize a new checklist project...
 - Generate man pages during build
 
 ## Testing Requirements
+
 - [ ] Unit tests for help content retrieval
 - [ ] Integration tests for tutorial flow
 - [ ] Search functionality tests
@@ -166,12 +181,14 @@ Initialize a new checklist project...
 - [ ] Error suggestion tests
 
 ## Accessibility
+
 - Screen reader friendly help text
 - Keyboard-only navigation
 - Clear heading hierarchy
 - Alternative text for diagrams
 
 ## Definition of Done
+
 - [ ] All help commands implemented
 - [ ] Tutorial mode complete and tested
 - [ ] Man page generation working

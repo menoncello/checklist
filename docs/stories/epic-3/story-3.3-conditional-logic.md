@@ -1,9 +1,11 @@
 # Story 3.3: Conditional Logic Engine
 
 ## Overview
+
 Build a conditional logic engine that enables branching workflows, conditional steps, loops, and dynamic checklist behavior based on variable values and state.
 
 ## Story Details
+
 - **Epic**: 3 - Template System & Security
 - **Type**: Feature
 - **Priority**: High
@@ -11,9 +13,11 @@ Build a conditional logic engine that enables branching workflows, conditional s
 - **Dependencies**: [3.1, 3.2]
 
 ## Description
+
 Implement a logic engine that allows templates to include conditional statements, loops, and branching logic. This enables dynamic checklists that adapt based on user input and progress.
 
 ## Acceptance Criteria
+
 - [ ] If/else conditions in templates
 - [ ] Skip steps based on conditions
 - [ ] Show/hide sections dynamically
@@ -28,17 +32,18 @@ Implement a logic engine that allows templates to include conditional statements
 ## Technical Requirements
 
 ### Logic Engine Architecture
+
 ```typescript
 interface LogicEngine {
   // Condition Evaluation
   evaluate(expression: string, context: Context): boolean
   evaluateComplex(ast: ExpressionAST, context: Context): any
-  
+
   // Control Flow
   processConditional(item: ConditionalItem, context: Context): Item[]
   processLoop(loop: LoopConstruct, context: Context): Item[]
   processSwitch(switch: SwitchConstruct, context: Context): Item[]
-  
+
   // Dynamic Updates
   reevaluateConditions(template: Template, context: Context): Template
   getDependentItems(expression: string): string[]
@@ -62,12 +67,13 @@ interface Expression {
 ### Conditional Constructs
 
 #### If/Else Conditions
+
 ```yaml
 items:
   - id: deployment-prep
     title: Prepare for deployment
     when: "environment == 'production'"
-    
+
   - id: deploy-check
     if:
       condition: "environment == 'production' && approved"
@@ -80,6 +86,7 @@ items:
 ```
 
 #### Loop Constructs
+
 ```yaml
 items:
   - id: review-features
@@ -87,12 +94,13 @@ items:
       over: selectedFeatures
       as: feature
       items:
-        - id: "review-{{feature.id}}"
-          title: "Review {{feature.name}}"
-          description: "Review implementation of {{feature.description}}"
+        - id: 'review-{{feature.id}}'
+          title: 'Review {{feature.name}}'
+          description: 'Review implementation of {{feature.description}}'
 ```
 
 #### Switch Statements
+
 ```yaml
 items:
   - id: environment-setup
@@ -127,65 +135,66 @@ const OPERATORS = {
   '>': (a, b) => a > b,
   '<=': (a, b) => a <= b,
   '>=': (a, b) => a >= b,
-  
+
   // Logical
   '&&': (a, b) => a && b,
   '||': (a, b) => a || b,
   '!': (a) => !a,
-  
+
   // String
-  'contains': (str, substr) => str.includes(substr),
-  'startsWith': (str, prefix) => str.startsWith(prefix),
-  'endsWith': (str, suffix) => str.endsWith(suffix),
-  'matches': (str, pattern) => new RegExp(pattern).test(str),
-  
+  contains: (str, substr) => str.includes(substr),
+  startsWith: (str, prefix) => str.startsWith(prefix),
+  endsWith: (str, suffix) => str.endsWith(suffix),
+  matches: (str, pattern) => new RegExp(pattern).test(str),
+
   // Array
-  'in': (value, array) => array.includes(value),
-  'any': (array, condition) => array.some(condition),
-  'all': (array, condition) => array.every(condition),
-  
+  in: (value, array) => array.includes(value),
+  any: (array, condition) => array.some(condition),
+  all: (array, condition) => array.every(condition),
+
   // Existence
-  'exists': (value) => value !== undefined && value !== null,
-  'empty': (value) => !value || value.length === 0
+  exists: (value) => value !== undefined && value !== null,
+  empty: (value) => !value || value.length === 0,
 };
 ```
 
 ### Expression Parser
+
 ```typescript
 class ExpressionParser {
   parse(expression: string): ExpressionAST {
     // Tokenize
     const tokens = this.tokenize(expression);
-    
+
     // Parse to AST
     const ast = this.buildAST(tokens);
-    
+
     // Validate
     this.validate(ast);
-    
+
     // Extract variables
     const variables = this.extractVariables(ast);
-    
+
     return { ast, variables };
   }
-  
+
   evaluate(ast: ExpressionAST, context: Context): any {
     switch (ast.type) {
       case 'literal':
         return ast.value;
-        
+
       case 'variable':
         return this.resolveVariable(ast.name, context);
-        
+
       case 'binary':
         const left = this.evaluate(ast.left, context);
         const right = this.evaluate(ast.right, context);
         return OPERATORS[ast.operator](left, right);
-        
+
       case 'unary':
         const operand = this.evaluate(ast.operand, context);
         return OPERATORS[ast.operator](operand);
-        
+
       case 'function':
         return this.callFunction(ast.name, ast.args, context);
     }
@@ -194,6 +203,7 @@ class ExpressionParser {
 ```
 
 ### Dynamic Re-evaluation
+
 ```typescript
 class DynamicEvaluation {
   constructor(private engine: LogicEngine) {
@@ -202,17 +212,17 @@ class DynamicEvaluation {
       this.reevaluateDependent(variable);
     });
   }
-  
+
   reevaluateDependent(variable: string) {
     // Find items dependent on this variable
-    const dependent = this.template.items.filter(item => 
+    const dependent = this.template.items.filter(item =>
       item.condition?.variables.includes(variable)\n    );
-    
+
     // Re-evaluate their conditions
     dependent.forEach(item => {
       const wasVisible = item.visible;
       item.visible = this.engine.evaluate(item.when, this.context);
-      
+
       if (wasVisible !== item.visible) {
         this.emit('visibility-changed', item);
       }
@@ -222,6 +232,7 @@ class DynamicEvaluation {
 ```
 
 ## Testing Requirements
+
 - [ ] Unit tests for expression parser
 - [ ] Evaluation tests for all operators
 - [ ] If/else condition tests
@@ -233,18 +244,21 @@ class DynamicEvaluation {
 - [ ] Edge case tests (null, undefined, empty)
 
 ## Performance Requirements
+
 - Simple expression evaluation: <1ms
 - Complex expression (10+ operators): <5ms
 - Re-evaluation on change: <10ms
 - Loop processing (100 items): <50ms
 
 ## Security Considerations
+
 - No arbitrary code execution
 - Prevent infinite loops
 - Resource limits on evaluation
 - Safe variable access only
 
 ## Definition of Done
+
 - [ ] Expression parser complete
 - [ ] All operators implemented
 - [ ] If/else conditions working

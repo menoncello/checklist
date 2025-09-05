@@ -1,6 +1,7 @@
 # AI UI Prompt: Progress Dashboard
 
 ## High-Level Goal
+
 Create a comprehensive progress dashboard that provides an at-a-glance overview of all active checklists, productivity metrics, team activity, and upcoming tasks. The dashboard should feel like a terminal-based monitoring tool (similar to htop, gotop, or k9s) with real-time updates and actionable insights.
 
 ## Detailed Step-by-Step Instructions
@@ -170,7 +171,7 @@ interface DashboardWidget {
   position: { x: number; y: number };
   size: { width: number; height: number };
   collapsed: boolean;
-  refreshInterval?: number;  // milliseconds
+  refreshInterval?: number; // milliseconds
   data?: any;
 }
 
@@ -185,13 +186,13 @@ interface DashboardState {
     totalSteps: number;
     currentStep: string;
     status: 'active' | 'paused' | 'blocked';
-    eta?: number;  // minutes
+    eta?: number; // minutes
   }>;
   metrics: {
     today: MetricSnapshot;
     week: MetricSnapshot;
     month: MetricSnapshot;
-    trends: number[];  // completion percentages
+    trends: number[]; // completion percentages
   };
   activity: ActivityEvent[];
 }
@@ -199,35 +200,33 @@ interface DashboardState {
 interface MetricSnapshot {
   tasksCompleted: number;
   tasksTotal: number;
-  timeSpent: number;  // minutes
-  velocity: number;   // tasks per hour
+  timeSpent: number; // minutes
+  velocity: number; // tasks per hour
   peakHours: string[];
 }
 
 // Progress calculation
 class ProgressCalculator {
-  calculateETA(
-    completed: number,
-    total: number,
-    velocity: number
-  ): number {
+  calculateETA(completed: number, total: number, velocity: number): number {
     const remaining = total - completed;
-    return Math.ceil(remaining / velocity * 60);  // minutes
+    return Math.ceil((remaining / velocity) * 60); // minutes
   }
-  
+
   generateSparkline(data: number[], width: number): string {
     const max = Math.max(...data);
     const min = Math.min(...data);
     const range = max - min;
     const blocks = ' ▁▂▃▄▅▆▇█';
-    
-    return data.map(value => {
-      const normalized = (value - min) / range;
-      const index = Math.floor(normalized * (blocks.length - 1));
-      return blocks[index];
-    }).join('');
+
+    return data
+      .map((value) => {
+        const normalized = (value - min) / range;
+        const index = Math.floor(normalized * (blocks.length - 1));
+        return blocks[index];
+      })
+      .join('');
   }
-  
+
   formatDuration(minutes: number): string {
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
@@ -238,9 +237,9 @@ class ProgressCalculator {
 
 // Real-time updates
 class DashboardUpdater {
-  private updateInterval = 1000;  // 1 second
+  private updateInterval = 1000; // 1 second
   private widgets = new Map<string, DashboardWidget>();
-  
+
   startUpdates() {
     setInterval(() => {
       this.updateProgress();
@@ -248,7 +247,7 @@ class DashboardUpdater {
       this.updateTimeline();
     }, this.updateInterval);
   }
-  
+
   updateProgress() {
     // Fetch latest progress from state
     // Update progress bars and ETAs
@@ -258,23 +257,19 @@ class DashboardUpdater {
 
 // Layout manager
 class LayoutManager {
-  calculateGrid(
-    termWidth: number,
-    termHeight: number,
-    layout: string
-  ): WidgetLayout {
-    switch(layout) {
+  calculateGrid(termWidth: number, termHeight: number, layout: string): WidgetLayout {
+    switch (layout) {
       case 'overview':
         return {
           columns: termWidth >= 120 ? 3 : 2,
           rows: Math.floor(termHeight / 15),
-          widgets: this.arrangeOverview(termWidth, termHeight)
+          widgets: this.arrangeOverview(termWidth, termHeight),
         };
       case 'focus':
         return {
           columns: 1,
           rows: 2,
-          widgets: this.arrangeFocus(termWidth, termHeight)
+          widgets: this.arrangeFocus(termWidth, termHeight),
         };
       default:
         return this.customLayout(termWidth, termHeight);
@@ -284,6 +279,7 @@ class LayoutManager {
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - MUST update in real-time without flicker
 - MUST handle multiple active checklists
 - DO NOT block UI during updates
@@ -296,6 +292,7 @@ class LayoutManager {
 ## Strict Scope
 
 You should ONLY create:
+
 - Dashboard layout with widgets
 - Progress tracking displays
 - Productivity metrics visualization
@@ -304,6 +301,7 @@ You should ONLY create:
 - Real-time update system
 
 You should NOT create:
+
 - Checklist execution logic
 - Data persistence layer
 - Network synchronization
@@ -314,6 +312,7 @@ You should NOT create:
 ## Visual Examples
 
 **Full Dashboard View:**
+
 ```
 ╔═══════════════════ BMAD Progress Dashboard ════════════════════╗
 ║ Friday, March 14, 2024 │ 14:45 │ 3 Active │ 14/17 Today      ║
@@ -348,6 +347,7 @@ You should NOT create:
 ```
 
 **Focus Mode Dashboard:**
+
 ```
 ╔════════════════════ Focus Mode ═══════════════════════╗
 ║ Deploy to Production - Step 14/20                     ║
@@ -383,6 +383,7 @@ You should NOT create:
 ```
 
 **Productivity Metrics Widget:**
+
 ```
 ┌─── Productivity Analysis ─────────────────────────────┐
 │ Performance Overview                                  │

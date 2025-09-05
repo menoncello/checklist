@@ -9,6 +9,7 @@
 **so that** I can automate checklist operations.
 
 **Acceptance Criteria:**
+
 1. `checklist --next` advances workflow
 2. `checklist --done` marks complete
 3. `checklist --status` outputs state
@@ -26,6 +27,7 @@
 **so that** I don't lose progress from crashes.
 
 **Acceptance Criteria:**
+
 1. Corruption detected via checksums
 2. Auto-backup before changes
 3. `checklist recover` command
@@ -43,6 +45,7 @@
 **so that** users can easily install the tool.
 
 **Acceptance Criteria:**
+
 1. `bun build --compile` creates binaries
 2. Builds for macOS, Linux, Windows
 3. GitHub Actions on tag push
@@ -60,6 +63,7 @@
 **so that** I can start using the tool quickly.
 
 **Acceptance Criteria:**
+
 1. README with quick start
 2. Installation instructions
 3. Basic usage examples
@@ -76,6 +80,7 @@
 **so that** I can help improve the tool.
 
 **Acceptance Criteria:**
+
 1. Contributing.md guide
 2. Code of conduct
 3. Issue templates
@@ -92,6 +97,7 @@
 **so that** I can master advanced features.
 
 **Acceptance Criteria:**
+
 1. Video tutorials created
 2. Template cookbook
 3. Integration guides
@@ -108,6 +114,7 @@
 **so that** I always have the latest features.
 
 **Acceptance Criteria:**
+
 1. Homebrew tap maintained
 2. Scoop bucket for Windows
 3. AUR package for Arch

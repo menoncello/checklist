@@ -1,9 +1,11 @@
 # Story 5.1: Template Marketplace
 
 ## Overview
+
 Create a community template marketplace for sharing, discovering, and rating checklist templates.
 
 ## Story Details
+
 - **Epic**: 5 - Community & Collaboration
 - **Type**: Feature
 - **Priority**: Low
@@ -12,9 +14,11 @@ Create a community template marketplace for sharing, discovering, and rating che
 - **Note**: POST-MVP (Version 1.1+)
 
 ## Description
+
 Build a marketplace platform where users can browse, share, rate, and download community-created templates with verification and quality control.
 
 ## Acceptance Criteria
+
 - [ ] Browse community templates by category/tags
 - [ ] Search and filter templates
 - [ ] Rate and review templates (1-5 stars)
@@ -27,6 +31,7 @@ Build a marketplace platform where users can browse, share, rate, and download c
 - [ ] CLI and web interface
 
 ## Technical Implementation
+
 - Marketplace API for discovery
 - Template metadata and versioning
 - Publisher verification system
@@ -35,6 +40,7 @@ Build a marketplace platform where users can browse, share, rate, and download c
 - Security scanning for uploads
 
 ## Definition of Done
+
 - [ ] Marketplace API functional
 - [ ] CLI commands working
 - [ ] Search and browse implemented

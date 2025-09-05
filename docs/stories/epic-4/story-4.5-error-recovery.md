@@ -1,16 +1,19 @@
 # Story 4.5: Error Recovery System
 
 ## Story
+
 **As a** user,  
 **I want** automatic recovery from errors and crashes,  
 **So that** I don't lose progress on my checklists.
 
 ## Priority
+
 **HIGH** - Essential for reliability and user trust
 
 ## Acceptance Criteria
 
 ### Recovery Features
+
 1. ✅ Auto-save every 30 seconds during active session
 2. ✅ Crash recovery on next launch
 3. ✅ Partial state restoration for incomplete items
@@ -19,6 +22,7 @@
 6. ✅ Recovery history with timestamps
 
 ### Error Handling
+
 1. ✅ Graceful degradation for non-critical errors
 2. ✅ Error context preserved for debugging
 3. ✅ User-friendly error messages
@@ -28,6 +32,7 @@
 ## Technical Implementation
 
 ### Recovery Manager
+
 ```typescript
 interface RecoveryPoint {
   id: string;
@@ -51,21 +56,21 @@ class RecoveryManager {
   private recoveryDir = '.checklist/.recovery';
   private currentSession: string;
   private isDirty = false;
-  
+
   async initialize(): Promise<void> {
     this.currentSession = crypto.randomUUID();
     await fs.mkdir(this.recoveryDir, { recursive: true });
-    
+
     // Check for crash recovery
     await this.checkForCrashRecovery();
-    
+
     // Start autosave
     this.startAutosave();
-    
+
     // Register shutdown handlers
     this.registerShutdownHandlers();
   }
-  
+
   private startAutosave(): void {
     this.autosaveTimer = setInterval(async () => {
       if (this.isDirty) {
@@ -74,13 +79,13 @@ class RecoveryManager {
       }
     }, 30000); // 30 seconds
   }
-  
+
   markDirty(): void {
     this.isDirty = true;
   }
-  
+
   async createRecoveryPoint(
-    type: RecoveryPoint['type'], 
+    type: RecoveryPoint['type'],
     context?: RecoveryPoint['context']
   ): Promise<string> {
     const point: RecoveryPoint = {
@@ -88,123 +93,120 @@ class RecoveryManager {
       timestamp: new Date().toISOString(),
       type,
       state: await this.getCurrentState(),
-      context: context || await this.captureContext(),
+      context: context || (await this.captureContext()),
       metadata: {
         version: APP_VERSION,
         platform: process.platform,
-        sessionId: this.currentSession
-      }
+        sessionId: this.currentSession,
+      },
     };
-    
+
     const filename = `${point.timestamp.replace(/[:.]/g, '-')}-${type}.json`;
     const filepath = path.join(this.recoveryDir, filename);
-    
+
     await Bun.write(filepath, JSON.stringify(point, null, 2));
-    
+
     // Clean old recovery points
     await this.cleanOldRecoveryPoints();
-    
+
     return point.id;
   }
-  
+
   async checkForCrashRecovery(): Promise<boolean> {
     const lastSession = await this.getLastSession();
-    
+
     if (!lastSession) return false;
-    
+
     // Check if last session ended cleanly
     const cleanShutdown = await this.wasCleanShutdown(lastSession);
-    
+
     if (!cleanShutdown) {
       const recovery = await this.findLatestRecoveryPoint(lastSession);
-      
+
       if (recovery) {
         const shouldRecover = await this.promptRecovery(recovery);
-        
+
         if (shouldRecover) {
           await this.restoreFromPoint(recovery);
           return true;
         }
       }
     }
-    
+
     return false;
   }
-  
+
   private async promptRecovery(point: RecoveryPoint): Promise<boolean> {
     const timeAgo = this.getRelativeTime(point.timestamp);
-    const itemsCount = point.state.checklists
-      .reduce((sum, c) => sum + c.items.length, 0);
-    
+    const itemsCount = point.state.checklists.reduce((sum, c) => sum + c.items.length, 0);
+
     console.log('\n🔄 Recovery Available');
     console.log(`Found unsaved work from ${timeAgo}`);
     console.log(`• ${point.state.checklists.length} checklist(s)`);
     console.log(`• ${itemsCount} total items`);
-    
+
     if (point.context?.activeSection) {
       console.log(`• Last active: ${point.context.activeSection}`);
     }
-    
+
     const response = await prompt({
       type: 'select',
       message: 'What would you like to do?',
       choices: [
         { title: 'Recover work', value: 'recover' },
         { title: 'Start fresh', value: 'fresh' },
-        { title: 'View details', value: 'details' }
-      ]
+        { title: 'View details', value: 'details' },
+      ],
     });
-    
+
     if (response === 'details') {
       await this.showRecoveryDetails(point);
       return this.promptRecovery(point); // Re-prompt
     }
-    
+
     return response === 'recover';
   }
-  
+
   async restoreFromPoint(point: RecoveryPoint): Promise<void> {
     // Backup current state before restoring
-    await this.createRecoveryPoint('manual', { 
-      reason: 'Pre-restoration backup' 
+    await this.createRecoveryPoint('manual', {
+      reason: 'Pre-restoration backup',
     });
-    
+
     // Restore state
     await this.setState(point.state);
-    
+
     // Restore context if available
     if (point.context) {
       await this.restoreContext(point.context);
     }
-    
+
     console.log('✅ Successfully restored from recovery point');
-    
+
     // Log recovery for analytics
     await this.logRecovery(point);
   }
-  
+
   private async cleanOldRecoveryPoints(): Promise<void> {
     const files = await fs.readdir(this.recoveryDir);
     const points = await Promise.all(
-      files.map(async f => ({
+      files.map(async (f) => ({
         file: f,
-        stat: await fs.stat(path.join(this.recoveryDir, f))
+        stat: await fs.stat(path.join(this.recoveryDir, f)),
       }))
     );
-    
+
     // Keep last 10 auto-saves and all manual/crash points from last 7 days
-    const sorted = points.sort((a, b) => 
-      b.stat.mtime.getTime() - a.stat.mtime.getTime()
-    );
-    
+    const sorted = points.sort((a, b) => b.stat.mtime.getTime() - a.stat.mtime.getTime());
+
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 7);
-    
+
     let autoSaveCount = 0;
     for (const point of sorted) {
       const isAutoSave = point.file.includes('-auto.json');
       const isOld = point.stat.mtime < cutoffDate;
-      
+
       if (isAutoSave) {
         autoSaveCount++;
         if (autoSaveCount > 10) {
@@ -219,11 +221,12 @@ class RecoveryManager {
 ```
 
 ### Error Handler
+
 ```typescript
 class ErrorHandler {
   private errorLog = '.checklist/.errors';
   private maxErrors = 100;
-  
+
   async handleError(error: Error, context?: any): Promise<void> {
     const errorRecord = {
       id: crypto.randomUUID(),
@@ -231,18 +234,18 @@ class ErrorHandler {
       error: {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
       },
       context,
-      handled: false
+      handled: false,
     };
-    
+
     // Log to file
     await this.logError(errorRecord);
-    
+
     // Determine severity
     const severity = this.determineSeverity(error);
-    
+
     // Handle based on severity
     switch (severity) {
       case 'critical':
@@ -258,58 +261,51 @@ class ErrorHandler {
         await this.handleLowError(error);
         break;
     }
-    
+
     // Offer recovery if applicable
     if (this.isRecoverable(error)) {
       await this.offerRecovery(error);
     }
   }
-  
+
   private determineSeverity(error: Error): 'critical' | 'high' | 'medium' | 'low' {
     if (error.name === 'StateCorruptionError') return 'critical';
     if (error.name === 'FileSystemError') return 'high';
     if (error.name === 'ValidationError') return 'medium';
     return 'low';
   }
-  
+
   private async handleCriticalError(error: Error): Promise<void> {
     // Save emergency recovery point
     await recoveryManager.createRecoveryPoint('crash', {
-      error: error.message
+      error: error.message,
     });
-    
+
     // Show error to user
     console.error('\n❌ Critical Error Occurred');
     console.error('Your work has been saved for recovery.');
     console.error(`Error: ${error.message}`);
-    
+
     // Exit gracefully
     process.exit(1);
   }
-  
+
   private isRecoverable(error: Error): boolean {
-    const recoverableErrors = [
-      'EACCES',
-      'ENOENT',
-      'EPERM',
-      'ValidationError'
-    ];
-    
-    return recoverableErrors.some(e => 
-      error.message.includes(e) || error.name === e
-    );
+    const recoverableErrors = ['EACCES', 'ENOENT', 'EPERM', 'ValidationError'];
+
+    return recoverableErrors.some((e) => error.message.includes(e) || error.name === e);
   }
-  
+
   private async offerRecovery(error: Error): Promise<void> {
     const suggestions = this.getRecoverySuggestions(error);
-    
+
     if (suggestions.length === 0) return;
-    
+
     console.log('\n💡 Recovery Suggestions:');
     suggestions.forEach((s, i) => {
       console.log(`${i + 1}. ${s}`);
     });
-    
+
     const response = await prompt({
       type: 'select',
       message: 'Would you like to:',
@@ -317,10 +313,10 @@ class ErrorHandler {
         { title: 'Try suggested fix', value: 'fix' },
         { title: 'Restore from backup', value: 'restore' },
         { title: 'Continue anyway', value: 'continue' },
-        { title: 'Exit', value: 'exit' }
-      ]
+        { title: 'Exit', value: 'exit' },
+      ],
     });
-    
+
     switch (response) {
       case 'fix':
         await this.applySuggestedFix(error, suggestions[0]);
@@ -339,6 +335,7 @@ class ErrorHandler {
 ```
 
 ### CLI Recovery Commands
+
 ```bash
 # Check for crash recovery
 checklist recover
@@ -367,25 +364,26 @@ checklist recover --details 2024-01-15T10:30:00Z
 ```
 
 ### Crash Detection
+
 ```typescript
 class CrashDetector {
   private lockFile = '.checklist/.lock';
   private pidFile = '.checklist/.pid';
-  
+
   async detectPreviousCrash(): Promise<boolean> {
     // Check for stale lock file
     if (await this.hasStateLock()) {
       const pid = await this.getLastPid();
-      
+
       // Check if process is still running
       if (pid && !this.isProcessRunning(pid)) {
         return true; // Found crashed session
       }
     }
-    
+
     return false;
   }
-  
+
   private isProcessRunning(pid: number): boolean {
     try {
       process.kill(pid, 0);
@@ -394,12 +392,12 @@ class CrashDetector {
       return false;
     }
   }
-  
+
   async createLock(): Promise<void> {
     await Bun.write(this.lockFile, Date.now().toString());
     await Bun.write(this.pidFile, process.pid.toString());
   }
-  
+
   async releaseLock(): Promise<void> {
     await fs.unlink(this.lockFile).catch(() => {});
     await fs.unlink(this.pidFile).catch(() => {});
@@ -410,6 +408,7 @@ class CrashDetector {
 ## Technical Tasks
 
 ### Phase 1: Core Recovery System
+
 - [ ] Implement RecoveryManager with auto-save
 - [ ] Build recovery point creation and storage
 - [ ] Create crash detection mechanism
@@ -417,6 +416,7 @@ class CrashDetector {
 - [ ] Implement state restoration
 
 ### Phase 2: Error Handling
+
 - [ ] Build ErrorHandler with severity levels
 - [ ] Create error logging system
 - [ ] Implement recovery suggestions
@@ -424,6 +424,7 @@ class CrashDetector {
 - [ ] Build error reporting (opt-in)
 
 ### Phase 3: CLI Integration
+
 - [ ] Add recovery CLI commands
 - [ ] Create recovery history view
 - [ ] Implement manual save points
@@ -431,6 +432,7 @@ class CrashDetector {
 - [ ] Build recovery analytics
 
 ### Phase 4: Testing & Hardening
+
 - [ ] Test crash recovery with kill -9
 - [ ] Verify auto-save performance
 - [ ] Test recovery across versions
@@ -438,6 +440,7 @@ class CrashDetector {
 - [ ] Load test with many recovery points
 
 ## Definition of Done
+
 - [ ] Auto-save works during active sessions
 - [ ] Crash recovery tested with kill -9
 - [ ] Recovery prompt appears on next launch
@@ -448,19 +451,23 @@ class CrashDetector {
 - [ ] Recovery success rate >95%
 
 ## Time Estimate
+
 **3-4 days** including comprehensive testing
 
 ## Dependencies
+
 - Complete after Story 1.6a (State Transactions)
 - Before final release (Epic 4)
 
 ## Risk Factors
+
 - 🟡 Platform-specific process detection
 - 🟡 Recovery file size growth
 - 🟢 Well-established patterns from other tools
 - 🟢 Can leverage Bun's performance for minimal overhead
 
 ## Notes for Developers
+
 - Test on all platforms (macOS, Linux, Windows)
 - Consider compression for old recovery points
 - Ensure recovery doesn't create infinite loops

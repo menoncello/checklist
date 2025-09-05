@@ -7,7 +7,8 @@ The BMAD Checklist Manager employs a **modular, standalone terminal-first archit
 ## Platform and Infrastructure Choice
 
 **Platform:** Local Machine Execution (no cloud infrastructure required)
-**Key Services:** 
+**Key Services:**
+
 - Bun runtime for JavaScript/TypeScript execution
 - Local filesystem for state persistence (.checklist/ directory)
 - System clipboard integration for command copying
@@ -21,6 +22,7 @@ The BMAD Checklist Manager employs a **modular, standalone terminal-first archit
 **Structure:** Monorepo
 **Monorepo Tool:** Bun workspaces (native Bun functionality)
 **Package Organization:**
+
 - `/packages/core` - Business logic and workflow engine
 - `/packages/cli` - Command-line interface
 - `/packages/tui` - Terminal UI components
@@ -37,26 +39,26 @@ graph TB
         TUI[TUI Renderer]
         NM[Notification Manager]
     end
-    
+
     subgraph "Orchestration Layer"
         WE[Workflow Engine]
         PS[Plugin System]
     end
-    
+
     subgraph "Execution Layer"
         TM[Template Manager]
         CE[Command Executor]
         VM[Variable Manager]
         SS[Security Sandbox]
     end
-    
+
     subgraph "State Layer"
         SM[State Manager]
         HM[History Manager]
         CM[Concurrency Manager]
         TXN[Transaction Coordinator]
     end
-    
+
     subgraph "Infrastructure Layer"
         RM[Recovery Manager]
         PM[Performance Monitor]
@@ -64,7 +66,7 @@ graph TB
         CBM[Clipboard Manager]
         AUDIT[Audit Logger]
     end
-    
+
     subgraph "Storage Layer"
         FS[File System<br/>.checklist/]
         STATE[state.yaml]
@@ -75,18 +77,18 @@ graph TB
         BACKUP[.backup/]
         CACHE[.cache/]
     end
-    
+
     subgraph "External Layer"
         GIT[Git Integration]
         CLIP[System Clipboard]
         TERM[Terminal Emulator]
         NOTIF[OS Notifications]
     end
-    
+
     subgraph "Testing Layer"
         TH[Test Harness]
     end
-    
+
     CLI --> WE
     TUI --> WE
     WE --> TM
@@ -107,13 +109,13 @@ graph TB
 
 ## Architectural Patterns
 
-- **Event-Driven Architecture:** Core workflow engine emits events for state changes - *Rationale:* Loose coupling between layers
-- **Command Pattern:** All user actions encapsulated as commands with undo/redo - *Rationale:* Command history and safe rollback
-- **Repository Pattern:** State management abstracted behind consistent interface - *Rationale:* Future migration flexibility
-- **Atomic File Operations:** All state writes use temp file + atomic rename - *Rationale:* Prevents corruption
-- **Plugin Architecture:** Extension points for community plugins - *Rationale:* Ecosystem growth
-- **Functional Core, Imperative Shell:** Pure business logic, I/O at boundaries - *Rationale:* Testability
-- **Sandbox Pattern:** Isolated execution for templates - *Rationale:* Security
-- **Circuit Breaker Pattern:** Prevent cascading failures - *Rationale:* Resilience
-- **Observer Pattern:** Performance monitoring without pollution - *Rationale:* Separation of concerns
-- **Transaction Pattern:** Multi-step atomic updates - *Rationale:* Data integrity
+- **Event-Driven Architecture:** Core workflow engine emits events for state changes - _Rationale:_ Loose coupling between layers
+- **Command Pattern:** All user actions encapsulated as commands with undo/redo - _Rationale:_ Command history and safe rollback
+- **Repository Pattern:** State management abstracted behind consistent interface - _Rationale:_ Future migration flexibility
+- **Atomic File Operations:** All state writes use temp file + atomic rename - _Rationale:_ Prevents corruption
+- **Plugin Architecture:** Extension points for community plugins - _Rationale:_ Ecosystem growth
+- **Functional Core, Imperative Shell:** Pure business logic, I/O at boundaries - _Rationale:_ Testability
+- **Sandbox Pattern:** Isolated execution for templates - _Rationale:_ Security
+- **Circuit Breaker Pattern:** Prevent cascading failures - _Rationale:_ Resilience
+- **Observer Pattern:** Performance monitoring without pollution - _Rationale:_ Separation of concerns
+- **Transaction Pattern:** Multi-step atomic updates - _Rationale:_ Data integrity

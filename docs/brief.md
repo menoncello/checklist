@@ -19,6 +19,7 @@ Developers implementing the BMAD (Build, Measure, Adjust, Deploy) methodology fa
 ### Impact of the Problem
 
 This context fragmentation leads to:
+
 - **15-30 minutes lost per context switch** when resuming work on a project
 - **Increased error rates** from forgetting completed steps or repeating unnecessary work
 - **Cognitive overhead** from manually tracking multiple project states
@@ -28,6 +29,7 @@ This context fragmentation leads to:
 ### Why Existing Solutions Fall Short
 
 Generic task management tools fail because they:
+
 - Treat checklists as static, linear lists rather than dynamic workflows
 - Lack conditional branching based on project decisions
 - Cannot distinguish between Claude Code commands and terminal commands
@@ -68,24 +70,28 @@ Create the definitive workflow management tool for AI-assisted development, star
 ### Primary User Segment: BMAD Practitioners
 
 **Profile:**
+
 - Software developers using AI assistants (Claude Code, GitHub Copilot)
 - Working on 2-5 concurrent projects
 - Comfortable with terminal/CLI tools
 - Following structured development methodologies
 
 **Current Behaviors:**
+
 - Heavy terminal usage (80%+ of development time)
 - Frequent context switching between projects
 - Copy-pasting commands between documentation and terminal
 - Using chat history as informal task tracking
 
 **Specific Needs:**
+
 - Clear visibility of current project state
 - Quick context recovery when switching projects
 - Reliable command templates with variable substitution
 - Distinction between AI assistant and terminal commands
 
 **Goals:**
+
 - Maintain flow state during development
 - Reduce errors from missed or repeated steps
 - Share project progress with team members
@@ -94,11 +100,13 @@ Create the definitive workflow management tool for AI-assisted development, star
 ### Secondary User Segment: Development Teams
 
 **Profile:**
+
 - Small to medium development teams (2-10 developers)
 - Teams adopting AI-assisted development practices
 - Organizations seeking to standardize development workflows
 
 **Needs:**
+
 - Shared understanding of project progress
 - Consistent methodology application
 - Onboarding new team members efficiently
@@ -107,18 +115,21 @@ Create the definitive workflow management tool for AI-assisted development, star
 ## Goals & Success Metrics
 
 ### Business Objectives
+
 - Achieve 1,000 active users within 6 months of launch
 - Reduce average context switch time from 15-30 minutes to under 2 minutes
 - Enable 90% of users to complete BMAD workflows without external documentation
 - Establish as the de facto tool for BMAD methodology with 50% adoption rate
 
 ### User Success Metrics
+
 - Time to recover context after project switch: < 30 seconds
 - Workflow completion accuracy: > 95%
 - Command execution errors: < 5% reduction
 - User-reported productivity improvement: > 30%
 
 ### Key Performance Indicators (KPIs)
+
 - **Daily Active Users (DAU)**: Target 70% of installed base using daily
 - **Workflow Completion Rate**: 85% of started workflows reach completion
 - **Context Switch Time**: Average time from opening project to resuming work < 2 minutes
@@ -137,6 +148,7 @@ Create the definitive workflow management tool for AI-assisted development, star
 - **Project Context:** Automatic loading of state when entering project directory
 
 ### Out of Scope for MVP
+
 - TUI interface (will be CLI only initially)
 - Conditional branching in workflows
 - Multi-user collaboration features
@@ -149,6 +161,7 @@ Create the definitive workflow management tool for AI-assisted development, star
 ### MVP Success Criteria
 
 The MVP will be considered successful when a developer can:
+
 1. Initialize a new BMAD project with a template
 2. Navigate through workflow steps sequentially
 3. Copy commands to appropriate destinations (Claude/terminal)
@@ -160,12 +173,14 @@ The MVP will be considered successful when a developer can:
 ### Phase 2 Features
 
 **TUI Implementation (Months 2-3):**
+
 - Full-screen terminal interface with keyboard navigation
 - Split-pane view: checklist on left, details on right
 - Vim-like keybindings and command palette
 - Real-time status updates and progress indicators
 
 **Workflow Intelligence (Months 3-4):**
+
 - Conditional branching based on user responses
 - Workflow validation and prerequisite checking
 - Smart command suggestions based on context
@@ -174,6 +189,7 @@ The MVP will be considered successful when a developer can:
 ### Long-term Vision (Year 1-2)
 
 Transform from a BMAD-specific tool into the standard platform for AI-assisted development workflows:
+
 - Support for multiple methodologies beyond BMAD
 - Marketplace for community-contributed templates
 - Integration with popular development tools (VS Code, Git, CI/CD)
@@ -192,17 +208,20 @@ Transform from a BMAD-specific tool into the standard platform for AI-assisted d
 ## Technical Considerations
 
 ### Platform Requirements
+
 - **Target Platforms:** macOS, Linux, Windows (via WSL)
 - **Browser/OS Support:** Terminal emulators with 256-color support, UTF-8 encoding
 - **Performance Requirements:** Instant command response (< 100ms), minimal memory footprint (< 50MB)
 
 ### Technology Preferences
+
 - **Frontend:** Go with Bubble Tea framework for TUI, or Rust with Ratatui
 - **Backend:** Local filesystem operations, no server component for MVP
 - **Database:** YAML/JSON files in `.checklist/` directory
 - **Hosting/Infrastructure:** Distributed via Homebrew, apt, npm, or cargo
 
 ### Architecture Considerations
+
 - **Repository Structure:** Monorepo with clear separation between CLI and future TUI
 - **Service Architecture:** Single binary distribution, no external dependencies
 - **Integration Requirements:** Clipboard access, terminal control, filesystem watching
@@ -211,12 +230,14 @@ Transform from a BMAD-specific tool into the standard platform for AI-assisted d
 ## Constraints & Assumptions
 
 ### Constraints
+
 - **Budget:** Bootstrap/open-source development model initially
 - **Timeline:** MVP in 4-6 weeks with single developer
 - **Resources:** Part-time development alongside other projects
 - **Technical:** Must work in restricted terminal environments
 
 ### Key Assumptions
+
 - BMAD methodology will continue growing in adoption
 - Developers prefer terminal-based tools for development workflows
 - Local state management is acceptable (vs. cloud sync)
@@ -226,12 +247,14 @@ Transform from a BMAD-specific tool into the standard platform for AI-assisted d
 ## Risks & Open Questions
 
 ### Key Risks
+
 - **Adoption Risk:** Developers may resist adding another tool to their workflow - Mitigation: Ensure zero-friction integration
 - **Methodology Evolution:** BMAD may change significantly - Mitigation: Flexible template system
 - **Competition:** Larger players may enter space - Mitigation: First-mover advantage and community building
 - **Complexity Creep:** Feature requests may bloat the tool - Mitigation: Strong focus on core use case
 
 ### Open Questions
+
 - Should the tool support multiple concurrent stories within a single project?
 - How to handle partially completed workflows when requirements change?
 - What's the best way to share templates while maintaining security?
@@ -239,6 +262,7 @@ Transform from a BMAD-specific tool into the standard platform for AI-assisted d
 - How to integrate with existing BMAD tooling ecosystem?
 
 ### Areas Needing Further Research
+
 - Optimal TUI framework for cross-platform compatibility
 - Best practices for YAML schema versioning
 - Integration possibilities with Claude Code API
@@ -250,6 +274,7 @@ Transform from a BMAD-specific tool into the standard platform for AI-assisted d
 ### A. Research Summary
 
 **Brainstorming Session Findings:**
+
 - Users lose 15-30 minutes per context switch
 - Pain point centers on fragmented information across files and chat history
 - Strong preference for terminal-native solution
@@ -257,6 +282,7 @@ Transform from a BMAD-specific tool into the standard platform for AI-assisted d
 - Lazygit identified as ideal UX reference
 
 **Market Observations:**
+
 - No existing tools address dynamic, branching checklists
 - Generic task managers too simplistic for developer workflows
 - Growing demand for AI-development methodology support
@@ -264,6 +290,7 @@ Transform from a BMAD-specific tool into the standard platform for AI-assisted d
 ### B. Stakeholder Input
 
 Based on brainstorming session with primary user:
+
 - "The ideal would be to replicate workflows (mermaid) to process lists, with command copying"
 - "Important to see checklist side-by-side with terminal"
 - "Should have user-specific workflow library with defined templates"
@@ -279,6 +306,7 @@ Based on brainstorming session with primary user:
 ## Next Steps
 
 ### Immediate Actions
+
 1. Validate technical approach with proof-of-concept CLI
 2. Create initial BMAD workflow template in YAML format
 3. Implement basic state management in `.checklist/` directory

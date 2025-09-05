@@ -11,8 +11,9 @@ Single repository organized with clear module boundaries: `/packages/core` (busi
 ## Testing Requirements
 
 **Pragmatic Testing Pyramid:**
+
 - **Unit tests (80% coverage):** Core state management, template parsing, workflow engine logic
-- **Integration tests:** CLI commands, filesystem operations, clipboard integration  
+- **Integration tests:** CLI commands, filesystem operations, clipboard integration
 - **Workflow tests:** Complete BMAD scenarios using example projects in `/examples/`
 - **Compatibility tests:** Automated testing on macOS, Linux, Windows via GitHub Actions
 - **Template validation tests:** Ensuring all bundled templates parse and execute correctly

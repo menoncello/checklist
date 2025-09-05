@@ -1,6 +1,7 @@
 # Story 1.1: Project Setup and Structure
 
 ## Story
+
 **As a** developer,  
 **I want** a properly configured Bun/TypeScript project with modular architecture,  
 **so that** the codebase is maintainable and supports both CLI and TUI interfaces.
@@ -8,6 +9,7 @@
 ## Acceptance Criteria
 
 ### Project Initialization
+
 1. ✅ Run `bun init` in project root
 2. ✅ Configure TypeScript with strict mode
 3. ✅ Set up monorepo with Bun workspaces
@@ -173,12 +175,12 @@ export default [
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'error',
-      
+
       // Import organization (MANDATORY)
       'import/order': ['error', {
         'groups': [
           'builtin',
-          'external', 
+          'external',
           'internal',
           'parent',
           'sibling',
@@ -187,20 +189,20 @@ export default [
         'alphabetize': { 'order': 'asc' }
       }],
       'unused-imports/no-unused-imports': 'error',
-      
+
       // Code quality (MANDATORY)
       'no-console': 'warn', // Use debug logger instead
       'no-debugger': 'error',
       'no-alert': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
-      
+
       // Bun-specific patterns (MANDATORY)
       'no-restricted-syntax': ['error', {
         'selector': "CallExpression[callee.object.name='process'][callee.property.name='env']",
         'message': 'Use Bun.env instead of process.env for better performance'
       }],
-      
+
       // Security rules (MANDATORY)
       'no-eval': 'error',
       'no-implied-eval': 'error',
@@ -219,13 +221,13 @@ module.exports = {
   tabWidth: 2,
   useTabs: false,
   trailingComma: 'es5',
-  
+
   // Line length for readability (MANDATORY)
   printWidth: 80,
-  
+
   // TypeScript specific (MANDATORY)
   parser: 'typescript',
-  
+
   // Specific overrides
   overrides: [
     {
@@ -348,25 +350,26 @@ EOF
 // performance.config.ts
 export const PERFORMANCE_BUDGET = {
   startup: {
-    target: 50,  // ms
-    max: 100     // ms
+    target: 50, // ms
+    max: 100, // ms
   },
   memory: {
-    target: 30,  // MB
-    max: 50      // MB  
+    target: 30, // MB
+    max: 50, // MB
   },
   operation: {
-    target: 10,  // ms
-    max: 100     // ms
+    target: 10, // ms
+    max: 100, // ms
   },
   binarySize: {
-    target: 15,  // MB
-    max: 20      // MB
-  }
+    target: 15, // MB
+    max: 20, // MB
+  },
 };
 ```
 
 ## Definition of Done
+
 - [ ] `bun install` completes without errors
 - [ ] `bun test` runs smoke tests successfully
 - [ ] `bun run typecheck` passes
@@ -382,12 +385,15 @@ export const PERFORMANCE_BUDGET = {
 - [ ] VSCode settings configured for team consistency
 
 ## Time Estimate
+
 **4-6 hours**
 
 ## Dependencies
+
 - Story 0.0 (Environment Setup) must be complete
 
 ## Notes
+
 - Use Bun workspaces instead of npm/yarn workspaces
 - Keep TypeScript config strict from the start
 - Ensure all packages can be built independently

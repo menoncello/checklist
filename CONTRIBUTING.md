@@ -228,24 +228,24 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('WorkflowEngine', () => {
   let engine: WorkflowEngine;
-  
+
   beforeEach(() => {
     engine = new WorkflowEngine();
   });
-  
+
   describe('nextStep', () => {
     it('should advance to next step', async () => {
       // Arrange
       await engine.init(mockTemplate);
-      
+
       // Act
       const result = await engine.nextStep();
-      
+
       // Assert
       expect(result.success).toBe(true);
       expect(engine.getCurrentStep()?.id).toBe('step-2');
     });
-    
+
     it('should handle end of checklist', async () => {
       // Test edge case
     });
@@ -260,7 +260,7 @@ it('should complete operations within 100ms', async () => {
   const start = performance.now();
   await engine.init(largeTemplate);
   const duration = performance.now() - start;
-  
+
   expect(duration).toBeLessThan(100);
 });
 ```
@@ -270,6 +270,7 @@ it('should complete operations within 100ms', async () => {
 ### Before Creating a PR
 
 1. **Run all checks locally:**
+
    ```bash
    bun run checks  # Runs lint, format, typecheck, and tests
    ```
@@ -284,20 +285,24 @@ it('should complete operations within 100ms', async () => {
 
 ```markdown
 ## Description
+
 Brief description of changes
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Performance improvement
 - [ ] Documentation update
 
 ## Testing
+
 - [ ] Unit tests pass
 - [ ] E2E tests pass
 - [ ] Performance benchmarks pass
 
 ## Checklist
+
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated
@@ -389,18 +394,21 @@ git push --follow-tags
 ### Common Issues
 
 **Bun not found:**
+
 ```bash
 curl -fsSL https://bun.sh/install | bash
 source ~/.bashrc  # or ~/.zshrc
 ```
 
 **Permission errors:**
+
 ```bash
 # Fix permissions
 chmod +x scripts/*.ts
 ```
 
 **Test failures on Windows:**
+
 ```bash
 # Use WSL
 wsl --install
@@ -408,6 +416,7 @@ wsl --install
 ```
 
 **Memory issues during development:**
+
 ```bash
 # Increase memory limit
 NODE_OPTIONS="--max-old-space-size=4096" bun dev

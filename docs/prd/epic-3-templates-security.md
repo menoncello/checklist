@@ -9,6 +9,7 @@
 **so that** malicious templates cannot harm the system.
 
 **Acceptance Criteria:**
+
 1. Templates loaded from `/templates` with validation
 2. Schema validation before parsing
 3. Sandboxed environment for template execution
@@ -25,6 +26,7 @@
 **so that** users can safely use community templates.
 
 **Acceptance Criteria:**
+
 1. Template signing with checksums
 2. Dangerous command detection and warnings
 3. Network access blocked in templates
@@ -41,6 +43,7 @@
 **so that** workflows adapt to my project needs.
 
 **Acceptance Criteria:**
+
 1. Variables defined with types and defaults
 2. Required variables prompted during init
 3. Variables persist in state.yaml
@@ -57,6 +60,7 @@
 **so that** commands use my project-specific values.
 
 **Acceptance Criteria:**
+
 1. ${variable} substitution works
 2. Nested variables: ${var1.${var2}}
 3. Default values: ${var:-default}
@@ -73,6 +77,7 @@
 **so that** workflows can have dynamic behavior.
 
 **Acceptance Criteria:**
+
 1. Conditionals: {{#if condition}}...{{/if}}
 2. Else branches: {{else}}
 3. Loops: {{#each items}}...{{/each}}
@@ -89,6 +94,7 @@
 **so that** workflows adapt to my choices.
 
 **Acceptance Criteria:**
+
 1. Steps define condition property
 2. Conditions evaluated on state change
 3. Hidden steps don't appear in list
@@ -105,6 +111,7 @@
 **so that** community can contribute workflows.
 
 **Acceptance Criteria:**
+
 1. Template manifest format defined
 2. Git-based template repositories supported
 3. Template discovery via index file

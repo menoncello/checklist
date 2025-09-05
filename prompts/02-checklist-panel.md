@@ -1,6 +1,7 @@
 # AI UI Prompt: Checklist Panel with Virtual Scrolling
 
 ## High-Level Goal
+
 Create a high-performance checklist panel component that can handle thousands of items efficiently through virtual scrolling, while maintaining smooth keyboard navigation and instant visual feedback. This panel serves as the primary navigation interface for the BMad Checklist Manager.
 
 ## Detailed Step-by-Step Instructions
@@ -68,10 +69,10 @@ Create a high-performance checklist panel component that can handle thousands of
 ```typescript
 // Virtual scrolling state
 interface VirtualScroller {
-  items: ChecklistItem[];          // Full item list
-  viewportHeight: number;          // Visible lines for items
-  scrollOffset: number;            // First visible item index
-  selectedIndex: number;           // Currently selected item
+  items: ChecklistItem[]; // Full item list
+  viewportHeight: number; // Visible lines for items
+  scrollOffset: number; // First visible item index
+  selectedIndex: number; // Currently selected item
   visibleRange: {
     start: number;
     end: number;
@@ -82,13 +83,13 @@ interface VirtualScroller {
 class ChecklistRenderer {
   private renderCache = new Map<string, string>();
   private dirtyItems = new Set<number>();
-  
+
   renderItem(item: ChecklistItem, index: number, width: number): string {
     const cacheKey = `${item.id}-${item.status}-${width}`;
     if (!this.dirtyItems.has(index) && this.renderCache.has(cacheKey)) {
       return this.renderCache.get(cacheKey);
     }
-    
+
     const rendered = this.formatItem(item, index, width);
     this.renderCache.set(cacheKey, rendered);
     this.dirtyItems.delete(index);
@@ -103,7 +104,7 @@ function formatItem(item: ChecklistItem, index: number, width: number): string {
   const indent = '  '.repeat(item.depth || 0);
   const maxTitleWidth = width - number.length - status.length - indent.length - 6;
   const title = truncate(item.title, maxTitleWidth);
-  
+
   return `${number}. ${status} ${indent}${title}`;
 }
 
@@ -114,17 +115,18 @@ const statusIcons = {
   completed: '[✓]',
   failed: '[✗]',
   skipped: '[⊘]',
-  blocked: '[⚠]'
+  blocked: '[⚠]',
 };
 
 // Performance constraints
-const RENDER_BUFFER = 5;          // Items to render outside viewport
-const DEBOUNCE_MS = 10;          // Navigation debounce
-const MAX_VISIBLE = 50;          // Max items to render at once
-const CACHE_SIZE = 1000;         // Max cached render strings
+const RENDER_BUFFER = 5; // Items to render outside viewport
+const DEBOUNCE_MS = 10; // Navigation debounce
+const MAX_VISIBLE = 50; // Max items to render at once
+const CACHE_SIZE = 1000; // Max cached render strings
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - MUST handle 10,000+ items without performance degradation
 - MUST maintain 60fps scrolling (16ms per frame maximum)
 - MUST keep memory usage under 50MB even with large lists
@@ -137,6 +139,7 @@ const CACHE_SIZE = 1000;         // Max cached render strings
 ## Strict Scope
 
 You should ONLY create:
+
 - The virtual scrolling mechanism
 - Item rendering with status indicators
 - Keyboard navigation handlers
@@ -144,6 +147,7 @@ You should ONLY create:
 - Performance optimizations for large lists
 
 You should NOT create:
+
 - The detail panel or other UI components
 - File system operations
 - State management logic
@@ -153,6 +157,7 @@ You should NOT create:
 ## Responsive Terminal Behavior
 
 **Narrow terminals (60-79 cols):**
+
 ```
 Items (7/15)
 ─────────────
@@ -164,6 +169,7 @@ Items (7/15)
 ```
 
 **Standard terminals (80-99 cols):**
+
 ```
 Checklist Items (showing 5-10 of 15)
 ─────────────────────────────────────
@@ -176,8 +182,9 @@ Checklist Items (showing 5-10 of 15)
 ```
 
 **Wide terminals (100+ cols):**
+
 ```
-Checklist Items - Deploy Process (showing 5-15 of 45) 
+Checklist Items - Deploy Process (showing 5-15 of 45)
 ──────────────────────────────────────────────────────────────────
   5. [✓] Install dependencies                    ✓ 00:12         ▲
   6. [✓] Configure environment variables         ✓ 00:05         ║
@@ -202,27 +209,29 @@ The component should produce clean, aligned output like:
   2. [✓] Install dependencies                ✓ 00:45
   3. [✓] Configure environment               ✓ 00:03
   4. [✓] Setup pre-commit hooks              ✓ 00:01
-  5. [▼] Backend Development                 
+  5. [▼] Backend Development
   6.   [✓] Create database schema            ✓ 00:12
   7.   [✓] Implement API endpoints           ✓ 02:30
   8.   [⟳] Write unit tests                  ⏱ 00:45
-  9.   [ ] Setup authentication              
- 10.   [ ] Add data validation               
- 11. [▶] Frontend Development                
- 12. [ ] Testing & QA                        
- 13. [ ] Deployment                          
+  9.   [ ] Setup authentication
+ 10.   [ ] Add data validation
+ 11. [▶] Frontend Development
+ 12. [ ] Testing & QA
+ 13. [ ] Deployment
 ```
 
 With selected item highlighted:
+
 ```
   7.   [✓] Implement API endpoints           ✓ 02:30
 █ 8.   [⟳] Write unit tests                  ⏱ 00:45 █ (inverse video)
-  9.   [ ] Setup authentication              
+  9.   [ ] Setup authentication
 ```
 
 ## Performance Testing Checklist
 
 The implementation should pass these benchmarks:
+
 - [ ] Render 10,000 items list in <50ms initial load
 - [ ] Scroll through 1000 items smoothly without stutter
 - [ ] Navigate with j/k at 30 keystrokes/second without lag

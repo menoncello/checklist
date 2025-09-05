@@ -1,6 +1,7 @@
 # AI UI Prompt: Main TUI Interface (Split-Pane Layout)
 
 ## High-Level Goal
+
 Create a terminal-based user interface (TUI) with a split-pane layout for the BMad Checklist Manager that provides efficient checklist execution through keyboard-only navigation. The interface should feel like a modern terminal application (similar to lazygit, k9s, or htop) with immediate visual feedback and developer-friendly aesthetics.
 
 ## Detailed Step-by-Step Instructions
@@ -16,7 +17,7 @@ Create a terminal-based user interface (TUI) with a split-pane layout for the BM
    - Use box-drawing characters (┌─┐│└┘├┤┬┴┼) for panel borders
    - Apply a dark theme with high contrast colors
    - Primary color: Cyan (#0969DA) for active selections
-   - Success color: Green (#1F883D) for completed items  
+   - Success color: Green (#1F883D) for completed items
    - Warning color: Yellow (#FFA500) for skipped items
    - Error color: Red (#DA3633) for failed items
    - Use monospace font rendering throughout
@@ -74,9 +75,9 @@ interface Layout {
   terminal: { width: number; height: number };
   panels: {
     header: { height: 1 };
-    checklist: { width: '40%', x: 0, y: 1 };
-    details: { width: '60%', x: '40%', y: 1 };
-    statusBar: { height: 1, y: 'bottom' };
+    checklist: { width: '40%'; x: 0; y: 1 };
+    details: { width: '60%'; x: '40%'; y: 1 };
+    statusBar: { height: 1; y: 'bottom' };
   };
 }
 
@@ -103,7 +104,7 @@ const colors = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   red: '\x1b[31m',
-  gray: '\x1b[90m'
+  gray: '\x1b[90m',
 };
 
 // Box drawing characters for UI
@@ -116,11 +117,12 @@ const boxChars = {
   vertical: '│',
   cross: '┼',
   teeLeft: '├',
-  teeRight: '┤'
+  teeRight: '┤',
 };
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - DO NOT use external UI frameworks like React, Vue, or Angular
 - DO NOT require mouse interaction - keyboard only
 - DO NOT use smooth animations - use instant terminal updates
@@ -133,6 +135,7 @@ const boxChars = {
 ## Strict Scope
 
 You should ONLY create:
+
 - The main TUI application shell with split-pane layout
 - The checklist panel with item navigation
 - The detail panel with markdown rendering
@@ -140,6 +143,7 @@ You should ONLY create:
 - Terminal resize handling
 
 You should NOT create:
+
 - Web interface or GUI components
 - Database or backend logic
 - File system operations
@@ -152,22 +156,26 @@ You should NOT create:
 Since this is a terminal application, we follow a "narrow-first" approach:
 
 **60-79 columns (narrow terminal):**
+
 - Single column layout
 - Show only current item with progress
 - Minimal borders, maximum content
 - Number keys for quick navigation
 
 **80-99 columns (standard terminal):**
+
 - List view with abbreviated details
 - Current item expanded
 - Basic status indicators
 
 **100-119 columns (comfortable width):**
+
 - Split pane with 40/60 ratio
 - Full checklist visible
 - Detailed view panel
 
 **120+ columns (wide terminal):**
+
 - Additional metadata columns
 - Extended keyboard hints
 - Side-by-side command preview
@@ -176,7 +184,7 @@ Since this is a terminal application, we follow a "narrow-first" approach:
 
 The final implementation should render like this in a terminal:
 
-```
+````
 ┌─ BMad Checklist Manager - Deploy Checklist (7/15 - 46%) ─────────────────┐
 │ Checklist Items            │ Current Task Details                        │
 ├────────────────────────────┼─────────────────────────────────────────────┤
@@ -197,6 +205,6 @@ The final implementation should render like this in a terminal:
 │ ○ 15. Send notifications   │ Press 'c' to copy │ 'd' to done │ 'n' next  │
 └────────────────────────────┴─────────────────────────────────────────────┘
 [j/k] Navigate [d] Done [n] Next [c] Copy [/] Search [?] Help [q] Quit  ✓ Saved
-```
+````
 
 Remember: This is a terminal application that should feel native to developers who use CLI tools daily. Prioritize efficiency, keyboard shortcuts, and clear visual hierarchy over fancy graphics or animations.

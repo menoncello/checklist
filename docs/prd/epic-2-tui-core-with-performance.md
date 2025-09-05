@@ -9,6 +9,7 @@
 **so that** I can navigate efficiently regardless of workflow size.
 
 **Acceptance Criteria:**
+
 1. ChecklistPanel displays with status indicators (✓, ▶, ○)
 2. Virtual scrolling renders only visible items
 3. Smooth scrolling with arrow keys and j/k vim bindings
@@ -26,6 +27,7 @@
 **so that** I can understand complex instructions clearly.
 
 **Acceptance Criteria:**
+
 1. Detail panel displays current step prominently
 2. Markdown rendering for bold, italic, code blocks
 3. Commands shown with Claude/Bash indicators
@@ -43,6 +45,7 @@
 **so that** I can progress efficiently through my checklist.
 
 **Acceptance Criteria:**
+
 1. 'n'/Enter advances to next step
 2. 'd' marks done and auto-advances
 3. 's' skips with confirmation
@@ -61,6 +64,7 @@
 **so that** we can ensure the app stays fast as features are added.
 
 **Acceptance Criteria:**
+
 1. Performance metrics collected: render time, memory, CPU
 2. Debug mode shows metrics overlay
 3. Slow operations logged with stack traces
@@ -77,6 +81,7 @@
 **so that** all components work together reliably.
 
 **Acceptance Criteria:**
+
 1. Application starts with version splash
 2. Split-pane layout with configurable ratios
 3. Input router handles focus correctly
@@ -93,6 +98,7 @@
 **so that** I can use my preferred terminal emulator.
 
 **Acceptance Criteria:**
+
 1. Compatibility tested: Terminal.app, iTerm2, Alacritty, Windows Terminal
 2. Feature detection for colors, Unicode, mouse support
 3. Graceful degradation for limited terminals

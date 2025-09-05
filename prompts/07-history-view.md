@@ -1,6 +1,7 @@
 # AI UI Prompt: History View
 
 ## High-Level Goal
+
 Create a comprehensive history view that displays a timeline of all checklist activities, executed commands, state changes, and completion metrics. The view should feel like a git log or shell history with powerful filtering, search capabilities, and the ability to replay or undo actions.
 
 ## Detailed Step-by-Step Instructions
@@ -11,7 +12,7 @@ Create a comprehensive history view that displays a timeline of all checklist ac
      ─── 2024-03-14 ──────────────────────────────
      10:45:23  ✓  Completed "Initialize project"      2.3s
      10:45:26  $  Executed: npm install              45.2s
-     10:45:71  ⟳  Started "Configure environment"     
+     10:45:71  ⟳  Started "Configure environment"
      10:46:15  📝 Variable changed: ENV = production
      10:46:18  ✓  Completed "Configure environment"   47s
      10:46:20  ⊘  Skipped "Run tests" (manual override)
@@ -112,13 +113,13 @@ interface HistoryEvent {
   id: string;
   timestamp: Date;
   type: 'task' | 'command' | 'state' | 'navigation' | 'error';
-  subtype: string;  // 'completed', 'executed', 'changed', etc.
+  subtype: string; // 'completed', 'executed', 'changed', etc.
   item?: {
     id: string;
     title: string;
     index: number;
   };
-  duration?: number;  // milliseconds
+  duration?: number; // milliseconds
   details: {
     command?: {
       text: string;
@@ -169,14 +170,16 @@ class HistoryStats {
       timeDistribution: this.getTimeDistribution(events),
     };
   }
-  
+
   generateGraph(data: number[], width: number): string {
     const max = Math.max(...data);
     const blocks = '▁▂▃▄▅▆▇█';
-    return data.map(v => {
-      const index = Math.floor((v / max) * (blocks.length - 1));
-      return blocks[index];
-    }).join('');
+    return data
+      .map((v) => {
+        const index = Math.floor((v / max) * (blocks.length - 1));
+        return blocks[index];
+      })
+      .join('');
   }
 }
 
@@ -185,29 +188,30 @@ class CommandReplay {
   async replay(event: HistoryEvent): Promise<ReplayResult> {
     // Validate command is safe to replay
     if (this.isDangerous(event.details.command?.text)) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Command requires confirmation',
-        requiresConfirmation: true
+        requiresConfirmation: true,
       };
     }
-    
+
     // Create sandbox environment
     const sandbox = this.createSandbox(event);
-    
+
     // Execute in dry-run mode first
     const dryRun = await sandbox.dryRun(event.details.command);
-    
+
     if (dryRun.safe) {
       return sandbox.execute(event.details.command);
     }
-    
+
     return { success: false, error: 'Unsafe to replay' };
   }
 }
 ```
 
 **IMPORTANT CONSTRAINTS:**
+
 - MUST handle thousands of history entries efficiently
 - MUST store history persistently between sessions
 - DO NOT store sensitive information (passwords, keys)
@@ -220,6 +224,7 @@ class CommandReplay {
 ## Strict Scope
 
 You should ONLY create:
+
 - History timeline visualization
 - Event filtering and search
 - Statistics dashboard
@@ -228,6 +233,7 @@ You should ONLY create:
 - Export functionality
 
 You should NOT create:
+
 - Actual command execution
 - State modification logic
 - File system operations
@@ -238,6 +244,7 @@ You should NOT create:
 ## Visual Examples
 
 **Main History View:**
+
 ```
 ╔═════════════════════ History - Last 24 Hours ═════════════════════╗
 ║ Stats: 45/60 complete │ 2h 34m │ 23 commands │ 2 errors         ║
@@ -264,6 +271,7 @@ You should NOT create:
 ```
 
 **Expanded Entry Detail:**
+
 ```
 ╔════════════════ Event Details ═════════════════╗
 ║ Time: 14:28:33 (4 minutes ago)                ║
@@ -294,6 +302,7 @@ You should NOT create:
 ```
 
 **Statistics Dashboard:**
+
 ```
 ╔═══════════════════ Session Statistics ══════════════════════╗
 ║                                                              ║
@@ -322,6 +331,7 @@ You should NOT create:
 ```
 
 **Filter Interface:**
+
 ```
 ╔═══════════ Filter History ════════════╗
 ║ Quick Filters:                        ║

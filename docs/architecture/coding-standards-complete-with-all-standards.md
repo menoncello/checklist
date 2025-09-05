@@ -13,13 +13,13 @@ export default [
       sourceType: 'module',
       parser: '@typescript-eslint/parser',
       parserOptions: {
-        project: './tsconfig.json'
-      }
+        project: './tsconfig.json',
+      },
     },
     plugins: {
       '@typescript-eslint': typescriptEslint,
-      'import': importPlugin,
-      'unused-imports': unusedImportsPlugin
+      import: importPlugin,
+      'unused-imports': unusedImportsPlugin,
     },
     rules: {
       // TypeScript-specific rules (MANDATORY)
@@ -29,40 +29,39 @@ export default [
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'error',
-      
+
       // Import organization (MANDATORY)
-      'import/order': ['error', {
-        'groups': [
-          'builtin',
-          'external', 
-          'internal',
-          'parent',
-          'sibling',
-          'index'
-        ],
-        'alphabetize': { 'order': 'asc' }
-      }],
+      'import/order': [
+        'error',
+        {
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+          alphabetize: { order: 'asc' },
+        },
+      ],
       'unused-imports/no-unused-imports': 'error',
-      
+
       // Code quality (MANDATORY)
       'no-console': 'warn', // Use debug logger instead
       'no-debugger': 'error',
       'no-alert': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
-      
+
       // Bun-specific patterns (MANDATORY)
-      'no-restricted-syntax': ['error', {
-        'selector': "CallExpression[callee.object.name='process'][callee.property.name='env']",
-        'message': 'Use Bun.env instead of process.env for better performance'
-      }],
-      
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.object.name='process'][callee.property.name='env']",
+          message: 'Use Bun.env instead of process.env for better performance',
+        },
+      ],
+
       // Security rules (MANDATORY)
       'no-eval': 'error',
       'no-implied-eval': 'error',
-      'no-new-func': 'error'
-    }
-  }
+      'no-new-func': 'error',
+    },
+  },
 ];
 ```
 
@@ -79,31 +78,27 @@ module.exports = {
   tabWidth: 2,
   useTabs: false,
   trailingComma: 'es5',
-  
+
   // Line length for readability (MANDATORY)
   printWidth: 80,
-  
+
   // TypeScript specific (MANDATORY)
   parser: 'typescript',
-  
+
   // Import formatting (MANDATORY)
-  importOrder: [
-    '^@core/(.*)$',
-    '^@/(.*)$',
-    '^[./]'
-  ],
+  importOrder: ['^@core/(.*)$', '^@/(.*)$', '^[./]'],
   importOrderSeparation: true,
-  
+
   // Specific overrides
   overrides: [
     {
       files: '*.md',
       options: {
         printWidth: 100,
-        proseWrap: 'preserve'
-      }
-    }
-  ]
+        proseWrap: 'preserve',
+      },
+    },
+  ],
 };
 ```
 
@@ -148,13 +143,8 @@ bun audit --audit-level moderate
 // package.json - lint-staged configuration
 {
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{md,json,yaml,yml}": [
-      "prettier --write"
-    ]
+    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"],
+    "*.{md,json,yaml,yml}": ["prettier --write"]
   }
 }
 ```
@@ -164,6 +154,7 @@ bun audit --audit-level moderate
 **Developers MUST configure their IDE/Editor with:**
 
 1. **VSCode Settings (.vscode/settings.json):**
+
 ```json
 {
   "editor.formatOnSave": true,
@@ -240,7 +231,7 @@ import type { WorkflowState } from '@checklist/shared/types';
 async executeWithTimeout(timeout: number): Promise<Result> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-  
+
   try {
     return await this.execute({ signal: controller.signal });
   } finally {
@@ -273,8 +264,8 @@ this.state = {
   ...this.state,
   activeInstance: {
     ...this.state.activeInstance,
-    currentStepId: newStepId
-  }
+    currentStepId: newStepId,
+  },
 };
 
 // ALWAYS use structured cloning for deep copies
@@ -326,7 +317,7 @@ const debug = createDebug('checklist:workflow:engine');
 debug('State transition failed', {
   from: currentState,
   to: targetState,
-  reason: error.message
+  reason: error.message,
 });
 
 // ALWAYS add trace IDs for async operations
@@ -340,7 +331,7 @@ debug('[%s] Starting operation', traceId);
 // ALWAYS implement Disposable pattern
 class FileHandle implements Disposable {
   constructor(private fd: number) {}
-  
+
   [Symbol.dispose](): void {
     closeSync(this.fd);
   }
@@ -349,9 +340,9 @@ class FileHandle implements Disposable {
 // ALWAYS clear timers and intervals
 class Service {
   private timers: Set<Timer> = new Set();
-  
+
   cleanup(): void {
-    this.timers.forEach(timer => clearTimeout(timer));
+    this.timers.forEach((timer) => clearTimeout(timer));
     this.timers.clear();
   }
 }

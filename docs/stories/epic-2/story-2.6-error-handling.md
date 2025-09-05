@@ -1,9 +1,11 @@
 # Story 2.6: Error Handling & Recovery
 
 ## Overview
+
 Implement comprehensive error handling and recovery mechanisms that gracefully manage failures, provide helpful feedback to users, and maintain application stability.
 
 ## Story Details
+
 - **Epic**: 2 - User Interface & Interaction
 - **Type**: Feature
 - **Priority**: High
@@ -11,9 +13,11 @@ Implement comprehensive error handling and recovery mechanisms that gracefully m
 - **Dependencies**: [2.1, 2.4]
 
 ## Description
+
 Create a robust error handling system that catches all types of errors, provides clear and actionable feedback to users, automatically saves state before crashes, and offers recovery options to minimize work loss.
 
 ## Acceptance Criteria
+
 - [ ] Catch all errors at application boundaries
 - [ ] Display user-friendly error messages
 - [ ] Suggest recovery actions for common errors
@@ -28,50 +32,52 @@ Create a robust error handling system that catches all types of errors, provides
 ## Technical Requirements
 
 ### Error Handling Architecture
+
 ```typescript
 interface ErrorHandler {
   // Error Processing
-  handleError(error: Error, context?: ErrorContext): void
-  handleWarning(warning: Warning): void
-  handleCritical(error: Error): never
-  
+  handleError(error: Error, context?: ErrorContext): void;
+  handleWarning(warning: Warning): void;
+  handleCritical(error: Error): never;
+
   // Recovery
-  attemptRecovery(error: RecoverableError): Promise<boolean>
-  saveEmergencyState(): void
-  loadRecoveryState(): State | null
-  
+  attemptRecovery(error: RecoverableError): Promise<boolean>;
+  saveEmergencyState(): void;
+  loadRecoveryState(): State | null;
+
   // User Feedback
-  displayError(message: string, details?: string): void
-  suggestFix(error: KnownError): string[]
-  
+  displayError(message: string, details?: string): void;
+  suggestFix(error: KnownError): string[];
+
   // Logging
-  logError(error: Error, level: LogLevel): void
-  getErrorLog(): ErrorLogEntry[]
+  logError(error: Error, level: LogLevel): void;
+  getErrorLog(): ErrorLogEntry[];
 }
 
 interface ErrorContext {
-  operation: string
-  component: string
-  state?: any
-  timestamp: Date
-  userAction?: string
+  operation: string;
+  component: string;
+  state?: any;
+  timestamp: Date;
+  userAction?: string;
 }
 
 enum ErrorSeverity {
   WARNING = 'warning',
   ERROR = 'error',
   CRITICAL = 'critical',
-  FATAL = 'fatal'
+  FATAL = 'fatal',
 }
 ```
 
 ### Error Display Patterns
 
 #### User-Friendly Error Display
+
 ```
 ⚠ Unable to save checklist
 
-The checklist file could not be saved due to 
+The checklist file could not be saved due to
 insufficient permissions in the target directory.
 
 Suggested fixes:
@@ -83,6 +89,7 @@ Press [r] to retry, [s] to save elsewhere, [?] for help
 ```
 
 #### Debug Mode Error Display
+
 ```
 ERROR: FileSystemError
 Message: EACCES: permission denied
@@ -92,7 +99,7 @@ Stack Trace:
   at Object.writeFileSync (fs.js:1234:5)
   at StateManager.save (state.js:56:8)
   at ChecklistRunner.checkpoint (runner.js:123:15)
-  
+
 Context:
   User Action: Save progress
   Component: StateManager
@@ -104,12 +111,13 @@ Press [c] to copy error, [l] to view full log
 ### Recovery Strategies
 
 #### Auto-Save Before Risk
+
 ```typescript
 class SafeOperation {
   async execute(operation: () => Promise<void>) {
     // Save state before risky operation
     await this.saveEmergencyState();
-    
+
     try {
       await operation();
     } catch (error) {
@@ -117,7 +125,7 @@ class SafeOperation {
       if (await this.attemptRecovery(error)) {
         return this.retry(operation);
       }
-      
+
       // Offer manual recovery
       this.offerRecoveryOptions(error);
     }
@@ -126,6 +134,7 @@ class SafeOperation {
 ```
 
 #### Crash Recovery on Startup
+
 ```
 ┌─────────────────────────────────────┐
 │ Recovery Mode                       │
@@ -150,38 +159,39 @@ class SafeOperation {
 // Known, recoverable errors
 const ERROR_HANDLERS = {
   FILE_NOT_FOUND: {
-    message: "Template file not found",
+    message: 'Template file not found',
     suggestions: [
-      "Check if the file exists",
-      "Verify the file path",
-      "Run 'checklist list' to see available templates"
+      'Check if the file exists',
+      'Verify the file path',
+      "Run 'checklist list' to see available templates",
     ],
-    recovery: () => promptForAlternativeFile()
+    recovery: () => promptForAlternativeFile(),
   },
-  
+
   NETWORK_ERROR: {
-    message: "Network connection failed",
+    message: 'Network connection failed',
     suggestions: [
-      "Check your internet connection",
-      "Verify proxy settings",
-      "Try again in offline mode"
+      'Check your internet connection',
+      'Verify proxy settings',
+      'Try again in offline mode',
     ],
-    recovery: () => retryWithBackoff()
+    recovery: () => retryWithBackoff(),
   },
-  
+
   PARSE_ERROR: {
-    message: "Invalid template format",
+    message: 'Invalid template format',
     suggestions: [
-      "Check template syntax",
-      "Validate against schema",
-      "Use 'checklist validate' command"
+      'Check template syntax',
+      'Validate against schema',
+      "Use 'checklist validate' command",
     ],
-    recovery: () => offerTemplateRepair()
-  }
+    recovery: () => offerTemplateRepair(),
+  },
 };
 ```
 
 ## Implementation Notes
+
 - Use try-catch at all entry points
 - Implement error boundaries for UI components
 - Create custom error classes for different types
@@ -190,6 +200,7 @@ const ERROR_HANDLERS = {
 - Sanitize sensitive data from error messages
 
 ## Testing Requirements
+
 - [ ] Unit tests for error handlers
 - [ ] Integration tests for recovery flows
 - [ ] Crash recovery testing
@@ -199,6 +210,7 @@ const ERROR_HANDLERS = {
 - [ ] User feedback message testing
 
 ## Definition of Done
+
 - [ ] All errors caught gracefully
 - [ ] Recovery mechanisms implemented
 - [ ] Auto-save before risky operations

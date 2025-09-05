@@ -1,9 +1,11 @@
 # Epic 1: Foundation & Validation
 
 ## Goal
+
 Establish the technical foundation with Bun/TypeScript, validate the hybrid TUI approach early through a technology spike, implement core business logic, and create robust state management.
 
 ## Success Criteria
+
 - ✅ Bun project properly configured with TypeScript
 - ✅ CI/CD pipeline operational from day one
 - ✅ TUI approach validated (or fallback plan activated)
@@ -13,6 +15,7 @@ Establish the technical foundation with Bun/TypeScript, validate the hybrid TUI 
 - ✅ All operations complete in <100ms
 
 ## Stories
+
 1. [Story 1.0: Database/State Store Setup](story-1.0-database-state-setup.md) ⚠️ NEW - CRITICAL FOUNDATION
 2. [Story 1.1: Project Setup and Structure](story-1.1-project-setup.md)
 3. [Story 1.2: CI/CD Pipeline + Third-Party Integration](story-1.2-cicd-pipeline.md) ⚠️ ENHANCED - QUALITY GATE
@@ -25,6 +28,7 @@ Establish the technical foundation with Bun/TypeScript, validate the hybrid TUI 
 10. [Story 1.9: Component Base Architecture](story-1.9-component-architecture.md) (formerly 1.8)
 
 ## Dependencies
+
 - Story 0.0 must be complete (environment setup)
 - Story 1.0 CRITICAL - must complete before 1.5, 1.6 (state-dependent stories)
 - Story 1.2 should be complete before heavy development (CI/CD + integrations)
@@ -35,6 +39,7 @@ Establish the technical foundation with Bun/TypeScript, validate the hybrid TUI 
 - Story 1.7 should be early to catch performance issues
 
 ## Risk Factors
+
 - 🔴 TUI spike failure could require architecture pivot
 - 🔴 Database/state corruption without proper file locking (MITIGATED by Story 1.0)
 - 🟡 Third-party integration failures across platforms (MITIGATED by Story 1.2)
@@ -43,9 +48,11 @@ Establish the technical foundation with Bun/TypeScript, validate the hybrid TUI 
 - 🟡 Late testing setup leading to technical debt (MITIGATED by Story 1.3)
 
 ## Timeline Estimate
+
 **4-5 weeks** with new critical foundation stories (was 2-3 weeks)
 
 ## Definition of Done
+
 - [ ] Database/state store operational with file locking and backup systems
 - [ ] CI/CD pipeline fully operational with third-party integrations
 - [ ] Testing framework established enabling TDD practices

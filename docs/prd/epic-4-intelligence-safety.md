@@ -9,6 +9,7 @@
 **so that** I never execute commands incorrectly.
 
 **Acceptance Criteria:**
+
 1. [Claude] prefix with cyan color
 2. [$] prefix with green color for Bash
 3. Auto-detection from template metadata
@@ -25,6 +26,7 @@
 **so that** I don't accidentally damage my system.
 
 **Acceptance Criteria:**
+
 1. Dangerous commands identified (rm -rf, DROP TABLE, etc.)
 2. Confirmation required for dangerous operations
 3. Dry-run mode for testing commands
@@ -41,6 +43,7 @@
 **so that** I can copy commands regardless of environment.
 
 **Acceptance Criteria:**
+
 1. 'c' copies to system clipboard
 2. Success toast notification
 3. Multi-line commands preserved
@@ -57,6 +60,7 @@
 **so that** I know exactly what will execute.
 
 **Acceptance Criteria:**
+
 1. Preview shows substituted variables
 2. Syntax highlighting applied
 3. Multi-line formatting preserved
@@ -73,6 +77,7 @@
 **so that** I always know my workflow state.
 
 **Acceptance Criteria:**
+
 1. Shell scripts for bash/zsh/fish
 2. Detects `.checklist/` presence
 3. Shows brief status automatically
@@ -89,6 +94,7 @@
 **so that** I can track what was done.
 
 **Acceptance Criteria:**
+
 1. History saves last 500 commands
 2. Timestamp and result for each
 3. Persists in history.yaml
@@ -105,6 +111,7 @@
 **so that** I can correct mistakes easily.
 
 **Acceptance Criteria:**
+
 1. 'r' replays from history
 2. Undo last command action
 3. Redo capability

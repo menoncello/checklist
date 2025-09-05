@@ -12,7 +12,7 @@ This is a new project being built from scratch specifically for the BMAD Checkli
 
 ## Change Log
 
-| Date | Version | Description | Author |
-|------|---------|-------------|--------|
-| 2025-09-04 | 1.0 | Initial fullstack architecture document | Winston (Architect) |
-| 2025-09-04 | 1.1 | Added comprehensive refinements across all sections | Winston (Architect) |
+| Date       | Version | Description                                         | Author              |
+| ---------- | ------- | --------------------------------------------------- | ------------------- |
+| 2025-09-04 | 1.0     | Initial fullstack architecture document             | Winston (Architect) |
+| 2025-09-04 | 1.1     | Added comprehensive refinements across all sections | Winston (Architect) |

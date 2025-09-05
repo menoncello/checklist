@@ -1,19 +1,23 @@
 # Story 3.4: Template Validation
 
 ## Overview
+
 Implement comprehensive template validation to ensure template structure, security, and correctness before execution, detecting circular dependencies and validating against schema.
 
 ## Story Details
-- **Epic**: 3 - Template System & Security  
+
+- **Epic**: 3 - Template System & Security
 - **Type**: Feature
 - **Priority**: High
 - **Estimated Effort**: 1 day
 - **Dependencies**: [3.1]
 
 ## Description
+
 Create a validation system that checks templates for structural correctness, security issues, circular dependencies, and schema compliance. This ensures templates are safe and functional before use.
 
 ## Acceptance Criteria
+
 - [ ] Schema validation for template structure
 - [ ] Detect circular dependencies between items
 - [ ] Validate variable references exist
@@ -28,73 +32,76 @@ Create a validation system that checks templates for structural correctness, sec
 ## Technical Requirements
 
 ### Validation Architecture
+
 ```typescript
 interface TemplateValidator {
   // Main validation
-  validate(template: Template): ValidationResult
-  validateAgainstSchema(template: Template, schema: Schema): SchemaResult
-  
+  validate(template: Template): ValidationResult;
+  validateAgainstSchema(template: Template, schema: Schema): SchemaResult;
+
   // Specific validations
-  validateDependencies(template: Template): DependencyResult
-  validateVariables(template: Template): VariableResult
-  validateExpressions(template: Template): ExpressionResult
-  validateSecurity(template: Template): SecurityResult
-  
+  validateDependencies(template: Template): DependencyResult;
+  validateVariables(template: Template): VariableResult;
+  validateExpressions(template: Template): ExpressionResult;
+  validateSecurity(template: Template): SecurityResult;
+
   // Analysis
-  analyzeComplexity(template: Template): ComplexityReport
-  findUnreachableItems(template: Template): string[]
-  suggestOptimizations(template: Template): Optimization[]
+  analyzeComplexity(template: Template): ComplexityReport;
+  findUnreachableItems(template: Template): string[];
+  suggestOptimizations(template: Template): Optimization[];
 }
 
 interface ValidationResult {
-  valid: boolean
-  errors: ValidationError[]
-  warnings: ValidationWarning[]
-  info: ValidationInfo[]
-  summary: ValidationSummary
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+  info: ValidationInfo[];
+  summary: ValidationSummary;
 }
 
 interface ValidationError {
-  severity: 'error' | 'critical'
-  code: string
-  message: string
+  severity: 'error' | 'critical';
+  code: string;
+  message: string;
   location?: {
-    file?: string
-    line?: number
-    column?: number
-    path?: string  // JSON path to element
-  }
-  suggestion?: string
+    file?: string;
+    line?: number;
+    column?: number;
+    path?: string; // JSON path to element
+  };
+  suggestion?: string;
 }
 ```
 
 ### Validation Rules
 
 #### Comprehensive Validation Rules
-| Rule Category | Rule | Severity | Action |
-|--------------|------|----------|--------|
-| **Structure** | Template must have id, name, version | Critical | Block |
-| **Structure** | Version must follow semver (x.y.z) | Error | Block |
-| **Structure** | Item IDs must be unique | Critical | Block |
-| **Structure** | Items must have title and type | Error | Block |
-| **Dependencies** | No circular dependencies allowed | Critical | Block |
-| **Dependencies** | All referenced items must exist | Error | Block |
-| **Dependencies** | Max dependency depth: 10 levels | Warning | Allow |
-| **Variables** | All variable references must exist | Error | Block |
-| **Variables** | Variable names must be alphanumeric+underscore | Error | Block |
-| **Variables** | Required variables must have no default | Warning | Allow |
-| **Expressions** | Valid JavaScript syntax required | Error | Block |
-| **Expressions** | No eval() or Function() allowed | Critical | Block |
-| **Expressions** | Max expression complexity: 10 | Warning | Allow |
-| **Security** | No shell injection patterns | Critical | Block |
-| **Security** | No path traversal (../) | Critical | Block |
-| **Security** | No dangerous commands (rm -rf, sudo) | Critical | Block |
-| **Security** | Max command length: 1000 chars | Warning | Allow |
-| **Performance** | Max items: 1000 | Warning | Allow |
-| **Performance** | Max template size: 1MB | Error | Block |
-| **Performance** | Max nesting depth: 5 | Warning | Allow |
+
+| Rule Category    | Rule                                           | Severity | Action |
+| ---------------- | ---------------------------------------------- | -------- | ------ |
+| **Structure**    | Template must have id, name, version           | Critical | Block  |
+| **Structure**    | Version must follow semver (x.y.z)             | Error    | Block  |
+| **Structure**    | Item IDs must be unique                        | Critical | Block  |
+| **Structure**    | Items must have title and type                 | Error    | Block  |
+| **Dependencies** | No circular dependencies allowed               | Critical | Block  |
+| **Dependencies** | All referenced items must exist                | Error    | Block  |
+| **Dependencies** | Max dependency depth: 10 levels                | Warning  | Allow  |
+| **Variables**    | All variable references must exist             | Error    | Block  |
+| **Variables**    | Variable names must be alphanumeric+underscore | Error    | Block  |
+| **Variables**    | Required variables must have no default        | Warning  | Allow  |
+| **Expressions**  | Valid JavaScript syntax required               | Error    | Block  |
+| **Expressions**  | No eval() or Function() allowed                | Critical | Block  |
+| **Expressions**  | Max expression complexity: 10                  | Warning  | Allow  |
+| **Security**     | No shell injection patterns                    | Critical | Block  |
+| **Security**     | No path traversal (../)                        | Critical | Block  |
+| **Security**     | No dangerous commands (rm -rf, sudo)           | Critical | Block  |
+| **Security**     | Max command length: 1000 chars                 | Warning  | Allow  |
+| **Performance**  | Max items: 1000                                | Warning  | Allow  |
+| **Performance**  | Max template size: 1MB                         | Error    | Block  |
+| **Performance**  | Max nesting depth: 5                           | Warning  | Allow  |
 
 #### Schema Validation
+
 ```typescript
 const templateSchema = {
   type: 'object',
@@ -106,53 +113,54 @@ const templateSchema = {
       properties: {
         id: { type: 'string', pattern: '^[a-z0-9-]+$' },
         name: { type: 'string', minLength: 1 },
-        version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' }
-      }
+        version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' },
+      },
     },
     variables: {
       type: 'array',
-      items: { $ref: '#/definitions/variable' }
+      items: { $ref: '#/definitions/variable' },
     },
     items: {
       type: 'array',
       items: { $ref: '#/definitions/item' },
-      minItems: 1
-    }
-  }
+      minItems: 1,
+    },
+  },
 };
 ```
 
 #### Dependency Validation
+
 ```typescript
 class DependencyValidator {
   validateDependencies(template: Template): DependencyResult {
     const graph = this.buildDependencyGraph(template);
     const errors: ValidationError[] = [];
-    
+
     // Check for cycles
     const cycles = this.detectCycles(graph);
     if (cycles.length > 0) {
-      cycles.forEach(cycle => {
+      cycles.forEach((cycle) => {
         errors.push({
           severity: 'error',
           code: 'CIRCULAR_DEPENDENCY',
           message: `Circular dependency detected: ${cycle.join(' → ')}`,
-          suggestion: 'Remove one of the dependencies to break the cycle'
+          suggestion: 'Remove one of the dependencies to break the cycle',
         });
       });
     }
-    
+
     // Check for missing dependencies
     const missing = this.findMissingDependencies(graph);
-    missing.forEach(dep => {
+    missing.forEach((dep) => {
       errors.push({
         severity: 'error',
         code: 'MISSING_DEPENDENCY',
         message: `Item '${dep.from}' depends on non-existent item '${dep.to}'`,
-        location: { path: `items.${dep.from}.dependsOn` }
+        location: { path: `items.${dep.from}.dependsOn` },
       });
     });
-    
+
     // Check for unreachable items
     const unreachable = this.findUnreachableItems(graph);
     if (unreachable.length > 0) {
@@ -160,52 +168,53 @@ class DependencyValidator {
         severity: 'warning',
         code: 'UNREACHABLE_ITEMS',
         message: `Items can never be reached: ${unreachable.join(', ')}`,
-        suggestion: 'Review conditional logic and dependencies'
+        suggestion: 'Review conditional logic and dependencies',
       });
     }
-    
+
     return { valid: errors.length === 0, errors };
   }
 }
 ```
 
 #### Security Validation
+
 ```typescript
 class SecurityValidator {
   validateSecurity(template: Template): SecurityResult {
     const risks: SecurityRisk[] = [];
-    
+
     // Check for dangerous commands
     this.checkCommands(template, risks);
-    
+
     // Check for path traversal
     this.checkPathTraversal(template, risks);
-    
+
     // Check for injection vulnerabilities
     this.checkInjection(template, risks);
-    
+
     // Check for resource exhaustion
     this.checkResourceLimits(template, risks);
-    
+
     return {
-      safe: risks.filter(r => r.severity === 'high').length === 0,
-      risks
+      safe: risks.filter((r) => r.severity === 'high').length === 0,
+      risks,
     };
   }
-  
+
   private checkCommands(template: Template, risks: SecurityRisk[]) {
     const dangerousCommands = ['rm', 'eval', 'exec', 'sudo'];
-    
-    template.items.forEach(item => {
-      item.commands?.forEach(cmd => {
-        dangerousCommands.forEach(dangerous => {
+
+    template.items.forEach((item) => {
+      item.commands?.forEach((cmd) => {
+        dangerousCommands.forEach((dangerous) => {
           if (cmd.includes(dangerous)) {
             risks.push({
               severity: 'high',
               type: 'dangerous_command',
               message: `Potentially dangerous command: ${dangerous}`,
               location: { path: `items.${item.id}.commands` },
-              mitigation: 'Consider using safer alternatives'
+              mitigation: 'Consider using safer alternatives',
             });
           }
         });
@@ -216,6 +225,7 @@ class SecurityValidator {
 ```
 
 ### Validation Report
+
 ```
 Template Validation Report
 ══════════════════════════
@@ -241,7 +251,7 @@ WARNINGS:
 ─────────
 1. UNREACHABLE_ITEM (Line 89)
    Item 'cleanup' can never be reached due to conditions
-   
+
 2. PERFORMANCE (Complexity)
    Template complexity score: 8.5/10 (High)
    Consider simplifying conditional logic
@@ -257,6 +267,7 @@ Validation completed in 23ms
 ```
 
 ## Testing Requirements
+
 - [ ] Schema validation tests
 - [ ] Circular dependency detection tests
 - [ ] Variable reference validation tests
@@ -267,12 +278,14 @@ Validation completed in 23ms
 - [ ] Error message quality tests
 
 ## Performance Requirements
+
 - Validation of small template (<50 items): <50ms
 - Validation of large template (500+ items): <200ms
 - Dependency graph analysis: <100ms
 - Security scanning: <50ms
 
 ## Definition of Done
+
 - [ ] Schema validation implemented
 - [ ] Dependency validation complete
 - [ ] Variable validation working

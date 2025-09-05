@@ -9,6 +9,7 @@
 **so that** the codebase is maintainable and supports both CLI and TUI interfaces.
 
 **Acceptance Criteria:**
+
 1. Bun project initialized with TypeScript strict mode configuration
 2. Monorepo structure created with `/packages/core`, `/packages/cli`, `/packages/tui` directories
 3. ESLint and Prettier configured with consistent code style rules
@@ -25,6 +26,7 @@
 **so that** we confirm technical feasibility before committing to full implementation.
 
 **Acceptance Criteria:**
+
 1. Spike implements three approaches: Ink, DIY hybrid, and pure ANSI
 2. Each approach demonstrates: scrollable list, split-pane, keyboard input
 3. Performance benchmarked: startup time, memory, render speed with 1000 items
@@ -42,6 +44,7 @@
 **so that** the core functionality can be used by TUI, CLI, or future interfaces.
 
 **Acceptance Criteria:**
+
 1. WorkflowEngine class with no UI dependencies or console output
 2. Engine loads workflow definitions and tracks current position
 3. Methods: `getCurrentStep()`, `advance()`, `goBack()`, `skip()`, `reset()`
@@ -58,6 +61,7 @@
 **so that** workflow progress persists between sessions and is human-readable.
 
 **Acceptance Criteria:**
+
 1. State manager creates `.checklist/` directory structure automatically
 2. YAML state files with schema: `state.yaml`, `config.yaml`, `history.yaml`
 3. Atomic writes using temp file + rename strategy
@@ -75,6 +79,7 @@
 **so that** we have full control over TUI rendering.
 
 **Acceptance Criteria:**
+
 1. TerminalCanvas with double-buffering to prevent flicker
 2. Terminal resize detection and handling
 3. ANSI escape codes for cursor control and colors
@@ -91,6 +96,7 @@
 **so that** UI elements are modular and maintainable.
 
 **Acceptance Criteria:**
+
 1. Abstract Component class with lifecycle methods
 2. Focus management for keyboard navigation
 3. Layout manager for split-pane and flexible layouts

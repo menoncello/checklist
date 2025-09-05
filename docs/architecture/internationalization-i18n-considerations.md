@@ -5,16 +5,17 @@
 While internationalization is not part of the MVP, the architecture supports future i18n implementation:
 
 ### Text Externalization
+
 ```typescript
 // Future i18n support structure
 interface I18nConfig {
-  locale: string
-  fallbackLocale: string
-  messages: Record<string, MessageBundle>
+  locale: string;
+  fallbackLocale: string;
+  messages: Record<string, MessageBundle>;
 }
 
 interface MessageBundle {
-  [key: string]: string | MessageBundle
+  [key: string]: string | MessageBundle;
 }
 
 // Example usage (future)
@@ -26,17 +27,19 @@ class I18nService {
 ```
 
 ### Design Considerations
-| Area | Current (MVP) | Future (i18n) |
-|------|--------------|---------------|
-| **Text Storage** | Hardcoded strings | External message files |
-| **Date/Time** | Local system format | Locale-specific formatting |
-| **Numbers** | Default formatting | Locale-aware formatting |
-| **Terminal** | UTF-8 assumed | Encoding detection |
-| **Templates** | English only | Multi-language templates |
-| **Error Messages** | English only | Translated messages |
-| **Documentation** | English only | Multi-language docs |
+
+| Area               | Current (MVP)       | Future (i18n)              |
+| ------------------ | ------------------- | -------------------------- |
+| **Text Storage**   | Hardcoded strings   | External message files     |
+| **Date/Time**      | Local system format | Locale-specific formatting |
+| **Numbers**        | Default formatting  | Locale-aware formatting    |
+| **Terminal**       | UTF-8 assumed       | Encoding detection         |
+| **Templates**      | English only        | Multi-language templates   |
+| **Error Messages** | English only        | Translated messages        |
+| **Documentation**  | English only        | Multi-language docs        |
 
 ### Implementation Roadmap (Post-MVP)
+
 1. **Phase 1: Text Extraction**
    - Extract all hardcoded strings to message files
    - Create English message bundle
@@ -53,6 +56,7 @@ class I18nService {
    - Implement fallback mechanism
 
 ### Technical Requirements
+
 - Message file format: JSON or YAML
 - Locale detection: System locale or user preference
 - Character encoding: Full UTF-8 support
@@ -60,6 +64,7 @@ class I18nService {
 - Template localization: Per-locale template variants
 
 ### Architecture Impact
+
 - No breaking changes to core architecture
 - I18n service as optional dependency injection
 - Message keys co-located with components
@@ -67,6 +72,7 @@ class I18nService {
 - Minimal performance impact (<5ms overhead)
 
 ## Accessibility & I18n Intersection
+
 - Screen reader language announcements
 - Locale-specific keyboard shortcuts
 - Cultural color considerations
