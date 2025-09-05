@@ -8,7 +8,20 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'dist/', '*.config.ts', '*.config.js', 'packages/*/tests/**'],
+      exclude: [
+        'node_modules/',
+        '**/dist/**',
+        '**/*.config.ts',
+        '**/*.config.js',
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        'packages/*/tests/**',
+        'examples/**',
+        'scripts/**',
+        '.prettierrc.js',
+        'eslint.config.js',
+      ],
+      include: ['packages/*/src/**/*.ts'],
     },
   },
   resolve: {

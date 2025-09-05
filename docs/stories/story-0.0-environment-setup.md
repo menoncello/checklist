@@ -2,7 +2,7 @@
 
 ## Status
 
-**Ready for Review**
+**Ready for Done**
 
 ## Story
 
@@ -306,13 +306,14 @@ bun run examples/terminal-test.ts
 
 ## Change Log
 
-| Date       | Version | Description                                              | Author      |
-| ---------- | ------- | -------------------------------------------------------- | ----------- |
-| 2025-09-05 | 1.0     | Initial story creation                                   | Sarah (PO)  |
-| 2025-09-05 | 1.1     | Added required template sections, tasks, and dev notes   | Sarah (PO)  |
-| 2025-09-05 | 1.2     | Implemented environment setup and project initialization | James (Dev) |
-| 2025-09-05 | 1.3     | Applied QA fixes for security and test coverage          | James (Dev) |
-| 2025-09-05 | 1.4     | Completed all remaining setup tasks (AC11-14)            | James (Dev) |
+| Date       | Version | Description                                                     | Author      |
+| ---------- | ------- | --------------------------------------------------------------- | ----------- |
+| 2025-09-05 | 1.0     | Initial story creation                                          | Sarah (PO)  |
+| 2025-09-05 | 1.1     | Added required template sections, tasks, and dev notes          | Sarah (PO)  |
+| 2025-09-05 | 1.2     | Implemented environment setup and project initialization        | James (Dev) |
+| 2025-09-05 | 1.3     | Applied QA fixes for security and test coverage                 | James (Dev) |
+| 2025-09-05 | 1.4     | Completed all remaining setup tasks (AC11-14)                   | James (Dev) |
+| 2025-09-05 | 1.5     | Applied comprehensive QA fixes (README, perf monitoring, tests) | James (Dev) |
 
 ## Dev Agent Record
 
@@ -336,6 +337,11 @@ Claude Opus 4.1
 - Confirmed npm login (user: menoncello)
 - Verified Homebrew installed (4.6.7)
 - Coverage reporting functional (100% on core module)
+- QA Fixes: Created README.md file addressing AC7
+- QA Fixes: Implemented performance budget monitoring script (AC8)
+- QA Fixes: Added comprehensive test suites increasing coverage
+- QA Fixes: Fixed all critical linting issues
+- QA Fixes: Ran bun run format to fix formatting issues
 
 ### Completion Notes List
 
@@ -354,6 +360,11 @@ Claude Opus 4.1
 13. Package manager installed - Homebrew 4.6.7 on macOS
 14. CI/CD secrets - N/A for local project
 15. Coverage report generation verified and functional
+16. Created comprehensive README.md with setup and usage documentation (AC7)
+17. Implemented performance budget monitoring with scripts/perf-monitor.ts (AC8)
+18. Added test suites for workflow engine, state manager, TUI renderer, CLI handlers, and validators
+19. Performance monitoring tracks startup time, memory usage, and binary size
+20. All high-severity QA issues resolved from gate FAIL assessment
 
 ### File List
 
@@ -380,10 +391,17 @@ Claude Opus 4.1
 - `/.husky/pre-commit` - Pre-commit hook with secrets scanning
 - `/packages/core/src/setup-validation.test.ts` - Setup validation tests
 - `/packages/core/src/env-validation.test.ts` - Environment validation tests
+- `/README.md` - Comprehensive project documentation (QA fix for AC7)
+- `/scripts/perf-monitor.ts` - Performance budget monitoring tool (QA fix for AC8)
+- `/packages/core/src/workflow/engine.test.ts` - Workflow engine tests
+- `/packages/core/src/state/manager.test.ts` - State manager tests
+- `/packages/tui/src/components/renderer.test.ts` - TUI renderer tests
+- `/packages/cli/src/commands/handlers.test.ts` - CLI command handler tests
+- `/packages/shared/src/utils/validators.test.ts` - Shared validator tests
 
 **Modified:**
 
-- `/package.json` - Added husky and dotenv dependencies
+- `/package.json` - Added husky and dotenv dependencies, perf monitoring scripts
 
 ## QA Results
 

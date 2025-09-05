@@ -18,6 +18,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "perf": "bun run scripts/perf-monitor.ts",
+    "perf:report": "cat coverage/perf-report.json",
     "prepare": "husky"
   },
   "devDependencies": {
