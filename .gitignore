@@ -2,6 +2,11 @@
 node_modules/
 bun.lockb
 
+# Bun cache
+.bun/
+~/.bun/cache/
+*.bun
+
 # Build outputs
 dist/
 *.tsbuildinfo
