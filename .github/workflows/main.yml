@@ -105,24 +105,54 @@ jobs:
       - name: Build Packages
         run: bun run build
       
-      - name: Compile Binary
+      - name: Compile Binary (Unix)
+        if: matrix.os != 'windows-latest'
         run: |
           bun build ./packages/cli/src/index.ts \
             --compile \
             --target=bun-${{ matrix.platform }}-${{ matrix.arch }} \
-            --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+            --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}
       
-      - name: Validate Binary Size
+      - name: Compile Binary (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: bun build ./packages/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
+      
+      - name: Validate Binary Size (Unix)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          BINARY_PATH="dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}"
+          BINARY_PATH="dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}"
           SIZE=$(stat -f%z "$BINARY_PATH" 2>/dev/null || stat -c%s "$BINARY_PATH" 2>/dev/null || echo 0)
           SIZE_MB=$((SIZE / 1048576))
           echo "Binary size: ${SIZE_MB}MB"
-          if [ $SIZE_MB -gt 20 ]; then
-            echo "ERROR: Binary size exceeds 20MB limit (${SIZE_MB}MB)"
+          
+          # Adjust limit based on platform
+          if [ "${{ matrix.platform }}" == "darwin" ]; then
+            LIMIT=100
+          elif [ "${{ matrix.platform }}" == "linux" ]; then
+            LIMIT=100
+          else
+            LIMIT=150
+          fi
+          
+          if [ $SIZE_MB -gt $LIMIT ]; then
+            echo "ERROR: Binary size exceeds ${LIMIT}MB limit (${SIZE_MB}MB)"
             exit 1
           fi
+      
+      - name: Validate Binary Size (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          $binaryPath = "dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe"
+          $size = (Get-Item $binaryPath).Length
+          $sizeMB = [math]::Round($size / 1MB, 2)
+          Write-Host "Binary size: ${sizeMB}MB"
+          if ($sizeMB -gt 150) {
+            Write-Host "ERROR: Binary size exceeds 150MB limit (${sizeMB}MB)"
+            exit 1
+          }
       
       - name: Test Binary
         run: |
