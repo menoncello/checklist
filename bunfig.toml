@@ -2,8 +2,6 @@
 
 # Test Configuration
 [test]
-# Run test setup file before all tests
-preload = ["./test-setup.ts"]
 
 # Enable coverage reporting
 coverage = true
@@ -33,6 +31,7 @@ coverageThreshold = { lines = 80, functions = 80, branches = 80, statements = 80
 # Files to exclude from coverage
 coverageExclude = [
   "**/node_modules/**",
+  "dist/**",
   "**/dist/**",
   "**/*.config.ts",
   "**/*.config.js",
@@ -43,8 +42,16 @@ coverageExclude = [
   "eslint.config.js"
 ]
 
-# Files to include in coverage
-coverageInclude = ["packages/*/src/**/*.ts"]
+# Files to include in coverage - be explicit about src only
+coverageInclude = [
+  "packages/core/src/**/*.ts",
+  "packages/cli/src/**/*.ts",
+  "packages/tui/src/**/*.ts",
+  "packages/shared/src/**/*.ts"
+]
+
+# Skip coverage for compiled files
+coverageSkipFullyInstrumented = true
 
 # Development Configuration
 [dev]

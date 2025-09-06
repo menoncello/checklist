@@ -1,0 +1,12 @@
+# Gitleaks ignore file
+# These are false positives from deleted Bun cache files that were 
+# accidentally committed in earlier commits and later removed
+
+# Ignore all findings in ~/.bun/cache path (removed in commit 3e3a2f8)
+# These were TypeScript definition files, not actual secrets
+# Format: fingerprint
+29e8d4b72e2f95aa46bb42b61187a7b22ba92f95:~/.bun/cache/@types/node@20.19.13@@@1/crypto.d.ts:generic-api-key:5091
+e39533a91dd96a72d06b23d9723430d068682f15:~/.bun/cache/@types/node@20.19.13@@@1/https.d.ts:generic-api-key:482
+e39533a91dd96a72d06b23d9723430d068682f15:~/.bun/cache/@types/node@20.19.13@@@1/https.d.ts:generic-api-key:485
+e39533a91dd96a72d06b23d9723430d068682f15:~/.bun/cache/@types/node@20.19.13@@@1/https.d.ts:generic-api-key:488
+e39533a91dd96a72d06b23d9723430d068682f15:~/.bun/cache/@types/node@20.19.13@@@1/crypto.d.ts:generic-api-key:5091

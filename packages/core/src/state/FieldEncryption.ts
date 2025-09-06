@@ -29,7 +29,10 @@ export class FieldEncryption {
   private static readonly IV_LENGTH = 16; // 128 bits
   private static readonly AUTH_TAG_LENGTH = 16; // 128 bits
   private static readonly KEY_FILE = path.join(STATE_DIR, '.encryption-key');
-  private static readonly METADATA_FILE = path.join(STATE_DIR, '.encryption-metadata.json');
+  private static readonly METADATA_FILE = path.join(
+    STATE_DIR,
+    '.encryption-metadata.json'
+  );
 
   private static encryptionKey: Buffer | null = null;
 
@@ -120,7 +123,10 @@ export class FieldEncryption {
     const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
 
     // Encrypt data
-    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const encrypted = Buffer.concat([
+      cipher.update(plaintext, 'utf8'),
+      cipher.final(),
+    ]);
 
     // Get auth tag
     const authTag = cipher.getAuthTag();
@@ -137,8 +143,13 @@ export class FieldEncryption {
   /**
    * Decrypt a value
    */
-  public static async decrypt(encryptedField: EncryptedField): Promise<unknown> {
-    if (!encryptedField.encrypted || encryptedField.algorithm !== 'aes-256-gcm') {
+  public static async decrypt(
+    encryptedField: EncryptedField
+  ): Promise<unknown> {
+    if (
+      !encryptedField.encrypted ||
+      encryptedField.algorithm !== 'aes-256-gcm'
+    ) {
       throw new Error('Invalid encrypted field format');
     }
 
@@ -156,7 +167,10 @@ export class FieldEncryption {
     decipher.setAuthTag(authTag);
 
     // Decrypt data
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
 
     // Parse JSON
     return JSON.parse(decrypted.toString('utf8'));
@@ -184,10 +198,14 @@ export class FieldEncryption {
   ): Promise<{ data: unknown; encryptedPaths: string[] }> {
     const encryptedPaths: string[] = [];
 
-    const processValue = async (value: unknown, currentPath: string): Promise<unknown> => {
+    const processValue = async (
+      value: unknown,
+      currentPath: string
+    ): Promise<unknown> => {
       // Skip if already encrypted
       if (
-        value &&
+        value !== null &&
+        value !== undefined &&
         typeof value === 'object' &&
         'encrypted' in value &&
         (value as Record<string, unknown>).encrypted === true
@@ -205,10 +223,17 @@ export class FieldEncryption {
       if (Array.isArray(value)) {
         return await Promise.all(
           value.map((item, index) =>
-            processValue(item, currentPath ? `${currentPath}.${index}` : `${index}`)
+            processValue(
+              item,
+              currentPath ? `${currentPath}.${index}` : `${index}`
+            )
           )
         );
-      } else if (value && typeof value === 'object') {
+      } else if (
+        value !== null &&
+        value !== undefined &&
+        typeof value === 'object'
+      ) {
         const result: Record<string, unknown> = {};
 
         for (const [key, val] of Object.entries(value)) {
@@ -233,7 +258,8 @@ export class FieldEncryption {
     const processValue = async (value: unknown): Promise<unknown> => {
       // Check if this is an encrypted field
       if (
-        value &&
+        value !== null &&
+        value !== undefined &&
         typeof value === 'object' &&
         'encrypted' in value &&
         (value as Record<string, unknown>).encrypted === true
@@ -244,7 +270,11 @@ export class FieldEncryption {
       // Recursively process objects and arrays
       if (Array.isArray(value)) {
         return await Promise.all(value.map((item) => processValue(item)));
-      } else if (value && typeof value === 'object') {
+      } else if (
+        value !== null &&
+        value !== undefined &&
+        typeof value === 'object'
+      ) {
         const result: Record<string, unknown> = {};
 
         for (const [key, val] of Object.entries(value)) {
@@ -270,7 +300,7 @@ export class FieldEncryption {
         ? (JSON.parse(await metadataFile.text()) as EncryptionMetadata)
         : null;
 
-      const metadata: EncryptionMetadata = existing || {
+      const metadata: EncryptionMetadata = existing ?? {
         version: '1.0.0',
         keyId: crypto.randomBytes(8).toString('hex'),
         encryptedFields: [],
@@ -311,7 +341,9 @@ export class FieldEncryption {
     // Update metadata
     const metadataFile = Bun.file(this.METADATA_FILE);
     if (await metadataFile.exists()) {
-      const metadata = JSON.parse(await metadataFile.text()) as EncryptionMetadata;
+      const metadata = JSON.parse(
+        await metadataFile.text()
+      ) as EncryptionMetadata;
       metadata.rotatedAt = new Date().toISOString();
       metadata.keyId = crypto.randomBytes(8).toString('hex');
       await Bun.write(this.METADATA_FILE, JSON.stringify(metadata, null, 2));

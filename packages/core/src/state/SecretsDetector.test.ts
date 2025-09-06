@@ -27,7 +27,9 @@ describe('SecretsDetector', () => {
       // Check for either AWS key type or generic secret (the AWS secret key pattern may match as generic)
       const hasAwsKey = secrets.some(
         (s) =>
-          s.type === 'AWS Access Key' || s.type === 'AWS Secret Key' || s.type === 'Generic Secret'
+          s.type === 'AWS Access Key' ||
+          s.type === 'AWS Secret Key' ||
+          s.type === 'Generic Secret'
       );
       expect(hasAwsKey).toBe(true);
     });

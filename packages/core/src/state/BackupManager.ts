@@ -1,10 +1,10 @@
-import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import * as yaml from 'js-yaml';
-import { ChecklistState, BackupManifest, BackupManifestEntry } from './types';
-import { BackupError, RecoveryError, StateCorruptedError } from './errors';
-import { StateValidator } from './validation';
 import { MAX_BACKUP_COUNT } from './constants';
+import { BackupError, RecoveryError, StateCorruptedError } from './errors';
+import { ChecklistState, BackupManifest, BackupManifestEntry } from './types';
+import { StateValidator } from './validation';
 
 export class BackupManager {
   private backupDir: string;
@@ -71,7 +71,8 @@ export class BackupManager {
     manifest.backups.push(entry);
 
     manifest.backups.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
     await Bun.write(this.manifestPath, yaml.dump(manifest));
@@ -156,7 +157,10 @@ export class BackupManager {
       return validatedState;
     } catch (error) {
       if (error instanceof StateCorruptedError) {
-        throw new RecoveryError(`Backup ${filename} is corrupted: ${error.message}`, false);
+        throw new RecoveryError(
+          `Backup ${filename} is corrupted: ${error.message}`,
+          false
+        );
       }
       throw error;
     }
@@ -167,7 +171,9 @@ export class BackupManager {
     return manifest.backups;
   }
 
-  async getBackupInfo(filename: string): Promise<BackupManifestEntry | undefined> {
+  async getBackupInfo(
+    filename: string
+  ): Promise<BackupManifestEntry | undefined> {
     const manifest = await this.loadManifest();
     return manifest.backups.find((b) => b.filename === filename);
   }
@@ -191,7 +197,10 @@ export class BackupManager {
             deletedCount++;
           }
         } catch (error) {
-          console.error(`Failed to delete old backup ${backup.filename}:`, error);
+          console.error(
+            `Failed to delete old backup ${backup.filename}:`,
+            error
+          );
         }
       } else {
         backupsToKeep.push(backup);

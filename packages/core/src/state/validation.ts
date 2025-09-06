@@ -1,26 +1,33 @@
+import { createHash } from 'node:crypto';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { createHash } from 'node:crypto';
+import { StateCorruptedError } from './errors';
 import stateSchema from './schemas/state.schema.json';
 import { ChecklistState } from './types';
-import { StateCorruptedError } from './errors';
 
 export class StateValidator {
-  private ajv: Ajv;
-  private validateSchema: ReturnType<Ajv['compile']>;
+  private ajv: any;
+  private validateSchema: any;
 
   constructor() {
-    this.ajv = new Ajv({ allErrors: true, verbose: true });
-    addFormats(this.ajv);
+    this.ajv = new Ajv({
+      allErrors: true,
+      verbose: true,
+      code: { optimize: false }, // Required for ajv v8
+    });
+    (addFormats as any)(this.ajv);
     this.validateSchema = this.ajv.compile(stateSchema);
   }
 
   async validateStateSchema(state: unknown): Promise<ChecklistState> {
-    if (!this.validateSchema(state)) {
+    if (this.validateSchema(state) !== true) {
       const errors = this.validateSchema.errors
-        ?.map((e) => `${e.instancePath} ${e.message}`)
+        ?.map((e: any) => `${e.instancePath} ${e.message}`)
         .join(', ');
-      throw new StateCorruptedError(`State validation failed: ${errors}`, 'schema_invalid');
+      throw new StateCorruptedError(
+        `State validation failed: ${errors}`,
+        'schema_invalid'
+      );
     }
     return state as ChecklistState;
   }

@@ -1,88 +1,65 @@
-/**
- * Global Test Setup for Bun Test Runner
- * This file is loaded before all tests via bunfig.toml
- */
+import { beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
+import type { Server } from 'bun';
 
-// Setup global test utilities
-import { beforeAll, afterAll } from 'bun:test';
+declare global {
+  var __TEST_SERVERS__: Server[];
+  var __TEST_TEMP_DIRS__: string[];
+  var __ORIGINAL_CONSOLE__: typeof console;
+}
 
-// Setup test environment variables
-process.env.NODE_ENV = 'test';
-process.env.CHECKLIST_ENV = 'test';
+globalThis.__TEST_SERVERS__ = [];
+globalThis.__TEST_TEMP_DIRS__ = [];
 
-// Global test timeout
-const DEFAULT_TIMEOUT = 5000;
+// Store original console methods
+const originalConsole = {
+  log: console.log,
+  error: console.error,
+  warn: console.warn,
+  info: console.info,
+  debug: console.debug,
+};
 
-// Setup global mocks if needed
+globalThis.__ORIGINAL_CONSOLE__ = originalConsole as any;
+
 beforeAll(() => {
-  // Clear any previous test artifacts
-  if (globalThis.localStorage) {
-    globalThis.localStorage.clear();
-  }
+  process.env.NODE_ENV = 'test';
+  process.env.LOG_LEVEL = 'silent';
 
-  // Setup console spy for tests that need to verify console output
-  const originalConsole = {
-    log: console.log,
-    error: console.error,
-    warn: console.warn,
-  };
-
-  globalThis.originalConsole = originalConsole;
+  // Mock console methods to suppress output during tests
+  console.log = () => {};
+  console.error = () => {};
+  console.warn = () => {};
+  console.info = () => {};
+  console.debug = () => {};
 });
 
 afterAll(() => {
-  // Restore console
-  if (globalThis.originalConsole) {
-    console.log = globalThis.originalConsole.log;
-    console.error = globalThis.originalConsole.error;
-    console.warn = globalThis.originalConsole.warn;
+  // Restore original console methods
+  console.log = originalConsole.log;
+  console.error = originalConsole.error;
+  console.warn = originalConsole.warn;
+  console.info = originalConsole.info;
+  console.debug = originalConsole.debug;
+
+  for (const server of globalThis.__TEST_SERVERS__) {
+    server.stop();
   }
+  globalThis.__TEST_SERVERS__ = [];
+
+  for (const tempDir of globalThis.__TEST_TEMP_DIRS__) {
+    try {
+      Bun.spawn(['rm', '-rf', tempDir], { stdout: 'ignore', stderr: 'ignore' });
+    } catch {}
+  }
+  globalThis.__TEST_TEMP_DIRS__ = [];
 });
 
-// Global test helpers
-globalThis.testHelpers = {
-  timeout: DEFAULT_TIMEOUT,
+beforeEach(() => {
+  // Clear any mocks if needed
+});
 
-  // Helper to create temp test directories
-  async createTempDir(prefix = 'test-') {
-    const tempDir = await Bun.write(`/tmp/${prefix}${Date.now()}/test.txt`, 'test');
-    return tempDir;
-  },
-
-  // Helper for async test delays
-  delay: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
-
-  // Mock file system helper
-  mockFS: () => {
-    const files = new Map<string, string>();
-    return {
-      readFile: (path: string) => files.get(path),
-      writeFile: (path: string, content: string) => files.set(path, content),
-      exists: (path: string) => files.has(path),
-      clear: () => files.clear(),
-    };
-  },
-};
-
-// Export for TypeScript
-declare global {
-  var originalConsole: {
-    log: typeof console.log;
-    error: typeof console.error;
-    warn: typeof console.warn;
-  };
-
-  var testHelpers: {
-    timeout: number;
-    createTempDir: (prefix?: string) => Promise<any>;
-    delay: (ms: number) => Promise<void>;
-    mockFS: () => {
-      readFile: (path: string) => string | undefined;
-      writeFile: (path: string, content: string) => void;
-      exists: (path: string) => boolean;
-      clear: () => void;
-    };
-  };
-}
+afterEach(() => {
+  // Restore any mocks if needed
+});
 
 export {};

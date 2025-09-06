@@ -1,0 +1,279 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * 1' # Weekly on Monday at 9 AM UTC
+  workflow_dispatch:
+
+# Add rate limiting via concurrency control
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: false # Don't cancel security scans
+
+env:
+  BUN_VERSION: 1.2.21
+  # Enforce HTTPS for all external requests
+  NODE_TLS_REJECT_UNAUTHORIZED: 1
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      
+      - name: Run npm Audit
+        run: |
+          echo "🔍 Running dependency audit..."
+          npm audit --audit-level=moderate --json > audit-results.json || true
+          
+          # Parse results
+          if [ -f audit-results.json ]; then
+            VULNERABILITIES=$(jq '.metadata.vulnerabilities | .moderate + .high + .critical' audit-results.json)
+            
+            if [ "$VULNERABILITIES" -gt 0 ]; then
+              echo "❌ Found $VULNERABILITIES moderate or higher vulnerabilities"
+              npm audit --audit-level=moderate
+              exit 1
+            else
+              echo "✅ No moderate or higher vulnerabilities found"
+            fi
+          fi
+      
+      - name: Upload Audit Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-results
+          path: audit-results.json
+          retention-days: 30
+
+  semgrep-scan:
+    name: Semgrep Security Analysis
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Run Semgrep
+        run: |
+          semgrep ci \
+            --config=auto \
+            --json \
+            --output=semgrep-results.json \
+            --metrics=off \
+            --disable-version-check \
+            --no-git-ignore \
+            || true
+      
+      - name: Process Semgrep Results
+        run: |
+          if [ -f semgrep-results.json ]; then
+            HIGH_FINDINGS=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' semgrep-results.json)
+            MEDIUM_FINDINGS=$(jq '[.results[] | select(.extra.severity == "WARNING")] | length' semgrep-results.json)
+            
+            echo "📊 Semgrep Results:"
+            echo "  High severity: $HIGH_FINDINGS"
+            echo "  Medium severity: $MEDIUM_FINDINGS"
+            
+            if [ "$HIGH_FINDINGS" -gt 0 ]; then
+              echo "❌ High severity security issues found!"
+              jq '.results[] | select(.extra.severity == "ERROR") | {path: .path, message: .extra.message, line: .start.line}' semgrep-results.json
+              exit 1
+            fi
+          fi
+      
+      - name: Upload Semgrep Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+          retention-days: 30
+      
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-results.json
+        continue-on-error: true
+
+  secret-scanning:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Check for Hardcoded Secrets
+        run: |
+          echo "🔍 Scanning for hardcoded secrets..."
+          
+          # Check for common secret patterns
+          PATTERNS=(
+            "api[_-]?key"
+            "api[_-]?secret"
+            "auth[_-]?token"
+            "private[_-]?key"
+            "secret[_-]?key"
+            "password"
+            "passwd"
+            "pwd"
+            "bearer"
+            "credential"
+          )
+          
+          FOUND_SECRETS=0
+          for pattern in "${PATTERNS[@]}"; do
+            if grep -r -i "$pattern\s*=\s*['\"][^'\"]\{20,\}" --include="*.ts" --include="*.js" --include="*.json" --exclude-dir=node_modules --exclude-dir=dist .; then
+              FOUND_SECRETS=1
+            fi
+          done
+          
+          if [ $FOUND_SECRETS -eq 1 ]; then
+            echo "❌ Potential secrets found in code!"
+            exit 1
+          else
+            echo "✅ No hardcoded secrets detected"
+          fi
+
+  sast-analysis:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Security Headers Check
+        run: |
+          echo "🔍 Checking for security best practices..."
+          
+          # Check for security headers in code
+          echo "Checking for security headers implementation..."
+          
+          ISSUES=()
+          
+          # Check for HTTPS enforcement
+          if ! grep -r "forceSSL\|requireHTTPS\|secure.*true" --include="*.ts" --include="*.js" .; then
+            ISSUES+=("No HTTPS enforcement found")
+          fi
+          
+          # Check for input validation
+          if ! grep -r "validate\|sanitize\|escape" --include="*.ts" --include="*.js" .; then
+            ISSUES+=("No input validation found")
+          fi
+          
+          # Check for rate limiting
+          if ! grep -r "rateLimit\|throttle" --include="*.ts" --include="*.js" .; then
+            ISSUES+=("No rate limiting implementation found")
+          fi
+          
+          if [ ${#ISSUES[@]} -gt 0 ]; then
+            echo "⚠️  Security considerations:"
+            printf '%s\n' "${ISSUES[@]}"
+          else
+            echo "✅ Basic security patterns found"
+          fi
+      
+      - name: License Compliance Check
+        run: |
+          echo "📜 Checking license compliance..."
+          
+          # Check for problematic licenses
+          if [ -f package.json ]; then
+            npx license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;Unlicense;CC0-1.0' || {
+              echo "⚠️  Some dependencies have incompatible licenses"
+            }
+          fi
+
+  security-summary:
+    name: Security Summary
+    needs: [dependency-audit, semgrep-scan, secret-scanning, sast-analysis]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Check Security Status
+        run: |
+          echo "## 🔐 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.dependency-audit.result }}" == "success" ]; then
+            echo "| Dependency Audit | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Dependency Audit | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.semgrep-scan.result }}" == "success" ]; then
+            echo "| Semgrep Analysis | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Semgrep Analysis | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.secret-scanning.result }}" == "success" ]; then
+            echo "| Secret Scanning | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Secret Scanning | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.sast-analysis.result }}" == "success" ]; then
+            echo "| SAST Analysis | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| SAST Analysis | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Fail if any security check failed
+          if [ "${{ needs.dependency-audit.result }}" != "success" ] || \
+             [ "${{ needs.semgrep-scan.result }}" != "success" ] || \
+             [ "${{ needs.secret-scanning.result }}" != "success" ] || \
+             [ "${{ needs.sast-analysis.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Security checks failed!** Please review the findings above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **All security checks passed!**" >> $GITHUB_STEP_SUMMARY
+          fi

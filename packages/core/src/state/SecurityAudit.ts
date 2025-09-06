@@ -3,8 +3,8 @@
  * Tracks security-relevant events and access patterns
  */
 
-import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import { STATE_DIR } from './constants';
 
 export enum SecurityEventType {
@@ -48,7 +48,10 @@ export interface SecurityEvent {
 }
 
 export class SecurityAudit {
-  private static readonly AUDIT_FILE = path.join(STATE_DIR, 'security-audit.log');
+  private static readonly AUDIT_FILE = path.join(
+    STATE_DIR,
+    'security-audit.log'
+  );
   private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   private static readonly MAX_ROTATION_COUNT = 5;
   private static buffer: SecurityEvent[] = [];
@@ -85,22 +88,22 @@ export class SecurityAudit {
     const event: SecurityEvent = {
       timestamp: new Date().toISOString(),
       type,
-      severity: options.severity || this.getDefaultSeverity(type),
+      severity: options.severity ?? this.getDefaultSeverity(type),
       message,
       details: options.details,
-      user: process.env.USER || process.env.USERNAME || 'unknown',
+      user: Bun.env.USER ?? Bun.env.USERNAME ?? 'unknown',
       pid: process.pid,
       hostname: undefined, // Hostname not available in Bun
     };
 
     // Add stack trace for errors and critical events
     if (
-      options.stackTrace ||
+      options.stackTrace === true ||
       event.severity === SecuritySeverity.ERROR ||
       event.severity === SecuritySeverity.CRITICAL
     ) {
       const stack = new Error().stack;
-      if (stack) {
+      if (stack !== undefined && stack !== null && stack !== '') {
         // Remove first two lines (Error message and this function)
         event.stackTrace = stack.split('\n').slice(2).join('\n');
       }
@@ -150,7 +153,10 @@ export class SecurityAudit {
       SecurityEventType.SECRETS_DETECTED,
       `${detectedSecrets.length} potential secrets detected - ${action}`,
       {
-        severity: action === 'BLOCKED' ? SecuritySeverity.WARNING : SecuritySeverity.INFO,
+        severity:
+          action === 'BLOCKED'
+            ? SecuritySeverity.WARNING
+            : SecuritySeverity.INFO,
         details: {
           count: detectedSecrets.length,
           types: [...new Set(detectedSecrets.map((s) => s.type))],
@@ -180,7 +186,7 @@ export class SecurityAudit {
 
     await this.logEvent(
       typeMap[operation],
-      `${operation} operation ${success ? 'succeeded' : 'failed'}${fieldCount ? ` for ${fieldCount} fields` : ''}`,
+      `${operation} operation ${success ? 'succeeded' : 'failed'}${fieldCount !== undefined && fieldCount > 0 ? ` for ${fieldCount} fields` : ''}`,
       {
         severity: success ? SecuritySeverity.INFO : SecuritySeverity.ERROR,
         details: {
@@ -209,7 +215,10 @@ export class SecurityAudit {
       typeMap[operation],
       `Lock ${operation.toLowerCase()} for ${path.basename(lockPath)}`,
       {
-        severity: operation === 'ACQUIRED' ? SecuritySeverity.INFO : SecuritySeverity.WARNING,
+        severity:
+          operation === 'ACQUIRED'
+            ? SecuritySeverity.INFO
+            : SecuritySeverity.WARNING,
         details: {
           ...details,
           lockPath,
@@ -257,7 +266,8 @@ export class SecurityAudit {
       stats.byType[log.type] = (stats.byType[log.type] || 0) + 1;
 
       // Count by severity
-      stats.bySeverity[log.severity] = (stats.bySeverity[log.severity] || 0) + 1;
+      stats.bySeverity[log.severity] =
+        (stats.bySeverity[log.severity] || 0) + 1;
 
       // Count suspicious activities
       if (log.type === SecurityEventType.SUSPICIOUS_ACTIVITY) {
@@ -404,7 +414,8 @@ export class SecurityAudit {
     try {
       await this.ensureAuditFile();
 
-      const lines = this.buffer.map((event) => JSON.stringify(event)).join('\n') + '\n';
+      const lines =
+        this.buffer.map((event) => JSON.stringify(event)).join('\n') + '\n';
 
       // Append to file
       const file = Bun.file(this.AUDIT_FILE);

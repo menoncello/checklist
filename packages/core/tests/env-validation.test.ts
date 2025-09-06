@@ -9,6 +9,14 @@ describe('Environment Variable Validation', () => {
 
   beforeAll(() => {
     const envPath = path.join(projectRoot, '.env');
+    const envExamplePath = path.join(projectRoot, '.env.example');
+    
+    // In CI environment, create .env from .env.example if it doesn't exist
+    if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
+      const exampleContent = fs.readFileSync(envExamplePath, 'utf-8');
+      fs.writeFileSync(envPath, exampleContent);
+    }
+    
     if (fs.existsSync(envPath)) {
       envConfig = dotenv.parse(fs.readFileSync(envPath));
     } else {
