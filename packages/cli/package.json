@@ -1,20 +1,15 @@
 {
   "name": "@checklist/cli",
-  "version": "0.1.0",
-  "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "bin": {
-    "checklist": "./src/index.ts"
-  },
+  "version": "0.0.1",
+  "main": "../../dist/packages/cli/index.js",
+  "types": "../../dist/packages/cli/index.d.ts",
   "scripts": {
-    "dev": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target node",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@checklist/core": "workspace:*",
-    "@checklist/tui": "workspace:*",
-    "@checklist/shared": "workspace:*"
+    "build": "bun build ./src/index.ts --outdir=../../dist/packages/cli --target=bun",
+    "test": "bun test",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "type-check": "tsc --noEmit"
   }
 }

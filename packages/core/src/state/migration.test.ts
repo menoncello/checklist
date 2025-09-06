@@ -84,7 +84,10 @@ class StateMigrator {
   /**
    * Check if migration is needed
    */
-  static needsMigration(currentVersion: string, targetVersion: string): boolean {
+  static needsMigration(
+    currentVersion: string,
+    targetVersion: string
+  ): boolean {
     const current = this.parseVersion(currentVersion);
     const target = this.parseVersion(targetVersion);
 
@@ -97,7 +100,11 @@ class StateMigrator {
   /**
    * Parse semantic version
    */
-  static parseVersion(version: string): { major: number; minor: number; patch: number } {
+  static parseVersion(version: string): {
+    major: number;
+    minor: number;
+    patch: number;
+  } {
     const [major = 0, minor = 0, patch = 0] = version.split('.').map(Number);
     return { major, minor, patch };
   }
@@ -109,7 +116,10 @@ class StateMigrator {
     const stateWithoutChecksum = { ...state };
     delete stateWithoutChecksum.checksum;
 
-    const content = JSON.stringify(stateWithoutChecksum, Object.keys(stateWithoutChecksum).sort());
+    const content = JSON.stringify(
+      stateWithoutChecksum,
+      Object.keys(stateWithoutChecksum).sort()
+    );
     return crypto.createHash('sha256').update(content).digest('hex');
   }
 
@@ -150,7 +160,10 @@ class StateMigrator {
   /**
    * Migrate state file
    */
-  static async migrateStateFile(filePath: string, backupDir: string): Promise<void> {
+  static async migrateStateFile(
+    filePath: string,
+    backupDir: string
+  ): Promise<void> {
     // Read current state
     const file = Bun.file(filePath);
     const content = await file.text();
@@ -165,7 +178,10 @@ class StateMigrator {
     }
 
     // Create backup
-    const backupPath = path.join(backupDir, `state.yaml.pre-migration-${Date.now()}`);
+    const backupPath = path.join(
+      backupDir,
+      `state.yaml.pre-migration-${Date.now()}`
+    );
     await Bun.write(backupPath, content);
 
     // Perform migration
@@ -207,7 +223,10 @@ class StateMigrator {
   /**
    * Rollback migration
    */
-  static async rollbackMigration(filePath: string, backupPath: string): Promise<void> {
+  static async rollbackMigration(
+    filePath: string,
+    backupPath: string
+  ): Promise<void> {
     const backup = Bun.file(backupPath);
     if (!(await backup.exists())) {
       throw new Error('Backup file not found');
@@ -316,7 +335,9 @@ describe('State Migration', () => {
       const v2State: StateV2 = {
         schemaVersion: '2.0.0',
         checksum: '',
-        completedSteps: [{ stepId: 'step1', completedAt: '2024-01-01', executionTime: 100 }],
+        completedSteps: [
+          { stepId: 'step1', completedAt: '2024-01-01', executionTime: 100 },
+        ],
       };
 
       // Fix checksum
@@ -397,7 +418,9 @@ describe('State Migration', () => {
           id: 'test-instance',
           status: 'active',
         },
-        completedSteps: [{ stepId: 'step1', completedAt: '2024-01-01T00:00:00Z' }],
+        completedSteps: [
+          { stepId: 'step1', completedAt: '2024-01-01T00:00:00Z' },
+        ],
       };
 
       // Write v1 state file
@@ -499,9 +522,9 @@ describe('State Migration', () => {
     test('should throw if backup file not found', async () => {
       await Bun.write(stateFile, 'current: state');
 
-      await expect(StateMigrator.rollbackMigration(stateFile, backupFile)).rejects.toThrow(
-        'Backup file not found'
-      );
+      await expect(
+        StateMigrator.rollbackMigration(stateFile, backupFile)
+      ).rejects.toThrow('Backup file not found');
     });
   });
 });

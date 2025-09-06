@@ -1,6 +1,9 @@
 export type WorkflowStatus = 'active' | 'paused' | 'completed' | 'failed';
 export type StepResult = 'success' | 'failure' | 'skipped';
-export type CorruptionType = 'checksum_mismatch' | 'schema_invalid' | 'parse_error';
+export type CorruptionType =
+  | 'checksum_mismatch'
+  | 'schema_invalid'
+  | 'parse_error';
 export type RecoveryMethod = 'backup' | 'reset' | 'manual';
 export type ConflictResolution = 'local' | 'remote' | 'merge';
 export type OperationType = 'read' | 'write' | 'delete';

@@ -1,8 +1,2 @@
-export const shared = {
-  version: '0.1.0',
-  name: '@checklist/shared',
-};
-
-export function log(message: string): void {
-  console.log(`[SHARED]: ${message}`);
-}
+export const version = '0.0.1';
+console.log('Package @checklist/shared initialized');

@@ -11,7 +11,10 @@ export class StateError extends Error {
 export class StateCorruptedError extends StateError {
   constructor(
     message: string,
-    public readonly corruptionType: 'checksum_mismatch' | 'schema_invalid' | 'parse_error'
+    public readonly corruptionType:
+      | 'checksum_mismatch'
+      | 'schema_invalid'
+      | 'parse_error'
   ) {
     super(message, 'STATE_CORRUPTED');
     this.name = 'StateCorruptedError';

@@ -29,11 +29,14 @@ cd checklist
 # Install dependencies
 bun install
 
-# Run tests to verify setup
-bun test
+# Run initial setup verification
+bun test tests/smoke.test.ts
 
-# Build the project
-bun run build
+# Build all packages
+bun run build:all
+
+# Verify installation
+bun run quality
 ```
 
 ### Development Setup

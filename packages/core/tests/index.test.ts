@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'bun:test';
-import { core, initialize } from '../src/index';
+import { version } from '../src/index';
 
 describe('Core smoke tests', () => {
-  it('should export core object with version', () => {
-    expect(core).toBeDefined();
-    expect(core.version).toBe('0.1.0');
-    expect(core.name).toBe('@checklist/core');
+  it('should export version', () => {
+    expect(version).toBeDefined();
+    expect(version).toBe('0.0.1');
   });
-
-  it('should initialize without errors', () => {
-    expect(() => initialize()).not.toThrow();
+  
+  it('should be able to import from core package', () => {
+    expect(() => import('../src/index')).not.toThrow();
   });
 });

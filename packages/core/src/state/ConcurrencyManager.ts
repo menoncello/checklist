@@ -1,10 +1,14 @@
 import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
 import { hostname, userInfo } from 'node:os';
-import { LockFile } from './types';
-import { LockAcquisitionError } from './errors';
-import { LOCK_TIMEOUT, LOCK_RETRY_INTERVAL, LOCK_EXPIRY_TIME } from './constants';
+import { join } from 'node:path';
 import * as yaml from 'js-yaml';
+import {
+  LOCK_TIMEOUT,
+  LOCK_RETRY_INTERVAL,
+  LOCK_EXPIRY_TIME,
+} from './constants';
+import { LockAcquisitionError } from './errors';
+import { LockFile } from './types';
 
 export class ConcurrencyManager {
   private lockDir: string;
@@ -27,7 +31,10 @@ export class ConcurrencyManager {
     process.on('SIGTERM', () => this.releaseLock());
   }
 
-  async acquireLock(lockName: string = 'state', timeout: number = LOCK_TIMEOUT): Promise<string> {
+  async acquireLock(
+    lockName: string = 'state',
+    timeout: number = LOCK_TIMEOUT
+  ): Promise<string> {
     const lockPath = this.getLockPath(lockName);
     const startTime = Date.now();
     const lockUuid = crypto.randomUUID();
@@ -56,7 +63,10 @@ export class ConcurrencyManager {
     );
   }
 
-  private async tryAcquireLock(lockPath: string, lockId: string): Promise<boolean> {
+  private async tryAcquireLock(
+    lockPath: string,
+    lockId: string
+  ): Promise<boolean> {
     try {
       const lockFile: LockFile = {
         version: '1.0.0',
@@ -108,7 +118,9 @@ export class ConcurrencyManager {
 
         if (lockFile.lockId === lockId) {
           lockFile.timing.renewedAt = new Date().toISOString();
-          lockFile.timing.expiresAt = new Date(Date.now() + LOCK_EXPIRY_TIME).toISOString();
+          lockFile.timing.expiresAt = new Date(
+            Date.now() + LOCK_EXPIRY_TIME
+          ).toISOString();
 
           await Bun.write(lockPath, yaml.dump(lockFile));
         }
@@ -119,7 +131,8 @@ export class ConcurrencyManager {
   }
 
   async releaseLock(lockName: string = 'state'): Promise<void> {
-    if (!this.lockId) return;
+    if (this.lockId === undefined || this.lockId === null || this.lockId === '')
+      return;
 
     const lockPath = this.getLockPath(lockName);
 
@@ -180,7 +193,9 @@ export class ConcurrencyManager {
       const lockContent = await Bun.file(lockPath).text();
       const lockFile = yaml.load(lockContent) as LockFile;
 
-      const alreadyWaiting = lockFile.concurrency.waitingProcesses.some((p) => p.pid === this.pid);
+      const alreadyWaiting = lockFile.concurrency.waitingProcesses.some(
+        (p) => p.pid === this.pid
+      );
 
       if (!alreadyWaiting) {
         lockFile.concurrency.waitingProcesses.push({
