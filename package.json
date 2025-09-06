@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
+    "@types/dotenv": "^8.2.3",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "clipboardy": "^4.0.0",
