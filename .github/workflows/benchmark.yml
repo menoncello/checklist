@@ -117,6 +117,13 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            
+            // Only proceed if we have a PR context
+            if (!context.issue || !context.issue.number) {
+              console.log('No PR context available, skipping comment');
+              return;
+            }
+            
             const reportPath = '.performance/report.md';
             
             if (fs.existsSync(reportPath)) {
