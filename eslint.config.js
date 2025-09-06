@@ -22,7 +22,8 @@ export default [
       'tests/**',
       'performance.config.ts',
       '.vscode/**',
-      '.husky/**'
+      '.husky/**',
+      'packages/tui/spike/**'
     ]
   },
   {
