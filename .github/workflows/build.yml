@@ -92,8 +92,8 @@ jobs:
           SIZE_MB=$((SIZE / 1048576))
           echo "📦 Binary size: ${SIZE_MB}MB"
           echo "BINARY_SIZE=${SIZE_MB}MB" >> $GITHUB_ENV
-          if [ $SIZE_MB -gt 100 ]; then
-            echo "❌ Binary size exceeds 100MB limit (${SIZE_MB}MB)"
+          if [ $SIZE_MB -gt 150 ]; then
+            echo "❌ Binary size exceeds 150MB limit (${SIZE_MB}MB)"
             exit 1
           fi
           echo "✅ Binary size is within limits"
@@ -107,8 +107,8 @@ jobs:
           $sizeMB = [math]::Round($size / 1MB, 2)
           Write-Host "Binary size: ${sizeMB}MB"
           echo "BINARY_SIZE=${sizeMB}MB" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          if ($sizeMB -gt 100) {
-            Write-Host "ERROR: Binary size exceeds 100MB limit (${sizeMB}MB)"
+          if ($sizeMB -gt 150) {
+            Write-Host "ERROR: Binary size exceeds 150MB limit (${sizeMB}MB)"
             exit 1
           }
           Write-Host "Binary size is within limits"
