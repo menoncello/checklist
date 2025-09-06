@@ -177,23 +177,36 @@ jobs:
     if: always()
     
     steps:
+      - name: Set up job
+        run: echo "Checking quality gates..."
+      
       - name: Check Test Results
-        if: needs.test.result != 'success'
+        if: always()
         run: |
-          echo "Tests failed or were cancelled"
-          exit 1
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ Tests failed or were cancelled"
+            exit 1
+          fi
+          echo "✅ Tests passed"
       
       - name: Check Build Results
-        if: needs.build.result != 'success'
+        if: always()
         run: |
-          echo "Build failed or was cancelled"
-          exit 1
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "❌ Build failed or was cancelled"
+            exit 1
+          fi
+          echo "✅ Builds passed"
       
       - name: Check Performance Results
-        if: needs.performance.result != 'success'
+        if: always()
         run: |
-          echo "Performance tests failed or were cancelled"
-          exit 1
+          if [ "${{ needs.performance.result }}" != "success" ]; then
+            echo "❌ Performance tests failed or were cancelled"
+            exit 1
+          fi
+          echo "✅ Performance tests passed"
       
       - name: All Quality Gates Passed
+        if: success()
         run: echo "✅ All quality gates passed successfully!"

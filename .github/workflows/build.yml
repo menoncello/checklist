@@ -82,7 +82,11 @@ jobs:
       - name: Compile Binary (Windows)
         if: matrix.platform == 'win32'
         shell: cmd
-        run: bun build ./packages/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
+        run: |
+          bun build ./packages/cli/src/index.ts ^  
+            --compile ^
+            --target=bun-${{ matrix.platform }}-${{ matrix.arch }} ^
+            --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
       
       - name: Validate Binary Size (Unix)
         if: matrix.platform != 'win32'
@@ -92,8 +96,17 @@ jobs:
           SIZE_MB=$((SIZE / 1048576))
           echo "📦 Binary size: ${SIZE_MB}MB"
           echo "BINARY_SIZE=${SIZE_MB}MB" >> $GITHUB_ENV
-          if [ $SIZE_MB -gt 150 ]; then
-            echo "❌ Binary size exceeds 150MB limit (${SIZE_MB}MB)"
+          # Adjust limit based on platform
+          if [ "${{ matrix.platform }}" == "darwin" ]; then
+            LIMIT=100
+          elif [ "${{ matrix.platform }}" == "linux" ]; then
+            LIMIT=100
+          else
+            LIMIT=150
+          fi
+          
+          if [ $SIZE_MB -gt $LIMIT ]; then
+            echo "❌ Binary size exceeds ${LIMIT}MB limit (${SIZE_MB}MB)"
             exit 1
           fi
           echo "✅ Binary size is within limits"
