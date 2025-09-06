@@ -8,7 +8,7 @@ import { join } from 'path';
 
 async function runSpike() {
   console.log('🚀 Starting TUI Technology Spike...\n');
-  
+
   const results: SpikeResult[] = [];
   const approaches = [
     // Note: Ink approach would need React dependencies installed
@@ -16,20 +16,20 @@ async function runSpike() {
     new ANSIApproachTest(),
     new HybridApproachTest(),
   ];
-  
+
   for (const approach of approaches) {
     console.log(`\n📊 Testing ${approach.name}...`);
-    
+
     try {
       const result = await approach.run();
       results.push(result);
-      
+
       console.log(`✅ ${approach.name} completed`);
       console.log(`   Score: ${result.score}/100`);
       console.log(`   Startup: ${result.metrics.startupTime.toFixed(2)}ms`);
       console.log(`   Render: ${result.metrics.renderTime.toFixed(2)}ms`);
       console.log(`   Memory: ${result.metrics.memoryUsed.toFixed(2)}MB`);
-      
+
       if (result.issues.length > 0) {
         console.log(`   Issues: ${result.issues.join(', ')}`);
       }
@@ -42,7 +42,7 @@ async function runSpike() {
           startupTime: 0,
           renderTime: 0,
           memoryUsed: 0,
-          fps: 0
+          fps: 0,
         },
         issues: [`Fatal error: ${error}`],
         platformResults: {
@@ -50,37 +50,45 @@ async function runSpike() {
           linux: false,
           windows: false,
           ssh: false,
-          tmux: false
+          tmux: false,
         },
         bunCompatible: false,
-        score: 0
+        score: 0,
       });
     }
   }
-  
+
   // Generate report
   const report = generateReport(results);
-  const reportPath = join(process.cwd(), '../../../docs/architecture/decisions/spike-results.md');
+  const reportPath = join(
+    process.cwd(),
+    '../../../docs/architecture/decisions/spike-results.md'
+  );
   writeFileSync(reportPath, report);
   console.log(`\n📄 Report saved to: ${reportPath}`);
-  
+
   // Determine winner
-  const winner = results.reduce((best, current) => 
+  const winner = results.reduce((best, current) =>
     current.score > best.score ? current : best
   );
-  
+
   console.log(`\n🏆 Winner: ${winner.approach} (Score: ${winner.score}/100)`);
-  
+
   // Go/No-Go decision
-  const decision = winner.score >= 75 ? 'GO' : winner.score >= 50 ? 'GO (Hybrid)' : 'NO-GO (Use CLI)';
+  const decision =
+    winner.score >= 75
+      ? 'GO'
+      : winner.score >= 50
+        ? 'GO (Hybrid)'
+        : 'NO-GO (Use CLI)';
   console.log(`📋 Decision: ${decision}`);
-  
+
   return { results, winner, decision };
 }
 
 function generateReport(results: SpikeResult[]): string {
   const timestamp = new Date().toISOString();
-  
+
   return `# TUI Technology Spike Results
 
 Generated: ${timestamp}
@@ -93,13 +101,18 @@ Three TUI implementation approaches were tested against performance and compatib
 
 | Approach | Score | Startup (ms) | Render (ms) | Memory (MB) | Bun Compatible |
 |----------|-------|--------------|-------------|-------------|----------------|
-${results.map(r => 
-  `| ${r.approach} | ${r.score}/100 | ${r.metrics.startupTime.toFixed(2)} | ${r.metrics.renderTime.toFixed(2)} | ${r.metrics.memoryUsed.toFixed(2)} | ${r.bunCompatible ? '✅' : '❌'} |`
-).join('\n')}
+${results
+  .map(
+    (r) =>
+      `| ${r.approach} | ${r.score}/100 | ${r.metrics.startupTime.toFixed(2)} | ${r.metrics.renderTime.toFixed(2)} | ${r.metrics.memoryUsed.toFixed(2)} | ${r.bunCompatible ? '✅' : '❌'} |`
+  )
+  .join('\n')}
 
 ## Detailed Results
 
-${results.map(r => `
+${results
+  .map(
+    (r) => `
 ### ${r.approach}
 
 **Score:** ${r.score}/100  
@@ -119,8 +132,10 @@ ${results.map(r => `
 - SSH: ${r.platformResults.ssh ? '✅' : '❌'}
 - tmux: ${r.platformResults.tmux ? '✅' : '❌'}
 
-${r.issues.length > 0 ? `#### Issues\n${r.issues.map(i => `- ${i}`).join('\n')}` : ''}
-`).join('\n')}
+${r.issues.length > 0 ? `#### Issues\n${r.issues.map((i) => `- ${i}`).join('\n')}` : ''}
+`
+  )
+  .join('\n')}
 
 ## Scoring Breakdown
 
@@ -148,10 +163,10 @@ ${r.issues.length > 0 ? `#### Issues\n${r.issues.map(i => `- ${i}`).join('\n')}`
 ## Recommendation
 
 ${(() => {
-  const winner = results.reduce((best, current) => 
+  const winner = results.reduce((best, current) =>
     current.score > best.score ? current : best
   );
-  
+
   if (winner.score >= 75) {
     return `**GO**: Proceed with ${winner.approach} implementation (Score: ${winner.score}/100)`;
   } else if (winner.score >= 50) {
@@ -163,9 +178,9 @@ ${(() => {
 
 ## Next Steps
 
-1. ${results.some(r => r.score >= 75) ? 'Proceed with TUI implementation using winning approach' : 'Activate CLI fallback plan'}
+1. ${results.some((r) => r.score >= 75) ? 'Proceed with TUI implementation using winning approach' : 'Activate CLI fallback plan'}
 2. Update architecture documents with decision
-3. ${results.some(r => r.score >= 50) ? 'Begin implementation of stories 1.8 and 1.9' : 'Revise stories 1.8 and 1.9 for CLI approach'}
+3. ${results.some((r) => r.score >= 50) ? 'Begin implementation of stories 1.8 and 1.9' : 'Revise stories 1.8 and 1.9 for CLI approach'}
 `;
 }
 
