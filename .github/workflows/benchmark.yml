@@ -169,7 +169,7 @@ jobs:
     name: Performance Regression Check
     needs: benchmark
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.benchmark.result == 'success'
     
     steps:
       - name: Download Current Results
@@ -177,6 +177,7 @@ jobs:
         with:
           name: benchmark-results-${{ github.sha }}
           path: .performance/current
+        continue-on-error: true
       
       - name: Check for Regressions
         run: |
