@@ -82,9 +82,7 @@ jobs:
       - name: Compile Binary (Windows)
         if: matrix.platform == 'win32'
         shell: cmd
-        run: |
-          echo Compiling for ${{ matrix.platform }}-${{ matrix.arch }}...
-          bun build ./packages/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
+        run: bun build ./packages/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
       
       - name: Validate Binary Size (Unix)
         if: matrix.platform != 'win32'
@@ -130,10 +128,17 @@ jobs:
       - name: Generate Checksum
         run: |
           cd dist
-          if [ "${{ matrix.platform }}" == "win32" ]; then
-            sha256sum checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe > checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe.sha256
+          # Use shasum on macOS, sha256sum on Linux/Windows
+          if command -v sha256sum > /dev/null 2>&1; then
+            SHA_CMD="sha256sum"
           else
-            sha256sum checklist-${{ matrix.platform }}-${{ matrix.arch }} > checklist-${{ matrix.platform }}-${{ matrix.arch }}.sha256
+            SHA_CMD="shasum -a 256"
+          fi
+          
+          if [ "${{ matrix.platform }}" == "win32" ]; then
+            $SHA_CMD checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe > checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe.sha256
+          else
+            $SHA_CMD checklist-${{ matrix.platform }}-${{ matrix.arch }} > checklist-${{ matrix.platform }}-${{ matrix.arch }}.sha256
           fi
         shell: bash
       
