@@ -41,7 +41,7 @@ describe('TestHelpers', () => {
       
       restore();
       
-      expect(process.env.TEST_HELPER_VAR).toEqual(original);
+      expect(process.env.TEST_HELPER_VAR).toBe(original);
     });
   });
 
