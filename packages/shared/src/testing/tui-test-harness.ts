@@ -223,7 +223,7 @@ export class TUITestHarness extends EventEmitter {
     return screen.join('\n');
   }
 
-  async assertScreen(expected: string[]): void {
+  async assertScreen(expected: string[]): Promise<void> {
     const actual = this.getScreen();
     for (let i = 0; i < expected.length; i++) {
       if (actual[i] !== expected[i]) {

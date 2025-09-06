@@ -96,7 +96,7 @@ describe('Testing Framework', () => {
       expect(process.env.TEST_VAR).toBe('mocked');
       
       restore();
-      expect(process.env.TEST_VAR).toBe(original as string | undefined);
+      expect(process.env.TEST_VAR).toEqual(original);
     });
   });
 

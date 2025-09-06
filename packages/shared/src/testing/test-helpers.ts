@@ -87,9 +87,11 @@ export class TestHelpers {
       },
     });
 
-    if ((globalThis as any).__TEST_SERVERS__ !== undefined) {
-      (globalThis as any).__TEST_SERVERS__.push(server);
+    // Initialize the array if it doesn't exist
+    if ((globalThis as any).__TEST_SERVERS__ === undefined) {
+      (globalThis as any).__TEST_SERVERS__ = [];
     }
+    (globalThis as any).__TEST_SERVERS__.push(server);
 
     return server;
   }
