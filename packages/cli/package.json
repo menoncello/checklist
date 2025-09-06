@@ -1,10 +1,10 @@
 {
   "name": "@checklist/cli",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "../../dist/packages/cli/index.js",
+  "types": "../../dist/packages/cli/index.d.ts",
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir=dist --target=bun",
+    "build": "bun build ./src/index.ts --outdir=../../dist/packages/cli --target=bun",
     "test": "bun test",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",

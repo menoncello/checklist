@@ -22,7 +22,7 @@ jobs:
         run: bun install
 
       - name: Clean build artifacts
-        run: rm -rf packages/*/dist coverage
+        run: rm -rf dist coverage
 
       - name: Run tests with coverage
         run: |

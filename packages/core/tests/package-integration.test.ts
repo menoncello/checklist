@@ -185,7 +185,7 @@ console.log(coreVersion, sharedVersion);
         // All packages should use similar build configuration
         expect(packageJson.scripts.build).toContain('bun build');
         expect(packageJson.scripts.build).toContain('./src/index.ts');
-        expect(packageJson.scripts.build).toContain('--outdir=dist');
+        expect(packageJson.scripts.build).toContain('--outdir=../../dist/packages/');
         expect(packageJson.scripts.build).toContain('--target=bun');
       }
     });

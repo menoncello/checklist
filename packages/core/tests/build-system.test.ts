@@ -17,7 +17,7 @@ describe('Build System Tests', () => {
       expect(exitCode).toBe(0);
       
       // Verify dist directory was created
-      const distPath = join(projectRoot, 'packages/core/dist');
+      const distPath = join(projectRoot, 'dist/packages/core');
       expect(existsSync(distPath)).toBe(true);
       
       // Verify output file exists
@@ -36,7 +36,7 @@ describe('Build System Tests', () => {
       expect(exitCode).toBe(0);
       
       // Verify dist directory was created
-      const distPath = join(projectRoot, 'packages/cli/dist');
+      const distPath = join(projectRoot, 'dist/packages/cli');
       expect(existsSync(distPath)).toBe(true);
       
       // Verify output file exists
@@ -55,7 +55,7 @@ describe('Build System Tests', () => {
       expect(exitCode).toBe(0);
       
       // Verify dist directory was created
-      const distPath = join(projectRoot, 'packages/tui/dist');
+      const distPath = join(projectRoot, 'dist/packages/tui');
       expect(existsSync(distPath)).toBe(true);
       
       // Verify output file exists
@@ -74,7 +74,7 @@ describe('Build System Tests', () => {
       expect(exitCode).toBe(0);
       
       // Verify dist directory was created
-      const distPath = join(projectRoot, 'packages/shared/dist');
+      const distPath = join(projectRoot, 'dist/packages/shared');
       expect(existsSync(distPath)).toBe(true);
       
       // Verify output file exists
@@ -95,7 +95,7 @@ describe('Build System Tests', () => {
       // Verify all dist directories exist
       const packages = ['core', 'cli', 'tui', 'shared'];
       for (const pkg of packages) {
-        const distPath = join(projectRoot, `packages/${pkg}/dist`);
+        const distPath = join(projectRoot, `dist/packages/${pkg}`);
         expect(existsSync(distPath)).toBe(true);
       }
     });
