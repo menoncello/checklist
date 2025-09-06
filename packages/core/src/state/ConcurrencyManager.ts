@@ -142,14 +142,20 @@ export class ConcurrencyManager {
     }
 
     try {
-      const lockContent = await Bun.file(lockPath).text();
-      const lockFile = yaml.load(lockContent) as LockFile;
+      // Check if lock file exists before trying to read it
+      if (existsSync(lockPath)) {
+        const lockContent = await Bun.file(lockPath).text();
+        const lockFile = yaml.load(lockContent) as LockFile;
 
-      if (lockFile.lockId === this.lockId) {
-        unlinkSync(lockPath);
+        if (lockFile.lockId === this.lockId) {
+          unlinkSync(lockPath);
+        }
       }
     } catch (error) {
-      console.error('Error releasing lock:', error);
+      // Only log error if it's not a file not found error
+      if ((error as any).code !== 'ENOENT') {
+        console.error('Error releasing lock:', error);
+      }
     } finally {
       this.lockId = undefined;
     }

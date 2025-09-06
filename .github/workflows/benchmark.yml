@@ -18,7 +18,7 @@ permissions:
   issues: write
 
 env:
-  BUN_VERSION: 1.2
+  BUN_VERSION: 1.2.21
 
 jobs:
   benchmark:
