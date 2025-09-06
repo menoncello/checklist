@@ -86,6 +86,13 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            
+            // Only proceed if we have a PR context
+            if (!context.issue || !context.issue.number) {
+              console.log('No PR context available, skipping comment');
+              return;
+            }
+            
             const coverage = fs.readFileSync('coverage-summary.md', 'utf8');
             
             // Find and update or create comment
