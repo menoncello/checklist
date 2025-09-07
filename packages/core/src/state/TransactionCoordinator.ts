@@ -1,13 +1,20 @@
 import { join } from 'node:path';
+import createDebug from 'debug';
+import { WriteAheadLog } from './WriteAheadLog';
 import { TransactionError } from './errors';
 import { ChecklistState, Transaction, Operation } from './types';
+
+const debug = createDebug('checklist:transaction');
 
 export class TransactionCoordinator {
   private transactions: Map<string, Transaction> = new Map();
   private logPath: string;
+  private wal: WriteAheadLog;
+  private isRecovering = false;
 
   constructor(logDirectory: string) {
     this.logPath = join(logDirectory, 'audit.log');
+    this.wal = new WriteAheadLog(logDirectory);
     this.setupLogRotation();
   }
 
@@ -56,8 +63,21 @@ export class TransactionCoordinator {
       timestamp: new Date().toISOString(),
     };
 
+    // Write to WAL before modifying state
+    await this.wal.append({
+      op: type === 'delete' ? 'delete' : 'write',
+      key: path,
+      value: data,
+      transactionId,
+    });
+
     transaction.operations.push(operation);
     await this.logTransaction('OPERATION', transactionId, operation);
+    debug(
+      'WAL entry added for operation %s in transaction %s',
+      operation.id,
+      transactionId
+    );
   }
 
   async validateTransaction(
@@ -113,6 +133,13 @@ export class TransactionCoordinator {
         operationCount: transaction.operations.length,
         duration: Date.now() - transaction.startedAt.getTime(),
       });
+
+      // Clear WAL after successful commit
+      await this.wal.clear();
+      debug(
+        'WAL cleared after successful commit of transaction %s',
+        transactionId
+      );
 
       this.transactions.delete(transactionId);
       return newState;
@@ -253,5 +280,86 @@ export class TransactionCoordinator {
       }
     }
     this.transactions.clear();
+  }
+
+  async recoverFromWAL(
+    applyEntry: (entry: {
+      op: string;
+      key: string;
+      value?: unknown;
+    }) => Promise<void>
+  ): Promise<number> {
+    if (this.isRecovering) {
+      debug('Recovery already in progress');
+      return 0;
+    }
+
+    this.isRecovering = true;
+    let recoveredCount = 0;
+
+    try {
+      // Check if WAL exists
+      if (!(await this.wal.exists())) {
+        debug('No WAL file found, skipping recovery');
+        return 0;
+      }
+
+      // Create backup before recovery
+      await this.wal.createBackup();
+      debug('WAL backup created before recovery');
+
+      // Replay WAL entries
+      const entries = await this.wal.replay();
+      debug('Found %d WAL entries to recover', entries.length);
+
+      for (const entry of entries) {
+        try {
+          await applyEntry({
+            op: entry.op,
+            key: entry.key,
+            value: entry.value,
+          });
+          recoveredCount++;
+          debug('Recovered WAL entry: %O', entry);
+        } catch (error) {
+          console.error('Failed to apply WAL entry:', error);
+          debug('Failed to recover entry: %O, error: %O', entry, error);
+        }
+      }
+
+      // Clear WAL after successful recovery
+      if (recoveredCount === entries.length) {
+        await this.wal.clear();
+        debug('WAL cleared after successful recovery');
+      }
+
+      await this.logTransaction('RECOVERY', 'wal-recovery', {
+        entriesFound: entries.length,
+        entriesRecovered: recoveredCount,
+      });
+
+      return recoveredCount;
+    } catch (error) {
+      console.error('WAL recovery failed:', error);
+      debug('Recovery error: %O', error);
+      throw new TransactionError(
+        `WAL recovery failed: ${error}`,
+        'wal-recovery'
+      );
+    } finally {
+      this.isRecovering = false;
+    }
+  }
+
+  async hasIncompleteTransactions(): Promise<boolean> {
+    return await this.wal.exists();
+  }
+
+  async getWALSize(): Promise<number> {
+    return await this.wal.size();
+  }
+
+  async rotateWAL(maxSize: number = 10 * 1024 * 1024): Promise<void> {
+    await this.wal.rotate(maxSize);
   }
 }

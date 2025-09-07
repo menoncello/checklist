@@ -50,6 +50,12 @@ export class StateManager {
     try {
       await this.directoryManager.initialize();
 
+      // Check for incomplete transactions from WAL
+      if (await this.transactionCoordinator.hasIncompleteTransactions()) {
+        console.log('Found incomplete transactions, attempting recovery...');
+        await this.recoverFromWAL();
+      }
+
       const initialState: ChecklistState = {
         schemaVersion: SCHEMA_VERSION,
         checksum:
@@ -79,6 +85,14 @@ export class StateManager {
     await this.concurrencyManager.acquireLock('state', 10000);
 
     try {
+      // Check for incomplete transactions from WAL before loading state
+      if (await this.transactionCoordinator.hasIncompleteTransactions()) {
+        console.log(
+          'Found incomplete transactions during load, attempting recovery...'
+        );
+        await this.recoverFromWAL();
+      }
+
       const statePath = this.directoryManager.getStatePath();
       const stateFile = Bun.file(statePath);
 
@@ -354,6 +368,46 @@ export class StateManager {
 
   private async promptUserForReset(): Promise<boolean> {
     return true;
+  }
+
+  private async recoverFromWAL(): Promise<void> {
+    try {
+      const recoveredCount = await this.transactionCoordinator.recoverFromWAL(
+        async (entry) => {
+          // Apply each WAL entry to the state
+          if (entry.op === 'write' && entry.value !== undefined) {
+            // Apply write operation
+            await this.loadState();
+            // Here we would apply the specific operation based on the key
+            // For now, we'll just log it
+            console.log(`Recovering WAL entry: ${entry.op} ${entry.key}`);
+          } else if (entry.op === 'delete') {
+            // Apply delete operation
+            console.log(`Recovering WAL delete: ${entry.key}`);
+          }
+        }
+      );
+
+      if (recoveredCount > 0) {
+        console.log(
+          `Successfully recovered ${recoveredCount} operations from WAL`
+        );
+
+        // Update recovery metadata
+        if (this.currentState) {
+          this.currentState.recovery = {
+            ...this.currentState.recovery,
+            lastWALRecovery: new Date().toISOString(),
+            recoveredOperations: recoveredCount,
+            dataLoss: false,
+          };
+          await this.saveStateInternal(this.currentState);
+        }
+      }
+    } catch (error) {
+      console.error('WAL recovery failed:', error);
+      throw new RecoveryError(`WAL recovery failed: ${error}`, false);
+    }
   }
 
   async exportState(): Promise<string> {

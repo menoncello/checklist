@@ -276,4 +276,139 @@ describe('TransactionCoordinator', () => {
       expect(content).toContain(txId);
     });
   });
+
+  describe('WAL Integration', () => {
+    it('should write operations to WAL', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      await coordinator.addOperation(txId, 'write', '/test/path', { data: 'test' });
+
+      const walSize = await coordinator.getWALSize();
+      expect(walSize).toBeGreaterThan(0);
+    });
+
+    it('should clear WAL after successful commit', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      await coordinator.addOperation(txId, 'write', '/test', { value: 'test' });
+
+      const applyChanges = async (): Promise<ChecklistState> => testState;
+      await coordinator.commitTransaction(txId, applyChanges);
+
+      const walSize = await coordinator.getWALSize();
+      expect(walSize).toBe(0);
+    });
+
+    it('should preserve WAL on rollback', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      await coordinator.addOperation(txId, 'write', '/test', { value: 'test' });
+
+      await coordinator.rollbackTransaction(txId);
+
+      const walSize = await coordinator.getWALSize();
+      expect(walSize).toBeGreaterThan(0);
+    });
+
+    it('should detect incomplete transactions', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      await coordinator.addOperation(txId, 'write', '/test', { value: 'test' });
+
+      const hasIncomplete = await coordinator.hasIncompleteTransactions();
+      expect(hasIncomplete).toBe(true);
+
+      const applyChanges = async (): Promise<ChecklistState> => testState;
+      await coordinator.commitTransaction(txId, applyChanges);
+
+      const hasIncompleteAfter = await coordinator.hasIncompleteTransactions();
+      expect(hasIncompleteAfter).toBe(false);
+    });
+
+    it('should recover from WAL', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      await coordinator.addOperation(txId, 'write', '/recovery/test', { value: 'recovered' });
+
+      // Simulate crash - create new coordinator instance
+      const newCoordinator = new TransactionCoordinator(testLogDir);
+      
+      const appliedEntries: Array<{ op: string; key: string; value?: unknown }> = [];
+      const recoveredCount = await newCoordinator.recoverFromWAL(async (entry) => {
+        appliedEntries.push(entry);
+      });
+
+      expect(recoveredCount).toBe(1);
+      expect(appliedEntries).toHaveLength(1);
+      expect(appliedEntries[0]).toMatchObject({
+        op: 'write',
+        key: '/recovery/test',
+        value: { value: 'recovered' }
+      });
+
+      await newCoordinator.cleanup();
+    });
+
+    it('should handle WAL recovery with no WAL file', async () => {
+      const newCoordinator = new TransactionCoordinator(testLogDir);
+      
+      const recoveredCount = await newCoordinator.recoverFromWAL(async () => {
+        // This should not be called
+      });
+
+      expect(recoveredCount).toBe(0);
+      await newCoordinator.cleanup();
+    });
+
+    it('should create backup before recovery', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      await coordinator.addOperation(txId, 'write', '/backup/test', { value: 'backup' });
+
+      const newCoordinator = new TransactionCoordinator(testLogDir);
+      
+      await newCoordinator.recoverFromWAL(async () => {});
+
+      // Check that backup exists using Bun's file system
+      const walDir = `${testLogDir}/.wal`;
+      const files = await Bun.$`find ${walDir} -name "*.backup" 2>/dev/null || true`.text();
+      const hasBackup = files.trim().length > 0;
+      
+      expect(hasBackup).toBe(true);
+      await newCoordinator.cleanup();
+    });
+
+    it('should handle recovery errors gracefully', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      await coordinator.addOperation(txId, 'write', '/error/test', { value: 'error' });
+
+      const newCoordinator = new TransactionCoordinator(testLogDir);
+      
+      let errorCount = 0;
+      const recoveredCount = await newCoordinator.recoverFromWAL(async (entry) => {
+        errorCount++;
+        throw new Error('Apply failed');
+      });
+
+      expect(recoveredCount).toBe(0);
+      expect(errorCount).toBe(1);
+      await newCoordinator.cleanup();
+    });
+
+    it('should rotate WAL when size exceeds limit', async () => {
+      const txId = await coordinator.beginTransaction(testState);
+      
+      // Add many operations to grow WAL size
+      for (let i = 0; i < 10; i++) {
+        await coordinator.addOperation(txId, 'write', `/test/${i}`, { 
+          value: 'x'.repeat(100) 
+        });
+      }
+
+      const sizeBefore = await coordinator.getWALSize();
+      await coordinator.rotateWAL(100); // Very small limit to force rotation
+
+      const sizeAfter = await coordinator.getWALSize();
+      
+      if (sizeBefore > 100) {
+        expect(sizeAfter).toBe(0);
+      } else {
+        expect(sizeAfter).toBe(sizeBefore);
+      }
+    });
+  });
 });
