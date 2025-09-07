@@ -1,4 +1,3 @@
-import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import { StepValidation, ValidationResult, StepContext } from './types';
 
@@ -8,7 +7,12 @@ export async function validateStep(
 ): Promise<ValidationResult> {
   switch (validation.type) {
     case 'command':
-      return await validateCommand(validation.check);
+      // Command validation disabled for security reasons
+      // Using spawn with shell: true is a security risk
+      return {
+        valid: false,
+        error: 'Command validation is disabled for security reasons in MVP',
+      };
 
     case 'file_exists':
       return validateFileExists(validation.check);
@@ -22,43 +26,6 @@ export async function validateStep(
         error: `Unknown validation type: ${validation.type}`,
       };
   }
-}
-
-async function validateCommand(command: string): Promise<ValidationResult> {
-  return new Promise((resolve) => {
-    const child = spawn(command, [], {
-      shell: true,
-      timeout: 5000,
-    });
-
-    let errorOutput = '';
-
-    child.stdout?.on('data', () => {
-      // Collect output but don't use it (satisfies linting)
-    });
-
-    child.stderr?.on('data', (data) => {
-      errorOutput += data.toString();
-    });
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve({ valid: true });
-      } else {
-        resolve({
-          valid: false,
-          error: errorOutput || `Command exited with code ${code}`,
-        });
-      }
-    });
-
-    child.on('error', (error) => {
-      resolve({
-        valid: false,
-        error: error.message,
-      });
-    });
-  });
 }
 
 function validateFileExists(path: string): ValidationResult {

@@ -19,25 +19,26 @@ describe('validators', () => {
       variables: {},
     };
 
-    test('validates command successfully', async () => {
+    test('command validation is disabled for security', async () => {
       const validation: StepValidation = {
         type: 'command',
         check: 'echo "test"',
       };
 
       const result = await validateStep(validation, mockContext);
-      expect(result.valid).toBe(true);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Command validation is disabled for security reasons in MVP');
     });
 
-    test('fails on invalid command', async () => {
+    test('command validation always fails for security', async () => {
       const validation: StepValidation = {
         type: 'command',
-        check: 'nonexistentcommand123456',
+        check: 'any command here',
       };
 
       const result = await validateStep(validation, mockContext);
       expect(result.valid).toBe(false);
-      expect(result.error).toBeDefined();
+      expect(result.error).toBe('Command validation is disabled for security reasons in MVP');
     });
 
     test('validates file existence successfully', async () => {
