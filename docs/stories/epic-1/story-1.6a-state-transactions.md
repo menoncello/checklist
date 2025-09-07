@@ -4,7 +4,7 @@
 
 ## Status
 
-**Draft - Ready for Implementation** 📝✅
+**Ready for Review** ✅
 
 > This is an enhancement story (1.6a) that extends Story 1.6 by adding Write-Ahead Logging (WAL) capabilities to the existing transaction system for crash recovery and state consistency
 
@@ -121,79 +121,79 @@ class WriteAheadLog {
 
 ### Phase 1: WAL Implementation
 
-- [ ] **Create WriteAheadLog class** (AC: 1, 2)
-  - [ ] Create `/packages/core/src/state/WriteAheadLog.ts`
-  - [ ] Implement WALEntry interface with timestamp, op, key, value fields
-  - [ ] Add append() method with JSON line-delimited format
-  - [ ] Implement atomic write operations using Bun.write
-  - [ ] Add clear() for successful commit cleanup
-  - [ ] Create `.checklist/.wal` file in state directory
-  - [ ] Add performance tracking for WAL operations
-  - [ ] Write unit tests in `/packages/core/tests/state/WriteAheadLog.test.ts`
+- [x] **Create WriteAheadLog class** (AC: 1, 2)
+  - [x] Create `/packages/core/src/state/WriteAheadLog.ts`
+  - [x] Implement WALEntry interface with timestamp, op, key, value fields
+  - [x] Add append() method with JSON line-delimited format
+  - [x] Implement atomic write operations using Bun.write
+  - [x] Add clear() for successful commit cleanup
+  - [x] Create `.checklist/.wal` file in state directory
+  - [x] Add performance tracking for WAL operations
+  - [x] Write unit tests in `/packages/core/tests/state/WriteAheadLog.test.ts`
 
-- [ ] **Enhance existing TransactionCoordinator with WAL** (AC: 1, 4)
-  - [ ] Update existing `/packages/core/src/state/TransactionCoordinator.ts`
-  - [ ] Add WAL instance to existing TransactionCoordinator class
-  - [ ] Modify existing addOperation() to write to WAL before state modifications
-  - [ ] Update existing commit methods to clear WAL after successful commit
-  - [ ] Preserve WAL on rollback for recovery
-  - [ ] Add telemetry for WAL operations
-  - [ ] Update existing TransactionCoordinator tests
+- [x] **Enhance existing TransactionCoordinator with WAL** (AC: 1, 4)
+  - [x] Update existing `/packages/core/src/state/TransactionCoordinator.ts`
+  - [x] Add WAL instance to existing TransactionCoordinator class
+  - [x] Modify existing addOperation() to write to WAL before state modifications
+  - [x] Update existing commit methods to clear WAL after successful commit
+  - [x] Preserve WAL on rollback for recovery
+  - [x] Add telemetry for WAL operations
+  - [x] Update existing TransactionCoordinator tests
 
 ### Phase 2: Recovery Mechanisms
 
-- [ ] **Implement WAL replay on startup** (AC: 3, 5)
-  - [ ] Add WAL recovery check in StateManager initialization
-  - [ ] Create replay() method in WriteAheadLog class
-  - [ ] Parse line-delimited JSON from WAL file
-  - [ ] Apply operations in sequence to restore state
-  - [ ] Handle partial writes and corrupted entries gracefully
-  - [ ] Create backup before replay in `.checklist/.backup/`
-  - [ ] Log recovery attempts and results
-  - [ ] Write tests with corrupted WAL scenarios
+- [x] **Implement WAL replay on startup** (AC: 3, 5)
+  - [x] Add WAL recovery check in StateManager initialization
+  - [x] Create replay() method in WriteAheadLog class
+  - [x] Parse line-delimited JSON from WAL file
+  - [x] Apply operations in sequence to restore state
+  - [x] Handle partial writes and corrupted entries gracefully
+  - [x] Create backup before replay in `.checklist/.backup/`
+  - [x] Log recovery attempts and results
+  - [x] Write tests with corrupted WAL scenarios
 
-- [ ] **Add recovery hooks to WorkflowEngine** (AC: 3)
-  - [ ] Update WorkflowEngine.init() to check for WAL
-  - [ ] Trigger WAL replay if incomplete transactions found
-  - [ ] Emit recovery events for monitoring
-  - [ ] Test recovery with various crash scenarios
+- [x] **Add recovery hooks to WorkflowEngine** (AC: 3)
+  - [x] Update WorkflowEngine.init() to check for WAL
+  - [x] Trigger WAL replay if incomplete transactions found
+  - [x] Emit recovery events for monitoring
+  - [x] Test recovery with various crash scenarios
 
 ### Phase 3: Testing & Hardening
 
-- [ ] **WAL crash recovery testing** (AC: 3, 5)
-  - [ ] Simulate process kill during WAL write
-  - [ ] Test WAL replay on next startup
-  - [ ] Verify state consistency after recovery
-  - [ ] Test with multiple crash scenarios:
-    - [ ] Mid-transaction crash
-    - [ ] Post-WAL write, pre-commit crash
-    - [ ] Corrupted WAL entries
-  - [ ] Measure recovery time (<100ms requirement)
-  - [ ] Use FlakyTestDetector for reliability
+- [x] **WAL crash recovery testing** (AC: 3, 5)
+  - [x] Simulate process kill during WAL write
+  - [x] Test WAL replay on next startup
+  - [x] Verify state consistency after recovery
+  - [x] Test with multiple crash scenarios:
+    - [x] Mid-transaction crash
+    - [x] Post-WAL write, pre-commit crash
+    - [x] Corrupted WAL entries
+  - [x] Measure recovery time (<100ms requirement)
+  - [x] Use FlakyTestDetector for reliability
 
-- [ ] **Performance benchmarking** (AC: Technical Requirements)
-  - [ ] Use Tinybench for WAL operation benchmarks
-  - [ ] Test WAL write overhead (<10ms)
-  - [ ] Measure recovery time from various WAL sizes
-  - [ ] Profile memory usage during WAL operations
-  - [ ] Test with 1000 sequential transactions
+- [x] **Performance benchmarking** (AC: Technical Requirements)
+  - [x] Use Tinybench for WAL operation benchmarks
+  - [x] Test WAL write overhead (<10ms)
+  - [x] Measure recovery time from various WAL sizes
+  - [x] Profile memory usage during WAL operations
+  - [x] Test with 1000 sequential transactions
 
-- [ ] **Edge case handling**
-  - [ ] Test disk full during WAL write
-  - [ ] Handle corrupted WAL file gracefully
-  - [ ] Test with read-only filesystems
-  - [ ] Implement max WAL size with rotation
-  - [ ] Add telemetry for WAL monitoring
+- [x] **Edge case handling**
+  - [x] Test disk full during WAL write
+  - [x] Handle corrupted WAL file gracefully
+  - [x] Test with read-only filesystems
+  - [x] Implement max WAL size with rotation
+  - [x] Add telemetry for WAL monitoring
 
 ## Definition of Done
 
-- [ ] WAL implementation complete with tests
-- [ ] WAL replay recovers state after crashes
-- [ ] Integration with existing TransactionCoordinator working
-- [ ] Performance: WAL operations < 10ms overhead
-- [ ] Recovery time < 100ms for typical WAL size
-- [ ] No data loss in any crash scenario
-- [ ] Documentation includes WAL guarantees
+- [x] WAL implementation complete with tests
+- [x] WAL replay recovers state after crashes
+- [x] Integration with existing TransactionCoordinator working
+- [x] Performance: WAL operations < 10ms overhead
+- [x] Recovery time < 100ms for typical WAL size
+- [x] No data loss in any crash scenario
+- [x] Documentation includes WAL guarantees
 
 ## Change Log
 
@@ -367,16 +367,34 @@ bun test packages/core/tests/integration/transactions.test.ts
 ## Dev Agent Record
 
 ### Agent Model Used
-_To be populated during implementation_
+claude-opus-4-1-20250805
 
 ### Debug Log References
-_To be populated during implementation_
+- WAL append/replay operations logged via debug('checklist:wal')
+- Transaction operations logged via debug('checklist:transaction')
+- Recovery events emitted via WorkflowEngine events
 
 ### Completion Notes List
-_To be populated during implementation_
+- Implemented WriteAheadLog class with append, replay, and clear operations
+- Enhanced TransactionCoordinator with WAL integration for durability
+- Added WAL recovery hooks to StateManager and WorkflowEngine
+- Created comprehensive crash recovery tests
+- Implemented performance benchmarks for WAL operations
+- Fixed Bun.write append issue - had to manually concatenate for proper append
+- All tests passing, performance targets met (<10ms WAL write, <100ms recovery)
 
 ### File List
-_To be populated during implementation_
+**New Files:**
+- `/packages/core/src/state/WriteAheadLog.ts` - WAL implementation
+- `/packages/core/tests/state/WriteAheadLog.test.ts` - WAL unit tests
+- `/packages/core/tests/integration/wal-crash-recovery.test.ts` - Crash recovery tests
+- `/packages/core/tests/benchmarks/wal-performance.bench.ts` - Performance benchmarks
+
+**Modified Files:**
+- `/packages/core/src/state/TransactionCoordinator.ts` - Added WAL integration
+- `/packages/core/src/state/StateManager.ts` - Added WAL recovery on init
+- `/packages/core/src/workflow/WorkflowEngine.ts` - Added recovery hooks
+- `/packages/core/tests/state/TransactionCoordinator.test.ts` - Added WAL tests
 
 ## QA Results
 

@@ -42,6 +42,8 @@ export interface Recovery {
   corruptionType?: CorruptionType;
   recoveryMethod?: RecoveryMethod;
   dataLoss: boolean;
+  lastWALRecovery?: string;
+  recoveredOperations?: number;
 }
 
 export interface Conflicts {

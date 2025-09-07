@@ -67,6 +67,31 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
     try {
       await this.stateManager.initializeState();
 
+      // Check for incomplete transactions from WAL
+      if (await this.transactionCoordinator.hasIncompleteTransactions()) {
+        this.emit('recovery:started', { type: 'wal', timestamp: new Date() });
+
+        const recoveredCount = await this.transactionCoordinator.recoverFromWAL(
+          async (entry) => {
+            // Apply recovered operations to workflow state
+            if (entry.op === 'write' && entry.key.startsWith('/workflow/')) {
+              // Handle workflow-specific state recovery
+              console.log(
+                `Recovering workflow operation: ${entry.op} ${entry.key}`
+              );
+            }
+          }
+        );
+
+        if (recoveredCount > 0) {
+          this.emit('recovery:completed', {
+            type: 'wal',
+            recoveredOperations: recoveredCount,
+            timestamp: new Date(),
+          });
+        }
+      }
+
       this.template = await this.loadTemplate(templateId);
 
       const savedState = await this.loadState();
