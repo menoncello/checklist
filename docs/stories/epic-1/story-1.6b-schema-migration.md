@@ -1,5 +1,9 @@
 # Story 1.6b: Schema Migration System
 
+## Status
+
+**Draft**
+
 ## Story
 
 **As a** user,  
@@ -251,31 +255,100 @@ checklist migrate --restore=backup-v0.1.0-2024-01-15.yaml
 checklist migrate --dry-run
 ```
 
-## Technical Tasks
+## Tasks / Subtasks
 
 ### Phase 1: Core Migration System
 
-- [ ] Design state schema versioning format
-- [ ] Implement Migration and MigrationRegistry classes
-- [ ] Create MigrationRunner with path finding
-- [ ] Add backup and restore functionality
-- [ ] Build version detection heuristics
+- [ ] Create migration infrastructure directory structure (AC: 1)
+  - [ ] Create `/packages/core/src/state/migrations/` directory
+  - [ ] Create `/packages/core/src/state/migrations/scripts/` directory
+  - [ ] Create `/packages/core/tests/state/migrations/` test directory
+
+- [ ] Implement Migration interface and types (AC: 1)
+  - [ ] Create `types.ts` with Migration, MigrationOptions interfaces
+  - [ ] Define version comparison utilities
+  - [ ] Add migration validation types
+
+- [ ] Implement MigrationRegistry class (AC: 1, 5)
+  - [ ] Create `MigrationRegistry.ts` with migration storage
+  - [ ] Implement `findPath()` using Dijkstra's algorithm
+  - [ ] Add `registerMigration()` method
+  - [ ] Write unit tests for path finding
+
+- [ ] Create MigrationRunner class (AC: 1, 2, 3, 4)
+  - [ ] Implement `migrate()` method with transaction support
+  - [ ] Add `createBackup()` using Bun.write() to `.checklist/.backup/`
+  - [ ] Implement `rollback()` for failed migrations
+  - [ ] Add progress event emitter for UI updates
+  - [ ] Write integration tests with mock state files
+
+- [ ] Build version detection system (AC: 4)
+  - [ ] Create `detectVersion()` with heuristics
+  - [ ] Handle missing version fields (assume v0.0.0)
+  - [ ] Add schema structure analysis
+  - [ ] Write unit tests for various state formats
 
 ### Phase 2: Migration Scripts
 
-- [ ] Write migration from v0.0.0 to v0.1.0
-- [ ] Write migration from v0.1.0 to v0.2.0
-- [ ] Add validation functions for each version
-- [ ] Create rollback scripts
-- [ ] Test migration paths
+- [ ] Create v0.0.0 to v0.1.0 migration (AC: 1)
+  - [ ] Write `v0_0_0_to_v0_1_0.ts` migration script
+  - [ ] Add metadata fields (created, modified)
+  - [ ] Implement up() and down() functions
+  - [ ] Add validation function
+  - [ ] Write unit tests
 
-### Phase 3: User Experience
+- [ ] Create v0.1.0 to v0.2.0 migration (AC: 1)
+  - [ ] Write `v0_1_0_to_v0_2_0.ts` migration script  
+  - [ ] Add templates and variables support
+  - [ ] Implement up() and down() functions
+  - [ ] Add validation using Ajv
+  - [ ] Write unit tests
 
-- [ ] Add migration progress indicators
-- [ ] Implement dry-run mode
-- [ ] Create backup management commands
-- [ ] Add migration history tracking
-- [ ] Build automatic migration on startup
+- [ ] Create v0.2.0 to v1.0.0 migration (AC: 1)
+  - [ ] Write `v0_2_0_to_v1_0_0.ts` migration script
+  - [ ] Add commandResults to completedSteps
+  - [ ] Add recovery and conflicts sections
+  - [ ] Implement validation
+  - [ ] Write unit tests
+
+- [ ] Test complete migration paths (AC: 3, 5)
+  - [ ] Test v0.0.0 → v1.0.0 full path
+  - [ ] Test partial paths with version skipping
+  - [ ] Test rollback scenarios
+  - [ ] Performance benchmark with 1MB+ files
+
+### Phase 3: User Experience Integration
+
+- [ ] Integrate with StateManager (AC: 3, 5)
+  - [ ] Modify `loadState()` to check version
+  - [ ] Auto-trigger migration on version mismatch
+  - [ ] Add migration status to state loading
+  - [ ] Write integration tests
+
+- [ ] Add CLI commands (AC: 5)
+  - [ ] Implement `checklist migrate --check`
+  - [ ] Implement `checklist migrate --dry-run`
+  - [ ] Implement `checklist migrate --backup-only`
+  - [ ] Implement `checklist migrate --restore`
+  - [ ] Add command tests
+
+- [ ] Implement progress indicators (AC: 5)
+  - [ ] Add migration progress events
+  - [ ] Create console progress bar
+  - [ ] Show current migration step
+  - [ ] Display time estimates
+
+- [ ] Add backup management (AC: 2, 4)
+  - [ ] Implement `--list-backups` command
+  - [ ] Add backup rotation (keep last 10)
+  - [ ] Implement backup compression for old files
+  - [ ] Write backup/restore tests
+
+- [ ] Create migration history tracking (AC: 1)
+  - [ ] Update state.yaml migrations array
+  - [ ] Track applied migrations with timestamps
+  - [ ] Add migration audit log
+  - [ ] Write history tracking tests
 
 ## Definition of Done
 
@@ -302,6 +375,132 @@ checklist migrate --dry-run
 - 🟡 Large state files may be slow to migrate
 - 🟢 Well-established patterns from database migrations
 
+## Dev Notes
+
+### Previous Story Insights (from Story 1.6a WAL Implementation)
+
+- **WAL Implementation Completed**: WriteAheadLog class with atomic operations at `/packages/core/src/state/WriteAheadLog.ts`
+- **TransactionCoordinator Enhanced**: Now supports WAL integration at `/packages/core/src/state/TransactionCoordinator.ts` 
+- **State Manager Foundation**: StateManager class already exists at `/packages/core/src/state/StateManager.ts`
+- **Existing Test Patterns**: See `/packages/core/tests/state/WriteAheadLog.test.ts` for Bun test patterns
+- **Performance Baseline**: WAL operations complete in <1ms for small operations, ~260ms for large recoveries
+- **Security Measures**: Path validation and rate limiting already implemented in WAL
+
+### State File Schema Requirements
+
+[Source: architecture/database-schema-complete-with-all-enhancements.md#state-file-schema]
+
+**Current Schema Version**: 1.0.0
+
+**State File Structure** (`.checklist/state.yaml`):
+```yaml
+schemaVersion: '1.0.0'
+migrations:  # Track applied migrations
+  - from: '0.9.0'
+    to: '1.0.0'
+    applied: '2025-01-01T00:00:00Z'
+    changes:
+      - 'Added commandResults to completedSteps'
+version: '1.0.0'
+checksum: 'sha256:abc123...'
+lastModified: '2025-01-01T10:00:00Z'
+```
+
+**Required State File Fields**:
+- `schemaVersion`: Version of the schema structure
+- `migrations`: Array tracking all applied migrations
+- `version`: Current state file version
+- `checksum`: SHA256 hash for integrity validation
+- `activeInstance`: Current checklist execution state
+- `recovery`: Recovery information from corruptions
+- `conflicts`: Concurrent modification tracking
+
+### File System Structure
+
+[Source: architecture/database-schema-complete-with-all-enhancements.md#file-structure]
+
+```
+.checklist/
+├── state.yaml          # Main state file with migrations
+├── config.yaml         # User configuration  
+├── history.yaml        # Execution history
+├── .backup/
+│   ├── manifest.yaml   # Backup metadata
+│   └── state.yaml.*    # Backup files
+```
+
+### Implementation Location
+
+[Source: architecture/backend-architecture-complete-with-all-services.md]
+
+- **Migration Classes**: Create in `/packages/core/src/state/migrations/`
+- **MigrationRegistry**: `/packages/core/src/state/migrations/MigrationRegistry.ts`
+- **MigrationRunner**: `/packages/core/src/state/migrations/MigrationRunner.ts`
+- **Migration Scripts**: `/packages/core/src/state/migrations/scripts/`
+- **Tests**: `/packages/core/tests/state/migrations/`
+
+### Technology Stack Requirements
+
+[Source: architecture/tech-stack.md]
+
+- **File Operations**: Use `Bun.file()` and `Bun.write()` for 10x faster I/O
+- **YAML Parsing**: Use `js-yaml 4.1.x` for state file handling
+- **Schema Validation**: Use `Ajv 8.12.x` for JSON schema validation
+- **Process Management**: Use `Bun.spawn()` for any CLI operations
+
+### Coding Standards
+
+[Source: architecture/coding-standards.md#bun-specific-performance-standards]
+
+```typescript
+// ALWAYS use Bun.file() for file operations
+const file = Bun.file(path);
+const content = await file.text();
+
+// ALWAYS use Bun.write() for file writes  
+await Bun.write(path, content);
+
+// Use atomic writes for state files
+// Write to temp file first, then rename
+```
+
+### Testing Requirements
+
+[Source: architecture/testing-strategy-complete-with-all-testing-utilities.md]
+
+- **Test Location**: `/packages/core/tests/state/migrations/`
+- **Test Framework**: Bun Test (built-in)
+- **Coverage Target**: >90% for critical paths
+- **Performance Tests**: Use Tinybench for benchmarking
+- **Test Patterns**:
+  - Unit tests for each migration script
+  - Integration tests for migration paths
+  - Performance benchmarks for large state files
+  - Corruption recovery tests
+
+### Integration Points
+
+- **StateManager**: Hook into existing `loadState()` method to trigger migrations
+- **TransactionCoordinator**: Use for atomic migration operations
+- **WriteAheadLog**: Consider WAL for migration rollback safety
+- **WorkflowEngine**: Ensure migrations don't break active workflows
+
+### Performance Constraints
+
+[Source: architecture/backend-architecture-complete-with-all-services.md]
+
+- Migration operations must complete in <500ms for typical files
+- Use streaming for large state files (>10MB)
+- Implement progress indicators for long migrations
+- Cache migration results to avoid re-running
+
+### Security Considerations
+
+- Validate all state files before migration (prevent injection)
+- Use checksums to verify integrity pre/post migration
+- Implement file locking during migration operations
+- Sanitize file paths to prevent directory traversal
+
 ## Notes for Developers
 
 - Keep migrations idempotent where possible
@@ -309,3 +508,6 @@ checklist migrate --dry-run
 - Consider compression for old backups
 - Document breaking changes clearly
 - Test with real-world state files from beta users
+- Follow existing patterns from WAL implementation for file operations
+- Use TransactionCoordinator for atomic operations
+- Ensure backward compatibility for at least 3 major versions
