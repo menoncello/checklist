@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false # Don't cancel security scans
 
 env:
-  BUN_VERSION: 1.2
+  BUN_VERSION: 1.2.21
   # Enforce HTTPS for all external requests
   NODE_TLS_REJECT_UNAUTHORIZED: 1
 

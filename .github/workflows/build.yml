@@ -14,7 +14,7 @@ on:
       - 'bun.lockb'
 
 env:
-  BUN_VERSION: 1.2
+  BUN_VERSION: 1.2.21
 
 jobs:
   compile:
@@ -64,7 +64,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
       
-      - name: Install Dependencies
+      - name: Setup Node.js for Windows
+        if: matrix.platform == 'win32'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup Python for Windows
+        if: matrix.platform == 'win32'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Dependencies (Windows)
+        if: matrix.platform == 'win32'
+        run: |
+          npm install -g node-gyp
+          bun install
+      
+      - name: Install Dependencies (Unix)
+        if: matrix.platform != 'win32'
         run: bun install --frozen-lockfile
       
       - name: Build TypeScript
