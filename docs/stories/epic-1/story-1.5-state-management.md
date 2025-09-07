@@ -1,5 +1,9 @@
 # Story 1.5: State Management Implementation
 
+## Status
+
+Draft
+
 ## Story
 
 **As a** developer,  
@@ -8,329 +12,140 @@
 
 ## Acceptance Criteria
 
-### State Manager Implementation
+1. State manager creates `.checklist/` directory structure automatically
+2. YAML state files with schema: `state.yaml`, `config.yaml`, `history.yaml`
+3. Atomic writes using temp file + rename strategy
+4. Automatic backup before modifications in `.checklist/.backup/`
+5. State corruption detection using checksums
+6. JSON Schema validation ensures integrity
+7. File locking prevents concurrent modification
+8. Migration system for state file version updates
+9. All operations complete in <50ms
 
+## Tasks / Subtasks
+
+- [ ] Create StateManager class structure (AC: 1, 2)
+  - [ ] Define StateManager class in `/packages/core/src/state/StateManager.ts`
+  - [ ] Implement WorkflowState interface with proper types
+  - [ ] Set up dependency injection for Logger and Config services
+- [ ] Implement directory structure creation (AC: 1)
+  - [ ] Create `ensureDirectoryStructure()` method
+  - [ ] Create `.checklist`, `.checklist/.backup`, `.checklist/.cache` directories
+  - [ ] Generate default YAML files if not existing
+- [ ] Implement atomic write operations (AC: 3)
+  - [ ] Create `writeAtomic()` method using temp file strategy
+  - [ ] Use Bun.write with temp file then rename for atomicity
+  - [ ] Handle cleanup of temp files on error
+- [ ] Implement backup system (AC: 4)
+  - [ ] Create `createBackup()` method before any write operation
+  - [ ] Implement `pruneBackups()` to maintain only last 10 backups
+  - [ ] Add timestamp to backup filenames
+- [ ] Add corruption detection (AC: 5)
+  - [ ] Implement `calculateChecksum()` using SHA256
+  - [ ] Add `validateChecksum()` method for state validation
+  - [ ] Create `recover()` method to restore from backup on corruption
+- [ ] Integrate JSON Schema validation (AC: 6)
+  - [ ] Define WorkflowState schema using Ajv
+  - [ ] Add schema validation in load/save operations
+  - [ ] Create schema migration system for version updates
+- [ ] Implement file locking mechanism (AC: 7)
+  - [ ] Create FileLock class with acquire/release methods
+  - [ ] Implement lock timeout and stale lock detection
+  - [ ] Add process ID and hostname to lock files
+- [ ] Create migration system (AC: 8)
+  - [ ] Define Migration interface with from/to versions
+  - [ ] Implement `migrateState()` method for version updates
+  - [ ] Create migration registry for tracking migrations
+- [ ] Performance optimization (AC: 9)
+  - [ ] Ensure all operations complete within 50ms
+  - [ ] Add performance monitoring with debug logger
+  - [ ] Optimize YAML parsing/serialization
+- [ ] Write comprehensive unit tests
+  - [ ] Test directory structure creation
+  - [ ] Test atomic writes and concurrent access
+  - [ ] Test corruption recovery scenarios
+  - [ ] Test file locking with multiple processes
+  - [ ] Test migration system with version changes
+  - [ ] Test performance requirements (<50ms)
+
+## Dev Notes
+
+### File Locations
+- **StateManager Implementation**: `/packages/core/src/state/StateManager.ts` [Source: architecture/source-tree.md]
+- **FileLock Implementation**: `/packages/core/src/state/FileLock.ts` [Source: architecture/source-tree.md]
+- **Test Files**: `/packages/core/tests/state/StateManager.test.ts` [Source: architecture/source-tree.md]
+
+### Technical Stack
+- **Runtime**: Bun 1.1.x for file operations and built-in performance [Source: architecture/tech-stack.md]
+- **YAML Processing**: js-yaml 4.1.x for YAML serialization/deserialization [Source: architecture/tech-stack.md]
+- **Schema Validation**: Ajv 8.12.x for JSON Schema validation [Source: architecture/tech-stack.md]
+- **Logging**: Debug 4.3.x with namespaces for development logging [Source: architecture/tech-stack.md]
+
+### Data Models
 ```typescript
-export class StateManager {
-  private readonly stateDir = '.checklist';
-  private state: WorkflowState;
-
-  async initialize(projectPath: string): Promise<void> {
-    this.projectPath = projectPath;
-    await this.ensureDirectoryStructure();
-    await this.loadOrCreateState();
-  }
-
-  async save(): Promise<void> {
-    await this.createBackup();
-    await this.writeAtomic(this.state);
-    await this.updateChecksum();
-  }
-
-  async load(): Promise<WorkflowState> {
-    const state = await this.readState();
-    if (!this.validateChecksum(state)) {
-      return await this.recover();
-    }
-    return state;
-  }
-}
-```
-
-### Directory Structure Creation
-
-```typescript
-private async ensureDirectoryStructure(): Promise<void> {
-  const dirs = [
-    '.checklist',
-    '.checklist/.backup',
-    '.checklist/.cache'
-  ];
-
-  for (const dir of dirs) {
-    await mkdir(join(this.projectPath, dir), { recursive: true });
-  }
-
-  // Create default files if not exist
-  const files = {
-    'state.yaml': this.defaultState(),
-    'config.yaml': this.defaultConfig(),
-    'history.yaml': '[]'
+interface WorkflowState {
+  version: string;
+  checksum: string;
+  lastModified: Date;
+  activeInstance?: {
+    id: string;
+    templateId: string;
+    templateVersion: string;
+    status: 'active' | 'paused' | 'completed';
+    currentStepIndex: number;
+    variables: Record<string, any>;
+    completedSteps: string[];
+    skippedSteps: string[];
+    startedAt: Date;
   };
-
-  for (const [file, content] of Object.entries(files)) {
-    const path = join(this.projectPath, '.checklist', file);
-    if (!await exists(path)) {
-      await Bun.write(path, yaml.dump(content));
-    }
-  }
 }
 ```
+[Source: Derived from architecture/data-models-with-multi-script-support.md and epic requirements]
 
-### Atomic Write Implementation
+### Architecture Patterns
+- **Base Service Pattern**: Extend BaseService class with proper lifecycle methods [Source: architecture/backend-architecture-complete-with-all-services.md#BaseService]
+- **Dependency Injection**: Use Container for service dependencies [Source: architecture/backend-architecture-complete-with-all-services.md#Container]
+- **Concurrency Control**: Implement using ConcurrencyManager patterns [Source: architecture/backend-architecture-complete-with-all-services.md#ConcurrencyManager]
 
-```typescript
-private async writeAtomic(state: WorkflowState): Promise<void> {
-  const statePath = join(this.projectPath, '.checklist', 'state.yaml');
-  const tempPath = `${statePath}.tmp.${Date.now()}`;
+### State File Paths
+- **Main State**: `.checklist/state.yaml`
+- **Config**: `.checklist/config.yaml`
+- **History**: `.checklist/history.yaml`
+- **Backups**: `.checklist/.backup/state.yaml.{timestamp}`
+- **Lock Files**: `.checklist/.locks/{resource}.lock`
 
-  try {
-    // Write to temp file first
-    await Bun.write(tempPath, yaml.dump(state));
+### Coding Standards
+- Use TypeScript strict mode with all ESLint rules enforced [Source: architecture/coding-standards.md]
+- Follow Prettier formatting with 80 character line limit [Source: architecture/coding-standards.md]
+- Use Bun.env instead of process.env for environment variables [Source: architecture/coding-standards.md]
+- Avoid console.log - use debug logger instead [Source: architecture/coding-standards.md]
 
-    // Atomic rename
-    await rename(tempPath, statePath);
-  } catch (error) {
-    // Clean up temp file if rename failed
-    await unlink(tempPath).catch(() => {});
-    throw error;
-  }
-}
-```
+### Testing Requirements
+- **Test Framework**: Bun Test (built-in test runner) [Source: architecture/tech-stack.md]
+- **Test Data Factory**: Use TestDataFactory.createTestWorkspace() for isolated test environments [Source: architecture/testing-strategy-complete-with-all-testing-utilities.md#TestDataFactory]
+- **Coverage Target**: 100% test coverage required [Source: Epic AC]
+- **Performance Testing**: Use Tinybench for <50ms validation [Source: architecture/tech-stack.md]
+- **Test Location**: Tests colocated with source as `.test.ts` files [Source: architecture/source-tree.md]
 
-### Backup System
+## Change Log
 
-```typescript
-private async createBackup(): Promise<void> {
-  const statePath = join(this.projectPath, '.checklist', 'state.yaml');
-  const backupDir = join(this.projectPath, '.checklist', '.backup');
-  const backupPath = join(backupDir, `state.yaml.${Date.now()}`);
+| Date | Version | Description | Author |
+|------|---------|-------------|---------|
+| 2025-01-06 | 1.0 | Initial story draft created | Scrum Master |
 
-  if (await exists(statePath)) {
-    await copyFile(statePath, backupPath);
+## Dev Agent Record
 
-    // Keep only last 10 backups
-    await this.pruneBackups(backupDir, 10);
-  }
-}
+### Agent Model Used
+_To be populated by dev agent_
 
-private async pruneBackups(dir: string, keep: number): Promise<void> {
-  const files = await readdir(dir);
-  const backups = files
-    .filter(f => f.startsWith('state.yaml.'))
-    .sort()
-    .reverse();
+### Debug Log References
+_To be populated by dev agent_
 
-  for (const file of backups.slice(keep)) {
-    await unlink(join(dir, file));
-  }
-}
-```
+### Completion Notes List
+_To be populated by dev agent_
 
-### Corruption Detection & Recovery
+### File List
+_To be populated by dev agent_
 
-```typescript
-private async validateChecksum(state: WorkflowState): Promise<boolean> {
-  const calculated = this.calculateChecksum(state);
-  return calculated === state.checksum;
-}
-
-private calculateChecksum(state: WorkflowState): string {
-  const content = JSON.stringify(state, null, 2);
-  return crypto.createHash('sha256').update(content).digest('hex');
-}
-
-private async recover(): Promise<WorkflowState> {
-  const backupDir = join(this.projectPath, '.checklist', '.backup');
-  const backups = await readdir(backupDir);
-
-  // Try backups from newest to oldest
-  for (const backup of backups.sort().reverse()) {
-    try {
-      const content = await Bun.file(join(backupDir, backup)).text();
-      const state = yaml.load(content) as WorkflowState;
-
-      if (this.validateChecksum(state)) {
-        console.warn(`Recovered from backup: ${backup}`);
-        return state;
-      }
-    } catch {
-      // Try next backup
-    }
-  }
-
-  // If all backups fail, create new state
-  console.warn('All backups corrupted, creating new state');
-  return this.defaultState();
-}
-```
-
-### File Locking
-
-```typescript
-export class FileLock {
-  private lockFile: string;
-  private lockAcquired = false;
-
-  constructor(private path: string) {
-    this.lockFile = `${path}.lock`;
-  }
-
-  async acquire(timeout = 5000): Promise<void> {
-    const start = Date.now();
-
-    while (Date.now() - start < timeout) {
-      try {
-        // Try to create lock file exclusively
-        const fd = await open(this.lockFile, 'wx');
-        await write(fd, `${process.pid}\n${Date.now()}`);
-        await close(fd);
-
-        this.lockAcquired = true;
-        return;
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-
-        // Check if lock is stale
-        if (await this.isStale()) {
-          await this.forceRelease();
-          continue;
-        }
-
-        // Wait and retry
-        await Bun.sleep(100);
-      }
-    }
-
-    throw new Error(`Failed to acquire lock after ${timeout}ms`);
-  }
-
-  async release(): Promise<void> {
-    if (this.lockAcquired) {
-      await unlink(this.lockFile);
-      this.lockAcquired = false;
-    }
-  }
-
-  private async isStale(maxAge = 30000): Promise<boolean> {
-    try {
-      const stat = await Bun.file(this.lockFile).stat();
-      return Date.now() - stat.mtime.getTime() > maxAge;
-    } catch {
-      return true;
-    }
-  }
-}
-```
-
-### State Migration System
-
-```typescript
-interface Migration {
-  from: string;
-  to: string;
-  migrate: (state: any) => any;
-}
-
-const migrations: Migration[] = [
-  {
-    from: '0.0.1',
-    to: '0.0.2',
-    migrate: (state) => ({
-      ...state,
-      version: '0.0.2',
-      newField: 'default'
-    })
-  }
-];
-
-private async migrateState(state: WorkflowState): Promise<WorkflowState> {
-  let current = state;
-
-  for (const migration of migrations) {
-    if (current.version === migration.from) {
-      current = migration.migrate(current);
-      current.version = migration.to;
-    }
-  }
-
-  return current;
-}
-```
-
-## Schema Definitions
-
-### State Schema (state.yaml)
-
-```yaml
-version: '1.0.0'
-checksum: 'sha256:...'
-lastModified: '2025-01-01T10:00:00Z'
-activeInstance:
-  id: 'uuid'
-  templateId: 'template-name'
-  templateVersion: '1.0.0'
-  status: 'active'
-  currentStepIndex: 0
-  variables: {}
-  completedSteps: []
-  skippedSteps: []
-  startedAt: '2025-01-01T10:00:00Z'
-```
-
-## Testing Requirements
-
-```typescript
-describe('StateManager', () => {
-  test('creates directory structure', async () => {
-    const sm = new StateManager();
-    await sm.initialize('/tmp/test');
-
-    expect(await exists('/tmp/test/.checklist')).toBe(true);
-    expect(await exists('/tmp/test/.checklist/state.yaml')).toBe(true);
-  });
-
-  test('atomic writes prevent corruption', async () => {
-    // Test concurrent writes don't corrupt
-  });
-
-  test('recovers from corruption', async () => {
-    // Corrupt state file
-    // Verify recovery from backup
-  });
-
-  test('file locking prevents races', async () => {
-    // Test multiple processes
-  });
-
-  test('migrations apply correctly', async () => {
-    // Test version migrations
-  });
-});
-```
-
-## Performance Requirements
-
-- State save < 50ms
-- State load < 50ms
-- Backup creation < 20ms
-- Lock acquisition < 100ms typical
-
-## Definition of Done
-
-- [ ] Directory structure created automatically
-- [ ] Atomic writes implemented
-- [ ] Backup system working
-- [ ] Corruption recovery tested
-- [ ] File locking functional
-- [ ] Migration system in place
-- [ ] Schema validated with Ajv
-- [ ] All operations < 50ms
-- [ ] 100% test coverage
-
-## Time Estimate
-
-**2 days**
-
-## Dependencies
-
-- Can start after Story 1.1 (project setup)
-- Required by Story 1.6 (workflow engine)
-
-## Notes
-
-- Use YAML for human readability
-- Keep checksums for integrity
-- Always backup before writes
-- Handle concurrent access gracefully
-- Design for forward compatibility
+## QA Results
+_To be populated by QA agent_
