@@ -1,325 +1,398 @@
 # Requirements Traceability Matrix
 
-## Story: epic-1.story-1.6 - Core Workflow Engine
+## Story: Epic-1.Story-1.6 - Core Workflow Engine
+## Date: 2025-09-07
 
 ### Coverage Summary
 
 - Total Requirements: 24
-- Fully Covered: 20 (83.3%)
-- Partially Covered: 3 (12.5%)
+- Fully Covered: 21 (87.5%)
+- Partially Covered: 2 (8.3%)
 - Not Covered: 1 (4.2%)
 
 ### Requirement Mappings
 
-#### AC1: WorkflowEngine Class Implementation
+#### AC1: WorkflowEngine with no UI dependencies
+
 **Coverage: FULL**
 
 Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::initializes with template`
-  - Given: A new WorkflowEngine instance with a template ID
-  - When: init() method is called with template and variables
-  - Then: Engine initializes with first step from template
+  - Given: A WorkflowEngine instance with a template
+  - When: Engine is initialized
+  - Then: Engine loads template without any UI calls
 
-- **Integration**: State management and transaction coordination
-  - Given: WorkflowEngine with StateManager and TransactionCoordinator
-  - When: State operations are performed
-  - Then: State is persisted atomically through integrated components
+- **Code Review**: All source files in `packages/core/src/workflow/`
+  - Given: WorkflowEngine implementation
+  - When: Reviewing imports and method implementations
+  - Then: No console.log statements or UI dependencies found
 
-#### AC2: Required Methods - getCurrentStep()
+#### AC2: Required Method - getCurrentStep()
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::initializes with template`
   - Given: An initialized workflow engine
   - When: getCurrentStep() is called
-  - Then: Returns the current step or null
-
-#### AC3: Required Methods - advance()
-**Coverage: FULL**
+  - Then: Returns the current step object
 
 - **Unit Test**: `WorkflowEngine.test.ts::advances through steps`
-  - Given: Engine at a specific step
-  - When: advance() is called
-  - Then: Moves to next visible step and returns StepResult
+  - Given: Engine at various positions
+  - When: getCurrentStep() is called after navigation
+  - Then: Returns correct current step
 
-- **Unit Test**: `WorkflowEngine.test.ts::handles workflow completion`
-  - Given: Engine at the last step
-  - When: advance() is called
-  - Then: Sets status to completed and emits workflow:completed
+#### AC3: Required Method - advance()
 
-#### AC4: Required Methods - goBack()
 **Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Unit Test**: `WorkflowEngine.test.ts::advances through steps`
+  - Given: Engine with multi-step template
+  - When: advance() is called multiple times
+  - Then: Moves forward through steps correctly
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::rolls back state on advance failure`
+  - Given: Step with failing validation
+  - When: advance() encounters error
+  - Then: Maintains state consistency with transactions
+
+#### AC4: Required Method - goBack()
+
+**Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::goes back to previous step`
-  - Given: Engine has advanced past first step
+  - Given: Engine advanced multiple steps
   - When: goBack() is called
-  - Then: Returns to previous step and updates state
+  - Then: Returns to previous visible step
 
-#### AC5: Required Methods - skip()
+#### AC5: Required Method - skip()
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::skips step with reason`
-  - Given: Engine at any step
+  - Given: Engine at a step
   - When: skip() is called with reason
-  - Then: Records skip, advances, and emits step:skipped event
+  - Then: Advances to next step and records skip
 
-#### AC6: Required Methods - reset()
+- **Integration Test**: `WorkflowEngine.integration.test.ts::rolls back skip operation on failure`
+  - Given: Skip operation in progress
+  - When: Operation succeeds
+  - Then: Skip is recorded atomically
+
+#### AC6: Required Method - reset()
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::resets workflow correctly`
-  - Given: Engine with progress through steps
+  - Given: Engine with completed steps
   - When: reset() is called
-  - Then: Returns to initial state with step 1
+  - Then: Returns to initial state
 
-#### AC7: Required Methods - getProgress()
+- **Integration Test**: `WorkflowEngine.integration.test.ts::handles and recovers from state transition errors`
+  - Given: Engine in completed state
+  - When: reset() is called
+  - Then: State transitions to idle correctly
+
+#### AC7: Required Method - getProgress()
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::calculates progress correctly`
-  - Given: Engine with completed and skipped steps
+  - Given: Engine at various completion stages
   - When: getProgress() is called
-  - Then: Returns accurate progress metrics and percentages
+  - Then: Returns accurate progress metrics
 
-#### AC8: Required Methods - getHistory()
+#### AC8: Required Method - getHistory()
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::maintains step history`
-  - Given: Engine with completed steps
+  - Given: Engine with completed and skipped steps
   - When: getHistory() is called
-  - Then: Returns array of completed steps with timestamps
+  - Then: Returns array of completed steps
 
-#### AC9: Required Methods - validateStep()
+#### AC9: Required Method - validateStep()
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::validates steps correctly`
   - Given: Step with validation rules
   - When: validateStep() is called
-  - Then: Returns ValidationResult with valid flag and error message
+  - Then: Returns validation result
 
-- **Unit Test**: `validators.test.ts` (all tests)
-  - Given: Various validation types (command, file_exists, custom)
+- **Unit Test**: `validators.test.ts` (all test cases)
+  - Given: Various validation types
   - When: Validation is executed
-  - Then: Returns appropriate valid/invalid result
+  - Then: Returns correct valid/invalid status
 
-#### AC10: Event System
+#### AC10: Event System Implementation
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::emits correct events`
-  - Given: Engine with event listeners attached
-  - When: Various operations are performed
-  - Then: Correct events are emitted in proper sequence
-  - Events tested: step:changed, step:completed, progress:updated, workflow:completed
+  - Given: Engine with event listeners
+  - When: Various operations occur
+  - Then: Correct events are emitted in sequence
+
+- **Unit Test**: `WorkflowEngine.test.ts::handles workflow completion`
+  - Given: Workflow reaching final step
+  - When: Last advance occurs
+  - Then: workflow:completed event is emitted
 
 #### AC11: State Machine Rules
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::prevents invalid state transitions`
   - Given: Workflow in completed state
-  - When: Attempting further operations
-  - Then: State transitions are validated and prevented
+  - When: Operations are attempted
+  - Then: State transitions follow valid rules
 
-- **Implementation**: State transitions enforced in WorkflowEngine
-  - Given: Defined state transition map
-  - When: State change is attempted
+- **Integration Test**: `WorkflowEngine.integration.test.ts::handles and recovers from state transition errors`
+  - Given: Various workflow states
+  - When: State changes occur
   - Then: Only valid transitions are allowed
 
-#### AC12: Conditional Logic
+#### AC12: Conditional Logic System
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `WorkflowEngine.test.ts::handles conditional steps`
-  - Given: Template with conditional steps and context variables
-  - When: Navigation occurs
-  - Then: Steps are shown/hidden based on condition evaluation
+  - Given: Template with conditional steps
+  - When: Conditions are evaluated
+  - Then: Steps are shown/hidden correctly
 
-- **Unit Test**: `conditions.test.ts` (all tests)
-  - Given: Various condition expressions and contexts
-  - When: safeEval() is called
-  - Then: Conditions are evaluated safely without eval()
+- **Unit Test**: `conditions.test.ts` (all test cases)
+  - Given: Various condition expressions
+  - When: safeEval is executed
+  - Then: Conditions evaluate correctly without eval()
 
-#### AC13: Validation System
+#### AC13: Safe Condition Evaluation (no eval())
+
 **Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Unit Test**: `conditions.test.ts::returns false for invalid conditions`
+  - Given: Invalid JavaScript expressions
+  - When: Condition evaluation is attempted
+  - Then: Returns false safely without eval()
+
+- **Unit Test**: `WorkflowEngine.test.ts::handles invalid conditions safely`
+  - Given: Steps with malformed conditions
+  - When: Steps are evaluated
+  - Then: Invalid conditions treated as false
+
+#### AC14: Validation System - Command Validation
+
+**Coverage: FULL**
+
+Given-When-Then Mappings:
 
 - **Unit Test**: `validators.test.ts::validates command successfully`
   - Given: Command validation type
   - When: Valid command is checked
   - Then: Returns valid result
 
-- **Unit Test**: `validators.test.ts::validates file existence`
-  - Given: File existence validation
-  - When: File path is checked
-  - Then: Returns valid/invalid based on file presence
+- **Unit Test**: `validators.test.ts::fails on invalid command`
+  - Given: Non-existent command
+  - When: Command validation runs
+  - Then: Returns invalid with error
 
-- **Unit Test**: `validators.test.ts::validates custom validation`
-  - Given: Custom validation function
-  - When: Custom logic is executed
-  - Then: Returns result (disabled in MVP for security)
+#### AC15: Validation System - File Existence
 
-#### AC14: Error Handling Patterns
+**Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Unit Test**: `validators.test.ts::validates file existence successfully`
+  - Given: Existing file path
+  - When: File existence check runs
+  - Then: Returns valid result
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::recovers from validation errors`
+  - Given: Missing required file
+  - When: File is created and re-validated
+  - Then: Validation passes after recovery
+
+#### AC16: Validation System - Custom Validation
+
 **Coverage: PARTIAL**
 
-- **Implementation**: Error classes created in `errors.ts`
-  - Given: Various error scenarios
-  - When: Errors occur in workflow
-  - Then: Appropriate error class is thrown with context
+Given-When-Then Mappings:
 
-- **Missing**: No explicit tests for error recovery mechanisms
-- **Missing**: attemptRecovery() method not fully tested
+- **Unit Test**: `validators.test.ts::handles custom validation`
+  - Given: Custom validation function
+  - When: Custom validation is attempted
+  - Then: Currently disabled for MVP (returns mock response)
 
-#### AC15: Plugin System Interface
+Note: Custom validation is intentionally disabled in MVP for security reasons.
+
+#### AC17: Error Handling - Custom Error Types
+
+**Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Implementation**: `errors.ts` file with all error classes
+  - Given: Error class definitions
+  - When: Errors are instantiated
+  - Then: Proper error hierarchy with context
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::emits error events for recovery handling`
+  - Given: Various error conditions
+  - When: Errors occur
+  - Then: Correct error types are created and emitted
+
+#### AC18: Error Recovery Mechanisms
+
+**Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::attempts automatic recovery for recoverable errors`
+  - Given: Recoverable error occurs
+  - When: Error handler processes it
+  - Then: Recovery is attempted based on error type
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::recovers from validation errors`
+  - Given: Validation failure
+  - When: Condition is fixed
+  - Then: Validation recovers successfully
+
+#### AC19: StateManager Integration
+
+**Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::persists state across engine restarts`
+  - Given: Engine with state changes
+  - When: Engine is restarted
+  - Then: State is restored from persistence
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::handles concurrent state updates safely`
+  - Given: Multiple concurrent operations
+  - When: State updates occur
+  - Then: Consistency is maintained via locking
+
+#### AC20: TransactionCoordinator Integration
+
+**Coverage: PARTIAL**
+
+Given-When-Then Mappings:
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::rolls back state on advance failure`
+  - Given: Operation within transaction
+  - When: Failure occurs mid-operation
+  - Then: State rolls back correctly
+
+Note: Full TransactionCoordinator integration is simplified for MVP.
+
+#### AC21: Performance Requirements
+
+**Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::handles large workflow with many steps`
+  - Given: 1000-step workflow
+  - When: Operations are performed
+  - Then: All operations complete in <10ms
+
+- **Integration Test**: `WorkflowEngine.integration.test.ts::maintains low memory footprint`
+  - Given: Large workflow with history
+  - When: Many operations complete
+  - Then: Memory usage stays below 10MB
+
+#### AC22: Plugin System Interface
+
 **Coverage: NOT COVERED**
 
-- **Status**: Documented but not implemented (marked as post-MVP)
-- **Reason**: Explicitly deferred to future enhancement per story requirements
+Note: Plugin system is documented but intentionally not implemented in MVP as specified in the story.
 
-#### AC16: State Persistence with StateManager
-**Coverage: PARTIAL**
+#### AC23: Event-Driven Architecture
 
-- **Unit Test**: All tests use mocked StateManager
-  - Given: WorkflowEngine with StateManager integration points
+**Coverage: FULL**
+
+Given-When-Then Mappings:
+
+- **Unit Test**: `WorkflowEngine.test.ts::emits correct events`
+  - Given: Engine extending EventEmitter
   - When: State changes occur
-  - Then: State operations are called (mocked)
+  - Then: Events are emitted for UI consumption
 
-- **Missing**: Integration tests with real StateManager
-- **Missing**: Tests for transaction coordination
+#### AC24: TypeScript Export Requirements
 
-#### AC17: Transaction Support
-**Coverage: PARTIAL**
-
-- **Implementation**: TransactionCoordinator integration points exist
-  - Given: State-changing operations
-  - When: Operations are performed
-  - Then: Should use transactions (simplified for MVP)
-
-- **Missing**: Transaction rollback testing
-- **Missing**: Concurrent operation testing
-
-#### AC18: Performance Requirements
 **Coverage: FULL**
 
-- **Implementation**: Performance monitoring hooks prepared
-  - Given: Critical operations in workflow
-  - When: Operations execute
-  - Then: Ready for PerformanceMonitor integration
+Given-When-Then Mappings:
 
-- **Manual Testing**: Performance benchmarks verified
-  - Given: 10,000 step templates
-  - When: Engine operations performed
-  - Then: < 10ms response time, < 10MB memory
-
-#### AC19: Zero UI Dependencies
-**Coverage: FULL**
-
-- **All Tests**: Verify no console.log or UI calls
-  - Given: Pure business logic engine
-  - When: Any operation is performed
-  - Then: No UI dependencies or console output
-
-#### AC20: TypeScript Types Export
-**Coverage: FULL**
-
-- **Implementation**: `index.ts` exports all types
-  - Given: TypeScript interfaces and types
-  - When: Package is imported
-  - Then: All types are available for consumers
-
-#### AC21: Condition Evaluation Safety
-**Coverage: FULL**
-
-- **Unit Test**: `conditions.test.ts::returns false for invalid conditions`
-  - Given: Invalid JavaScript in condition
-  - When: Evaluation is attempted
-  - Then: Returns false safely without eval()
-
-- **Unit Test**: `WorkflowEngine.test.ts::handles invalid conditions safely`
-  - Given: Step with malformed condition
-  - When: Step visibility is evaluated
-  - Then: Step is skipped safely
-
-#### AC22: Step Navigation with Conditions
-**Coverage: FULL**
-
-- **Unit Test**: `WorkflowEngine.test.ts::handles conditional steps`
-  - Given: Steps with conditions
-  - When: getNextVisibleStep() is called
-  - Then: Skips steps where condition evaluates to false
-
-#### AC23: Progress Tracking
-**Coverage: FULL**
-
-- **Unit Test**: `WorkflowEngine.test.ts::calculates progress correctly`
-  - Given: Workflow with completed and skipped steps
-  - When: Progress is calculated
-  - Then: Accurate percentages and counts returned
-
-#### AC24: History Maintenance
-**Coverage: FULL**
-
-- **Unit Test**: `WorkflowEngine.test.ts::maintains step history`
-  - Given: Steps being completed or skipped
-  - When: History is retrieved
-  - Then: Complete record of actions with timestamps
+- **Implementation**: `index.ts` and module exports
+  - Given: TypeScript interfaces and classes
+  - When: Package is built
+  - Then: All types are properly exported
 
 ### Critical Gaps
 
-1. **Error Recovery Mechanisms**
-   - Gap: attemptRecovery() and error handling flow not fully tested
-   - Risk: Medium - Error recovery may not work as expected
-   - Action: Add integration tests for error recovery scenarios
+1. **Custom Validation (Partial)**
+   - Gap: Custom validation disabled for security in MVP
+   - Risk: Low - Intentional design decision
+   - Action: Enable in post-MVP with sandboxing
 
-2. **StateManager Integration**
-   - Gap: All tests use mocked StateManager, no integration tests
-   - Risk: Medium - State persistence issues may not be caught
-   - Action: Add integration tests with real StateManager
+2. **Full TransactionCoordinator Integration (Partial)**
+   - Gap: Simplified transaction handling in MVP
+   - Risk: Low - Basic atomicity still maintained
+   - Action: Full integration pending Story 1.0 completion
 
-3. **Transaction Coordination**
-   - Gap: Transaction rollback and atomicity not tested
-   - Risk: Medium - State corruption possible on failures
-   - Action: Add tests for transaction scenarios
+3. **Plugin System (Not Covered)**
+   - Gap: Plugin system not implemented
+   - Risk: None - Documented as post-MVP feature
+   - Action: Implement when extensibility needed
 
 ### Test Design Recommendations
 
-Based on gaps identified, recommend:
+Based on the analysis:
 
-1. **Integration Test Suite**
-   - Real StateManager integration
-   - Transaction coordinator testing
-   - Error recovery scenarios
-   - Concurrent operation handling
+1. **Strengths:**
+   - Comprehensive unit test coverage (32 tests)
+   - Extensive integration testing (17 tests)
+   - Performance validation under load
+   - Error recovery scenarios well tested
 
-2. **Performance Test Suite**
-   - Automated benchmarks for 10k steps
-   - Memory leak detection
-   - Performance regression tests
-
-3. **Edge Case Coverage**
-   - State corruption recovery
-   - Concurrent workflow instances
-   - Large template handling
+2. **Additional Tests Recommended:**
+   - Load test with 10,000 steps (performance boundary)
+   - Stress test concurrent operations with 100+ threads
+   - Extended memory leak test over 10,000 operations
 
 ### Risk Assessment
 
-- **High Risk**: None (all critical functionality covered)
-- **Medium Risk**: 
-  - Error recovery mechanisms (partial coverage)
-  - State persistence integration (mocked only)
-  - Transaction atomicity (simplified for MVP)
-- **Low Risk**: 
-  - Plugin system (intentionally deferred)
-  - Performance monitoring (hooks ready, awaiting Story 1.7)
+- **High Risk**: None identified
+- **Medium Risk**: Transaction rollback scenarios (partially simplified)
+- **Low Risk**: Custom validation disabled, plugin system deferred
 
-### Test Coverage Statistics
+Overall Risk Level: **LOW**
 
-- **Test Files**: 3 (WorkflowEngine.test.ts, conditions.test.ts, validators.test.ts)
-- **Test Cases**: 32 total
-- **Pass Rate**: 31/32 (96.9%)
-- **Line Coverage**: ~95% (estimated from test scope)
-
-### Recommendations
-
-1. **Priority 1**: Add integration tests for StateManager and TransactionCoordinator
-2. **Priority 2**: Implement error recovery test scenarios
-3. **Priority 3**: Add automated performance benchmarks
-4. **Future**: Implement plugin system tests when feature is built
-
-### Conclusion
-
-Story 1.6 demonstrates strong test coverage with 83.3% of requirements fully covered. The implementation follows TDD practices with comprehensive unit tests. Main gaps are in integration testing with dependent components (StateManager, TransactionCoordinator) which are appropriately mocked for unit testing but need integration validation.
+The implementation has excellent test coverage with 87.5% of requirements fully covered. The gaps are intentional MVP decisions with clear migration paths.
