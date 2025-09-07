@@ -1,28 +1,51 @@
-# Story 1.6a: State Transaction Management
+# Story 1.6a: Write-Ahead Logging for State Recovery
+
+> **Note**: This is an enhancement story (1.6a) that adds Write-Ahead Logging (WAL) to the existing transaction system for crash recovery and state consistency. The transaction coordinator and concurrency management already exist in the codebase.
 
 ## Status
 
-**Draft** 📝
+**Draft - Ready for Implementation** 📝✅
+
+> This is an enhancement story (1.6a) that extends Story 1.6 by adding Write-Ahead Logging (WAL) capabilities to the existing transaction system for crash recovery and state consistency
 
 ## Story
 
 **As a** developer,  
-**I want** atomic state operations with rollback capability,  
-**So that** checklist state remains consistent even during failures.
+**I want** Write-Ahead Logging for state operations,  
+**So that** checklist state can be recovered after crashes or failures.
 
 ## Priority
 
-**CRITICAL** - Must be complete before Story 2.1
+**P1 - Critical** 🔴
+
+This enhancement adds crash recovery capability to the existing transaction system. Essential for production reliability before Story 2.1 (Checklist Panel).
+
+## Time Estimate
+
+**2-3 days** including comprehensive testing
+
+## Dependencies
+
+- **Prerequisites**: Story 1.6 (Core Workflow Engine) must be complete - provides existing TransactionCoordinator and ConcurrencyManager to enhance
+- **Blocks**: Story 2.1 (Checklist Panel) - WAL required for production reliability
+- **Uses**: Existing StateManager from Story 1.5, existing TransactionCoordinator from Story 1.6
+- **Updates**: Enhances existing TransactionCoordinator and WorkflowEngine from Story 1.6 with WAL capabilities
+
+## Risk Factors
+
+- 🟡 **Platform-specific file locking behavior** - May require OS-specific handling
+- 🟡 **Performance overhead of WAL** - Must maintain <10ms write overhead
+- 🟢 **Well-understood patterns** - WAL is proven technology from database systems
 
 ## Acceptance Criteria
 
-### Transaction Implementation
+### WAL Implementation
 
 1. ✅ Implement write-ahead logging for state changes
-2. ✅ File locking prevents concurrent modifications
-3. ✅ Automatic rollback on process crash
-4. ✅ State validation before commit
-5. ✅ Recovery mechanism for corrupted state files
+2. ✅ WAL entries persist before state modifications
+3. ✅ Automatic WAL replay on process startup after crash
+4. ✅ WAL cleanup after successful transactions
+5. ✅ Recovery mechanism for incomplete transactions
 
 ### Technical Requirements
 
@@ -31,90 +54,30 @@
 - Atomic rename operations for final commit
 - Temporary `.checklist/.tmp/` directory for staging
 
-### Implementation Approach
+### Performance Benchmarks
+
+#### NEW Component (WAL) Performance Targets
+
+| Operation | Target | Critical Threshold |
+|-----------|--------|-----------------|
+| WAL write | < 10ms | 20ms |
+| WAL replay/recovery | < 100ms | 200ms |
+| WAL clear after commit | < 5ms | 10ms |
+
+#### EXISTING Component Performance (for reference)
+
+| Operation | Target | Critical Threshold |
+|-----------|--------|-----------------|
+| Lock acquisition | < 50ms | 100ms |
+| State validation | < 20ms | 50ms |
+| Atomic commit | < 30ms | 60ms |
+| Transaction rollback | < 10ms | 20ms |
+| Concurrent lock wait | < 100ms/attempt | 500ms |
+
+### WAL Implementation Approach
 
 ```typescript
-class StateTransaction {
-  private wal: WriteAheadLog;
-  private lockFile: FileLock;
-
-  async begin(): Promise<void> {
-    await this.lockFile.acquire();
-    await this.wal.initialize();
-  }
-
-  async write(key: string, value: any): Promise<void> {
-    await this.wal.append({ op: 'write', key, value });
-  }
-
-  async commit(): Promise<void> {
-    // Validate state
-    const validation = await this.validateState();
-    if (!validation.valid) {
-      throw new StateValidationError(validation.errors);
-    }
-
-    // Write to temp file
-    const tempPath = `.checklist/.tmp/${Date.now()}.yaml`;
-    await Bun.write(tempPath, this.serializeState());
-
-    // Atomic rename
-    await fs.rename(tempPath, '.checklist/state.yaml');
-
-    // Clear WAL
-    await this.wal.clear();
-    await this.lockFile.release();
-  }
-
-  async rollback(): Promise<void> {
-    await this.wal.clear();
-    await this.lockFile.release();
-  }
-}
-```
-
-### File Locking Strategy
-
-```typescript
-class FileLock {
-  private lockPath = '.checklist/.lock';
-  private lockId: string;
-
-  async acquire(timeout = 5000): Promise<void> {
-    const startTime = Date.now();
-    this.lockId = crypto.randomUUID();
-
-    while (Date.now() - startTime < timeout) {
-      try {
-        // Try to create lock file atomically
-        await Bun.write(this.lockPath, this.lockId, {
-          mode: 'wx', // Exclusive write
-        });
-        return;
-      } catch (error) {
-        // Lock exists, check if stale
-        if (await this.isLockStale()) {
-          await this.forceRelease();
-        } else {
-          await Bun.sleep(100);
-        }
-      }
-    }
-    throw new Error('Failed to acquire lock');
-  }
-
-  async release(): Promise<void> {
-    const currentLock = await Bun.file(this.lockPath).text();
-    if (currentLock === this.lockId) {
-      await fs.unlink(this.lockPath);
-    }
-  }
-}
-```
-
-### Write-Ahead Log Implementation
-
-```typescript
+// This will be created in /packages/core/src/state/WriteAheadLog.ts
 interface WALEntry {
   timestamp: number;
   op: 'write' | 'delete';
@@ -156,109 +119,81 @@ class WriteAheadLog {
 
 ## Tasks / Subtasks
 
-### Phase 1: Core Transaction System
+### Phase 1: WAL Implementation
 
-- [ ] **Implement FileLock class** (AC: 2)
-  - [ ] Create `/packages/core/src/state/FileLock.ts`
-  - [ ] Implement lock acquisition with 5s timeout (per ConcurrencyManager pattern)
-  - [ ] Add stale lock detection using PID and hostname
-  - [ ] Implement heartbeat mechanism for lock renewal
-  - [ ] Add Windows-compatible file locking using 'wx' flag
-  - [ ] Write unit tests in `/packages/core/tests/state/FileLock.test.ts`
-
-- [ ] **Create WriteAheadLog implementation** (AC: 1, 3)
+- [ ] **Create WriteAheadLog class** (AC: 1, 2)
   - [ ] Create `/packages/core/src/state/WriteAheadLog.ts`
   - [ ] Implement WALEntry interface with timestamp, op, key, value fields
   - [ ] Add append() method with JSON line-delimited format
-  - [ ] Implement replay() for crash recovery
+  - [ ] Implement atomic write operations using Bun.write
   - [ ] Add clear() for successful commit cleanup
-  - [ ] Create `.checklist/.wal` directory structure
-  - [ ] Write unit tests with simulated crashes
+  - [ ] Create `.checklist/.wal` file in state directory
+  - [ ] Add performance tracking for WAL operations
+  - [ ] Write unit tests in `/packages/core/tests/state/WriteAheadLog.test.ts`
 
-- [ ] **Build StateTransaction wrapper** (AC: 1, 2, 4)
-  - [ ] Create `/packages/core/src/state/StateTransaction.ts`  
-  - [ ] Integrate with existing TransactionCoordinator pattern
-  - [ ] Implement begin() with lock acquisition
-  - [ ] Add write() operations to WAL
-  - [ ] Implement commit() with validation and atomic rename
-  - [ ] Add rollback() with WAL cleanup
-  - [ ] Use Ajv for state validation before commit
-  - [ ] Write integration tests for transaction lifecycle
-
-- [ ] **Integrate with existing ConcurrencyManager** (AC: 2)
-  - [ ] Extend ConcurrencyManager from backend architecture
-  - [ ] Add state-specific lock handling
-  - [ ] Implement lock timeout configuration (5000ms default)
-  - [ ] Add metrics collection for lock contention
+- [ ] **Enhance existing TransactionCoordinator with WAL** (AC: 1, 4)
+  - [ ] Update existing `/packages/core/src/state/TransactionCoordinator.ts`
+  - [ ] Add WAL instance to existing TransactionCoordinator class
+  - [ ] Modify existing addOperation() to write to WAL before state modifications
+  - [ ] Update existing commit methods to clear WAL after successful commit
+  - [ ] Preserve WAL on rollback for recovery
+  - [ ] Add telemetry for WAL operations
+  - [ ] Update existing TransactionCoordinator tests
 
 ### Phase 2: Recovery Mechanisms
 
-- [ ] **Implement crash detection** (AC: 3)
-  - [ ] Check for `.checklist/.wal` existence on startup
-  - [ ] Validate lock files for stale processes
-  - [ ] Add startup hook in WorkflowEngine.init()
-  - [ ] Log recovery attempts using debug logger
-
-- [ ] **Build WAL replay system** (AC: 3, 5)
+- [ ] **Implement WAL replay on startup** (AC: 3, 5)
+  - [ ] Add WAL recovery check in StateManager initialization
+  - [ ] Create replay() method in WriteAheadLog class
   - [ ] Parse line-delimited JSON from WAL file
   - [ ] Apply operations in sequence to restore state
-  - [ ] Handle partial writes and corrupted entries
+  - [ ] Handle partial writes and corrupted entries gracefully
   - [ ] Create backup before replay in `.checklist/.backup/`
+  - [ ] Log recovery attempts and results
   - [ ] Write tests with corrupted WAL scenarios
 
-- [ ] **Add state validation and repair** (AC: 4, 5)
-  - [ ] Implement JSON Schema validation using Ajv
-  - [ ] Detect missing required fields
-  - [ ] Add checksum verification for state files
-  - [ ] Create state repair utilities with safe defaults
-  - [ ] Log all repair operations for audit
+- [ ] **Add recovery hooks to WorkflowEngine** (AC: 3)
+  - [ ] Update WorkflowEngine.init() to check for WAL
+  - [ ] Trigger WAL replay if incomplete transactions found
+  - [ ] Emit recovery events for monitoring
+  - [ ] Test recovery with various crash scenarios
 
 ### Phase 3: Testing & Hardening
 
-- [ ] **Concurrent access testing** (AC: 2)
-  - [ ] Create multi-process test using Bun.spawn
-  - [ ] Test 10 concurrent write attempts
-  - [ ] Verify only one process acquires lock
-  - [ ] Test lock release and reacquisition
-  - [ ] Use FlakyTestDetector for reliability
-
-- [ ] **Crash recovery testing** (AC: 3)
-  - [ ] Simulate process kill during transaction
+- [ ] **WAL crash recovery testing** (AC: 3, 5)
+  - [ ] Simulate process kill during WAL write
   - [ ] Test WAL replay on next startup
   - [ ] Verify state consistency after recovery
-  - [ ] Test with multiple crash scenarios
+  - [ ] Test with multiple crash scenarios:
+    - [ ] Mid-transaction crash
+    - [ ] Post-WAL write, pre-commit crash
+    - [ ] Corrupted WAL entries
   - [ ] Measure recovery time (<100ms requirement)
+  - [ ] Use FlakyTestDetector for reliability
 
 - [ ] **Performance benchmarking** (AC: Technical Requirements)
-  - [ ] Use Tinybench for micro-benchmarks
-  - [ ] Test transaction overhead (<100ms)
-  - [ ] Measure lock acquisition time
-  - [ ] Profile memory usage during transactions
-  - [ ] Test with 1000 concurrent operations
+  - [ ] Use Tinybench for WAL operation benchmarks
+  - [ ] Test WAL write overhead (<10ms)
+  - [ ] Measure recovery time from various WAL sizes
+  - [ ] Profile memory usage during WAL operations
+  - [ ] Test with 1000 sequential transactions
 
 - [ ] **Edge case handling**
-  - [ ] Test disk full scenarios
-  - [ ] Handle permission denied errors
+  - [ ] Test disk full during WAL write
+  - [ ] Handle corrupted WAL file gracefully
   - [ ] Test with read-only filesystems
-  - [ ] Implement circuit breaker for repeated failures
-  - [ ] Add telemetry for monitoring
-
-- [ ] **Integration with WorkflowEngine** (AC: All)
-  - [ ] Update WorkflowEngine to use new TransactionCoordinator
-  - [ ] Ensure backward compatibility with StateManager
-  - [ ] Add transaction events to EventEmitter
-  - [ ] Update existing tests for new transaction flow
-  - [ ] Document transaction guarantees in API
+  - [ ] Implement max WAL size with rotation
+  - [ ] Add telemetry for WAL monitoring
 
 ## Definition of Done
 
-- [ ] Transaction tests pass with simulated crashes
-- [ ] Concurrent access tests pass
-- [ ] Recovery from corrupted state works
-- [ ] Performance within 100ms for typical operations
-- [ ] Documentation includes transaction guarantees
-- [ ] No data loss in any failure scenario
-- [ ] Clear error messages for lock conflicts
+- [ ] WAL implementation complete with tests
+- [ ] WAL replay recovers state after crashes
+- [ ] Integration with existing TransactionCoordinator working
+- [ ] Performance: WAL operations < 10ms overhead
+- [ ] Recovery time < 100ms for typical WAL size
+- [ ] No data loss in any crash scenario
+- [ ] Documentation includes WAL guarantees
 
 ## Change Log
 
@@ -266,23 +201,26 @@ class WriteAheadLog {
 |------|---------|-------------|--------|
 | 2025-01-07 | 1.0 | Initial story creation with architecture context | Bob (SM) |
 | 2025-01-07 | 1.1 | Enhanced with full technical context from architecture docs | Bob (SM) |
+| 2025-01-07 | 1.2 | Fixed dependencies and clarified as enhancement to Story 1.6 | Sarah (PO) |
+| 2025-01-07 | 2.0 | Major revision: Focused on WAL only, removed duplicate components | Sarah (PO) |
+| 2025-01-07 | 2.1 | Restructured sections per template, clarified epic relationship, separated benchmarks | Sarah (PO) |
+| 2025-01-07 | 2.2 | Clarified that TransactionCoordinator exists and is being enhanced, not created | Sarah (PO) |
 
-## Time Estimate
-
-**3-4 days** including comprehensive testing
-
-## Dependencies
-
-- Must complete after Story 1.6 (State Management)
-- Blocks Story 2.1 (Checklist Panel)
-
-## Risk Factors
-
-- 🟡 Platform-specific file locking behavior
-- 🟡 Performance overhead of WAL
-- 🟢 Well-understood patterns from database systems
 
 ## Dev Notes
+
+### Summary of What This Story Implements
+
+**This story adds Write-Ahead Logging to the existing transaction system:**
+- **NEW: WriteAheadLog** - WAL implementation for crash recovery
+- **UPDATES: TransactionCoordinator** - Integrates WAL for durability
+- **UPDATES: StateManager** - Adds WAL recovery on initialization
+- **UPDATES: WorkflowEngine** - Adds recovery hooks in init()
+
+**Existing components used (no changes needed):**
+- ConcurrencyManager - Already provides file locking
+- TransactionCoordinator - Already provides transaction coordination
+- StateManager - Already provides state persistence
 
 ### Architecture Context
 
@@ -305,24 +243,28 @@ class WriteAheadLog {
 - Unit tests colocated with source files (`.test.ts`)
 - Integration tests for transaction scenarios
 
-### Existing Architecture Patterns [Source: architecture/backend-architecture-complete-with-all-services.md]
+### Integration Patterns
 
-**TransactionCoordinator Pattern** (Already defined in architecture):
+**WAL Enhancement to Existing TransactionCoordinator**:
 ```typescript
-// Use the TransactionCoordinator from backend architecture
+// UPDATING existing TransactionCoordinator at /packages/core/src/state/TransactionCoordinator.ts
+// This class already exists from Story 1.6 - we're adding WAL capabilities
 export class TransactionCoordinator {
-  async beginTransaction(): Promise<Transaction>
-  async commit(txn: Transaction): Promise<void>  
-  async rollback(txn: Transaction): Promise<void>
-}
-```
-
-**ConcurrencyManager Pattern** (From architecture):
-```typescript  
-// Reuse ConcurrencyManager for lock management
-export class ConcurrencyManager {
-  async acquireLock(resource: string, options: LockOptions): Promise<LockToken>
-  async releaseLock(token: LockToken): Promise<void>
+  private wal: WriteAheadLog; // NEW: Add WAL instance to existing class
+  
+  async addOperation(transactionId: string, type: string, path: string, data?: unknown): Promise<void> {
+    // NEW: Write to WAL before existing operation logic
+    await this.wal.append({ type, path, data });
+    
+    // Existing operation tracking continues...
+  }
+  
+  async commitTransaction(transactionId: string): Promise<ChecklistState> {
+    // Existing commit logic...
+    
+    // NEW: Clear WAL after successful commit
+    await this.wal.clear();
+  }
 }
 ```
 
@@ -352,7 +294,12 @@ export class ConcurrencyManager {
 **Test Utilities**:
 - Use `TestDataFactory.createTestWorkspace()` for isolated test environments
 - Implement `FlakyTestDetector` for concurrent access tests
-- Required test coverage: 90% for critical paths
+- Required test coverage:
+  - Critical paths (transaction operations): 95% minimum
+  - File locking mechanisms: 90% minimum
+  - WAL operations: 95% minimum
+  - Recovery mechanisms: 100% required
+  - Overall package coverage: 90% minimum
 
 **Test Scenarios**:
 1. Concurrent write attempts (use multiple Bun.spawn processes)
@@ -371,9 +318,10 @@ export class ConcurrencyManager {
 ### Integration Notes
 
 **WorkflowEngine Integration** (From Story 1.6):
-- TransactionCoordinator is already referenced in WorkflowEngine
+- TransactionCoordinator already exists from Story 1.6 - this story enhances it with WAL
+- WorkflowEngine from Story 1.6 will be updated to use the WAL-enhanced TransactionCoordinator
 - Ensure compatibility with existing StateManager from Story 1.5
-- Event emission for transaction state changes
+- Event emission for transaction state changes remains unchanged
 
 ### Security Considerations
 
@@ -388,3 +336,48 @@ export class ConcurrencyManager {
 - Consider using SQLite as future enhancement for complex transactions
 - Ensure Windows compatibility with file locking
 - Add telemetry for transaction performance monitoring
+
+## Testing
+
+### Test Standards and Requirements
+
+**Test File Locations**: 
+- Unit tests: `/packages/core/tests/state/*.test.ts`
+- Integration tests: `/packages/core/tests/integration/transactions.test.ts`
+
+**Test Commands**:
+```bash
+# Run all transaction tests
+bun test packages/core/tests/state/
+
+# Run with coverage
+bun test --coverage packages/core/tests/state/
+
+# Run specific test file
+bun test packages/core/tests/state/FileLock.test.ts
+
+# Run integration tests
+bun test packages/core/tests/integration/transactions.test.ts
+```
+
+
+**Testing Framework**: Bun test runner with built-in assertions
+**Benchmarking Tool**: Tinybench 2.5.x for performance tests
+
+## Dev Agent Record
+
+### Agent Model Used
+_To be populated during implementation_
+
+### Debug Log References
+_To be populated during implementation_
+
+### Completion Notes List
+_To be populated during implementation_
+
+### File List
+_To be populated during implementation_
+
+## QA Results
+
+_To be populated after QA review_
