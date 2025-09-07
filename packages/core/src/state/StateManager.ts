@@ -121,7 +121,6 @@ export class StateManager {
         if (
           !this.validator.isValidSchemaVersion(validatedState.schemaVersion, [
             SCHEMA_VERSION,
-            '0.9.0',
           ])
         ) {
           if (
@@ -170,7 +169,8 @@ export class StateManager {
         transactionId,
         async () => {
           try {
-            await this.validator.validate(state);
+            // Validate schema but skip checksum validation since it will be recalculated
+            await this.validator.validateStateSchema(state);
             return true;
           } catch {
             return false;
