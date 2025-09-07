@@ -4,7 +4,7 @@
 
 ## Status
 
-**Ready for Review** ✅
+**Ready for Done** ✅
 
 > This is an enhancement story (1.6a) that extends Story 1.6 by adding Write-Ahead Logging (WAL) capabilities to the existing transaction system for crash recovery and state consistency
 
@@ -205,6 +205,7 @@ class WriteAheadLog {
 | 2025-01-07 | 2.0 | Major revision: Focused on WAL only, removed duplicate components | Sarah (PO) |
 | 2025-01-07 | 2.1 | Restructured sections per template, clarified epic relationship, separated benchmarks | Sarah (PO) |
 | 2025-01-07 | 2.2 | Clarified that TransactionCoordinator exists and is being enhanced, not created | Sarah (PO) |
+| 2025-01-07 | 2.3 | Applied QA fixes: Added security hardening, performance optimizations, test fixes | James (Dev) |
 
 
 ## Dev Notes
@@ -373,6 +374,8 @@ claude-opus-4-1-20250805
 - WAL append/replay operations logged via debug('checklist:wal')
 - Transaction operations logged via debug('checklist:transaction')
 - Recovery events emitted via WorkflowEngine events
+- Test execution: bun test packages/core/tests/state/WriteAheadLog.test.ts - 20/20 pass
+- Test execution: bun test packages/core/tests/state/TransactionCoordinator.test.ts - 27/27 pass
 
 ### Completion Notes List
 - Implemented WriteAheadLog class with append, replay, and clear operations
@@ -382,15 +385,26 @@ claude-opus-4-1-20250805
 - Implemented performance benchmarks for WAL operations
 - Fixed Bun.write append issue - had to manually concatenate for proper append
 - All tests passing, performance targets met (<10ms WAL write, <100ms recovery)
+- Applied QA fixes (2025-01-07):
+  - Added directory traversal protection with path validation
+  - Implemented write rate limiting (100 writes/second max)
+  - Optimized large WAL recovery with batch processing
+  - Fixed read-only filesystem test to check for path validation error
+  - Enabled previously skipped integration tests
 
 ### File List
 **New Files:**
-- `/packages/core/src/state/WriteAheadLog.ts` - WAL implementation
+- `/packages/core/src/state/WriteAheadLog.ts` - WAL implementation with security enhancements
 - `/packages/core/tests/state/WriteAheadLog.test.ts` - WAL unit tests
-- `/packages/core/tests/integration/wal-crash-recovery.test.ts` - Crash recovery tests
+- `/packages/core/tests/integration/wal-crash-recovery.test.ts` - Crash recovery tests (updated)
 - `/packages/core/tests/benchmarks/wal-performance.bench.ts` - Performance benchmarks
 
-**Modified Files:**
+**Modified Files (QA Fixes):**
+- `/packages/core/src/state/WriteAheadLog.ts` - Added path validation, rate limiting, batch recovery
+- `/packages/core/tests/state/WriteAheadLog.test.ts` - Fixed read-only filesystem test
+- `/packages/core/tests/integration/wal-crash-recovery.test.ts` - Enabled StateManager/WorkflowEngine tests
+
+**Previously Modified Files:**
 - `/packages/core/src/state/TransactionCoordinator.ts` - Added WAL integration
 - `/packages/core/src/state/StateManager.ts` - Added WAL recovery on init
 - `/packages/core/src/workflow/WorkflowEngine.ts` - Added recovery hooks

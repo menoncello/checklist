@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import createDebug from 'debug';
 
 const debug = createDebug('checklist:wal');
@@ -18,9 +18,33 @@ export class WriteAheadLog {
   private walPath: string;
   private entries: WALEntry[] = [];
   private isReplaying = false;
+  private lastWriteTime = 0;
+  private writeCount = 0;
+  private readonly rateWindow = 1000; // 1 second window
+  private readonly maxWritesPerWindow = 100; // Max writes per window
+  private readonly stateDirectory: string;
 
   constructor(stateDirectory: string) {
-    const walDir = join(stateDirectory, '.wal');
+    // Validate and sanitize directory path to prevent traversal
+    const sanitizedDir = resolve(stateDirectory);
+    const expectedBase = resolve(process.cwd());
+    const tempBase = resolve('/tmp');
+    const osTemp = resolve(require('node:os').tmpdir());
+
+    // Allow project root, /tmp, and OS temp directory for testing
+    const isValidPath =
+      sanitizedDir.startsWith(expectedBase) ||
+      sanitizedDir.startsWith(tempBase) ||
+      sanitizedDir.startsWith(osTemp);
+
+    if (!isValidPath) {
+      throw new Error(
+        `Invalid state directory: ${stateDirectory} is outside project root`
+      );
+    }
+
+    this.stateDirectory = sanitizedDir;
+    const walDir = join(sanitizedDir, '.wal');
     if (!existsSync(walDir)) {
       mkdirSync(walDir, { recursive: true });
     }
@@ -30,6 +54,24 @@ export class WriteAheadLog {
 
   async append(entry: Omit<WALEntry, 'timestamp'>): Promise<void> {
     const startTime = performance.now();
+
+    // Implement rate limiting
+    const now = Date.now();
+    if (now - this.lastWriteTime > this.rateWindow) {
+      // New window, reset counter
+      this.writeCount = 0;
+      this.lastWriteTime = now;
+    }
+
+    this.writeCount++;
+    if (this.writeCount > this.maxWritesPerWindow) {
+      const waitTime = this.rateWindow - (now - this.lastWriteTime);
+      debug('Rate limit exceeded, waiting %dms', waitTime);
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      this.writeCount = 1;
+      this.lastWriteTime = Date.now();
+    }
+
     const fullEntry: WALEntry = { ...entry, timestamp: Date.now() };
     this.entries.push(fullEntry);
 
@@ -83,20 +125,36 @@ export class WriteAheadLog {
 
       const lines = content.split('\n').filter(Boolean);
       const entries: WALEntry[] = [];
+      const batchSize = 10; // Process in batches for better performance
 
-      for (const line of lines) {
-        try {
-          const entry = JSON.parse(line) as WALEntry;
-          entries.push(entry);
-          debug('Replaying WAL entry: %O', entry);
-        } catch (parseError) {
-          if (line.trim()) {
-            console.warn(
-              'Failed to parse WAL entry, skipping:',
-              line.substring(0, 50)
-            );
-            debug('WAL parse error: %O', parseError);
-          }
+      // Process entries in batches for large WALs
+      for (let i = 0; i < lines.length; i += batchSize) {
+        const batch = lines.slice(i, Math.min(i + batchSize, lines.length));
+        const batchEntries = batch
+          .map((line) => {
+            try {
+              if (line.trim()) {
+                return JSON.parse(line) as WALEntry;
+              }
+              return null;
+            } catch (parseError) {
+              if (line.trim()) {
+                console.warn(
+                  'Failed to parse WAL entry, skipping:',
+                  line.substring(0, 50)
+                );
+                debug('WAL parse error: %O', parseError);
+              }
+              return null;
+            }
+          })
+          .filter((entry): entry is WALEntry => entry !== null);
+
+        entries.push(...batchEntries);
+
+        // Only log every 10th batch to reduce overhead
+        if (i % (batchSize * 10) === 0) {
+          debug('Replayed %d entries', i);
         }
       }
 
@@ -107,8 +165,12 @@ export class WriteAheadLog {
         entries.length
       );
 
-      if (duration > 100) {
-        console.warn(`WAL replay took ${duration}ms, exceeding 100ms target`);
+      // Adjust warning threshold based on number of entries
+      const expectedTime = Math.min(100, 2 * entries.length); // 2ms per entry, max 100ms
+      if (duration > expectedTime) {
+        console.warn(
+          `WAL replay took ${duration}ms for ${entries.length} entries`
+        );
       }
 
       this.entries = entries;

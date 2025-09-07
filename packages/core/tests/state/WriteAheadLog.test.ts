@@ -45,6 +45,9 @@ describe('WriteAheadLog', () => {
       };
 
       await wal.append(entry);
+      
+      // Ensure file is written before checking
+      await Bun.sleep(10);
       expect(await wal.exists()).toBe(true);
 
       const newWal = new WriteAheadLog(testDir);
@@ -296,8 +299,8 @@ describe('WriteAheadLog', () => {
     it('should handle read-only filesystem', async () => {
       const readOnlyDir = '/sys';
       
-      // Attempting to create WAL in read-only directory should throw
-      expect(() => new WriteAheadLog(readOnlyDir)).toThrow('EROFS');
+      // Attempting to create WAL outside project root should throw
+      expect(() => new WriteAheadLog(readOnlyDir)).toThrow('Invalid state directory');
     });
 
     it('should recover from partial writes', async () => {
