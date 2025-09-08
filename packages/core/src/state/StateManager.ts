@@ -12,6 +12,7 @@ import { StateError, StateCorruptedError, RecoveryError } from './errors';
 import { MigrationRegistry } from './migrations/MigrationRegistry';
 import { MigrationRunner } from './migrations/MigrationRunner';
 import { migrations } from './migrations/scripts';
+import { BackupInfo } from './migrations/types';
 import { detectVersion } from './migrations/versionDetection';
 import { ChecklistState } from './types';
 import { StateValidator } from './validation';
@@ -442,7 +443,7 @@ export class StateManager {
     };
   }
 
-  async listBackups(): Promise<Array<{ path: string; timestamp: Date; version: string }>> {
+  async listBackups(): Promise<BackupInfo[]> {
     return await this.migrationRunner.listBackups();
   }
 
