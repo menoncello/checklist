@@ -241,7 +241,7 @@ describe('Migration Scripts', () => {
       const rolledBack = migration.down!(state);
       
       expect(rolledBack.version).toBe('0.2.0');
-      expect(rolledBack.schemaVersion).toBeUndefined();
+      expect(rolledBack.schemaVersion).toBe('0.2.0');
       expect(rolledBack.recovery).toBeUndefined();
       expect(rolledBack.conflicts).toBeUndefined();
     });

@@ -5,7 +5,10 @@ export async function detectVersion(state: any): Promise<string> {
     throw new VersionDetectionError('Invalid state object');
   }
 
-  if (state.schemaVersion !== undefined && typeof state.schemaVersion === 'string') {
+  if (
+    state.schemaVersion !== undefined &&
+    typeof state.schemaVersion === 'string'
+  ) {
     return state.schemaVersion;
   }
 
@@ -20,20 +23,34 @@ export async function detectVersion(state: any): Promise<string> {
     return '0.2.0';
   }
 
-  if (state.metadata !== null && state.metadata !== undefined && typeof state.metadata === 'object') {
-    if ((state.metadata.created !== null && state.metadata.created !== undefined) || 
-        (state.metadata.modified !== null && state.metadata.modified !== undefined)) {
+  if (
+    state.metadata !== null &&
+    state.metadata !== undefined &&
+    typeof state.metadata === 'object'
+  ) {
+    if (
+      (state.metadata.created !== null &&
+        state.metadata.created !== undefined) ||
+      (state.metadata.modified !== null &&
+        state.metadata.modified !== undefined)
+    ) {
       return '0.1.0';
     }
   }
 
-  if (state.checklists !== null && state.checklists !== undefined && Array.isArray(state.checklists)) {
+  if (
+    state.checklists !== null &&
+    state.checklists !== undefined &&
+    Array.isArray(state.checklists)
+  ) {
     return '0.0.0';
   }
 
-  if ((state.activeInstance !== null && state.activeInstance !== undefined) || 
-      (state.completedSteps !== null && state.completedSteps !== undefined) || 
-      (state.currentStepId !== null && state.currentStepId !== undefined)) {
+  if (
+    (state.activeInstance !== null && state.activeInstance !== undefined) ||
+    (state.completedSteps !== null && state.completedSteps !== undefined) ||
+    (state.currentStepId !== null && state.currentStepId !== undefined)
+  ) {
     return '0.0.0';
   }
 
@@ -78,7 +95,7 @@ export function parseVersionParts(version: string): {
   prerelease?: string;
 } {
   const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
-  
+
   if (!match) {
     throw new VersionDetectionError(`Invalid version format: ${version}`);
   }
@@ -87,7 +104,7 @@ export function parseVersionParts(version: string): {
     major: parseInt(match[1], 10),
     minor: parseInt(match[2], 10),
     patch: parseInt(match[3], 10),
-    prerelease: match[4]
+    prerelease: match[4],
   };
 }
 
@@ -130,10 +147,10 @@ export function getMigrationDirection(
 
   if (from.major < to.major) return 'upgrade';
   if (from.major > to.major) return 'downgrade';
-  
+
   if (from.minor < to.minor) return 'upgrade';
   if (from.minor > to.minor) return 'downgrade';
-  
+
   if (from.patch < to.patch) return 'upgrade';
   if (from.patch > to.patch) return 'downgrade';
 
@@ -151,7 +168,7 @@ export function getVersionRange(versions: string[]): {
   const sorted = versions.sort((a, b) => {
     const aVer = parseVersionParts(a);
     const bVer = parseVersionParts(b);
-    
+
     if (aVer.major !== bVer.major) {
       return aVer.major - bVer.major;
     }
@@ -163,7 +180,7 @@ export function getVersionRange(versions: string[]): {
 
   return {
     min: sorted[0],
-    max: sorted[sorted.length - 1]
+    max: sorted[sorted.length - 1],
   };
 }
 
@@ -178,17 +195,27 @@ export function inferStateStructure(state: any): {
   estimatedVersion: string;
 } {
   const structure = {
-    hasChecklists: state.checklists !== undefined && Array.isArray(state.checklists),
-    hasTemplates: state.templates !== undefined && Array.isArray(state.templates),
-    hasVariables: state.variables !== undefined && typeof state.variables === 'object',
-    hasMetadata: state.metadata !== undefined && typeof state.metadata === 'object',
+    hasChecklists:
+      state.checklists !== undefined && Array.isArray(state.checklists),
+    hasTemplates:
+      state.templates !== undefined && Array.isArray(state.templates),
+    hasVariables:
+      state.variables !== undefined && typeof state.variables === 'object',
+    hasMetadata:
+      state.metadata !== undefined && typeof state.metadata === 'object',
     hasRecovery: state.recovery !== undefined,
-    hasConflicts: state.conflicts !== undefined && Array.isArray(state.conflicts),
-    hasMigrations: state.migrations !== undefined && Array.isArray(state.migrations),
-    estimatedVersion: '0.0.0'
+    hasConflicts:
+      state.conflicts !== undefined && Array.isArray(state.conflicts),
+    hasMigrations:
+      state.migrations !== undefined && Array.isArray(state.migrations),
+    estimatedVersion: '0.0.0',
   };
 
-  if (structure.hasMigrations && structure.hasRecovery && structure.hasConflicts) {
+  if (
+    structure.hasMigrations &&
+    structure.hasRecovery &&
+    structure.hasConflicts
+  ) {
     structure.estimatedVersion = '1.0.0';
   } else if (structure.hasTemplates && structure.hasVariables) {
     structure.estimatedVersion = '0.2.0';
@@ -213,8 +240,14 @@ export async function validateStateIntegrity(state: StateSchema): Promise<{
     errors.push('State file missing version information');
   }
 
-  if (state.version && state.schemaVersion && state.version !== state.schemaVersion) {
-    warnings.push(`Version mismatch: version=${state.version}, schemaVersion=${state.schemaVersion}`);
+  if (
+    state.version &&
+    state.schemaVersion &&
+    state.version !== state.schemaVersion
+  ) {
+    warnings.push(
+      `Version mismatch: version=${state.version}, schemaVersion=${state.schemaVersion}`
+    );
   }
 
   if (!state.lastModified) {
@@ -233,7 +266,10 @@ export async function validateStateIntegrity(state: StateSchema): Promise<{
     errors.push('Invalid templates field: must be an array');
   }
 
-  if (state.variables !== undefined && (typeof state.variables !== 'object' || Array.isArray(state.variables))) {
+  if (
+    state.variables !== undefined &&
+    (typeof state.variables !== 'object' || Array.isArray(state.variables))
+  ) {
     errors.push('Invalid variables field: must be an object');
   }
 
@@ -257,7 +293,7 @@ export async function validateStateIntegrity(state: StateSchema): Promise<{
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   };
 }
 

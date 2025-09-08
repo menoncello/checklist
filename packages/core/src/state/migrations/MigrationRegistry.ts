@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events';
-import { 
-  Migration, 
-  MigrationPath, 
+import {
+  Migration,
+  MigrationPath,
   MigrationError,
-  compareVersions 
+  compareVersions,
 } from './types';
 
 export class MigrationRegistry extends EventEmitter {
@@ -16,13 +16,13 @@ export class MigrationRegistry extends EventEmitter {
 
   registerMigration(migration: Migration): void {
     const key = `${migration.fromVersion}->${migration.toVersion}`;
-    
+
     if (this.migrations.has(key)) {
       throw new Error(`Migration ${key} already registered`);
     }
 
     this.migrations.set(key, migration);
-    
+
     if (!this.versionGraph.has(migration.fromVersion)) {
       this.versionGraph.set(migration.fromVersion, new Set());
     }
@@ -30,7 +30,7 @@ export class MigrationRegistry extends EventEmitter {
     if (versionSet) {
       versionSet.add(migration.toVersion);
     }
-    
+
     this.emit('migration:registered', migration);
   }
 
@@ -49,7 +49,7 @@ export class MigrationRegistry extends EventEmitter {
         migrations: [],
         fromVersion,
         toVersion,
-        totalSteps: 0
+        totalSteps: 0,
       };
     }
 
@@ -63,7 +63,7 @@ export class MigrationRegistry extends EventEmitter {
     }
 
     const path = this.dijkstraPath(fromVersion, toVersion);
-    
+
     if (!path) {
       throw new MigrationError(
         `No migration path found from ${fromVersion} to ${toVersion}`,
@@ -89,7 +89,7 @@ export class MigrationRegistry extends EventEmitter {
       migrations,
       fromVersion,
       toVersion,
-      totalSteps: migrations.length
+      totalSteps: migrations.length,
     };
   }
 
@@ -129,12 +129,12 @@ export class MigrationRegistry extends EventEmitter {
       if (current === end) {
         const path: string[] = [];
         let node: string | null = end;
-        
+
         while (node !== null) {
           path.unshift(node);
           node = previous.get(node) ?? null;
         }
-        
+
         return path[0] === start ? path : null;
       }
 
@@ -157,12 +157,12 @@ export class MigrationRegistry extends EventEmitter {
 
   private getAllVersions(): Set<string> {
     const versions = new Set<string>();
-    
+
     for (const migration of this.migrations.values()) {
       versions.add(migration.fromVersion);
       versions.add(migration.toVersion);
     }
-    
+
     return versions;
   }
 
@@ -177,13 +177,13 @@ export class MigrationRegistry extends EventEmitter {
 
   getAvailableTargets(fromVersion: string): string[] {
     const targets: string[] = [];
-    
+
     for (const version of this.getAllVersions()) {
       if (version !== fromVersion && this.canMigrate(fromVersion, version)) {
         targets.push(version);
       }
     }
-    
+
     return targets.sort((a, b) => compareVersions(b, a));
   }
 
@@ -195,16 +195,20 @@ export class MigrationRegistry extends EventEmitter {
 
   toJSON(): any {
     return {
-      migrations: Array.from(this.migrations.entries()).map(([key, migration]) => ({
-        key,
-        fromVersion: migration.fromVersion,
-        toVersion: migration.toVersion,
-        description: migration.description
-      })),
-      versionGraph: Array.from(this.versionGraph.entries()).map(([from, toSet]) => ({
-        from,
-        to: Array.from(toSet)
-      }))
+      migrations: Array.from(this.migrations.entries()).map(
+        ([key, migration]) => ({
+          key,
+          fromVersion: migration.fromVersion,
+          toVersion: migration.toVersion,
+          description: migration.description,
+        })
+      ),
+      versionGraph: Array.from(this.versionGraph.entries()).map(
+        ([from, toSet]) => ({
+          from,
+          to: Array.from(toSet),
+        })
+      ),
     };
   }
 }

@@ -47,12 +47,10 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
       }));
     }
     
-    if (!enhancedState.recovery) {
-      enhancedState.recovery = {
-        enabled: false,
-        checkpoints: []
-      };
-    }
+    enhancedState.recovery ??= {
+      enabled: false,
+      checkpoints: []
+    };
     
     return enhancedState;
   },
@@ -74,7 +72,7 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
             notes: _notes, 
             ...stepRest 
           } = step;
-          return stepRest.id || stepRest;
+          return stepRest.id ?? stepRest;
         }
         return step;
       });

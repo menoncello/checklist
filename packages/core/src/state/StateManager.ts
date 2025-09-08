@@ -43,7 +43,7 @@ export class StateManager {
 
     // Initialize migration system
     const registry = new MigrationRegistry();
-    migrations.forEach(m => registry.registerMigration(m));
+    migrations.forEach((m) => registry.registerMigration(m));
     this.migrationRunner = new MigrationRunner(
       registry,
       this.directoryManager.getBackupPath(),
@@ -364,17 +364,18 @@ export class StateManager {
     oldState: ChecklistState
   ): Promise<ChecklistState> {
     const statePath = this.directoryManager.getStatePath();
-    
+
     // Detect current version if not provided
-    const currentVersion = oldState.schemaVersion || await detectVersion(oldState);
-    
-    console.log(
-      `Migrating state from ${currentVersion} to ${SCHEMA_VERSION}`
-    );
+    const currentVersion =
+      oldState.schemaVersion || (await detectVersion(oldState));
+
+    console.log(`Migrating state from ${currentVersion} to ${SCHEMA_VERSION}`);
 
     // Set up progress listener
     this.migrationRunner.on('migration:progress', (progress) => {
-      console.log(`Migration progress: ${progress.percentage.toFixed(0)}% - ${progress.currentMigration}`);
+      console.log(
+        `Migration progress: ${progress.percentage.toFixed(0)}% - ${progress.currentMigration}`
+      );
     });
 
     // Perform migration
@@ -383,7 +384,7 @@ export class StateManager {
       SCHEMA_VERSION,
       {
         createBackup: true,
-        verbose: true
+        verbose: true,
       }
     );
 
@@ -409,37 +410,42 @@ export class StateManager {
   }> {
     const statePath = this.directoryManager.getStatePath();
     const stateFile = Bun.file(statePath);
-    
+
     if (!(await stateFile.exists())) {
       return {
         needsMigration: false,
         currentVersion: SCHEMA_VERSION,
-        targetVersion: SCHEMA_VERSION
+        targetVersion: SCHEMA_VERSION,
       };
     }
 
     const content = await stateFile.text();
     const state = yaml.load(content) as Record<string, unknown>;
-    const currentVersion = (state.schemaVersion as string) ?? (state.version as string) ?? await detectVersion(state);
-    
+    const currentVersion =
+      (state.schemaVersion as string) ??
+      (state.version as string) ??
+      (await detectVersion(state));
+
     const needsMigration = currentVersion !== SCHEMA_VERSION;
-    
+
     if (needsMigration) {
       const registry = this.migrationRunner.getRegistry();
       const path = registry.findPath(currentVersion, SCHEMA_VERSION);
-      
+
       return {
         needsMigration: true,
         currentVersion,
         targetVersion: SCHEMA_VERSION,
-        migrationPath: path.migrations.map(m => `${m.fromVersion} → ${m.toVersion}`)
+        migrationPath: path.migrations.map(
+          (m) => `${m.fromVersion} → ${m.toVersion}`
+        ),
       };
     }
 
     return {
       needsMigration: false,
       currentVersion,
-      targetVersion: SCHEMA_VERSION
+      targetVersion: SCHEMA_VERSION,
     };
   }
 

@@ -9,10 +9,10 @@ async function main() {
   switch (command) {
     case 'migrate': {
       const options: MigrateOptions = {};
-      
+
       for (let i = 1; i < args.length; i++) {
         const arg = args[i];
-        
+
         switch (arg) {
           case '--check':
             options.check = true;
@@ -45,17 +45,17 @@ async function main() {
             break;
         }
       }
-      
+
       const migrateCommand = new MigrateCommand();
       await migrateCommand.execute(options);
       break;
     }
-    
+
     case '--version':
     case '-v':
       console.log('checklist version 1.0.0');
       break;
-      
+
     case '--help':
     case '-h':
     default:
@@ -87,7 +87,7 @@ Examples:
   }
 }
 
-main().catch(error => {
+void main().catch((error) => {
   console.error('Error:', error);
   process.exit(1);
 });

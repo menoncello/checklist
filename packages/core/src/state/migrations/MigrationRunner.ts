@@ -2,15 +2,15 @@ import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { MigrationRegistry } from './MigrationRegistry';
-import { 
-  Migration, 
-  MigrationOptions, 
+import {
+  Migration,
+  MigrationOptions,
   MigrationResult,
   MigrationProgress,
   BackupInfo,
   StateSchema,
   MigrationRecord,
-  MigrationError
+  MigrationError,
 } from './types';
 
 export class MigrationRunner extends EventEmitter {
@@ -35,15 +35,14 @@ export class MigrationRunner extends EventEmitter {
     targetVersion?: string,
     options: MigrationOptions = {}
   ): Promise<MigrationResult> {
-    const { 
-      dryRun = false, 
-      createBackup = true, 
-      verbose = false
-    } = options;
+    const { dryRun = false, createBackup = true, verbose = false } = options;
 
     try {
       const state = await this.loadState(statePath);
-      const fromVersion = (state.version as string | undefined) ?? (state.schemaVersion as string | undefined) ?? '0.0.0';
+      const fromVersion =
+        (state.version as string | undefined) ??
+        (state.schemaVersion as string | undefined) ??
+        '0.0.0';
       const toVersion = targetVersion ?? this.currentVersion;
 
       if (fromVersion === toVersion) {
@@ -54,12 +53,12 @@ export class MigrationRunner extends EventEmitter {
           success: true,
           fromVersion,
           toVersion,
-          appliedMigrations: []
+          appliedMigrations: [],
         };
       }
 
       const migrationPath = this.registry.findPath(fromVersion, toVersion);
-      
+
       if (migrationPath.migrations.length === 0) {
         if (verbose) {
           console.log('✅ No migrations needed');
@@ -68,15 +67,19 @@ export class MigrationRunner extends EventEmitter {
           success: true,
           fromVersion,
           toVersion,
-          appliedMigrations: []
+          appliedMigrations: [],
         };
       }
 
       if (verbose) {
         console.log(`📦 Migrating from v${fromVersion} to v${toVersion}`);
-        console.log(`📋 ${migrationPath.migrations.length} migration(s) to apply:`);
+        console.log(
+          `📋 ${migrationPath.migrations.length} migration(s) to apply:`
+        );
         migrationPath.migrations.forEach((m) => {
-          console.log(`  • v${m.fromVersion} → v${m.toVersion}: ${m.description}`);
+          console.log(
+            `  • v${m.fromVersion} → v${m.toVersion}: ${m.description}`
+          );
         });
       }
 
@@ -87,8 +90,8 @@ export class MigrationRunner extends EventEmitter {
           fromVersion,
           toVersion,
           appliedMigrations: migrationPath.migrations.map(
-            m => `${m.fromVersion}->${m.toVersion}`
-          )
+            (m) => `${m.fromVersion}->${m.toVersion}`
+          ),
         };
       }
 
@@ -102,7 +105,8 @@ export class MigrationRunner extends EventEmitter {
 
       let migratedState = state;
       const appliedMigrations: string[] = [];
-      const migrationRecords: MigrationRecord[] = (state.migrations as MigrationRecord[] | undefined) ?? [];
+      const migrationRecords: MigrationRecord[] =
+        (state.migrations as MigrationRecord[] | undefined) ?? [];
 
       for (let i = 0; i < migrationPath.migrations.length; i++) {
         // Check if migration should be aborted
@@ -113,7 +117,7 @@ export class MigrationRunner extends EventEmitter {
           currentStep: i + 1,
           totalSteps: migrationPath.totalSteps,
           currentMigration: `${migration.fromVersion}->${migration.toVersion}`,
-          percentage: ((i + 1) / migrationPath.totalSteps) * 100
+          percentage: ((i + 1) / migrationPath.totalSteps) * 100,
         };
 
         this.emit('migration:progress', progress);
@@ -124,7 +128,7 @@ export class MigrationRunner extends EventEmitter {
 
         try {
           migratedState = await this.applyMigration(migration, migratedState);
-          
+
           if (migration.validate && !migration.validate(migratedState)) {
             throw new Error('Migration validation failed');
           }
@@ -133,17 +137,19 @@ export class MigrationRunner extends EventEmitter {
             from: migration.fromVersion,
             to: migration.toVersion,
             applied: new Date().toISOString(),
-            changes: [migration.description]
+            changes: [migration.description],
           });
 
-          appliedMigrations.push(`${migration.fromVersion}->${migration.toVersion}`);
+          appliedMigrations.push(
+            `${migration.fromVersion}->${migration.toVersion}`
+          );
 
           await this.saveState(statePath, {
             ...migratedState,
             migrations: migrationRecords,
             schemaVersion: migration.toVersion,
             version: migration.toVersion,
-            lastModified: new Date().toISOString()
+            lastModified: new Date().toISOString(),
           });
 
           if (verbose) {
@@ -177,7 +183,7 @@ export class MigrationRunner extends EventEmitter {
       this.emit('migration:complete', {
         fromVersion,
         toVersion,
-        appliedMigrations
+        appliedMigrations,
       });
 
       return {
@@ -185,7 +191,7 @@ export class MigrationRunner extends EventEmitter {
         fromVersion,
         toVersion,
         backupPath,
-        appliedMigrations
+        appliedMigrations,
       };
     } catch (error) {
       return {
@@ -193,7 +199,7 @@ export class MigrationRunner extends EventEmitter {
         fromVersion: '',
         toVersion: targetVersion ?? this.currentVersion,
         error: error instanceof Error ? error : new Error(String(error)),
-        appliedMigrations: []
+        appliedMigrations: [],
       };
     }
   }
@@ -214,7 +220,7 @@ export class MigrationRunner extends EventEmitter {
   async createBackup(statePath: string, version: string): Promise<string> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupName = `state-v${version}-${timestamp}.yaml`;
-    
+
     // Sanitize backup directory path to prevent directory traversal
     const resolvedBackupDir = path.resolve(this.backupDir);
     // Check if the path tries to escape using ..
@@ -222,9 +228,9 @@ export class MigrationRunner extends EventEmitter {
     if (normalizedPath.startsWith('..') || normalizedPath.includes('../')) {
       throw new Error('Invalid backup directory path');
     }
-    
+
     const backupPath = path.join(resolvedBackupDir, backupName);
-    
+
     // Ensure backup path is within the backup directory
     const resolvedBackupPath = path.resolve(backupPath);
     if (!resolvedBackupPath.startsWith(resolvedBackupDir)) {
@@ -233,7 +239,7 @@ export class MigrationRunner extends EventEmitter {
 
     const backupDirFile = Bun.file(resolvedBackupDir);
     const backupDirExists = await backupDirFile.exists();
-    
+
     if (!backupDirExists) {
       await Bun.write(path.join(resolvedBackupDir, '.gitkeep'), '');
     }
@@ -244,7 +250,11 @@ export class MigrationRunner extends EventEmitter {
 
     await this.rotateBackups();
 
-    this.emit('backup:created', { path: resolvedBackupPath, version, timestamp });
+    this.emit('backup:created', {
+      path: resolvedBackupPath,
+      version,
+      timestamp,
+    });
 
     return resolvedBackupPath;
   }
@@ -252,7 +262,7 @@ export class MigrationRunner extends EventEmitter {
   private async rotateBackups(): Promise<void> {
     try {
       const backupFiles = await this.listBackups();
-      
+
       if (backupFiles.length > this.maxBackups) {
         const filesToDelete = backupFiles
           .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
@@ -280,29 +290,29 @@ export class MigrationRunner extends EventEmitter {
       if (normalizedPath.startsWith('..') || normalizedPath.includes('../')) {
         throw new Error('Invalid backup directory path');
       }
-      
+
       const { readdir, stat } = await import('fs/promises');
       const files = await readdir(resolvedBackupDir);
-      
+
       const backupFiles: BackupInfo[] = [];
-      
+
       for (const file of files) {
         if (file.startsWith('state-v') && file.endsWith('.yaml')) {
           const filePath = path.join(resolvedBackupDir, file);
           const stats = await stat(filePath);
-          
+
           const match = file.match(/state-v(.+?)-(.+?)\.yaml/);
           if (match) {
             backupFiles.push({
               path: filePath,
               version: match[1],
               timestamp: match[2].replace(/-/g, ':'),
-              size: stats.size
+              size: stats.size,
             });
           }
         }
       }
-      
+
       return backupFiles.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     } catch {
       return [];
@@ -325,7 +335,10 @@ export class MigrationRunner extends EventEmitter {
     }
   }
 
-  async restoreFromBackup(statePath: string, backupInfo: BackupInfo): Promise<void> {
+  async restoreFromBackup(
+    statePath: string,
+    backupInfo: BackupInfo
+  ): Promise<void> {
     await this.rollback(statePath, backupInfo.path);
   }
 
@@ -333,32 +346,32 @@ export class MigrationRunner extends EventEmitter {
     try {
       const file = Bun.file(statePath);
       const exists = await file.exists();
-      
+
       if (!exists) {
         // Create an initial empty state that will be migrated
         const initialState = {
           schemaVersion: '0.0.0',
           version: '0.0.0',
           lastModified: new Date().toISOString(),
-          checklists: []
+          checklists: [],
         };
-        
+
         // Ensure directory exists
         const dir = path.dirname(statePath);
         const dirFile = Bun.file(dir);
         if (!(await dirFile.exists())) {
           await Bun.write(path.join(dir, '.gitkeep'), '');
         }
-        
+
         // Save initial state
         await Bun.write(statePath, yaml.dump(initialState));
-        
+
         return initialState;
       }
 
       const content = await file.text();
       const state = yaml.load(content) as StateSchema;
-      
+
       return state;
     } catch (error) {
       throw new Error(
@@ -367,13 +380,16 @@ export class MigrationRunner extends EventEmitter {
     }
   }
 
-  private async saveState(statePath: string, state: StateSchema): Promise<void> {
+  private async saveState(
+    statePath: string,
+    state: StateSchema
+  ): Promise<void> {
     try {
       const content = yaml.dump(state, {
         indent: 2,
         lineWidth: -1,
         noRefs: true,
-        sortKeys: false
+        sortKeys: false,
       });
 
       const tempPath = `${statePath}.tmp`;
