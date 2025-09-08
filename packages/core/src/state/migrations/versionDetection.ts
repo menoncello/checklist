@@ -1,15 +1,15 @@
 import { StateSchema, VersionDetectionError } from './types';
 
 export async function detectVersion(state: any): Promise<string> {
-  if (!state || typeof state !== 'object') {
+  if (state === null || state === undefined || typeof state !== 'object') {
     throw new VersionDetectionError('Invalid state object');
   }
 
-  if (state.schemaVersion && typeof state.schemaVersion === 'string') {
+  if (state.schemaVersion !== undefined && typeof state.schemaVersion === 'string') {
     return state.schemaVersion;
   }
 
-  if (state.version && typeof state.version === 'string') {
+  if (state.version !== undefined && typeof state.version === 'string') {
     return state.version;
   }
 
@@ -20,17 +20,20 @@ export async function detectVersion(state: any): Promise<string> {
     return '0.2.0';
   }
 
-  if (state.metadata && typeof state.metadata === 'object') {
-    if (state.metadata.created || state.metadata.modified) {
+  if (state.metadata !== null && state.metadata !== undefined && typeof state.metadata === 'object') {
+    if ((state.metadata.created !== null && state.metadata.created !== undefined) || 
+        (state.metadata.modified !== null && state.metadata.modified !== undefined)) {
       return '0.1.0';
     }
   }
 
-  if (state.checklists && Array.isArray(state.checklists)) {
+  if (state.checklists !== null && state.checklists !== undefined && Array.isArray(state.checklists)) {
     return '0.0.0';
   }
 
-  if (state.activeInstance || state.completedSteps || state.currentStepId) {
+  if ((state.activeInstance !== null && state.activeInstance !== undefined) || 
+      (state.completedSteps !== null && state.completedSteps !== undefined) || 
+      (state.currentStepId !== null && state.currentStepId !== undefined)) {
     return '0.0.0';
   }
 

@@ -24,9 +24,9 @@ export const migration_v0_1_0_to_v0_2_0: Migration = {
   },
   
   down: (state: any) => {
-    const { templates, variables, ...rest } = state;
+    const { templates: _templates, variables: _variables, ...rest } = state;
     
-    if (rest.metadata?.templatesAdded) {
+    if (rest.metadata?.templatesAdded !== undefined) {
       delete rest.metadata.templatesAdded;
     }
     
@@ -41,8 +41,8 @@ export const migration_v0_1_0_to_v0_2_0: Migration = {
   validate: (state: any): boolean => {
     if (!Array.isArray(state.templates)) return false;
     if (typeof state.variables !== 'object' || state.variables === null) return false;
-    if (!state.version || state.version !== '0.2.0') return false;
-    if (!state.metadata || typeof state.metadata !== 'object') return false;
+    if (state.version === null || state.version === undefined || state.version !== '0.2.0') return false;
+    if (state.metadata === null || state.metadata === undefined || typeof state.metadata !== 'object') return false;
     
     return true;
   }

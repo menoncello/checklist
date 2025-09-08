@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import { Migration } from '../types';
 
 export const migration_v0_2_0_to_v1_0_0: Migration = {
@@ -18,7 +17,7 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
       lastModified: now
     };
     
-    if (state.activeInstance) {
+    if (state.activeInstance !== null && state.activeInstance !== undefined) {
       enhancedState.activeInstance = {
         ...state.activeInstance,
         completedSteps: ((state.activeInstance.completedSteps as unknown[]) ?? []).map((step: any) => {
@@ -26,61 +25,71 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
             return {
               id: step,
               completedAt: now,
-              completedBy: 'migration',
-              commandResults: []
+              result: 'success',
+              notes: ''
             };
           }
-          
           return {
             ...step,
-            commandResults: step.commandResults || []
+            completedAt: (step.completedAt as string | undefined) ?? now,
+            result: (step.result as string | undefined) ?? 'success',
+            notes: (step.notes as string | undefined) ?? ''
           };
         })
       };
     }
     
-    if (state.checklists && Array.isArray(state.checklists)) {
+    if (state.checklists !== null && state.checklists !== undefined && Array.isArray(state.checklists)) {
       enhancedState.checklists = state.checklists.map((checklist: any) => ({
         ...checklist,
-        version: checklist.version || '1.0.0',
-        checksum: checklist.checksum || generateChecksum(checklist)
+        conditions: (checklist.conditions as string | undefined) ?? '',
+        commandResults: (checklist.commandResults as Record<string, unknown> | undefined) ?? {}
       }));
     }
     
-    enhancedState.metadata = {
-      ...state.metadata,
-      modified: now,
-      lastMigration: now,
-      majorVersionUpgrade: '1.0.0'
-    };
-    
-    enhancedState.checksum = generateChecksum(enhancedState);
+    if (!enhancedState.recovery) {
+      enhancedState.recovery = {
+        enabled: false,
+        checkpoints: []
+      };
+    }
     
     return enhancedState;
   },
   
   down: (state: any) => {
-    const { recovery, conflicts, checksum, ...rest } = state;
+    const { 
+      recovery: _recovery, 
+      conflicts: _conflicts, 
+      checksum: _checksum, 
+      ...rest 
+    } = state;
     
-    if (rest.activeInstance?.completedSteps) {
+    if (rest.activeInstance?.completedSteps !== undefined && Array.isArray(rest.activeInstance.completedSteps)) {
       rest.activeInstance.completedSteps = rest.activeInstance.completedSteps.map((step: any) => {
-        if (step.commandResults) {
-          const { commandResults, ...stepRest } = step;
-          return stepRest;
+        if (typeof step === 'object' && step !== null) {
+          const { 
+            completedAt: _completedAt, 
+            result: _result, 
+            notes: _notes, 
+            ...stepRest 
+          } = step;
+          return stepRest.id || stepRest;
         }
         return step;
       });
     }
     
-    if (rest.checklists && Array.isArray(rest.checklists)) {
+    if (rest.checklists !== undefined && Array.isArray(rest.checklists)) {
       rest.checklists = rest.checklists.map((checklist: any) => {
-        const { checksum, ...checklistRest } = checklist;
+        const { 
+          conditions: _conditions, 
+          commandResults: _commandResults, 
+          checksum: _checksum2, 
+          ...checklistRest 
+        } = checklist;
         return checklistRest;
       });
-    }
-    
-    if (rest.metadata?.majorVersionUpgrade) {
-      delete rest.metadata.majorVersionUpgrade;
     }
     
     return {
@@ -92,27 +101,14 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
   },
   
   validate: (state: any): boolean => {
-    if (!state.version || state.version !== '1.0.0') return false;
-    if (!state.schemaVersion || state.schemaVersion !== '1.0.0') return false;
-    if (state.recovery !== null && typeof state.recovery !== 'object') return false;
+    if (state.recovery === null || state.recovery === undefined) return false;
     if (!Array.isArray(state.conflicts)) return false;
-    if (!state.checksum || typeof state.checksum !== 'string') return false;
-    
-    if (state.activeInstance?.completedSteps) {
-      for (const step of state.activeInstance.completedSteps) {
-        if (typeof step === 'object' && !Array.isArray(step.commandResults)) {
-          return false;
-        }
-      }
-    }
+    if (typeof state.recovery !== 'object') return false;
+    if (state.recovery.enabled === undefined) return false;
+    if (!Array.isArray(state.recovery.checkpoints)) return false;
+    if (state.version === null || state.version === undefined || state.version !== '1.0.0') return false;
+    if (state.schemaVersion === null || state.schemaVersion === undefined || state.schemaVersion !== '1.0.0') return false;
     
     return true;
   }
 };
-
-function generateChecksum(data: any): string {
-  const hash = crypto.createHash('sha256');
-  const content = JSON.stringify(data, Object.keys(data).sort());
-  hash.update(content);
-  return `sha256:${hash.digest('hex').substring(0, 16)}`;
-}

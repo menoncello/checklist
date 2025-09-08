@@ -24,7 +24,7 @@ export const migration_v0_0_0_to_v0_1_0: Migration = {
   },
   
   down: (state: any) => {
-    const { metadata, schemaVersion, ...rest } = state;
+    const { metadata: _metadata, schemaVersion: _schemaVersion, ...rest } = state;
     
     return {
       ...rest,
@@ -33,11 +33,11 @@ export const migration_v0_0_0_to_v0_1_0: Migration = {
   },
   
   validate: (state: any): boolean => {
-    if (!state.metadata) return false;
+    if (state.metadata === null || state.metadata === undefined) return false;
     if (typeof state.metadata !== 'object') return false;
-    if (!state.metadata.created) return false;
-    if (!state.metadata.modified) return false;
-    if (!state.version || state.version !== '0.1.0') return false;
+    if (state.metadata.created === null || state.metadata.created === undefined) return false;
+    if (state.metadata.modified === null || state.metadata.modified === undefined) return false;
+    if (state.version === null || state.version === undefined || state.version !== '0.1.0') return false;
     
     return true;
   }
