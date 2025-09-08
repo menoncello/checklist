@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { MigrationRunner } from '@checklist/core/src/state/migrations/MigrationRunner';
@@ -6,7 +6,7 @@ import { MigrationRegistry } from '@checklist/core/src/state/migrations/Migratio
 import { detectVersion } from '@checklist/core/src/state/migrations/versionDetection';
 import type { StateSchema } from '@checklist/core/src/state/migrations/types';
 
-describe.skip('CLI Migration Commands', () => {
+describe('CLI Migration Commands', () => {
   let tempDir: string;
   let statePath: string;
   let backupDir: string;
