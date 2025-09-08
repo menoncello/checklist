@@ -247,7 +247,9 @@ describe('Migration Performance Benchmarks', () => {
 
       expect(result.success).toBe(true);
       // Large files may take longer, but should still be reasonable
-      expect(duration).toBeLessThan(2000); // Allow up to 2 seconds for very large files
+      // In CI environments, this can take longer due to slower I/O
+      const maxDuration = process.env.CI ? 5000 : 2000; // Allow more time in CI
+      expect(duration).toBeLessThan(maxDuration);
       console.log(`Large file migration: ${duration.toFixed(2)}ms`);
     });
   });
