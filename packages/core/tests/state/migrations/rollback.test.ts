@@ -17,6 +17,10 @@ describe('Migration Rollback Scenarios', () => {
     runner = new MigrationRunner(registry, backupDir, '2.0.0');
 
     // Ensure test directories exist
+    const { mkdir } = await import('fs/promises');
+    await mkdir(testDir, { recursive: true });
+    await mkdir(backupDir, { recursive: true });
+    
     await Bun.write(path.join(testDir, '.gitkeep'), '');
     await Bun.write(path.join(backupDir, '.gitkeep'), '');
   });
