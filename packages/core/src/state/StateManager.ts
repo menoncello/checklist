@@ -9,6 +9,10 @@ import { SecurityAudit } from './SecurityAudit';
 import { TransactionCoordinator } from './TransactionCoordinator';
 import { SCHEMA_VERSION } from './constants';
 import { StateError, StateCorruptedError, RecoveryError } from './errors';
+import { MigrationRegistry } from './migrations/MigrationRegistry';
+import { MigrationRunner } from './migrations/MigrationRunner';
+import { migrations } from './migrations/scripts';
+import { detectVersion } from './migrations/versionDetection';
 import { ChecklistState } from './types';
 import { StateValidator } from './validation';
 
@@ -18,6 +22,7 @@ export class StateManager {
   private transactionCoordinator: TransactionCoordinator;
   private validator: StateValidator;
   private backupManager: BackupManager;
+  private migrationRunner: MigrationRunner;
   private currentState?: ChecklistState;
   private baseDir: string;
 
@@ -33,6 +38,15 @@ export class StateManager {
     this.validator = new StateValidator();
     this.backupManager = new BackupManager(
       this.directoryManager.getBackupPath()
+    );
+
+    // Initialize migration system
+    const registry = new MigrationRegistry();
+    migrations.forEach(m => registry.registerMigration(m));
+    this.migrationRunner = new MigrationRunner(
+      registry,
+      this.directoryManager.getBackupPath(),
+      SCHEMA_VERSION
     );
 
     // Initialize security features
@@ -348,22 +362,94 @@ export class StateManager {
   private async migrateState(
     oldState: ChecklistState
   ): Promise<ChecklistState> {
+    const statePath = this.directoryManager.getStatePath();
+    
+    // Detect current version if not provided
+    const currentVersion = oldState.schemaVersion || await detectVersion(oldState);
+    
     console.log(
-      `Migrating state from ${oldState.schemaVersion} to ${SCHEMA_VERSION}`
+      `Migrating state from ${currentVersion} to ${SCHEMA_VERSION}`
     );
 
-    const migratedState: ChecklistState = {
-      ...oldState,
-      schemaVersion: SCHEMA_VERSION,
-    };
+    // Set up progress listener
+    this.migrationRunner.on('migration:progress', (progress) => {
+      console.log(`Migration progress: ${progress.percentage.toFixed(0)}% - ${progress.currentMigration}`);
+    });
 
-    const checksum = this.validator.calculateChecksum(migratedState);
-    migratedState.checksum = checksum;
+    // Perform migration
+    const result = await this.migrationRunner.migrate(
+      statePath,
+      SCHEMA_VERSION,
+      {
+        createBackup: true,
+        verbose: true
+      }
+    );
 
-    await this.saveStateInternal(migratedState);
+    if (!result.success) {
+      throw new StateError(
+        `Migration failed: ${result.error?.message}`,
+        'MIGRATION_FAILED'
+      );
+    }
+
+    // Reload the migrated state
+    const migratedState = await this.loadState();
     this.currentState = migratedState;
 
     return migratedState;
+  }
+
+  async checkMigrationStatus(): Promise<{
+    needsMigration: boolean;
+    currentVersion: string;
+    targetVersion: string;
+    migrationPath?: string[];
+  }> {
+    const statePath = this.directoryManager.getStatePath();
+    const stateFile = Bun.file(statePath);
+    
+    if (!(await stateFile.exists())) {
+      return {
+        needsMigration: false,
+        currentVersion: SCHEMA_VERSION,
+        targetVersion: SCHEMA_VERSION
+      };
+    }
+
+    const content = await stateFile.text();
+    const state = yaml.load(content) as Record<string, unknown>;
+    const currentVersion = (state.schemaVersion as string) ?? (state.version as string) ?? await detectVersion(state);
+    
+    const needsMigration = currentVersion !== SCHEMA_VERSION;
+    
+    if (needsMigration) {
+      const registry = this.migrationRunner.getRegistry();
+      const path = registry.findPath(currentVersion, SCHEMA_VERSION);
+      
+      return {
+        needsMigration: true,
+        currentVersion,
+        targetVersion: SCHEMA_VERSION,
+        migrationPath: path.migrations.map(m => `${m.fromVersion} → ${m.toVersion}`)
+      };
+    }
+
+    return {
+      needsMigration: false,
+      currentVersion,
+      targetVersion: SCHEMA_VERSION
+    };
+  }
+
+  async listBackups(): Promise<Array<{ path: string; timestamp: Date; version: string }>> {
+    return await this.migrationRunner.listBackups();
+  }
+
+  async restoreFromBackup(backupPath: string): Promise<void> {
+    const statePath = this.directoryManager.getStatePath();
+    await this.migrationRunner.rollback(statePath, backupPath);
+    await this.loadState();
   }
 
   private async promptUserForReset(): Promise<boolean> {
