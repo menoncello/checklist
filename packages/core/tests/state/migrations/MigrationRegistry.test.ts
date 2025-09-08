@@ -1,0 +1,279 @@
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { MigrationRegistry } from '../../../src/state/migrations/MigrationRegistry';
+import { Migration } from '../../../src/state/migrations/types';
+
+describe('MigrationRegistry', () => {
+  let registry: MigrationRegistry;
+
+  beforeEach(() => {
+    registry = new MigrationRegistry();
+  });
+
+  describe('registerMigration', () => {
+    it('should register a migration', () => {
+      const migration: Migration = {
+        fromVersion: '1.0.0',
+        toVersion: '1.1.0',
+        description: 'Test migration',
+        up: (state) => state,
+        down: (state) => state
+      };
+
+      registry.registerMigration(migration);
+      const retrieved = registry.getMigration('1.0.0', '1.1.0');
+      
+      expect(retrieved).toEqual(migration);
+    });
+
+    it('should throw error for duplicate migration', () => {
+      const migration: Migration = {
+        fromVersion: '1.0.0',
+        toVersion: '1.1.0',
+        description: 'Test migration',
+        up: (state) => state,
+        down: (state) => state
+      };
+
+      registry.registerMigration(migration);
+      
+      expect(() => registry.registerMigration(migration)).toThrow(
+        'Migration 1.0.0->1.1.0 already registered'
+      );
+    });
+
+    it('should emit migration:registered event', (done) => {
+      const migration: Migration = {
+        fromVersion: '1.0.0',
+        toVersion: '1.1.0',
+        description: 'Test migration',
+        up: (state) => state,
+        down: (state) => state
+      };
+
+      registry.on('migration:registered', (m) => {
+        expect(m).toEqual(migration);
+        done();
+      });
+
+      registry.registerMigration(migration);
+    });
+  });
+
+  describe('findPath', () => {
+    beforeEach(() => {
+      const migrations: Migration[] = [
+        {
+          fromVersion: '0.0.0',
+          toVersion: '0.1.0',
+          description: 'Initial migration',
+          up: (state) => ({ ...state, version: '0.1.0' }),
+          down: (state) => ({ ...state, version: '0.0.0' })
+        },
+        {
+          fromVersion: '0.1.0',
+          toVersion: '0.2.0',
+          description: 'Add templates',
+          up: (state) => ({ ...state, version: '0.2.0', templates: [] }),
+          down: (state) => {
+            const { templates, ...rest } = state;
+            return { ...rest, version: '0.1.0' };
+          }
+        },
+        {
+          fromVersion: '0.2.0',
+          toVersion: '1.0.0',
+          description: 'Major release',
+          up: (state) => ({ ...state, version: '1.0.0' }),
+          down: (state) => ({ ...state, version: '0.2.0' })
+        },
+        {
+          fromVersion: '0.1.0',
+          toVersion: '1.0.0',
+          description: 'Direct path to 1.0.0',
+          up: (state) => ({ ...state, version: '1.0.0', templates: [] }),
+          down: (state) => ({ ...state, version: '0.1.0' })
+        }
+      ];
+
+      migrations.forEach(m => registry.registerMigration(m));
+    });
+
+    it('should find direct migration path', () => {
+      const path = registry.findPath('0.0.0', '0.1.0');
+      
+      expect(path.migrations).toHaveLength(1);
+      expect(path.migrations[0].fromVersion).toBe('0.0.0');
+      expect(path.migrations[0].toVersion).toBe('0.1.0');
+      expect(path.totalSteps).toBe(1);
+    });
+
+    it('should find multi-step migration path', () => {
+      const path = registry.findPath('0.0.0', '1.0.0');
+      
+      expect(path.migrations.length).toBeGreaterThanOrEqual(2);
+      expect(path.fromVersion).toBe('0.0.0');
+      expect(path.toVersion).toBe('1.0.0');
+    });
+
+    it('should find shortest path when multiple paths exist', () => {
+      const path = registry.findPath('0.1.0', '1.0.0');
+      
+      expect(path.migrations).toHaveLength(1);
+      expect(path.migrations[0].fromVersion).toBe('0.1.0');
+      expect(path.migrations[0].toVersion).toBe('1.0.0');
+      expect(path.migrations[0].description).toBe('Direct path to 1.0.0');
+    });
+
+    it('should return empty path for same version', () => {
+      const path = registry.findPath('1.0.0', '1.0.0');
+      
+      expect(path.migrations).toHaveLength(0);
+      expect(path.totalSteps).toBe(0);
+    });
+
+    it('should throw error for backwards migration', () => {
+      expect(() => registry.findPath('1.0.0', '0.1.0')).toThrow(
+        'Cannot migrate backwards from 1.0.0 to 0.1.0'
+      );
+    });
+
+    it('should throw error for non-existent path', () => {
+      expect(() => registry.findPath('0.0.0', '2.0.0')).toThrow(
+        'No migration path found from 0.0.0 to 2.0.0'
+      );
+    });
+  });
+
+  describe('canMigrate', () => {
+    beforeEach(() => {
+      registry.registerMigration({
+        fromVersion: '1.0.0',
+        toVersion: '1.1.0',
+        description: 'Test',
+        up: (state) => state,
+        down: (state) => state
+      });
+    });
+
+    it('should return true for valid migration path', () => {
+      expect(registry.canMigrate('1.0.0', '1.1.0')).toBe(true);
+    });
+
+    it('should return false for invalid migration path', () => {
+      expect(registry.canMigrate('1.0.0', '2.0.0')).toBe(false);
+    });
+
+    it('should return false for backwards migration', () => {
+      expect(registry.canMigrate('1.1.0', '1.0.0')).toBe(false);
+    });
+
+    it('should return true for same version', () => {
+      expect(registry.canMigrate('1.0.0', '1.0.0')).toBe(true);
+    });
+  });
+
+  describe('getAvailableTargets', () => {
+    beforeEach(() => {
+      const migrations: Migration[] = [
+        {
+          fromVersion: '1.0.0',
+          toVersion: '1.1.0',
+          description: 'Minor update',
+          up: (state) => state,
+          down: (state) => state
+        },
+        {
+          fromVersion: '1.1.0',
+          toVersion: '1.2.0',
+          description: 'Another minor update',
+          up: (state) => state,
+          down: (state) => state
+        },
+        {
+          fromVersion: '1.0.0',
+          toVersion: '2.0.0',
+          description: 'Major update',
+          up: (state) => state,
+          down: (state) => state
+        }
+      ];
+
+      migrations.forEach(m => registry.registerMigration(m));
+    });
+
+    it('should return all reachable versions', () => {
+      const targets = registry.getAvailableTargets('1.0.0');
+      
+      expect(targets).toContain('1.1.0');
+      expect(targets).toContain('1.2.0');
+      expect(targets).toContain('2.0.0');
+    });
+
+    it('should return versions in descending order', () => {
+      const targets = registry.getAvailableTargets('1.0.0');
+      
+      expect(targets[0]).toBe('2.0.0');
+      expect(targets[1]).toBe('1.2.0');
+      expect(targets[2]).toBe('1.1.0');
+    });
+
+    it('should return empty array for isolated version', () => {
+      const targets = registry.getAvailableTargets('3.0.0');
+      
+      expect(targets).toHaveLength(0);
+    });
+  });
+
+  describe('clear', () => {
+    it('should clear all migrations', () => {
+      registry.registerMigration({
+        fromVersion: '1.0.0',
+        toVersion: '1.1.0',
+        description: 'Test',
+        up: (state) => state,
+        down: (state) => state
+      });
+
+      registry.clear();
+      
+      expect(registry.getAllMigrations()).toHaveLength(0);
+      expect(registry.getMigration('1.0.0', '1.1.0')).toBeUndefined();
+    });
+
+    it('should emit registry:cleared event', (done) => {
+      registry.on('registry:cleared', () => {
+        done();
+      });
+
+      registry.clear();
+    });
+  });
+
+  describe('toJSON', () => {
+    it('should serialize registry state', () => {
+      registry.registerMigration({
+        fromVersion: '1.0.0',
+        toVersion: '1.1.0',
+        description: 'Test migration',
+        up: (state) => state,
+        down: (state) => state
+      });
+
+      const json = registry.toJSON();
+      
+      expect(json.migrations).toHaveLength(1);
+      expect(json.migrations[0]).toEqual({
+        key: '1.0.0->1.1.0',
+        fromVersion: '1.0.0',
+        toVersion: '1.1.0',
+        description: 'Test migration'
+      });
+      
+      expect(json.versionGraph).toHaveLength(1);
+      expect(json.versionGraph[0]).toEqual({
+        from: '1.0.0',
+        to: ['1.1.0']
+      });
+    });
+  });
+});

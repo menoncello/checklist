@@ -52,7 +52,7 @@ export class BackupManager {
       const entry: BackupManifestEntry = {
         filename: backupFilename,
         createdAt: new Date().toISOString(),
-        checksum: state.checksum,
+        checksum: state.checksum ?? '',
         size,
         schemaVersion: state.schemaVersion,
       };
@@ -108,7 +108,9 @@ export class BackupManager {
       try {
         const file = Bun.file(backupPath);
         if (await file.exists()) {
-          await file.unlink();
+          await Bun.write(backupPath, '');
+          const { unlink } = await import('fs/promises');
+          await unlink(backupPath);
         }
       } catch (error) {
         console.error(`Failed to delete old backup ${backup.filename}:`, error);
@@ -193,7 +195,9 @@ export class BackupManager {
         try {
           const file = Bun.file(backupPath);
           if (await file.exists()) {
-            await file.unlink();
+            await Bun.write(backupPath, '');
+            const { unlink } = await import('fs/promises');
+            await unlink(backupPath);
             deletedCount++;
           }
         } catch (error) {

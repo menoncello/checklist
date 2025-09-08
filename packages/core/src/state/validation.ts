@@ -71,7 +71,8 @@ export class StateValidator {
     const validatedState = await this.validateStateSchema(state);
 
     if (
-      validatedState.checksum &&
+      validatedState.checksum !== undefined &&
+      validatedState.checksum !== null &&
       validatedState.checksum !==
         'sha256:0000000000000000000000000000000000000000000000000000000000000000'
     ) {

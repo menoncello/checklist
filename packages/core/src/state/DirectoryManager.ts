@@ -52,7 +52,10 @@ export class DirectoryManager {
             const glob = new Bun.Glob('*');
             for await (const file of glob.scan({ cwd: dir, onlyFiles: true })) {
               try {
-                await Bun.file(join(dir, file)).unlink();
+                const filePath = join(dir, file);
+                await Bun.write(filePath, '');
+                const { unlink } = await import('fs/promises');
+                await unlink(filePath);
               } catch {
                 // Ignore file deletion errors during cleanup
               }
