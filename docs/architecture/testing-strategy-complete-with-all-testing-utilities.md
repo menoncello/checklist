@@ -1,5 +1,55 @@
 # Testing Strategy (Complete with All Testing Utilities)
 
+## Mutation Testing Strategy
+
+### StrykerJS Configuration
+
+```typescript
+// stryker.conf.js
+module.exports = {
+  packageManager: 'bun',
+  testRunner: 'bun',
+  mutate: ['packages/*/src/**/*.ts', '!**/*.test.ts', '!**/*.spec.ts'],
+  mutator: {
+    name: 'typescript',
+    excludedMutations: [] // All mutators enabled
+  },
+  thresholds: {
+    high: 90,
+    low: 85,
+    break: 85 // Fail CI if below 85%
+  },
+  dashboard: {
+    project: 'github.com/your-org/checklist',
+    version: 'main',
+    module: 'checklist-core'
+  },
+  reporters: ['html', 'json', 'progress', 'dashboard'],
+  htmlReporter: {
+    fileName: 'reports/mutation/index.html'
+  },
+  incremental: true,
+  incrementalFile: '.stryker-tmp/incremental.json',
+  tempDirName: '.stryker-tmp',
+  coverageAnalysis: 'perTest',
+  timeoutMS: 60000,
+  concurrency: 4
+};
+```
+
+### Mutation Testing Workflow
+
+1. **Initial Analysis**: Run StrykerJS to establish baseline
+2. **Gap Identification**: Review surviving mutants report
+3. **Test Enhancement**: Add tests targeting surviving mutants
+4. **Continuous Monitoring**: Track mutation score trends
+
+### Mutation Score Requirements
+
+- **Minimum Threshold**: 85% mutation score
+- **Target Goal**: 90%+ for critical modules
+- **CI Integration**: Automatic failure below threshold
+
 ## Test Data Factory
 
 ```typescript

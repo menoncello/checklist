@@ -35,7 +35,9 @@
 | Package Manager              | Bun                | 1.1.x         | Dependency management         | Fast package installation           |
 | Container                    | Docker             | 24.x          | Development environment       | Consistent dev setup                |
 | **Development Tools**        |
-| Logging                      | Debug              | 4.3.x         | Development logging           | Lightweight with namespaces         |
+| Logging                      | Pino               | 9.x           | Production-ready logging      | High-performance JSON logger        |
+| Log Rotation                 | pino-roll          | 1.x           | Log file management           | Automatic rotation and cleanup      |
+| Log Formatting               | pino-pretty        | 10.x          | Development log formatting    | Human-readable log output           |
 | Process Manager              | Bun.spawn          | Built-in      | Child process management      | Native process spawning             |
 | Clipboard                    | clipboardy         | 4.0.x         | System clipboard access       | Cross-platform clipboard            |
 | Profiling                    | Chrome DevTools    | Built-in      | Performance profiling         | Deep performance analysis           |
