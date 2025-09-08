@@ -16,6 +16,11 @@ describe('Migration Paths', () => {
     migrations.forEach(m => registry.registerMigration(m));
     runner = new MigrationRunner(registry, path.join(testDir, '.backup'));
     
+    // Ensure directory exists
+    const { mkdir } = await import('fs/promises');
+    await mkdir(testDir, { recursive: true });
+    await mkdir(path.join(testDir, '.backup'), { recursive: true });
+    
     await Bun.write(path.join(testDir, '.gitkeep'), '');
   });
 
