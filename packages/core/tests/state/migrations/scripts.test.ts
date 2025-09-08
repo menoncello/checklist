@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'bun:test';
 import { 
-  migrateV0_0_0ToV0_1_0,
-  migrateV0_1_0ToV0_2_0,
-  migrateV0_2_0ToV1_0_0
+  migration_v0_0_0_to_v0_1_0,
+  migration_v0_1_0_to_v0_2_0,
+  migration_v0_2_0_to_v1_0_0
 } from '../../../src/state/migrations/scripts/index';
 
 describe('Migration Scripts', () => {
   describe('v0.0.0 to v0.1.0', () => {
-    const migration = migrateV0_0_0ToV0_1_0;
+    const migration = migration_v0_0_0_to_v0_1_0;
 
     it('should add metadata to state', () => {
       const oldState = {
@@ -63,7 +63,7 @@ describe('Migration Scripts', () => {
   });
 
   describe('v0.1.0 to v0.2.0', () => {
-    const migration = migrateV0_1_0ToV0_2_0;
+    const migration = migration_v0_1_0_to_v0_2_0;
 
     it('should add templates and variables', () => {
       const oldState = {
@@ -132,7 +132,7 @@ describe('Migration Scripts', () => {
   });
 
   describe('v0.2.0 to v1.0.0', () => {
-    const migration = migrateV0_2_0ToV1_0_0;
+    const migration = migration_v0_2_0_to_v1_0_0;
 
     it('should add recovery and conflicts', () => {
       const oldState = {
