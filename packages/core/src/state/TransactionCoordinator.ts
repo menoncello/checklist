@@ -1,10 +1,10 @@
 import { join } from 'node:path';
-import createDebug from 'debug';
+import { createLogger } from '../utils/logger';
 import { WriteAheadLog } from './WriteAheadLog';
 import { TransactionError } from './errors';
 import { ChecklistState, Transaction, Operation } from './types';
 
-const debug = createDebug('checklist:transaction');
+const logger = createLogger('checklist:transaction');
 
 export class TransactionCoordinator {
   private transactions: Map<string, Transaction> = new Map();
@@ -73,11 +73,11 @@ export class TransactionCoordinator {
 
     transaction.operations.push(operation);
     await this.logTransaction('OPERATION', transactionId, operation);
-    debug(
-      'WAL entry added for operation %s in transaction %s',
-      operation.id,
-      transactionId
-    );
+    logger.debug({
+      msg: 'WAL entry added for operation',
+      operationId: operation.id,
+      transactionId,
+    });
   }
 
   async validateTransaction(
@@ -136,10 +136,10 @@ export class TransactionCoordinator {
 
       // Clear WAL after successful commit
       await this.wal.clear();
-      debug(
-        'WAL cleared after successful commit of transaction %s',
-        transactionId
-      );
+      logger.debug({
+        msg: 'WAL cleared after successful commit',
+        transactionId,
+      });
 
       this.transactions.delete(transactionId);
       return newState;
@@ -207,7 +207,7 @@ export class TransactionCoordinator {
 
       await Bun.write(this.logPath, logContent);
     } catch (error) {
-      console.error('Failed to write to audit log:', error);
+      logger.error({ msg: 'Failed to write to audit log', error });
     }
   }
 
@@ -249,7 +249,7 @@ export class TransactionCoordinator {
           await this.rotateLog();
         }
       } catch (error) {
-        console.error('Log rotation check failed:', error);
+        logger.error({ msg: 'Log rotation check failed', error });
       }
     }, rotationInterval);
   }
@@ -263,7 +263,7 @@ export class TransactionCoordinator {
       await Bun.write(archivePath, currentContent);
       await Bun.write(this.logPath, '');
     } catch (error) {
-      console.error('Failed to rotate log:', error);
+      logger.error({ msg: 'Failed to rotate log', error });
     }
   }
 
@@ -273,10 +273,11 @@ export class TransactionCoordinator {
       try {
         await this.rollbackTransaction(transaction.id);
       } catch (error) {
-        console.error(
-          `Failed to rollback transaction ${transaction.id}:`,
-          error
-        );
+        logger.error({
+          msg: 'Failed to rollback transaction',
+          transactionId: transaction.id,
+          error,
+        });
       }
     }
     this.transactions.clear();
@@ -290,7 +291,7 @@ export class TransactionCoordinator {
     }) => Promise<void>
   ): Promise<number> {
     if (this.isRecovering) {
-      debug('Recovery already in progress');
+      logger.debug({ msg: 'Recovery already in progress' });
       return 0;
     }
 
@@ -300,17 +301,20 @@ export class TransactionCoordinator {
     try {
       // Check if WAL exists
       if (!(await this.wal.exists())) {
-        debug('No WAL file found, skipping recovery');
+        logger.debug({ msg: 'No WAL file found, skipping recovery' });
         return 0;
       }
 
       // Create backup before recovery
       await this.wal.createBackup();
-      debug('WAL backup created before recovery');
+      logger.debug({ msg: 'WAL backup created before recovery' });
 
       // Replay WAL entries
       const entries = await this.wal.replay();
-      debug('Found %d WAL entries to recover', entries.length);
+      logger.info({
+        msg: 'Found WAL entries to recover',
+        count: entries.length,
+      });
 
       for (const entry of entries) {
         try {
@@ -320,17 +324,16 @@ export class TransactionCoordinator {
             value: entry.value,
           });
           recoveredCount++;
-          debug('Recovered WAL entry: %O', entry);
+          logger.debug({ msg: 'Recovered WAL entry', entry });
         } catch (error) {
-          console.error('Failed to apply WAL entry:', error);
-          debug('Failed to recover entry: %O, error: %O', entry, error);
+          logger.error({ msg: 'Failed to apply WAL entry', entry, error });
         }
       }
 
       // Clear WAL after successful recovery
       if (recoveredCount === entries.length) {
         await this.wal.clear();
-        debug('WAL cleared after successful recovery');
+        logger.debug({ msg: 'WAL cleared after successful recovery' });
       }
 
       await this.logTransaction('RECOVERY', 'wal-recovery', {
@@ -340,8 +343,7 @@ export class TransactionCoordinator {
 
       return recoveredCount;
     } catch (error) {
-      console.error('WAL recovery failed:', error);
-      debug('Recovery error: %O', error);
+      logger.error({ msg: 'WAL recovery failed', error });
       throw new TransactionError(
         `WAL recovery failed: ${error}`,
         'wal-recovery'

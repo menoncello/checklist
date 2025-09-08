@@ -3,7 +3,7 @@ export class WorkflowError extends Error {
     message: string,
     public code: string,
     public recoverable: boolean = false,
-    public context?: Record<string, any>
+    public context?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'WorkflowError';

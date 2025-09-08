@@ -30,7 +30,7 @@ describe('Migration Performance Benchmarks', () => {
       toVersion: '1.0.0',
       description: 'Add metadata',
       up: (state) => ({
-        ...state,
+        ...(state as Record<string, unknown>),
         version: '1.0.0',
         schemaVersion: '1.0.0',
         metadata: {
@@ -39,7 +39,7 @@ describe('Migration Performance Benchmarks', () => {
         }
       }),
       down: (state) => {
-        const { metadata, ...rest } = state;
+        const { metadata, ...rest } = state as any;
         return { ...rest, version: '0.0.0' };
       }
     });
@@ -49,7 +49,7 @@ describe('Migration Performance Benchmarks', () => {
       toVersion: '2.0.0',
       description: 'Add templates and variables',
       up: (state) => ({
-        ...state,
+        ...(state as Record<string, unknown>),
         version: '2.0.0',
         schemaVersion: '2.0.0',
         templates: [],
@@ -60,7 +60,7 @@ describe('Migration Performance Benchmarks', () => {
         }
       }),
       down: (state) => {
-        const { templates, variables, settings, ...rest } = state;
+        const { templates, variables, settings, ...rest } = state as any;
         return { ...rest, version: '1.0.0' };
       }
     });
@@ -70,7 +70,7 @@ describe('Migration Performance Benchmarks', () => {
       toVersion: '3.0.0',
       description: 'Add advanced features',
       up: (state) => ({
-        ...state,
+        ...(state as Record<string, unknown>),
         version: '3.0.0',
         schemaVersion: '3.0.0',
         recovery: {
@@ -82,7 +82,7 @@ describe('Migration Performance Benchmarks', () => {
         checksum: 'sha256:placeholder'
       }),
       down: (state) => {
-        const { recovery, conflicts, commandResults, checksum, ...rest } = state;
+        const { recovery, conflicts, commandResults, checksum, ...rest } = state as any;
         return { ...rest, version: '2.0.0' };
       }
     });

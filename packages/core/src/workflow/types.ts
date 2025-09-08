@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 
 export interface Variables {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Step {
@@ -11,7 +11,7 @@ export interface Step {
   action?: string;
   condition?: string;
   validation?: StepValidation[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface StepValidation {
@@ -64,7 +64,7 @@ export interface ChecklistTemplate {
   version?: string;
   steps: Step[];
   variables?: Variables;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Progress {
@@ -103,7 +103,7 @@ export type ConditionEvaluator = (
   context: StepContext
 ) => boolean;
 
-export interface WorkflowEngineEvents {
+export type WorkflowEngineEvents = {
   'step:changed': (step: Step) => void;
   'step:completed': (step: Step) => void;
   'step:skipped': (step: Step, reason?: string) => void;
@@ -112,11 +112,16 @@ export interface WorkflowEngineEvents {
   error: (error: WorkflowError) => void;
   'state:changed': (state: WorkflowState) => void;
   'validation:failed': (step: Step, error: ValidationError) => void;
-  [key: string]: (...args: any[]) => void;
-}
+  'recovery:started': (data: { type: string; timestamp: Date }) => void;
+  'recovery:completed': (data: {
+    type: string;
+    timestamp: Date;
+    recoveredCount: number;
+  }) => void;
+} & Record<string, (...args: unknown[]) => void>;
 
 export abstract class TypedEventEmitter<
-  T extends Record<string, (...args: any[]) => void>,
+  T extends Record<string, (...args: unknown[]) => void>,
 > extends EventEmitter {
   emit<K extends keyof T & string>(
     event: K,
@@ -126,15 +131,15 @@ export abstract class TypedEventEmitter<
   }
 
   on<K extends keyof T & string>(event: K, listener: T[K]): this {
-    return super.on(event, listener as any);
+    return super.on(event, listener as (...args: unknown[]) => void);
   }
 
   once<K extends keyof T & string>(event: K, listener: T[K]): this {
-    return super.once(event, listener as any);
+    return super.once(event, listener as (...args: unknown[]) => void);
   }
 
   off<K extends keyof T & string>(event: K, listener: T[K]): this {
-    return super.off(event, listener as any);
+    return super.off(event, listener as (...args: unknown[]) => void);
   }
 }
 
@@ -143,7 +148,7 @@ export class WorkflowError extends Error {
     message: string,
     public code: string,
     public recoverable: boolean = false,
-    public context?: Record<string, any>
+    public context?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'WorkflowError';

@@ -70,3 +70,29 @@ export {
   StateCorruptionError,
   TemplateLoadError,
 } from './workflow/errors';
+
+// Export logging utilities
+export {
+  createLogger,
+  initializeLogger,
+  type Logger,
+  type LogContext,
+  type LoggerConfig,
+} from './utils/logger';
+
+// Export service architecture
+export { BaseService, type ServiceConfig } from './services/BaseService';
+export { DIContainer, type ServiceRegistration } from './services/DIContainer';
+
+// Export test utilities
+export { MockLogger, InMemoryLogger } from './utils/MockLogger';
+export { TestDataFactory } from './test-utils/TestDataFactory';
+export { LogAssertions } from './test-utils/LogAssertions';
+
+// Export monitoring
+export {
+  HealthMonitor,
+  type HealthCheckResult,
+  type HealthStatus,
+  type LoggerHealthMetrics,
+} from './monitoring/HealthMonitor';

@@ -92,6 +92,7 @@ function compareResults(baseline: BenchmarkResult[], current: BenchmarkResult[])
 
 // Main execution
 function main() {
+  // __dirname is packages/core/tests/benchmarks, so we need to go up 4 levels to get to project root
   const projectRoot = join(__dirname, '..', '..', '..', '..');
   const baselinePath = join(projectRoot, '.performance', 'baselines', 'benchmark-results.json');
   const currentPath = join(projectRoot, '.performance', 'benchmark-results.json');

@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
+import { createLogger } from '../utils/logger';
 import { BackupManager } from './BackupManager';
 import { ConcurrencyManager } from './ConcurrencyManager';
 import { DirectoryManager } from './DirectoryManager';
@@ -26,6 +27,7 @@ export class StateManager {
   private migrationRunner: MigrationRunner;
   private currentState?: ChecklistState;
   private baseDir: string;
+  private logger = createLogger('checklist:state:manager');
 
   constructor(baseDir: string = '.checklist') {
     this.baseDir = baseDir;
@@ -67,7 +69,9 @@ export class StateManager {
 
       // Check for incomplete transactions from WAL
       if (await this.transactionCoordinator.hasIncompleteTransactions()) {
-        console.log('Found incomplete transactions, attempting recovery...');
+        this.logger.info({
+          msg: 'Found incomplete transactions, attempting recovery',
+        });
         await this.recoverFromWAL();
       }
 
@@ -102,9 +106,9 @@ export class StateManager {
     try {
       // Check for incomplete transactions from WAL before loading state
       if (await this.transactionCoordinator.hasIncompleteTransactions()) {
-        console.log(
-          'Found incomplete transactions during load, attempting recovery...'
-        );
+        this.logger.info({
+          msg: 'Found incomplete transactions during load, attempting recovery',
+        });
         await this.recoverFromWAL();
       }
 
@@ -121,7 +125,9 @@ export class StateManager {
       const detectedSecrets = SecretsDetector.scan(content);
       if (detectedSecrets.length > 0) {
         await SecurityAudit.logSecretsDetection(detectedSecrets, 'WARNED');
-        console.warn('WARNING: Potential secrets detected in state file');
+        this.logger.warn({
+          msg: 'WARNING: Potential secrets detected in state file',
+        });
       }
 
       let state: unknown;
@@ -323,7 +329,7 @@ export class StateManager {
   private async handleCorruptedState(
     error: StateCorruptedError
   ): Promise<ChecklistState> {
-    console.error('State corruption detected:', error.message);
+    this.logger.error({ msg: 'State corruption detected', error });
 
     try {
       const recoveredState = await this.backupManager.recoverFromLatestBackup();
@@ -340,7 +346,7 @@ export class StateManager {
 
       return recoveredState;
     } catch (backupError) {
-      console.error('Backup recovery failed:', backupError);
+      this.logger.error({ msg: 'Backup recovery failed', error: backupError });
 
       const shouldReset = await this.promptUserForReset();
       if (shouldReset) {
@@ -369,13 +375,19 @@ export class StateManager {
     const currentVersion =
       oldState.schemaVersion || (await detectVersion(oldState));
 
-    console.log(`Migrating state from ${currentVersion} to ${SCHEMA_VERSION}`);
+    this.logger.info({
+      msg: 'Migrating state',
+      from: currentVersion,
+      to: SCHEMA_VERSION,
+    });
 
     // Set up progress listener
     this.migrationRunner.on('migration:progress', (progress) => {
-      console.log(
-        `Migration progress: ${progress.percentage.toFixed(0)}% - ${progress.currentMigration}`
-      );
+      this.logger.info({
+        msg: 'Migration progress',
+        percentage: progress.percentage.toFixed(0),
+        currentMigration: progress.currentMigration,
+      });
     });
 
     // Perform migration
@@ -473,18 +485,23 @@ export class StateManager {
             await this.loadState();
             // Here we would apply the specific operation based on the key
             // For now, we'll just log it
-            console.log(`Recovering WAL entry: ${entry.op} ${entry.key}`);
+            this.logger.debug({
+              msg: 'Recovering WAL entry',
+              op: entry.op,
+              key: entry.key,
+            });
           } else if (entry.op === 'delete') {
             // Apply delete operation
-            console.log(`Recovering WAL delete: ${entry.key}`);
+            this.logger.debug({ msg: 'Recovering WAL delete', key: entry.key });
           }
         }
       );
 
       if (recoveredCount > 0) {
-        console.log(
-          `Successfully recovered ${recoveredCount} operations from WAL`
-        );
+        this.logger.info({
+          msg: 'Successfully recovered operations from WAL',
+          recoveredCount,
+        });
 
         // Update recovery metadata
         if (this.currentState) {
@@ -498,7 +515,7 @@ export class StateManager {
         }
       }
     } catch (error) {
-      console.error('WAL recovery failed:', error);
+      this.logger.error({ msg: 'WAL recovery failed', error });
       throw new RecoveryError(`WAL recovery failed: ${error}`, false);
     }
   }

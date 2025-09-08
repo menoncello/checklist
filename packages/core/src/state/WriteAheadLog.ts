@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import createDebug from 'debug';
+import { createLogger } from '../utils/logger';
 
-const debug = createDebug('checklist:wal');
+const logger = createLogger('checklist:wal');
 
 export interface WALEntry {
   timestamp: number;
@@ -49,7 +49,7 @@ export class WriteAheadLog {
       mkdirSync(walDir, { recursive: true });
     }
     this.walPath = join(walDir, 'wal.log');
-    debug('WAL initialized at %s', this.walPath);
+    logger.debug({ msg: 'WAL initialized', walPath: this.walPath });
   }
 
   async append(entry: Omit<WALEntry, 'timestamp'>): Promise<void> {
@@ -66,7 +66,7 @@ export class WriteAheadLog {
     this.writeCount++;
     if (this.writeCount > this.maxWritesPerWindow) {
       const waitTime = this.rateWindow - (now - this.lastWriteTime);
-      debug('Rate limit exceeded, waiting %dms', waitTime);
+      logger.debug({ msg: 'Rate limit exceeded, waiting', waitTime });
       await new Promise((resolve) => setTimeout(resolve, waitTime));
       this.writeCount = 1;
       this.lastWriteTime = Date.now();
@@ -90,20 +90,24 @@ export class WriteAheadLog {
       }
 
       const duration = performance.now() - startTime;
-      debug('WAL append completed in %dms', duration);
+      logger.debug({ msg: 'WAL append completed', duration });
 
       if (duration > 10) {
-        console.warn(`WAL append took ${duration}ms, exceeding 10ms target`);
+        logger.warn({
+          msg: 'WAL append performance warning',
+          duration,
+          target: 10,
+        });
       }
     } catch (error) {
-      debug('WAL append failed: %O', error);
+      logger.error({ msg: 'WAL append failed', error });
       throw new Error(`Failed to append to WAL: ${error}`);
     }
   }
 
   async replay(): Promise<WALEntry[]> {
     if (this.isReplaying) {
-      debug('WAL replay already in progress');
+      logger.debug({ msg: 'WAL replay already in progress' });
       return this.entries;
     }
 
@@ -113,13 +117,13 @@ export class WriteAheadLog {
     try {
       const file = Bun.file(this.walPath);
       if (!(await file.exists())) {
-        debug('No WAL file found for replay');
+        logger.debug({ msg: 'No WAL file found for replay' });
         return [];
       }
 
       const content = await file.text();
       if (!content.trim()) {
-        debug('WAL file is empty');
+        logger.debug({ msg: 'WAL file is empty' });
         return [];
       }
 
@@ -149,10 +153,10 @@ export class WriteAheadLog {
                   return null;
                 } catch {
                   if (line.trim()) {
-                    debug(
-                      'WAL parse error for line: %s',
-                      line.substring(0, 50)
-                    );
+                    logger.warn({
+                      msg: 'WAL parse error for line',
+                      line: line.substring(0, 50),
+                    });
                   }
                   return null;
                 }
@@ -177,11 +181,11 @@ export class WriteAheadLog {
                 return null;
               } catch (parseError) {
                 if (line.trim()) {
-                  console.warn(
-                    'Failed to parse WAL entry, skipping:',
-                    line.substring(0, 50)
-                  );
-                  debug('WAL parse error: %O', parseError);
+                  logger.warn({
+                    msg: 'Failed to parse WAL entry, skipping',
+                    line: line.substring(0, 50),
+                  });
+                  logger.error({ msg: 'WAL parse error', error: parseError });
                 }
                 return null;
               }
@@ -193,11 +197,11 @@ export class WriteAheadLog {
       }
 
       const duration = performance.now() - startTime;
-      debug(
-        'WAL replay completed in %dms with %d entries',
+      logger.info({
+        msg: 'WAL replay completed',
         duration,
-        entries.length
-      );
+        entryCount: entries.length,
+      });
 
       // Adjust warning threshold based on number of entries
       // More lenient for large WALs: 4ms per entry for 50+, max 200ms
@@ -207,15 +211,15 @@ export class WriteAheadLog {
           : Math.min(100, 2 * entries.length);
 
       if (duration > expectedTime) {
-        console.warn(
-          `WAL replay took ${duration}ms for ${entries.length} entries`
-        );
+        logger.warn({
+          msg: `WAL replay took ${duration}ms for ${entries.length} entries`,
+        });
       }
 
       this.entries = entries;
       return entries;
     } catch (error) {
-      debug('WAL replay failed: %O', error);
+      logger.error({ msg: 'WAL replay failed', error });
       throw new Error(`Failed to replay WAL: ${error}`);
     } finally {
       this.isReplaying = false;
@@ -234,13 +238,15 @@ export class WriteAheadLog {
       }
 
       const duration = performance.now() - startTime;
-      debug('WAL cleared in %dms', duration);
+      logger.debug({ msg: 'WAL cleared', duration });
 
       if (duration > 5) {
-        console.warn(`WAL clear took ${duration}ms, exceeding 5ms target`);
+        logger.warn({
+          msg: `WAL clear took ${duration}ms, exceeding 5ms target`,
+        });
       }
     } catch (error) {
-      debug('WAL clear failed: %O', error);
+      logger.error({ msg: 'WAL clear failed', error });
       throw new Error(`Failed to clear WAL: ${error}`);
     }
   }
@@ -275,11 +281,11 @@ export class WriteAheadLog {
       if (await file.exists()) {
         const content = await file.text();
         await Bun.write(backupPath, content);
-        debug('WAL backup created at %s', backupPath);
+        logger.debug({ msg: 'WAL backup created', backupPath });
       }
       return backupPath;
     } catch (error) {
-      debug('WAL backup failed: %O', error);
+      logger.error({ msg: 'WAL backup failed', error });
       throw new Error(`Failed to create WAL backup: ${error}`);
     }
   }
@@ -290,9 +296,9 @@ export class WriteAheadLog {
   ): Promise<void> {
     try {
       await applyFn(entry);
-      debug('Applied WAL entry: %O', entry);
+      logger.debug({ msg: 'Applied WAL entry', entry });
     } catch (error) {
-      debug('Failed to apply WAL entry: %O', error);
+      logger.error({ msg: 'Failed to apply WAL entry', error, entry });
       throw new Error(`Failed to apply WAL entry: ${error}`);
     }
   }
@@ -303,7 +309,7 @@ export class WriteAheadLog {
     if (currentSize > maxSize) {
       await this.createBackup();
       await this.clear();
-      debug('WAL rotated at size %d bytes', currentSize);
+      logger.debug({ msg: 'WAL rotated', size: currentSize });
     }
   }
 }

@@ -6,7 +6,14 @@ import * as dotenv from 'dotenv';
 // Skip these tests in CI as they expect environment files that don't exist yet
 describe.skip('Environment Variable Validation', () => {
   let envConfig: Record<string, string | undefined>;
-  const projectRoot = path.resolve(process.cwd());
+  const cwd = process.cwd();
+  const projectRoot = path.resolve(
+    cwd.endsWith('/packages/core') 
+      ? path.join(cwd, '..', '..')
+      : cwd.includes('/packages/core') 
+        ? cwd.substring(0, cwd.indexOf('/packages/core'))
+        : cwd
+  );
 
   beforeAll(() => {
     const envPath = path.join(projectRoot, '.env');

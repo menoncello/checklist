@@ -19,7 +19,8 @@ export default [
       'test-setup.ts',
       '**/*.test.ts',
       '**/*.spec.ts',
-      'tests/**',
+      '**/*.bench.ts',
+      '**/tests/**',
       'performance.config.ts',
       '.vscode/**',
       '.husky/**'
@@ -47,7 +48,7 @@ export default [
         'varsIgnorePattern': '^_',
         'caughtErrorsIgnorePattern': '^_'
       }],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/prefer-nullish-coalescing': 'error',
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
@@ -68,7 +69,7 @@ export default [
       'unused-imports/no-unused-imports': 'error',
 
       // Code quality (MANDATORY)
-      'no-console': 'warn', // Use debug logger instead
+      'no-console': 'error', // Use Pino logger instead
       'no-debugger': 'error',
       'no-alert': 'error',
       'prefer-const': 'error',
@@ -84,6 +85,13 @@ export default [
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error'
+    }
+  },
+  {
+    // CLI and TUI packages need console for user interface
+    files: ['packages/cli/**/*.ts', 'packages/tui/**/*.ts'],
+    rules: {
+      'no-console': 'off'
     }
   }
 ];

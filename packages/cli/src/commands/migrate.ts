@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { StateManager } from '@checklist/core/state/StateManager';
 import * as chalk from 'chalk';
 

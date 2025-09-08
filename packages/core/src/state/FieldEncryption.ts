@@ -5,7 +5,10 @@
 
 import * as crypto from 'crypto';
 import * as path from 'path';
+import { createLogger } from '../utils/logger';
 import { STATE_DIR } from './constants';
+
+const logger = createLogger('checklist:encryption');
 
 export interface EncryptedField {
   encrypted: true;
@@ -315,7 +318,7 @@ export class FieldEncryption {
       await Bun.write(this.METADATA_FILE, JSON.stringify(metadata, null, 2));
     } catch (error) {
       // Metadata update is non-critical, log and continue
-      console.warn('Failed to update encryption metadata:', error);
+      logger.warn({ msg: 'Failed to update encryption metadata', error });
     }
   }
 

@@ -3,7 +3,12 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 
 describe('Performance Benchmark Infrastructure', () => {
-  const projectRoot = process.cwd();
+  const cwd = process.cwd();
+  const projectRoot = cwd.endsWith('/packages/core') 
+    ? join(cwd, '..', '..')
+    : cwd.includes('/packages/core') 
+      ? cwd.substring(0, cwd.indexOf('/packages/core'))
+      : cwd;
   
   test('benchmark workflow should exist', () => {
     const benchmarkWorkflow = join(projectRoot, '.github', 'workflows', 'benchmark.yml');

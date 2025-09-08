@@ -40,8 +40,8 @@ bun run test:integration # Integration tests
 bun run test:e2e        # End-to-end tests
 bun run test:smoke      # Quick smoke tests
 bun run test:all        # All test suites
-bun run test:mutation   # StrykerJS mutation tests (85% threshold)
-bun run test:mutation:incremental # Incremental mutation testing for PRs
+bunx stryker run   # StrykerJS mutation tests via command runner (85% threshold)
+bunx stryker run --incremental # Incremental mutation testing for PRs (Story 1.12)
 bun run test:debug      # Run tests with debugger
 bun run test:verbose    # Verbose output
 bun run test:failed     # Re-run only failed tests
@@ -136,14 +136,14 @@ const logger = createLogger('module-name', {
 ### Initial Setup
 
 ```bash
-# Run initial mutation testing to establish baseline
-bun run test:mutation
+# Run initial mutation testing to establish baseline (Story 1.12)
+bunx stryker run
 
 # View mutation report
 open reports/mutation/index.html
 
 # Analyze surviving mutants
-bun run test:mutation --reporter json | jq '.mutants[] | select(.status == "survived")'
+bunx stryker run --reporter json | jq '.mutants[] | select(.status == "survived")'
 ```
 
 ### Improving Mutation Score
@@ -155,10 +155,10 @@ bun run test:mutation --reporter json | jq '.mutants[] | select(.status == "surv
 
 ```bash
 # Run incremental mutation testing (faster for PRs)
-bun run test:mutation:incremental
+bunx stryker run --incremental
 
 # Check current mutation score
-bun run test:mutation --reporter progress
+bunx stryker run --reporter progress
 ```
 
 ### CI/CD Pipeline Integration

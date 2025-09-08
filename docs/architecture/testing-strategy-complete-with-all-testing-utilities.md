@@ -4,19 +4,20 @@
 
 ### StrykerJS Configuration
 
-```typescript
+**Note:** StrykerJS configuration is split into Story 1.12 for dedicated mutation testing infrastructure.
+
+```javascript
 // stryker.conf.js
 module.exports = {
-  packageManager: 'bun',
-  testRunner: 'bun',
-  mutate: ['packages/*/src/**/*.ts', '!**/*.test.ts', '!**/*.spec.ts'],
-  mutator: {
-    name: 'typescript',
-    excludedMutations: [] // All mutators enabled
+  packageManager: 'npm',  // Required for StrykerJS
+  testRunner: 'command',   // Use command runner for Bun
+  commandRunner: {
+    command: 'bun test --bail --coverage'  // Execute Bun directly
   },
+  mutate: ['packages/*/src/**/*.ts', '!**/*.test.ts', '!**/*.spec.ts'],
   thresholds: {
-    high: 90,
-    low: 85,
+    high: 95,
+    low: 90,
     break: 85 // Fail CI if below 85%
   },
   dashboard: {
@@ -31,9 +32,9 @@ module.exports = {
   incremental: true,
   incrementalFile: '.stryker-tmp/incremental.json',
   tempDirName: '.stryker-tmp',
-  coverageAnalysis: 'perTest',
   timeoutMS: 60000,
-  concurrency: 4
+  concurrency: 4,
+  disableTypeChecks: false
 };
 ```
 

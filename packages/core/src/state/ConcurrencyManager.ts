@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { hostname, userInfo } from 'node:os';
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
+import { createLogger } from '../utils/logger';
 import {
   LOCK_TIMEOUT,
   LOCK_RETRY_INTERVAL,
@@ -16,6 +17,7 @@ export class ConcurrencyManager {
   private renewalTimer?: Timer;
   private readonly pid: number;
   private readonly ppid?: number;
+  private logger = createLogger('checklist:concurrency');
 
   constructor(lockDirectory: string) {
     this.lockDir = lockDirectory;
@@ -149,7 +151,7 @@ export class ConcurrencyManager {
         unlinkSync(lockPath);
       }
     } catch (error) {
-      console.error('Error releasing lock:', error);
+      this.logger.error({ msg: 'Error releasing lock', error });
     } finally {
       this.lockId = undefined;
     }
@@ -184,7 +186,7 @@ export class ConcurrencyManager {
     try {
       unlinkSync(lockPath);
     } catch (error) {
-      console.error('Failed to cleanup stale lock:', error);
+      this.logger.error({ msg: 'Failed to cleanup stale lock', error });
     }
   }
 

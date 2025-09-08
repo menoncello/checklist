@@ -5,16 +5,12 @@ import { ChecklistState, Operation } from '../../src/state/types';
 import { TransactionError } from '../../src/state/errors';
 
 describe('TransactionCoordinator', () => {
-  const testLogDir = '.test-logs';
+  const testLogDir = '.test-transaction-logs';
   let coordinator: TransactionCoordinator;
   let testState: ChecklistState;
 
   beforeEach(() => {
-    if (existsSync(testLogDir)) {
-      rmSync(testLogDir, { recursive: true, force: true });
-    }
-    mkdirSync(testLogDir, { recursive: true });
-
+    // Don't create directory, let TransactionCoordinator handle it
     coordinator = new TransactionCoordinator(testLogDir);
     testState = {
       schemaVersion: '1.0.0',

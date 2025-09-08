@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
-import Ajv from 'ajv';
+import Ajv, { type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import { StateCorruptedError } from './errors';
 import stateSchema from './schemas/state.schema.json';
 import { ChecklistState } from './types';
 
 export class StateValidator {
-  private ajv: any;
-  private validateSchema: any;
+  private ajv: Ajv;
+  private validateSchema: ValidateFunction;
 
   constructor() {
     this.ajv = new Ajv({
@@ -15,14 +15,16 @@ export class StateValidator {
       verbose: true,
       code: { optimize: false }, // Required for ajv v8
     });
-    (addFormats as any)(this.ajv);
-    this.validateSchema = this.ajv.compile(stateSchema);
+    addFormats(this.ajv);
+    this.validateSchema = this.ajv.compile(
+      stateSchema as Record<string, unknown>
+    );
   }
 
   async validateStateSchema(state: unknown): Promise<ChecklistState> {
     if (this.validateSchema(state) !== true) {
       const errors = this.validateSchema.errors
-        ?.map((e: any) => `${e.instancePath} ${e.message}`)
+        ?.map((e) => `${e.instancePath} ${e.message}`)
         .join(', ');
       throw new StateCorruptedError(
         `State validation failed: ${errors}`,

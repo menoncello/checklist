@@ -38,9 +38,8 @@ function validateFileExists(path: string): ValidationResult {
 }
 
 async function validateCustom(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _validationCode: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   _context: StepContext
 ): Promise<ValidationResult> {
   // For MVP, custom validation is disabled for security

@@ -255,7 +255,7 @@ describe('Migration Paths', () => {
         toVersion: '1.0.0',
         description: 'Direct upgrade to v1.0.0',
         up: (state) => ({
-          ...state,
+          ...(state as Record<string, unknown>),
           version: '1.0.0',
           schemaVersion: '1.0.0',
           metadata: { created: new Date().toISOString(), modified: new Date().toISOString() },
@@ -265,7 +265,7 @@ describe('Migration Paths', () => {
           conflicts: [],
           checksum: 'sha256:direct'
         }),
-        down: (state) => ({ ...state, version: '0.0.0' })
+        down: (state) => ({ ...(state as Record<string, unknown>), version: '0.0.0' })
       });
 
       const path = registry.findPath('0.0.0', '1.0.0');
@@ -301,8 +301,8 @@ describe('Migration Paths', () => {
         fromVersion: '0.0.0',
         toVersion: '0.1.0',
         description: 'Failing validation',
-        up: (state) => ({ ...state, version: '0.1.0', invalid: true }),
-        down: (state) => state,
+        up: (state) => ({ ...(state as Record<string, unknown>), version: '0.1.0', invalid: true }),
+        down: (state) => state as Record<string, unknown>,
         validate: () => false
       });
 

@@ -5,7 +5,12 @@ import { load } from 'js-yaml';
 
 // Skip these tests in CI as they expect configuration files that don't exist yet
 describe.skip('Build Pipeline Configuration', () => {
-  const projectRoot = process.cwd();
+  const cwd = process.cwd();
+  const projectRoot = cwd.endsWith('/packages/core') 
+    ? join(cwd, '..', '..')
+    : cwd.includes('/packages/core') 
+      ? cwd.substring(0, cwd.indexOf('/packages/core'))
+      : cwd;
   const buildWorkflowPath = join(projectRoot, '.github', 'workflows', 'build.yml');
 
   test('build.yml workflow should exist', () => {

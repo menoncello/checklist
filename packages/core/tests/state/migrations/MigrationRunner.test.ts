@@ -30,7 +30,7 @@ describe('MigrationRunner', () => {
         toVersion: '0.1.0',
         description: 'Initial schema',
         up: (state) => ({
-          ...state,
+          ...(state as Record<string, unknown>),
           version: '0.1.0',
           metadata: {
             created: new Date().toISOString(),
@@ -38,40 +38,40 @@ describe('MigrationRunner', () => {
           }
         }),
         down: (state) => {
-          const { metadata, ...rest } = state;
+          const { metadata, ...rest } = state as any;
           return { ...rest, version: '0.0.0' };
         },
-        validate: (state) => state.metadata !== undefined
+        validate: (state) => (state as any).metadata !== undefined
       },
       {
         fromVersion: '0.1.0',
         toVersion: '0.2.0',
         description: 'Add templates',
         up: (state) => ({
-          ...state,
+          ...(state as Record<string, unknown>),
           version: '0.2.0',
           templates: [],
           variables: {}
         }),
         down: (state) => {
-          const { templates, variables, ...rest } = state;
+          const { templates, variables, ...rest } = state as any;
           return { ...rest, version: '0.1.0' };
         },
-        validate: (state) => Array.isArray(state.templates)
+        validate: (state) => Array.isArray((state as any).templates)
       },
       {
         fromVersion: '0.2.0',
         toVersion: '1.0.0',
         description: 'Major release',
         up: (state) => ({
-          ...state,
+          ...(state as Record<string, unknown>),
           version: '1.0.0',
           schemaVersion: '1.0.0',
           recovery: null,
           conflicts: []
         }),
         down: (state) => {
-          const { recovery, conflicts, schemaVersion, ...rest } = state;
+          const { recovery, conflicts, schemaVersion, ...rest } = state as any;
           return { ...rest, version: '0.2.0' };
         }
       }
@@ -178,7 +178,7 @@ describe('MigrationRunner', () => {
         up: () => {
           throw new Error('Migration failed');
         },
-        down: (state) => state
+        down: (state) => state as Record<string, unknown>
       };
       registry.registerMigration(failingMigration);
 
@@ -207,8 +207,8 @@ describe('MigrationRunner', () => {
         fromVersion: '1.0.0',
         toVersion: '2.0.0',
         description: 'Invalid migration',
-        up: (state) => ({ ...state, version: '2.0.0' }),
-        down: (state) => state,
+        up: (state) => ({ ...(state as Record<string, unknown>), version: '2.0.0' }),
+        down: (state) => state as Record<string, unknown>,
         validate: () => false
       };
       registry.registerMigration(invalidMigration);

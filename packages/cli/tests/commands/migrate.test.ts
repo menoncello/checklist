@@ -31,7 +31,7 @@ describe.skip('CLI Migration Commands', () => {
       toVersion: '0.1.0',
       description: 'Add metadata fields',
       up: (state) => ({
-        ...state,
+        ...(state as Record<string, unknown>),
         version: '0.1.0',
         schemaVersion: '0.1.0',
         metadata: {
@@ -40,7 +40,8 @@ describe.skip('CLI Migration Commands', () => {
         }
       }),
       down: (state) => {
-        const { metadata, ...rest } = state;
+        const s = state as Record<string, unknown>;
+        const { metadata, ...rest } = s;
         return { ...rest, version: '0.0.0' };
       }
     });
@@ -50,7 +51,7 @@ describe.skip('CLI Migration Commands', () => {
       toVersion: '1.0.0',
       description: 'Add advanced features',
       up: (state) => ({
-        ...state,
+        ...(state as Record<string, unknown>),
         version: '1.0.0',
         schemaVersion: '1.0.0',
         templates: [],
@@ -59,14 +60,16 @@ describe.skip('CLI Migration Commands', () => {
         conflicts: []
       }),
       down: (state) => {
-        const { templates, variables, recovery, conflicts, ...rest } = state;
+        const s = state as Record<string, unknown>;
+        const { templates, variables, recovery, conflicts, ...rest } = s;
         return { ...rest, version: '0.1.0' };
       },
       validate: (state) => {
-        return Array.isArray(state.templates) && 
-               typeof state.variables === 'object' &&
-               typeof state.recovery === 'object' &&
-               Array.isArray(state.conflicts);
+        const s = state as Record<string, unknown>;
+        return Array.isArray(s.templates) && 
+               typeof s.variables === 'object' &&
+               typeof s.recovery === 'object' &&
+               Array.isArray(s.conflicts);
       }
     });
 

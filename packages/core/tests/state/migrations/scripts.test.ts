@@ -15,12 +15,12 @@ describe('Migration Scripts', () => {
         version: '0.0.0'
       };
 
-      const newState = migration.up(oldState);
+      const newState = migration.up(oldState) as any;
       
       expect(newState.version).toBe('0.1.0');
       expect(newState.metadata).toBeDefined();
-      expect(newState.metadata.created).toBeDefined();
-      expect(newState.metadata.modified).toBeDefined();
+      expect((newState as any).metadata.created).toBeDefined();
+      expect((newState as any).metadata.modified).toBeDefined();
     });
 
     it('should validate migrated state', () => {
@@ -75,7 +75,7 @@ describe('Migration Scripts', () => {
         }
       };
 
-      const newState = migration.up(oldState);
+      const newState = migration.up(oldState) as any;
       
       expect(newState.version).toBe('0.2.0');
       expect(newState.templates).toEqual([]);
@@ -146,13 +146,13 @@ describe('Migration Scripts', () => {
         }
       };
 
-      const newState = migration.up(oldState);
+      const newState = migration.up(oldState) as any;
       
       expect(newState.version).toBe('1.0.0');
       expect(newState.schemaVersion).toBe('1.0.0');
       expect(newState.recovery).toBeDefined();
-      expect(newState.recovery.enabled).toBe(false);
-      expect(newState.recovery.checkpoints).toEqual([]);
+      expect((newState as any).recovery.enabled).toBe(false);
+      expect((newState as any).recovery.checkpoints).toEqual([]);
       expect(newState.conflicts).toEqual([]);
     });
 
@@ -176,10 +176,10 @@ describe('Migration Scripts', () => {
         }
       };
 
-      const newState = migration.up(oldState);
+      const newState = migration.up(oldState) as any;
       
-      expect(newState.recovery.enabled).toBe(true);
-      expect(newState.recovery.checkpoints).toHaveLength(1);
+      expect((newState as any).recovery.enabled).toBe(true);
+      expect((newState as any).recovery.checkpoints).toHaveLength(1);
     });
 
     it('should validate migrated state', () => {

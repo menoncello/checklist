@@ -68,7 +68,14 @@ describe('Development Environment Setup Validation', () => {
   });
 
   describe('Project Initialization (AC: 6, 7, 8, 9, 10)', () => {
-    const projectRoot = path.resolve(process.cwd());
+    const cwd = process.cwd();
+    const projectRoot = path.resolve(
+      cwd.endsWith('/packages/core') 
+        ? path.join(cwd, '..', '..')
+        : cwd.includes('/packages/core') 
+          ? cwd.substring(0, cwd.indexOf('/packages/core'))
+          : cwd
+    );
 
     it('should have repository properly initialized (AC6)', () => {
       const gitDir = path.join(projectRoot, '.git');
@@ -182,25 +189,35 @@ describe('Development Environment Setup Validation', () => {
   });
 
   describe('Pre-commit Hook Validation', () => {
+    const cwd = process.cwd();
+    const projectRoot = path.resolve(
+      cwd.endsWith('/packages/core') 
+        ? path.join(cwd, '..', '..')
+        : cwd.includes('/packages/core') 
+          ? cwd.substring(0, cwd.indexOf('/packages/core'))
+          : cwd
+    );
+    const preCommitPath = path.join(projectRoot, '.husky', 'pre-commit');
+    
     it('should have secrets scanning in pre-commit hook', () => {
-      const hookContent = fs.readFileSync('.husky/pre-commit', 'utf-8');
+      const hookContent = fs.readFileSync(preCommitPath, 'utf-8');
       expect(hookContent).toContain('Scanning for potential secrets');
       expect(hookContent).toMatch(/api\[_-\]\?key|secret.*token.*password/);
       expect(hookContent).toContain('AKIA[0-9A-Z]{16}'); // AWS key pattern
     });
 
     it('should run linting in pre-commit hook', () => {
-      const hookContent = fs.readFileSync('.husky/pre-commit', 'utf-8');
+      const hookContent = fs.readFileSync(preCommitPath, 'utf-8');
       expect(hookContent).toContain('bun run lint');
     });
 
     it('should run format check in pre-commit hook', () => {
-      const hookContent = fs.readFileSync('.husky/pre-commit', 'utf-8');
+      const hookContent = fs.readFileSync(preCommitPath, 'utf-8');
       expect(hookContent).toContain('bun run format:check');
     });
 
     it('should run type checking in pre-commit hook', () => {
-      const hookContent = fs.readFileSync('.husky/pre-commit', 'utf-8');
+      const hookContent = fs.readFileSync(preCommitPath, 'utf-8');
       expect(hookContent).toContain('bun run typecheck');
     });
   });
