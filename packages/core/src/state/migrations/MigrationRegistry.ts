@@ -26,7 +26,10 @@ export class MigrationRegistry extends EventEmitter {
     if (!this.versionGraph.has(migration.fromVersion)) {
       this.versionGraph.set(migration.fromVersion, new Set());
     }
-    this.versionGraph.get(migration.fromVersion)!.add(migration.toVersion);
+    const versionSet = this.versionGraph.get(migration.fromVersion);
+    if (versionSet) {
+      versionSet.add(migration.toVersion);
+    }
     
     this.emit('migration:registered', migration);
   }

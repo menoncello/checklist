@@ -38,14 +38,13 @@ export class MigrationRunner extends EventEmitter {
     const { 
       dryRun = false, 
       createBackup = true, 
-      verbose = false,
-      signal
+      verbose = false
     } = options;
 
     try {
       const state = await this.loadState(statePath);
-      const fromVersion = state.version || state.schemaVersion || '0.0.0';
-      const toVersion = targetVersion || this.currentVersion;
+      const fromVersion = (state.version as string | undefined) ?? (state.schemaVersion as string | undefined) ?? '0.0.0';
+      const toVersion = targetVersion ?? this.currentVersion;
 
       if (fromVersion === toVersion) {
         if (verbose) {
@@ -103,7 +102,7 @@ export class MigrationRunner extends EventEmitter {
 
       let migratedState = state;
       const appliedMigrations: string[] = [];
-      const migrationRecords: MigrationRecord[] = state.migrations || [];
+      const migrationRecords: MigrationRecord[] = (state.migrations as MigrationRecord[] | undefined) ?? [];
 
       for (let i = 0; i < migrationPath.migrations.length; i++) {
         // Check if migration should be aborted
@@ -160,7 +159,7 @@ export class MigrationRunner extends EventEmitter {
 
           this.emit('migration:error', migrationError);
 
-          if (createBackup && backupPath) {
+          if (createBackup && backupPath !== undefined) {
             if (verbose) {
               console.error(`❌ Migration failed, rolling back...`);
             }
@@ -192,7 +191,7 @@ export class MigrationRunner extends EventEmitter {
       return {
         success: false,
         fromVersion: '',
-        toVersion: targetVersion || this.currentVersion,
+        toVersion: targetVersion ?? this.currentVersion,
         error: error instanceof Error ? error : new Error(String(error)),
         appliedMigrations: []
       };
@@ -305,7 +304,7 @@ export class MigrationRunner extends EventEmitter {
       }
       
       return backupFiles.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-    } catch (error) {
+    } catch {
       return [];
     }
   }

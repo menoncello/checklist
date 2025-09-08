@@ -12,8 +12,8 @@ export const migration_v0_1_0_to_v0_2_0: Migration = {
       ...state,
       version: '0.2.0',
       schemaVersion: '0.2.0',
-      templates: state.templates || [],
-      variables: state.variables || {},
+      templates: (state.templates as unknown[] | undefined) ?? [],
+      variables: (state.variables as Record<string, unknown> | undefined) ?? {},
       metadata: {
         ...state.metadata,
         modified: now,

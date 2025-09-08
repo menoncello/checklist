@@ -13,12 +13,12 @@ export const migration_v0_0_0_to_v0_1_0: Migration = {
       version: '0.1.0',
       schemaVersion: '0.1.0',
       metadata: {
-        created: state.created || state.createdAt || now,
-        modified: state.modified || state.modifiedAt || state.lastModified || now,
+        created: (state.created as string | undefined) ?? (state.createdAt as string | undefined) ?? now,
+        modified: (state.modified as string | undefined) ?? (state.modifiedAt as string | undefined) ?? (state.lastModified as string | undefined) ?? now,
         migrationHistory: []
       },
       checklists: Array.isArray(state.checklists) ? state.checklists : [],
-      settings: state.settings || {},
+      settings: (state.settings as Record<string, unknown> | undefined) ?? {},
       lastModified: now
     };
   },

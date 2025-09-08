@@ -13,15 +13,15 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
       ...state,
       version: '1.0.0',
       schemaVersion: '1.0.0',
-      recovery: state.recovery || null,
-      conflicts: state.conflicts || [],
+      recovery: (state.recovery as unknown | undefined) ?? null,
+      conflicts: (state.conflicts as unknown[] | undefined) ?? [],
       lastModified: now
     };
     
     if (state.activeInstance) {
       enhancedState.activeInstance = {
         ...state.activeInstance,
-        completedSteps: (state.activeInstance.completedSteps || []).map((step: any) => {
+        completedSteps: ((state.activeInstance.completedSteps as unknown[]) ?? []).map((step: any) => {
           if (typeof step === 'string') {
             return {
               id: step,
