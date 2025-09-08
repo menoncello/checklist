@@ -536,3 +536,6 @@ export class StateManager {
     await this.concurrencyManager.releaseLock();
   }
 }
+
+// Re-export types for CLI usage
+export type { BackupInfo } from './migrations/types';
