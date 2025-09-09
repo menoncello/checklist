@@ -312,9 +312,9 @@ None - No code changes made during review.
 ### Gate Status
 
 Gate: **PASS** → docs/qa/gates/1.10-pino-logging-infrastructure.yml
-Risk profile: docs/qa/assessments/1.10-pino-logging-infrastructure-risk-20250908.md
-NFR assessment: docs/qa/assessments/1.10-pino-logging-infrastructure-nfr-20250908.md
-Trace matrix: docs/qa/assessments/1.10-pino-logging-infrastructure-trace-20250908.md
+Risk profile: docs/qa/assessments/1.10-risk-20250908.md
+NFR assessment: docs/qa/assessments/1.10-nfr-20250908.md
+Trace matrix: docs/qa/assessments/1.10-trace-20250908.md
 
 ### Recommended Status
 

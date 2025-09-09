@@ -1,5 +1,7 @@
 # Epic 2: TUI Core with Performance
 
+## Status: 📝 READY TO START (0% Complete - 0/7 stories)
+
 ## Goal
 
 Build the complete TUI interface with core checklist functionality, ensuring high performance and terminal compatibility from the start.
@@ -12,36 +14,44 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 - ✅ Keyboard navigation fully functional
 - ✅ Works across major terminal emulators
 
-## Stories
+## Stories (7 total, 0 complete)
 
-1. [Story 2.1: Checklist Panel with Virtual Scrolling](story-2.1-checklist-panel.md)
-2. [Story 2.2: Detail Panel with Markdown Support](story-2.2-detail-panel.md)
-3. [Story 2.3: Core Navigation Commands](story-2.3-navigation.md)
-4. [Story 2.4: Performance Monitoring System](story-2.4-performance.md)
-5. [Story 2.5: TUI Application Shell](story-2.5-app-shell.md)
-6. [Story 2.6: Terminal Compatibility Suite](story-2.6-compatibility.md)
+### 📝 Ready to Start
+1. [Story 2.1: CLI Core Interface](story-2.1-cli-core-interface.md) 📝 **READY**
+2. [Story 2.2: Interactive Selection System](story-2.2-interactive-selection.md) 📝 **READY**
+3. [Story 2.3: Progress Visualization](story-2.3-progress-visualization.md) 📝 **READY**
+4. [Story 2.4: State Operations Interface](story-2.4-state-operations.md) 📝 **READY**
+5. [Story 2.5: Help & Documentation System](story-2.5-help-documentation.md) 📝 **READY**
+6. [Story 2.6: Error Handling & Recovery](story-2.6-error-handling.md) 📝 **READY**
+7. [Story 2.7: Configuration Management UI](story-2.7-configuration-management.md) 📝 **READY**
 
 ## Dependencies
 
-- Epic 1 must be complete
-- Story 1.2 (TUI Spike) must succeed
-- If TUI spike failed, this epic is replaced with Enhanced CLI epic
+- Epic 1 must be substantially complete (currently 65%)
+- ✅ Story 1.4 (TUI Spike) **PASSED** - Proceeding with TUI implementation
+- Core infrastructure from Epic 1 is ready (state, workflow, logging, DI)
 
 ## Risk Factors
 
-- 🟡 Performance with large lists
-- 🟡 Terminal compatibility issues
-- 🟡 Flicker on slower systems
+- 🟡 Performance with large lists (addressed by virtual scrolling)
+- 🟡 Terminal compatibility issues (dedicated story 2.6)
+- 🟡 Flicker on slower systems (performance monitoring in place)
+- 🟢 TUI spike passed - major risk mitigated
 
 ## Timeline Estimate
 
-**2-3 weeks**
+**2 weeks** (can begin while Epic 1 completes)
 
 ## Definition of Done
 
-- [ ] TUI fully functional
-- [ ] Performance targets met
+- [ ] CLI interface operational
+- [ ] Interactive selection working
+- [ ] Progress visualization implemented
+- [ ] State operations accessible via UI
+- [ ] Help system integrated
+- [ ] Error handling robust
+- [ ] Configuration management UI complete
+- [ ] Performance targets met (<100ms)
 - [ ] Cross-platform tested
-- [ ] No visual glitches
 - [ ] Keyboard navigation complete
-- [ ] Accessibility verified
+- [ ] Documentation updated

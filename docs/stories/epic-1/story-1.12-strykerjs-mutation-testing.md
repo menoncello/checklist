@@ -381,7 +381,7 @@ claude-opus-4-1-20250805 (James - Full Stack Developer)
 - Partially Covered: 2 (25%)
 - Not Covered: 0 (0%)
 
-**Traceability Matrix:** `docs/qa/assessments/1.12-strykerjs-mutation-testing-trace-20250109.md`
+**Traceability Matrix:** `docs/qa/assessments/1.12-trace-20250109.md`
 
 **Key Findings:**
 
@@ -512,9 +512,9 @@ No files were modified during this review - the implementation is sound.
 **Gate: CONCERNS** → `docs/qa/gates/1.12-strykerjs-mutation-testing.yml`
 
 **Assessment Files:**
-- Risk profile: `docs/qa/assessments/1.12-strykerjs-mutation-testing-risk-20250109.md`
-- NFR assessment: `docs/qa/assessments/1.12-strykerjs-mutation-testing-nfr-20250109.md`
-- Trace matrix: `docs/qa/assessments/1.12-strykerjs-mutation-testing-trace-20250109.md`
+- Risk profile: `docs/qa/assessments/1.12-risk-20250109.md`
+- NFR assessment: `docs/qa/assessments/1.12-nfr-20250109.md`
+- Trace matrix: `docs/qa/assessments/1.12-trace-20250109.md`
 
 **Quality Score: 80/100**
 - Deductions: -20 points for two medium-severity concerns (test coverage and dashboard integration)

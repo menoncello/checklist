@@ -61,4 +61,3 @@ This document has been sharded into multiple sections for better organization an
 
 - [← Back to Project Root](../README.md)
 - [→ Architecture Document](../architecture.md)
-- [→ PRD Sections Index](./prd/index.md)
