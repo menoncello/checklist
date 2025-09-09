@@ -28,51 +28,32 @@ timeout = 5000
 # Coverage thresholds
 coverageThreshold = { lines = 80, functions = 80, branches = 80, statements = 80 }
 
-# Files to exclude from coverage
-coverageExclude = [
+# Skip test files from coverage
+coverageSkipTestFiles = true
+
+# Files to exclude from coverage using the correct Bun configuration
+coveragePathIgnorePatterns = [
   "**/node_modules/**",
-  "dist/**",
   "**/dist/**",
-  "*.config.ts",
-  "*.config.js",
-  "*.config.mjs",
-  "*.config.cjs",
   "**/*.config.ts",
   "**/*.config.js",
   "**/*.config.mjs",
   "**/*.config.cjs",
   "**/*.mock.ts",
+  "**/*.mocks.ts",
+  "**/Mock*.ts",
   "**/*.test.ts",
   "**/*.spec.ts",
   "**/*.bench.ts",
-  "**/tests/**/*",
-  "**/test-utils/**/*",
-  "**/mocks/**/*",
+  "**/tests/**",
+  "**/test-utils/**",
+  "**/mocks/**",
   "**/examples/**",
   "**/scripts/**",
-  ".prettierrc.js",
-  "eslint.config.js",
-  "performance.config.ts"
+  "performance.config.ts",
+  "**/TestDataFactory.ts",
+  "**/LogAssertions.ts"
 ]
-
-# Files to include in coverage - be explicit about src only, excluding test files
-coverageInclude = [
-  "packages/core/src/**/*.ts",
-  "packages/cli/src/**/*.ts",
-  "packages/tui/src/**/*.ts",
-  "packages/shared/src/**/*.ts",
-  "!packages/**/*.mock.ts",
-  "!packages/**/*.test.ts",
-  "!packages/**/*.spec.ts",
-  "!packages/**/*.bench.ts",
-  "!packages/**/*.config.ts",
-  "!packages/**/tests/**",
-  "!packages/**/test-utils/**",
-  "!packages/**/mocks/**"
-]
-
-# Skip coverage for compiled files
-coverageSkipFullyInstrumented = true
 
 # Development Configuration
 [dev]

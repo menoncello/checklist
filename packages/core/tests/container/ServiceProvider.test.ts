@@ -1,10 +1,10 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { ServiceProvider } from '../../src/container/ServiceProvider';
-import { MockLoggerService } from '../../mocks/LoggerService.mock';
-import { MockConfigService } from '../../mocks/ConfigService.mock';
-import { MockFileSystemService } from '../../mocks/FileSystemService.mock';
-import { MockStateManagerService } from '../../mocks/StateManagerService.mock';
-import { MockWorkflowEngineService } from '../../mocks/WorkflowEngineService.mock';
+import { MockLoggerService } from '../mocks/LoggerService.mock';
+import { MockConfigService } from '../mocks/ConfigService.mock';
+import { MockFileSystemService } from '../mocks/FileSystemService.mock';
+import { MockStateManagerService } from '../mocks/StateManagerService.mock';
+import { MockWorkflowEngineService } from '../mocks/WorkflowEngineService.mock';
 
 describe('ServiceProvider', () => {
   let provider: ServiceProvider;

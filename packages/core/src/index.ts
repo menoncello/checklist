@@ -84,10 +84,8 @@ export {
 export { BaseService, type ServiceConfig } from './services/BaseService';
 export { DIContainer, type ServiceRegistration } from './services/DIContainer';
 
-// Export test utilities
-export { MockLogger, InMemoryLogger } from './utils/MockLogger';
-export { TestDataFactory } from './test-utils/TestDataFactory';
-export { LogAssertions } from './test-utils/LogAssertions';
+// Test utilities have been moved to tests/test-utils/
+// Import them directly from there when needed in tests
 
 // Export monitoring
 export {

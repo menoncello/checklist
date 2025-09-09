@@ -1,5 +1,5 @@
-import type { MockLogger } from '../utils/MockLogger';
-import type { LogContext } from '../utils/logger';
+import type { MockLogger } from './MockLogger';
+import type { LogContext } from '../../src/utils/logger';
 
 /**
  * LogAssertions - Helper utilities for asserting log messages in tests

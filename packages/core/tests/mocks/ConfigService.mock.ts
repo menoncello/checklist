@@ -2,7 +2,7 @@ import type {
   IConfigService,
   AppConfig,
   ServiceConfig,
-} from '../src/interfaces/IConfigService';
+} from '../../src/interfaces/IConfigService';
 
 export class MockConfigService implements IConfigService {
   private config: AppConfig = {

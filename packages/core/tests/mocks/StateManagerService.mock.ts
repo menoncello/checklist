@@ -2,7 +2,7 @@ import type {
   IStateManager,
   StateData,
   WorkflowInstance,
-} from '../src/interfaces/IStateManager';
+} from '../../src/interfaces/IStateManager';
 
 export class MockStateManagerService implements IStateManager {
   private state: StateData = {

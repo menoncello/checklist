@@ -1,11 +1,11 @@
-import type { WorkflowInstance } from '../src/interfaces/IStateManager';
+import type { WorkflowInstance } from '../../src/interfaces/IStateManager';
 import type {
   IWorkflowEngine,
   WorkflowDefinition,
   WorkflowStep,
   WorkflowEvent,
   WorkflowEventHandler,
-} from '../src/interfaces/IWorkflowEngine';
+} from '../../src/interfaces/IWorkflowEngine';
 
 export class MockWorkflowEngineService implements IWorkflowEngine {
   private workflows: Map<string, WorkflowDefinition> = new Map();

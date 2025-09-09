@@ -1,5 +1,5 @@
-import { MockLogger, InMemoryLogger } from '../utils/MockLogger';
-import type { Logger } from '../utils/logger';
+import { MockLogger, InMemoryLogger } from './MockLogger';
+import type { Logger } from '../../src/utils/logger';
 
 /**
  * TestDataFactory - Factory for creating test data and mocks

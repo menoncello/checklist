@@ -5,7 +5,7 @@ import type {
   WriteOptions,
   WatchOptions,
   FileChangeHandler,
-} from '../src/interfaces/IFileSystemService';
+} from '../../src/interfaces/IFileSystemService';
 
 interface VirtualFile {
   content: string | Buffer;

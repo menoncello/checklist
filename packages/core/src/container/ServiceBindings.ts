@@ -1,8 +1,8 @@
-import { MockConfigService } from '../../mocks/ConfigService.mock';
-import { MockFileSystemService } from '../../mocks/FileSystemService.mock';
-import { MockLoggerService } from '../../mocks/LoggerService.mock';
-import { MockStateManagerService } from '../../mocks/StateManagerService.mock';
-import { MockWorkflowEngineService } from '../../mocks/WorkflowEngineService.mock';
+import { MockConfigService } from '../../tests/mocks/ConfigService.mock';
+import { MockFileSystemService } from '../../tests/mocks/FileSystemService.mock';
+import { MockLoggerService } from '../../tests/mocks/LoggerService.mock';
+import { MockStateManagerService } from '../../tests/mocks/StateManagerService.mock';
+import { MockWorkflowEngineService } from '../../tests/mocks/WorkflowEngineService.mock';
 import { BunFileSystemService } from '../services/BunFileSystemService';
 import { ConfigService } from '../services/ConfigService';
 import { LoggerServiceAdapter } from '../services/LoggerServiceAdapter';

@@ -2,7 +2,7 @@ import type {
   ILogger,
   LogContext,
   ChildLoggerOptions,
-} from '../src/interfaces/ILogger';
+} from '../../src/interfaces/ILogger';
 
 export interface LogEntry {
   level: 'debug' | 'info' | 'warn' | 'error' | 'fatal';

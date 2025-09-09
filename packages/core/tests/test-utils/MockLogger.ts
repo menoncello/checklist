@@ -1,5 +1,5 @@
 import type { ChildLoggerOptions } from 'pino';
-import type { Logger, LogContext } from './logger';
+import type { Logger, LogContext } from '../../src/utils/logger';
 
 /**
  * MockLogger - Test double for Logger interface

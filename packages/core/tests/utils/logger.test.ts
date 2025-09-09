@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { createLogger, initializeLogger, LoggerService } from '../../src/utils/logger';
-import { MockLogger } from '../../src/utils/MockLogger';
-import { TestDataFactory } from '../../src/test-utils/TestDataFactory';
-import { LogAssertions } from '../../src/test-utils/LogAssertions';
+import { MockLogger } from '../test-utils/MockLogger';
+import { TestDataFactory } from '../test-utils/TestDataFactory';
+import { LogAssertions } from '../test-utils/LogAssertions';
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 
