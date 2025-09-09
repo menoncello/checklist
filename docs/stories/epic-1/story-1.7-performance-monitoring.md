@@ -1,5 +1,8 @@
 # Story 1.7: Performance Monitoring Framework
 
+## Status
+Approved
+
 ## Story
 
 **As a** development team,  
@@ -14,27 +17,27 @@
 
 ### Performance Infrastructure
 
-1. ✅ Performance measurement utilities created
-2. ✅ Benchmark suite established
-3. ✅ Performance budgets defined and enforced
-4. ✅ Automated performance testing in CI/CD
-5. ✅ Performance regression detection
+1. ❌ Performance measurement utilities created
+2. ❌ Benchmark suite established
+3. ❌ Performance budgets defined and enforced
+4. ❌ Automated performance testing in CI/CD
+5. ❌ Performance regression detection
 
 ### Monitoring Points
 
-1. ✅ Command execution time tracked
-2. ✅ File I/O operations measured
-3. ✅ TUI rendering performance monitored
-4. ✅ Memory usage tracked
-5. ✅ Startup time measured
+1. ❌ Command execution time tracked
+2. ❌ File I/O operations measured
+3. ❌ TUI rendering performance monitored
+4. ❌ Memory usage tracked
+5. ❌ Startup time measured
 
 ### Performance Targets
 
-1. ✅ All commands complete in <100ms
-2. ✅ Startup time <500ms
-3. ✅ Memory usage <50MB
-4. ✅ TUI renders at 60fps
-5. ✅ File operations <50ms
+1. ❌ All commands complete in <100ms
+2. ❌ Startup time <500ms
+3. ❌ Memory usage <50MB
+4. ❌ TUI renders at 60fps
+5. ❌ File operations <50ms
 
 ### Explicit Performance Benchmarks
 
@@ -262,18 +265,266 @@ jobs:
           fail-on-alert: true
 ```
 
-## Development Tasks
+## Tasks / Subtasks
 
-- [ ] Create PerformanceMonitor class
-- [ ] Implement timing decorators
-- [ ] Set up benchmark suite with Tinybench
-- [ ] Define performance budgets
-- [ ] Add performance tracking to core operations
-- [ ] Create performance dashboard
-- [ ] Integrate with CI/CD pipeline
-- [ ] Add performance regression detection
-- [ ] Document performance targets
-- [ ] Create performance profiling tools
+- [ ] Create PerformanceMonitor class (AC: 1)
+  - [ ] Implement PerformanceMonitor in `packages/core/src/monitoring/PerformanceMonitor.ts`
+  - [ ] Add performance metrics collection with Map-based storage
+  - [ ] Implement budget validation and violation detection
+- [ ] Implement timing decorators (AC: 1)  
+  - [ ] Create @Timed decorator with budget support
+  - [ ] Add method performance tracking
+  - [ ] Integrate with existing BaseService pattern
+- [ ] Set up benchmark suite with Tinybench (AC: 2)
+  - [ ] Create benchmark files in `packages/core/tests/benchmarks/`
+  - [ ] Implement core operation benchmarks
+  - [ ] Add performance thresholds validation
+- [ ] Define performance budgets (AC: 3)
+  - [ ] Set budgets for all critical operations per benchmark table
+  - [ ] Implement budget enforcement in PerformanceMonitor
+  - [ ] Create budget violation alerting
+- [ ] Add performance tracking to core operations (AC: 1, 2, 4, 5)
+  - [ ] Instrument WorkflowEngine operations
+  - [ ] Add StateManager performance tracking
+  - [ ] Integrate file I/O monitoring
+- [ ] Create performance dashboard (AC: 4)
+  - [ ] Implement development mode performance display
+  - [ ] Add real-time metrics visualization
+  - [ ] Create bottleneck identification tools
+- [ ] Integrate with CI/CD pipeline (AC: 2, 3)
+  - [ ] Add performance testing to GitHub Actions
+  - [ ] Implement regression detection
+  - [ ] Configure PR blocking on performance failures
+- [ ] Add performance regression detection (AC: 3, 5)
+  - [ ] Implement baseline comparison
+  - [ ] Add performance trend tracking
+  - [ ] Create regression alerts
+- [ ] Document performance targets (AC: All)
+  - [ ] Create performance requirements documentation
+  - [ ] Add monitoring guide
+  - [ ] Document profiling procedures
+- [ ] Create performance profiling tools (AC: 4, 5)
+  - [ ] Add memory profiling capabilities
+  - [ ] Implement operation tracing
+  - [ ] Create performance reporting
+
+## Dev Notes
+
+### Architecture Context & Integration
+
+**Integration with Existing Pino Logging** [Source: Story 1.10 - Pino Logging Infrastructure]:
+- Performance metrics MUST integrate with existing Pino structured logging system
+- Logger service already available at `packages/core/src/utils/logger.ts` 
+- Performance events should use child loggers for structured context:
+```typescript
+const perfLogger = createLogger('checklist:performance:monitor');
+perfLogger.info({
+  msg: 'Performance budget exceeded',
+  operation: 'loadTemplate',
+  budget: 100,
+  actual: 150,
+  exceedance: 50
+});
+```
+
+**Integration with IoC Container** [Source: Story 1.13 - IoC/Dependency Injection]:
+- PerformanceMonitor MUST be injectable service implementing IPerformanceMonitor interface
+- All services extend BaseService pattern with constructor injection:
+```typescript
+class PerformanceMonitorService extends BaseService implements IPerformanceMonitor {
+  constructor(config: ServiceConfig, logger: Logger) {
+    super(config, logger);
+  }
+}
+```
+- Register in DI container: `packages/core/src/container/ServiceProvider.ts`
+- Use mock implementation for testing: `packages/core/tests/mocks/MockPerformanceMonitor.ts`
+
+### Project Structure & File Locations
+
+**Performance Monitoring Files** [Source: architecture/source-tree.md]:
+- **Primary Implementation**: `packages/core/src/monitoring/PerformanceMonitor.ts`
+- **Interface Definition**: `packages/core/src/interfaces/IPerformanceMonitor.ts`
+- **Service Registration**: `packages/core/src/container/ServiceProvider.ts`
+- **Benchmark Suite**: `packages/core/tests/benchmarks/` directory
+  - `core.bench.ts` - Core operations benchmarks
+  - `state.bench.ts` - State management benchmarks 
+  - `workflow.bench.ts` - Workflow engine benchmarks
+- **Performance Reports**: `/reports/performance/` directory (alongside mutation reports)
+
+### Tech Stack Requirements
+
+**Performance Testing with Tinybench** [Source: architecture/tech-stack.md]:
+- **Tinybench 2.5.x** - Micro-benchmarks for <100ms requirement validation
+- **Bun Test** - Built-in test runner with native TypeScript support
+- **Performance API** - Use native `performance.now()` for precision timing
+- **GitHub Actions** - CI/CD integration for automated performance testing
+
+**Existing Tools Integration**:
+- **Pino 9.x** - Performance logging with structured output
+- **StrykerJS 8.2.x** - Mutation testing for performance monitoring code
+- **ESLint** - Code quality enforcement for performance utilities
+
+### Coding Standards for Performance Code
+
+**Mandatory Patterns** [Source: architecture/coding-standards.md]:
+```typescript
+// ALWAYS use Bun.env for environment configuration
+const perfEnabled = Bun.env.PERFORMANCE_MONITORING === 'true';
+
+// ALWAYS use AbortController for cancellable performance operations
+async measureOperation(timeout: number): Promise<PerformanceResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    return await this.execute({ signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ALWAYS include structured logging context
+this.logger.info({
+  msg: 'Performance measurement completed',
+  operation: operationName,
+  duration: endTime - startTime,
+  budget: budgetMs,
+  withinBudget: duration <= budgetMs
+});
+```
+
+**Resource Management**:
+- All timers and intervals MUST be tracked and cleaned up
+- Use WeakMap for operation metadata storage
+- Implement Disposable pattern for performance monitoring lifecycle
+
+### Service Architecture Pattern
+
+**BaseService Integration** [Source: Story 1.13 Dev Notes]:
+```typescript
+export class PerformanceMonitorService extends BaseService implements IPerformanceMonitor {
+  private metrics: Map<string, PerformanceMetric> = new Map();
+  private budgets: Map<string, number> = new Map();
+
+  constructor(config: ServiceConfig, logger: Logger) {
+    super(config, logger);
+  }
+
+  protected async onInitialize(): Promise<void> {
+    this.logger.debug('Initializing PerformanceMonitorService');
+    await this.loadPerformanceBudgets();
+  }
+
+  protected async onShutdown(): Promise<void> {
+    this.logger.debug('Shutting down PerformanceMonitorService');
+    await this.generateFinalReport();
+  }
+}
+```
+
+### Performance Targets & Budgets
+
+**Critical Operation Budgets** [From acceptance criteria table]:
+- Command Execution: 100ms target, 150ms P95
+- Application Startup: 500ms target, 750ms P95  
+- Template Parsing (1000 lines): 100ms target, 200ms P95
+- State Save: 50ms target, 75ms P95
+- State Load: 30ms target, 50ms P95
+- TUI Frame Render: 16.67ms target, 20ms P95
+- File System Operations: 50ms target, 75ms P95
+- Memory Baseline: 30MB target, 40MB P95
+- Memory Peak (10 checklists): 50MB target, 75MB P95
+
+### Testing Standards
+
+**Test File Locations** [Source: architecture/testing-strategy-complete-with-all-testing-utilities.md]:
+- Unit tests: `packages/core/tests/monitoring/PerformanceMonitor.test.ts`
+- Integration tests: `packages/core/tests/integration/PerformanceIntegration.test.ts`
+- Benchmark tests: `packages/core/tests/benchmarks/*.bench.ts`
+- Mock implementation: `packages/core/tests/mocks/MockPerformanceMonitor.ts`
+
+**Testing Requirements**:
+- Use Bun test runner with native TypeScript support
+- Mock performance monitor required for all unit tests (no actual timing)
+- Mutation testing with StrykerJS to achieve 85%+ threshold
+- Performance tests must validate budget thresholds using Tinybench
+- Test data factory pattern for creating mock performance data:
+```typescript
+export class TestDataFactory {
+  static createMockPerformanceMonitor(): IPerformanceMonitor {
+    return {
+      startTimer: mock(() => mock(() => {})),
+      recordMetric: mock(),
+      setBudget: mock(),
+      generateReport: mock(),
+    };
+  }
+}
+```
+
+**Bun Test Configuration Example**:
+```typescript
+// packages/core/tests/monitoring/PerformanceMonitor.test.ts
+import { test, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { PerformanceMonitorService } from '../../src/monitoring/PerformanceMonitor';
+
+beforeEach(() => {
+  // Reset performance monitor state
+  global.testContainer?.reset();
+});
+
+afterEach(() => {
+  // Cleanup any running timers
+  clearAllTimers();
+});
+
+test('should record performance metrics correctly', async () => {
+  const mockLogger = TestDataFactory.createMockLogger();
+  const perfMonitor = new PerformanceMonitorService({}, mockLogger);
+  
+  perfMonitor.recordMetric('test-operation', 50);
+  
+  const report = perfMonitor.generateReport();
+  expect(report.metrics['test-operation']).toBeDefined();
+  expect(report.metrics['test-operation'].average).toBe(50);
+});
+```
+
+**Test Coverage Requirements**:
+- Unit test coverage: 90%+ for performance utilities  
+- Integration test coverage for service interactions
+- Performance tests to verify all budget requirements
+- Benchmark validation for <100ms operations
+
+### Testing
+
+**Test File Locations**:
+- Unit tests: `packages/core/tests/monitoring/PerformanceMonitor.test.ts`
+- Integration tests: `packages/core/tests/integration/PerformanceIntegration.test.ts`
+- Benchmark tests: `packages/core/tests/benchmarks/*.bench.ts`
+- Mock implementations: `packages/core/tests/mocks/MockPerformanceMonitor.ts`
+
+**Testing Standards**:
+- Use Bun Test runner with native TypeScript support
+- All services must be mockable using Bun's `mock()` function
+- StrykerJS mutation testing threshold: 85% minimum
+- Performance benchmarks using Tinybench to validate <100ms requirements
+- Mock services prevent timing operations during unit tests
+
+**Testing Frameworks and Patterns**:
+- **Bun Test**: Native test runner with built-in TypeScript support
+- **Tinybench**: Performance benchmarking and validation
+- **Mock Pattern**: Use TestDataFactory for consistent mock creation
+- **Integration Pattern**: Test service interactions through DI container
+- **Benchmark Pattern**: Validate all critical operation budgets
+
+**Specific Testing Requirements**:
+- Performance monitor operations must not perform actual timing in unit tests
+- All budget violations must be testable through mock scenarios
+- Benchmark tests must validate P95 latency targets
+- Integration tests must verify Pino logging integration
+- Mock performance data generation for consistent test scenarios
 
 ## Definition of Done
 
@@ -302,3 +553,10 @@ jobs:
 - Monitor both average and P95 latencies
 - Track performance trends over time
 - Set up alerts for production performance
+
+## Change Log
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2025-09-09 | 1.0 | Initial story draft created | Scrum Master |
+| 2025-09-09 | 1.1 | Added Dev Notes, Testing section, aligned status indicators per template requirements | Sarah (PO) |
