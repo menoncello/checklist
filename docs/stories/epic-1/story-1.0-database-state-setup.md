@@ -468,7 +468,7 @@ interface Transaction {
 
 #### Full Assessment
 
-Risk profile: docs/qa/assessments/1.0-database-state-setup-risk-20250905.md
+Risk profile: docs/qa/assessments/1.0-risk-20250905.md
 
 ### Test Design - 2025-09-05
 
@@ -498,7 +498,7 @@ Risk profile: docs/qa/assessments/1.0-database-state-setup-risk-20250905.md
 
 #### Full Test Design
 
-Test design matrix: docs/qa/assessments/1.0-database-state-setup-test-design-20250905.md
+Test design matrix: docs/qa/assessments/1.0-test-design-20250905.md
 
 ### Requirements Traceability Matrix - 2025-09-05
 
@@ -527,7 +527,7 @@ Test design matrix: docs/qa/assessments/1.0-database-state-setup-test-design-202
 
 #### Full Traceability Report
 
-Trace matrix: docs/qa/assessments/1.0-database-state-setup-trace-20250905.md
+Trace matrix: docs/qa/assessments/1.0-trace-20250905.md
 
 ### NFR Assessment - 2025-09-05
 
@@ -554,7 +554,7 @@ Trace matrix: docs/qa/assessments/1.0-database-state-setup-trace-20250905.md
 
 #### Full NFR Assessment
 
-NFR assessment: docs/qa/assessments/1.0-database-state-setup-nfr-20250905.md
+NFR assessment: docs/qa/assessments/1.0-nfr-20250905.md
 
 ### Review Date: 2025-09-05
 

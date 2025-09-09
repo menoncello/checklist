@@ -4,7 +4,7 @@
 | ---------------------------- | ------------------ | ------------- | ----------------------------- | ----------------------------------- |
 | **Core Languages & Runtime** |
 | Runtime                      | Bun                | 1.1.x         | JavaScript/TypeScript runtime | High performance, built-in tooling  |
-| Language                     | TypeScript         | 5.3.x         | Type-safe development         | Strong typing across entire stack   |
+| Language                     | TypeScript         | 5.9+          | Type-safe development         | Strong typing across entire stack   |
 | **Testing Suite**            |
 | Unit Testing                 | Bun Test           | Built-in      | Unit and integration tests    | Native Bun test runner, zero-config |
 | Mutation Testing             | StrykerJS          | 8.2.x         | Test quality validation       | Ensures tests catch real bugs       |
@@ -18,7 +18,7 @@
 | **Quality & Security**       |
 | Linting                      | ESLint             | 8.57.x        | Code quality                  | Enforces consistent patterns        |
 | Formatting                   | Prettier           | 3.2.x         | Code formatting               | Automatic formatting                |
-| Type Checking                | tsc                | 5.3.x         | Type validation               | Compile-time type safety            |
+| Type Checking                | tsc                | 5.9+          | Type validation               | Compile-time type safety            |
 | Security Scanning            | npm audit          | Built-in      | Dependency vulnerabilities    | Catches known vulnerabilities       |
 | Static Analysis              | Semgrep            | 1.45.x        | Security patterns             | Finds security anti-patterns        |
 | **TUI/CLI Framework**        |

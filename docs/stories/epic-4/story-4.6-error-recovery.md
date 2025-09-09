@@ -1,4 +1,4 @@
-# Story 4.5: Error Recovery System
+# Story 4.6: Error Recovery System
 
 ## Story
 

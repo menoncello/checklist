@@ -1,4 +1,6 @@
-# Epic 5: Production & Community
+# Epic 5: Community & Collaboration
+
+## Status: 🔒 POST-MVP (0% Complete - 0/5 stories)
 
 ## Goal
 
@@ -13,36 +15,40 @@ Prepare for production deployment with CLI automation, error recovery, comprehen
 - ✅ Error recovery robust
 - ✅ Community features ready
 
-## Stories
+## Stories (5 total, 0 complete)
 
-1. [Story 5.1: CLI Automation Mode](story-5.1-cli-mode.md)
-2. [Story 5.2: Error Recovery System](story-5.2-recovery.md)
-3. [Story 5.3: Build and Distribution Pipeline](story-5.3-distribution.md)
-4. [Story 5.4: Core Documentation](story-5.4-docs.md)
-5. [Story 5.5: Community Framework](story-5.5-community.md)
-6. [Story 5.6: Advanced Documentation](story-5.6-advanced-docs.md)
-7. [Story 5.7: Distribution and Updates](story-5.7-updates.md)
+### 🔒 Post-MVP Features
+1. [Story 5.1: Template Marketplace](story-5.1-template-marketplace.md) 🌐 **POST-MVP**
+2. [Story 5.2: Team Synchronization](story-5.2-team-sync.md) 👥 **POST-MVP**
+3. [Story 5.3: Integration Hub](story-5.3-integration-hub.md) 🔗 **POST-MVP**
+4. [Story 5.4: Plugin System](story-5.4-plugin-system.md) 🧩 **POST-MVP**
+5. [Story 5.5: Community Framework](story-5.5-community-framework.md) 🎆 **POST-MVP**
 
 ## Dependencies
 
-- All previous epics complete
-- Core functionality stable
+- All previous epics (1-4) must be complete
+- MVP released and stable
+- User feedback incorporated
+- Community interest established
 
 ## Risk Factors
 
-- 🟡 Binary size may exceed target
-- 🟡 Platform-specific build issues
-- 🟡 Documentation scope creep
+- 🟡 Community adoption uncertainty
+- 🟡 Template security concerns
+- 🟡 Team sync complexity
+- 🟢 Low risk - not required for MVP
 
 ## Timeline Estimate
 
-**1-2 weeks**
+**Post-MVP** (Version 1.1+)
 
 ## Definition of Done
 
-- [ ] Binaries build for all platforms
-- [ ] Distribution channels active
-- [ ] Documentation complete
-- [ ] Error recovery tested
+- [ ] Template marketplace operational
+- [ ] Team synchronization working
+- [ ] Integration hub functional
+- [ ] Plugin system implemented
 - [ ] Community guidelines in place
-- [ ] Update mechanism working
+- [ ] Contribution process documented
+- [ ] Template sharing secure
+- [ ] Version compatibility handled

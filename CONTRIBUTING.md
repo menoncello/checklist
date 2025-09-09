@@ -40,7 +40,7 @@ BMAD Checklist Manager is a terminal-first workflow management tool that transfo
 ### Key Technologies
 
 - **Runtime:** Bun 1.1.x
-- **Language:** TypeScript 5.3.x
+- **Language:** TypeScript 5.9+
 - **Architecture:** Monorepo with Bun workspaces
 - **Testing:** Bun's native test runner
 - **State:** YAML-based file storage
@@ -327,7 +327,7 @@ Brief description of changes
 │   ├── cli/         # CLI interface
 │   ├── tui/         # Terminal UI
 │   └── shared/      # Shared types and utils
-├── templates/       # Built-in templates
+├── examples/        # Usage examples
 ├── docs/           # Documentation
 └── scripts/        # Build and dev scripts
 ```
@@ -427,7 +427,7 @@ NODE_OPTIONS="--max-old-space-size=4096" bun dev
 - Check existing issues: [GitHub Issues](https://github.com/your-org/bmad-checklist/issues)
 - Ask in discussions: [GitHub Discussions](https://github.com/your-org/bmad-checklist/discussions)
 - Read the docs: `/docs` directory
-- Architecture decisions: `/docs/adr`
+- Architecture decisions: `/docs/architecture/decisions/`
 
 ## Code of Conduct
 

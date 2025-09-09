@@ -1,5 +1,7 @@
 # Parallel Development Guide
 
+> **Note**: For complete story details and descriptions, see [README.md](./README.md)
+
 ## All Pending Stories - Simple Overview
 
 ### ✅ Completed Stories

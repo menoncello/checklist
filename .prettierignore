@@ -33,6 +33,9 @@ reports/
 *.config.ts
 .prettierignore
 
+# License file
+LICENSE
+
 # BMAD and other folders
 .bmad-core/
 prompts/

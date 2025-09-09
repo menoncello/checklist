@@ -603,13 +603,13 @@ trace:
     full: 28
     partial: 2
     none: 1
-  planning_ref: 'docs/qa/assessments/1.6b-schema-migration-test-design-20250108.md'
+  planning_ref: 'docs/qa/assessments/1.6b-test-design-20250107.md'
   uncovered:
     - ac: 'Progress Time Estimates'
       reason: 'Time estimation accuracy not explicitly tested'
     - ac: 'Backup Compression'
       reason: 'Optional enhancement not implemented'
-  notes: 'See docs/qa/assessments/1.6b-schema-migration-trace-20250109.md'
+  notes: 'See docs/qa/assessments/1.6b-trace-20250109.md'
 ```
 
 **Critical Findings:**
@@ -626,7 +626,7 @@ trace:
 - 7 dedicated test files
 - All acceptance criteria validated
 
-Trace matrix: docs/qa/assessments/1.6b-schema-migration-trace-20250109.md
+Trace matrix: docs/qa/assessments/1.6b-trace-20250109.md
 
 ### Non-Functional Requirements Assessment - 2025-01-09
 
@@ -656,7 +656,7 @@ nfr_validation:
 - ✅ Reliability: 10 rollback scenarios validate error recovery
 - ✅ Maintainability: 98 tests with excellent coverage
 
-NFR assessment: docs/qa/assessments/1.6b-schema-migration-nfr-20250109.md
+NFR assessment: docs/qa/assessments/1.6b-nfr-20250109.md
 
 Gate NFR block ready → paste into docs/qa/gates/1.6b-schema-migration.yml under nfr_validation
 
@@ -744,10 +744,10 @@ None - code quality excellent, no refactoring needed.
 ### Gate Status
 
 Gate: **PASS** → docs/qa/gates/1.6b-schema-migration.yml
-Risk profile: docs/qa/assessments/1.6b-schema-migration-risk-20250107.md
-NFR assessment: docs/qa/assessments/1.6b-schema-migration-nfr-20250109.md
-Trace matrix: docs/qa/assessments/1.6b-schema-migration-trace-20250109.md
-Test design: docs/qa/assessments/1.6b-schema-migration-test-design-20250107.md
+Risk profile: docs/qa/assessments/1.6b-risk-20250107.md
+NFR assessment: docs/qa/assessments/1.6b-nfr-20250109.md
+Trace matrix: docs/qa/assessments/1.6b-trace-20250109.md
+Test design: docs/qa/assessments/1.6b-test-design-20250107.md
 
 ### Recommended Status
 
