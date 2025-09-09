@@ -33,21 +33,42 @@ coverageExclude = [
   "**/node_modules/**",
   "dist/**",
   "**/dist/**",
+  "*.config.ts",
+  "*.config.js",
+  "*.config.mjs",
+  "*.config.cjs",
   "**/*.config.ts",
   "**/*.config.js",
-  "**/tests/**",
+  "**/*.config.mjs",
+  "**/*.config.cjs",
+  "**/*.mock.ts",
+  "**/*.test.ts",
+  "**/*.spec.ts",
+  "**/*.bench.ts",
+  "**/tests/**/*",
+  "**/test-utils/**/*",
+  "**/mocks/**/*",
   "**/examples/**",
   "**/scripts/**",
   ".prettierrc.js",
-  "eslint.config.js"
+  "eslint.config.js",
+  "performance.config.ts"
 ]
 
-# Files to include in coverage - be explicit about src only
+# Files to include in coverage - be explicit about src only, excluding test files
 coverageInclude = [
   "packages/core/src/**/*.ts",
   "packages/cli/src/**/*.ts",
   "packages/tui/src/**/*.ts",
-  "packages/shared/src/**/*.ts"
+  "packages/shared/src/**/*.ts",
+  "!packages/**/*.mock.ts",
+  "!packages/**/*.test.ts",
+  "!packages/**/*.spec.ts",
+  "!packages/**/*.bench.ts",
+  "!packages/**/*.config.ts",
+  "!packages/**/tests/**",
+  "!packages/**/test-utils/**",
+  "!packages/**/mocks/**"
 ]
 
 # Skip coverage for compiled files
