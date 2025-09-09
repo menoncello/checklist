@@ -1,0 +1,160 @@
+name: Mutation Testing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Add concurrency control
+concurrency:
+  group: mutation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: 1.2
+
+jobs:
+  mutation-test:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      
+      # Cache for faster builds
+      - name: Cache Stryker Temp Files
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.bun/install/cache
+            .stryker-tmp
+          key: ${{ runner.os }}-bun-stryker-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-stryker-
+      
+      # Run mutation testing for PRs (incremental)
+      - name: Run Mutation Testing (PR - Incremental)
+        if: github.event_name == 'pull_request'
+        env:
+          STRYKER_DASHBOARD_API_TOKEN: ${{ secrets.STRYKER_DASHBOARD_API_TOKEN }}
+        run: |
+          echo "Running incremental mutation testing for PR..."
+          bunx stryker run --incremental --reporters html,json,progress
+        continue-on-error: true  # Don't fail PRs on mutation score
+      
+      # Run full mutation testing on main branch
+      - name: Run Mutation Testing (Main - Full)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          STRYKER_DASHBOARD_API_TOKEN: ${{ secrets.STRYKER_DASHBOARD_API_TOKEN }}
+        run: |
+          echo "Running full mutation testing on main branch..."
+          bunx stryker run --reporters dashboard,html,json
+      
+      # Upload mutation reports
+      - name: Upload Mutation Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30
+      
+      # Comment on PR with mutation score
+      - name: Comment Mutation Score on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            try {
+              // Read mutation report
+              const reportPath = path.join(process.cwd(), 'reports/mutation/mutation-report.json');
+              if (fs.existsSync(reportPath)) {
+                const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+                const score = report.mutationScore || 0;
+                const threshold = 85;
+                
+                const status = score >= threshold ? '✅' : '⚠️';
+                const comment = `## ${status} Mutation Testing Results
+                
+                **Mutation Score: ${score.toFixed(2)}%** (Threshold: ${threshold}%)
+                
+                | Metric | Count |
+                |--------|-------|
+                | Total Mutants | ${report.totalMutants || 0} |
+                | Killed | ${report.killedMutants || 0} |
+                | Survived | ${report.survivedMutants || 0} |
+                | Timeout | ${report.timedOutMutants || 0} |
+                | No Coverage | ${report.noCoverage || 0} |
+                
+                View the full report in the [workflow artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).`;
+                
+                // Create or update comment
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                });
+                
+                const botComment = comments.find(comment => 
+                  comment.user.type === 'Bot' && 
+                  comment.body.includes('Mutation Testing Results')
+                );
+                
+                if (botComment) {
+                  await github.rest.issues.updateComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: botComment.id,
+                    body: comment,
+                  });
+                } else {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body: comment,
+                  });
+                }
+              } else {
+                console.log('Mutation report not found');
+              }
+            } catch (error) {
+              console.error('Error posting mutation results:', error);
+            }
+      
+      # Check mutation score threshold (only on main)
+      - name: Check Mutation Score Threshold
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -f "reports/mutation/mutation-report.json" ]; then
+            SCORE=$(jq '.mutationScore' reports/mutation/mutation-report.json)
+            echo "Mutation Score: $SCORE%"
+            
+            # Using bc for floating point comparison
+            if (( $(echo "$SCORE < 85" | bc -l) )); then
+              echo "❌ Mutation score $SCORE% is below threshold of 85%"
+              exit 1
+            else
+              echo "✅ Mutation score $SCORE% meets threshold"
+            fi
+          else
+            echo "⚠️ Mutation report not found"
+          fi
