@@ -117,6 +117,6 @@ module.exports = {
     slow: true,
   },
 
-  // Plugins (none needed for command runner)
-  plugins: [],
+  // Plugins (TypeScript checker plugin for compile-time error detection)
+  plugins: ['@stryker-mutator/typescript-checker'],
 };

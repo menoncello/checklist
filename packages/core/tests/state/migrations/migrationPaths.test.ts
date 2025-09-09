@@ -8,7 +8,8 @@ import * as yaml from 'js-yaml';
 describe('Migration Paths', () => {
   let registry: MigrationRegistry;
   let runner: MigrationRunner;
-  const testDir = '/tmp/test-migration-paths';
+  // Use unique directory for each test run to avoid conflicts
+  const testDir = `/tmp/test-migration-paths-${process.pid}-${Date.now()}`;
   const statePath = path.join(testDir, 'state.yaml');
 
   beforeEach(async () => {

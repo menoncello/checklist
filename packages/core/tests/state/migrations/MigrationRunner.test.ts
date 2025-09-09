@@ -8,7 +8,8 @@ import { Migration } from '../../../src/state/migrations/types';
 describe('MigrationRunner', () => {
   let runner: MigrationRunner;
   let registry: MigrationRegistry;
-  const testDir = '/tmp/test-migrations';
+  // Use unique directory for each test run to avoid conflicts
+  const testDir = `/tmp/test-migrations-${process.pid}-${Date.now()}`;
   const statePath = path.join(testDir, 'state.yaml');
   const backupDir = path.join(testDir, '.backup');
 

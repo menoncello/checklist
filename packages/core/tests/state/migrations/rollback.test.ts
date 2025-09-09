@@ -8,7 +8,8 @@ import { Migration, MigrationError } from '../../../src/state/migrations/types';
 describe('Migration Rollback Scenarios', () => {
   let runner: MigrationRunner;
   let registry: MigrationRegistry;
-  const testDir = '/tmp/test-rollback';
+  // Use unique directory for each test run to avoid conflicts
+  const testDir = `/tmp/test-rollback-${process.pid}-${Date.now()}`;
   const statePath = path.join(testDir, 'state.yaml');
   const backupDir = path.join(testDir, '.backup');
 

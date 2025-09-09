@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@stryker-mutator/core": "9.1.0",
+    "@stryker-mutator/typescript-checker": "^9.1.1",
     "@types/bun": "^1.2.21",
     "@types/debug": "^4.1.12",
     "@types/dotenv": "^8.2.3",
@@ -58,6 +59,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
     "prettier": "^3.6.2",
+    "tinybench": "^5.0.1",
     "typescript": "^5.9.2"
   },
   "dependencies": {
