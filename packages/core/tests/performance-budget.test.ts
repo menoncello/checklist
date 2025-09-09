@@ -51,6 +51,11 @@ describe('Performance Budget Tests', () => {
   
   describe('Startup Performance', () => {
     test('should start CLI within budget', async () => {
+      // Skip in Stryker mutation testing environment
+      if (process.env.STRYKER_MUTATOR_RUNNER) {
+        return;
+      }
+      
       const startTime = performance.now();
       
       const proc = Bun.spawn(['bun', 'run', './packages/cli/src/index.ts', '--help'], {

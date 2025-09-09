@@ -11,6 +11,9 @@ dist/
 # Test coverage
 coverage/
 
+# Mutation reports
+reports/
+
 # Git
 .git/
 .gitignore

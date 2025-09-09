@@ -28,6 +28,9 @@
     "bench": "bun run packages/core/tests/benchmarks/startup.bench.ts",
     "bench:assert": "bun run bench --assert",
     "bench:compare": "bun run packages/core/tests/benchmarks/compare.ts",
+    "test:mutation": "bunx stryker run --incremental",
+    "test:mutation:full": "bunx stryker run --incremental false",
+    "test:mutation:clean": "rm -rf .stryker-tmp && bunx stryker run --incremental",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -40,6 +43,7 @@
     ]
   },
   "devDependencies": {
+    "@stryker-mutator/core": "9.1.0",
     "@types/bun": "^1.2.21",
     "@types/debug": "^4.1.12",
     "@types/dotenv": "^8.2.3",

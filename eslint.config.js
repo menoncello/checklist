@@ -23,7 +23,9 @@ export default [
       '**/tests/**',
       'performance.config.ts',
       '.vscode/**',
-      '.husky/**'
+      '.husky/**',
+      '.stryker-tmp/**',
+      'stryker.conf.js'
     ]
   },
   {

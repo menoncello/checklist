@@ -36,3 +36,6 @@ npm-debug.log*
 # Checklist state files
 .checklist/
 !.checklist/.gitkeep
+
+# StrykerJS temporary files
+.stryker-tmp/
