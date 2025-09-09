@@ -53,8 +53,12 @@ module.exports = {
   },
 
   // Enable incremental testing for faster PR validation
+  // ALWAYS run incrementally to reduce test time
   incremental: true,
   incrementalFile: '.stryker-tmp/incremental.json',
+
+  // Force incremental mode even on CI (unless explicitly disabled)
+  force: process.env.STRYKER_INCREMENTAL_FORCE !== 'false',
 
   // Performance settings
   concurrency: 4,
@@ -78,7 +82,11 @@ module.exports = {
   },
 
   // Coverage analysis (speeds up mutation testing)
+  // Use 'perTest' for better incremental performance
   coverageAnalysis: 'perTest',
+
+  // Optimize for incremental runs
+  checkers: ['typescript'], // Enable type checking to catch compile errors early
 
   // Logging
   logLevel: 'info',

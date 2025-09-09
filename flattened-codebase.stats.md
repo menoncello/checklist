@@ -3,19 +3,19 @@
 ## 📊 Summary
 - Total source size: 16.6 MB
 - Generated XML size: 16.8 MB
-- Total lines of code: 45,732
-- Estimated tokens: 4,392,474
-- File breakdown: 228 text, 2 binary, 0 errors
+- Total lines of code: 46,116
+- Estimated tokens: 4,395,919
+- File breakdown: 230 text, 2 binary, 0 errors
 
 ## 📈 Size Percentiles
-Avg: 75,816 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
+Avg: 75,217 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
 
 ## 🧮 Size Histogram
 | Bucket | Files | Bytes |
 | --- | ---: | ---: |
-| 0–1KB | 18 | 11,461 |
-| 1–10KB | 170 | 897,131 |
-| 10–100KB | 39 | 594,087 |
+| 0–1KB | 18 | 11,490 |
+| 1–10KB | 172 | 907,900 |
+| 10–100KB | 39 | 596,102 |
 | 100KB–1MB | 1 | 111,317 |
 | 1–10MB | 2 | 15,823,582 |
 | 10–100MB | 0 | 0 |
@@ -24,31 +24,31 @@ Avg: 75,816 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
 ## 📦 Top Extensions by Bytes (Top 20)
 | Ext | Files | Bytes | % of total |
 | --- | ---: | ---: | ---: |
-| .html | 1 | 8,031,032 | 46.06% |
-| .json | 4 | 7,796,497 | 44.71% |
-| .md | 190 | 1,395,996 | 8.01% |
+| .html | 1 | 8,031,032 | 46.02% |
+| .json | 4 | 7,796,594 | 44.68% |
+| .md | 192 | 1,408,352 | 8.07% |
 | .lock | 1 | 111,317 | 0.64% |
 | .yml | 17 | 73,404 | 0.42% |
 | .ts | 6 | 15,672 | 0.09% |
-| .js | 3 | 6,640 | 0.04% |
-| <none> | 6 | 3,507 | 0.02% |
+| .js | 3 | 6,971 | 0.04% |
+| <none> | 6 | 3,536 | 0.02% |
 | .toml | 1 | 1,781 | 0.01% |
 | .sh | 1 | 1,732 | 0.01% |
 
 ## 📂 Top Directories by Bytes (Top 20)
 | Directory | Files | Bytes | % of total |
 | --- | ---: | ---: | ---: |
-| reports | 2 | 15,823,582 | 90.74% |
-| reports/mutation | 2 | 15,823,582 | 90.74% |
-| docs | 153 | 1,079,871 | 6.19% |
-| docs/stories | 53 | 442,868 | 2.54% |
-| docs/qa | 56 | 429,299 | 2.46% |
-| docs/qa/assessments | 47 | 400,017 | 2.29% |
+| reports | 2 | 15,823,582 | 90.68% |
+| reports/mutation | 2 | 15,823,582 | 90.68% |
+| docs | 155 | 1,092,264 | 6.26% |
+| docs/stories | 53 | 444,883 | 2.55% |
+| docs/qa | 58 | 439,677 | 2.52% |
+| docs/qa/assessments | 49 | 410,395 | 2.35% |
 | .claude | 33 | 202,227 | 1.16% |
 | .claude/commands | 33 | 202,227 | 1.16% |
 | .claude/commands/BMad | 33 | 202,227 | 1.16% |
 | docs/stories/epic-1 | 13 | 183,732 | 1.05% |
-| . | 15 | 148,168 | 0.85% |
+| . | 15 | 148,588 | 0.85% |
 | .claude/commands/BMad/tasks | 23 | 144,388 | 0.83% |
 | prompts | 9 | 115,954 | 0.66% |
 | docs/architecture | 23 | 84,798 | 0.49% |
@@ -65,7 +65,7 @@ Avg: 75,816 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
 | 1 | 15 |
 | 2 | 24 |
 | 3 | 54 |
-| 4 | 104 |
+| 4 | 106 |
 | 5 | 33 |
 
 ## 🧵 Longest Paths (Top 25)
@@ -78,13 +78,15 @@ Avg: 75,816 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
 | docs/qa/assessments/1.10-pino-logging-infrastructure-trace-20250908.md | 70 | 8,117 |
 | docs/architecture/security-and-performance-complete-implementation.md | 69 | 4,276 |
 | docs/qa/assessments/1.10-pino-logging-infrastructure-risk-20250908.md | 69 | 10,498 |
+| docs/qa/assessments/1.12-strykerjs-mutation-testing-trace-20250109.md | 69 | 6,343 |
 | docs/architecture/backend-architecture-complete-with-all-services.md | 68 | 5,078 |
 | docs/architecture/api-specification-complete-with-all-refinements.md | 68 | 3,257 |
-| docs/qa/assessments/1.0-database-state-setup-test-design-20250905.md | 68 | 14,310 |
-| docs/qa/assessments/1.10-pino-logging-infrastructure-nfr-20250908.md | 68 | 4,252 |
 | docs/qa/assessments/1.11-security-fix-npm-packages-trace-20250109.md | 68 | 7,309 |
+| docs/qa/assessments/1.10-pino-logging-infrastructure-nfr-20250908.md | 68 | 4,252 |
+| docs/qa/assessments/1.0-database-state-setup-test-design-20250905.md | 68 | 14,310 |
 | docs/qa/assessments/1.6a-state-transactions-trace-20250907-181322.md | 68 | 16,449 |
 | docs/architecture/database-schema-complete-with-all-enhancements.md | 67 | 2,597 |
+| docs/qa/assessments/1.12-strykerjs-mutation-testing-nfr-20250109.md | 67 | 4,035 |
 | docs/qa/assessments/1.6a-state-transactions-test-design-20250107.md | 67 | 9,000 |
 | docs/qa/assessments/1.11-security-fix-npm-packages-nfr-20250109.md | 66 | 4,734 |
 | docs/qa/assessments/1.6a-state-transactions-nfr-20250907-182344.md | 66 | 10,625 |
@@ -94,12 +96,10 @@ Avg: 75,816 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
 | docs/qa/assessments/1.0-database-state-setup-trace-20250905.md | 62 | 11,465 |
 | docs/architecture/internationalization-i18n-considerations.md | 61 | 2,522 |
 | docs/qa/assessments/1.0-database-state-setup-risk-20250905.md | 61 | 12,243 |
-| docs/qa/assessments/1.1-project-setup-test-design-20250905.md | 61 | 10,427 |
-| docs/qa/assessments/1.6a-state-transactions-trace-20250107.md | 61 | 9,506 |
 
 ## ⏱️ Temporal
 - Oldest: .claude/commands/BMad/agents/ux-expert.md (2025-09-04T12:37:33.182Z)
-- Newest: stryker.conf.js (2025-09-09T03:09:19.019Z)
+- Newest: package.json (2025-09-09T04:47:27.077Z)
 
 | Age | Files | Bytes |
 | --- | ---: | ---: |
@@ -107,8 +107,8 @@ Avg: 75,816 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
 | 6–12 months | 0 | 0 |
 | 1–6 months | 0 | 0 |
 | 7–30 days | 0 | 0 |
-| 1–7 days | 186 | 1,177,802 |
-| < 1 day | 44 | 16,259,776 |
+| 1–7 days | 185 | 1,177,365 |
+| < 1 day | 47 | 16,273,026 |
 
 ## ✅ Quality Signals
 - Zero-byte files: 0
@@ -119,17 +119,17 @@ Avg: 75,816 B, Median: 5,516 B, p90: 13,062 B, p95: 17,543 B, p99: 111,317 B
 - Suspiciously large files (>= 100 MB): 0
 
 ## 🗜️ Compressibility
-Sampled compressibility ratio: 31.63%
+Sampled compressibility ratio: 31.67%
 
 ## 🔧 Git
-- Tracked: 225 files, 1,600,726 bytes
-- Untracked: 5 files, 15,836,852 bytes
+- Tracked: 232 files, 17,450,391 bytes
+- Untracked: 0 files, 0 bytes
 
 ## 📚 Largest Files (Top 50)
 | Path | Size | % of total | LOC |
 | --- | ---: | ---: | ---: |
-| reports/mutation/index.html | 7.7 MB | 46.06% | 480 |
-| reports/mutation/mutation-report.json | 7.4 MB | 44.69% | 1 |
+| reports/mutation/index.html | 7.7 MB | 46.02% | 480 |
+| reports/mutation/mutation-report.json | 7.4 MB | 44.66% | 1 |
 | bun.lock | 108.7 KB | 0.64% | 1,015 |
 | docs/stories/epic-1/story-1.6-workflow-engine.md | 28.5 KB | 0.17% | 865 |
 | docs/stories/epic-1/story-1.0-database-state-setup.md | 26.0 KB | 0.15% | 684 |
@@ -140,9 +140,9 @@ Sampled compressibility ratio: 31.63%
 | docs/stories/epic-1/story-1.2-cicd-pipeline.md | 20.9 KB | 0.12% | 565 |
 | prompts/09-progress-dashboard.md | 17.2 KB | 0.10% | 422 |
 | prompts/08-template-selection.md | 17.1 KB | 0.10% | 428 |
+| docs/stories/1.12.strykerjs-mutation-testing.story.md | 16.8 KB | 0.10% | 424 |
 | docs/stories/epic-1/story-1.1-project-setup.md | 16.7 KB | 0.10% | 580 |
 | docs/qa/assessments/1.6a-state-transactions-trace-20250907-181322.md | 16.1 KB | 0.09% | 482 |
-| docs/stories/1.12.strykerjs-mutation-testing.story.md | 14.9 KB | 0.09% | 372 |
 | docs/stories/1.10.pino-logging-infrastructure.story.md | 14.9 KB | 0.09% | 323 |
 | prompts/06-help-overlay.md | 14.7 KB | 0.09% | 357 |
 | docs/stories/1.11.security-fix-npm-packages.story.md | 14.5 KB | 0.08% | 370 |

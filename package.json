@@ -28,8 +28,9 @@
     "bench": "bun run packages/core/tests/benchmarks/startup.bench.ts",
     "bench:assert": "bun run bench --assert",
     "bench:compare": "bun run packages/core/tests/benchmarks/compare.ts",
-    "test:mutation": "bunx stryker run",
-    "test:mutation:incremental": "bunx stryker run --incremental",
+    "test:mutation": "bunx stryker run --incremental",
+    "test:mutation:full": "bunx stryker run --incremental false",
+    "test:mutation:clean": "rm -rf .stryker-tmp && bunx stryker run --incremental",
     "prepare": "husky"
   },
   "lint-staged": {
