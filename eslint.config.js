@@ -84,7 +84,29 @@ export default [
       // Security rules (MANDATORY)
       'no-eval': 'error',
       'no-implied-eval': 'error',
-      'no-new-func': 'error'
+      'no-new-func': 'error',
+      
+      // Ban compromised packages (Security Fix Story 1.11)
+      'no-restricted-imports': ['error', {
+        'paths': [
+          {
+            'name': 'chalk',
+            'message': 'Use ansis instead of chalk (Security: chalk was compromised)'
+          },
+          {
+            'name': 'color-name',
+            'message': 'Package compromised with malware - do not use'
+          },
+          {
+            'name': 'color-convert',
+            'message': 'Package compromised with malware - do not use'
+          },
+          {
+            'name': 'ansi-styles',
+            'message': 'Package compromised with malware - use ansis instead'
+          }
+        ]
+      }]
     }
   },
   {

@@ -6,9 +6,8 @@ import { MigrationRegistry } from '@checklist/core/src/state/migrations/Migratio
 import { detectVersion } from '@checklist/core/src/state/migrations/versionDetection';
 import type { StateSchema } from '@checklist/core/src/state/migrations/types';
 
-// Skip these tests temporarily - they timeout in CI but pass locally
-// TODO: Investigate root cause of CI timeout issue
-describe.skip('CLI Migration Commands', () => {
+// Re-enabled tests after fixing timeout issues
+describe('CLI Migration Commands', () => {
   let tempDir: string;
   let statePath: string;
   let backupDir: string;
