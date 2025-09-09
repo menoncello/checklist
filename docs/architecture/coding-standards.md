@@ -306,23 +306,47 @@ process.on('SIGWINCH', () => {
 });
 ```
 
-## Debugging Standards
+## Logging Standards (Pino)
 
 ```typescript
-// ALWAYS use namespaced debug logging
-import createDebug from 'debug';
-const debug = createDebug('checklist:workflow:engine');
+// ALWAYS use Pino logger from core utils
+import { createLogger } from '@checklist/core/utils/logger';
+const logger = createLogger('checklist:workflow:engine');
 
-// ALWAYS include context in debug messages
-debug('State transition failed', {
+// ALWAYS include structured context in log messages
+logger.info({
+  msg: 'State transition completed',
   from: currentState,
   to: targetState,
-  reason: error.message,
+  duration: endTime - startTime,
 });
+
+// ALWAYS use appropriate log levels
+logger.debug({ msg: 'Detailed debug info', data }); // Development debugging
+logger.info({ msg: 'Normal operation', status: 'success' }); // Informational
+logger.warn({ msg: 'Potential issue', retries: attemptCount }); // Warnings
+logger.error({ msg: 'Operation failed', error, stack: error.stack }); // Errors
+logger.fatal({ msg: 'Critical failure', error }); // Fatal errors
 
 // ALWAYS add trace IDs for async operations
 const traceId = crypto.randomUUID();
-debug('[%s] Starting operation', traceId);
+logger.child({ traceId }).info({ msg: 'Starting operation' });
+
+// ALWAYS use child loggers for module context
+class WorkflowEngine {
+  private logger = createLogger('checklist:workflow:engine');
+  
+  async execute() {
+    const requestLogger = this.logger.child({ 
+      requestId: crypto.randomUUID(),
+      workflow: this.workflowId 
+    });
+    requestLogger.info({ msg: 'Executing workflow' });
+  }
+}
+
+// NEVER use console.log, console.error, etc.
+// ESLint will warn about console usage - use logger instead
 ```
 
 ## Resource Management Standards

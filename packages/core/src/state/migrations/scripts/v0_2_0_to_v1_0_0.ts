@@ -5,22 +5,23 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
   toVersion: '1.0.0',
   description: 'Major release: Add recovery, conflicts, and enhanced step tracking',
   
-  up: (state: any) => {
+  up: (state: unknown) => {
+    const s = state as Record<string, unknown>;
     const now = new Date().toISOString();
     
-    const enhancedState = {
-      ...state,
+    const enhancedState: Record<string, unknown> = {
+      ...s,
       version: '1.0.0',
       schemaVersion: '1.0.0',
-      recovery: (state.recovery as unknown | undefined) ?? null,
-      conflicts: (state.conflicts as unknown[] | undefined) ?? [],
+      recovery: s.recovery ?? null,
+      conflicts: (s.conflicts as unknown[] | undefined) ?? [],
       lastModified: now
     };
     
-    if (state.activeInstance !== null && state.activeInstance !== undefined) {
+    if (s.activeInstance !== null && s.activeInstance !== undefined) {
       enhancedState.activeInstance = {
-        ...state.activeInstance,
-        completedSteps: ((state.activeInstance.completedSteps as unknown[]) ?? []).map((step: any) => {
+        ...(s.activeInstance as Record<string, unknown>),
+        completedSteps: (((s.activeInstance as Record<string, unknown>).completedSteps as unknown[]) ?? []).map((step: unknown) => {
           if (typeof step === 'string') {
             return {
               id: step,
@@ -30,20 +31,20 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
             };
           }
           return {
-            ...step,
-            completedAt: (step.completedAt as string | undefined) ?? now,
-            result: (step.result as string | undefined) ?? 'success',
-            notes: (step.notes as string | undefined) ?? ''
+            ...(step as Record<string, unknown>),
+            completedAt: ((step as Record<string, unknown>).completedAt as string | undefined) ?? now,
+            result: ((step as Record<string, unknown>).result as string | undefined) ?? 'success',
+            notes: ((step as Record<string, unknown>).notes as string | undefined) ?? ''
           };
         })
       };
     }
     
-    if (state.checklists !== null && state.checklists !== undefined && Array.isArray(state.checklists)) {
-      enhancedState.checklists = state.checklists.map((checklist: any) => ({
-        ...checklist,
-        conditions: (checklist.conditions as string | undefined) ?? '',
-        commandResults: (checklist.commandResults as Record<string, unknown> | undefined) ?? {}
+    if (s.checklists !== null && s.checklists !== undefined && Array.isArray(s.checklists)) {
+      enhancedState.checklists = s.checklists.map((checklist: unknown) => ({
+        ...(checklist as Record<string, unknown>),
+        conditions: ((checklist as Record<string, unknown>).conditions as string | undefined) ?? '',
+        commandResults: ((checklist as Record<string, unknown>).commandResults as Record<string, unknown> | undefined) ?? {}
       }));
     }
     
@@ -55,37 +56,38 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
     return enhancedState;
   },
   
-  down: (state: any) => {
+  down: (state: unknown) => {
+    const s = state as Record<string, unknown>;
     const { 
       recovery: _recovery, 
       conflicts: _conflicts, 
       checksum: _checksum, 
       ...rest 
-    } = state;
+    } = s;
     
-    if (rest.activeInstance?.completedSteps !== undefined && Array.isArray(rest.activeInstance.completedSteps)) {
-      rest.activeInstance.completedSteps = rest.activeInstance.completedSteps.map((step: any) => {
+    if ((rest.activeInstance as Record<string, unknown>)?.completedSteps !== undefined && Array.isArray((rest.activeInstance as Record<string, unknown>).completedSteps)) {
+      (rest.activeInstance as Record<string, unknown>).completedSteps = ((rest.activeInstance as Record<string, unknown>).completedSteps as unknown[]).map((step: unknown) => {
         if (typeof step === 'object' && step !== null) {
           const { 
             completedAt: _completedAt, 
             result: _result, 
             notes: _notes, 
             ...stepRest 
-          } = step;
-          return stepRest.id ?? stepRest;
+          } = step as Record<string, unknown>;
+          return (stepRest as Record<string, unknown>).id ?? stepRest;
         }
         return step;
       });
     }
     
     if (rest.checklists !== undefined && Array.isArray(rest.checklists)) {
-      rest.checklists = rest.checklists.map((checklist: any) => {
+      rest.checklists = (rest.checklists as unknown[]).map((checklist: unknown) => {
         const { 
           conditions: _conditions, 
           commandResults: _commandResults, 
           checksum: _checksum2, 
           ...checklistRest 
-        } = checklist;
+        } = checklist as Record<string, unknown>;
         return checklistRest;
       });
     }
@@ -98,14 +100,16 @@ export const migration_v0_2_0_to_v1_0_0: Migration = {
     };
   },
   
-  validate: (state: any): boolean => {
-    if (state.recovery === null || state.recovery === undefined) return false;
-    if (!Array.isArray(state.conflicts)) return false;
-    if (typeof state.recovery !== 'object') return false;
-    if (state.recovery.enabled === undefined) return false;
-    if (!Array.isArray(state.recovery.checkpoints)) return false;
-    if (state.version === null || state.version === undefined || state.version !== '1.0.0') return false;
-    if (state.schemaVersion === null || state.schemaVersion === undefined || state.schemaVersion !== '1.0.0') return false;
+  validate: (state: unknown): boolean => {
+    const s = state as Record<string, unknown>;
+    if (s.recovery === null || s.recovery === undefined) return false;
+    if (!Array.isArray(s.conflicts)) return false;
+    if (typeof s.recovery !== 'object') return false;
+    const recovery = s.recovery as Record<string, unknown>;
+    if (recovery.enabled === undefined) return false;
+    if (!Array.isArray(recovery.checkpoints)) return false;
+    if (s.version === null || s.version === undefined || s.version !== '1.0.0') return false;
+    if (s.schemaVersion === null || s.schemaVersion === undefined || s.schemaVersion !== '1.0.0') return false;
     
     return true;
   }

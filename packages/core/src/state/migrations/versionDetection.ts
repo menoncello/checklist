@@ -1,55 +1,52 @@
 import { StateSchema, VersionDetectionError } from './types';
 
-export async function detectVersion(state: any): Promise<string> {
+export async function detectVersion(state: unknown): Promise<string> {
   if (state === null || state === undefined || typeof state !== 'object') {
     throw new VersionDetectionError('Invalid state object');
   }
 
-  if (
-    state.schemaVersion !== undefined &&
-    typeof state.schemaVersion === 'string'
-  ) {
-    return state.schemaVersion;
+  const s = state as Record<string, unknown>;
+  if (s.schemaVersion !== undefined && typeof s.schemaVersion === 'string') {
+    return s.schemaVersion;
   }
 
-  if (state.version !== undefined && typeof state.version === 'string') {
-    return state.version;
+  if (s.version !== undefined && typeof s.version === 'string') {
+    return s.version;
   }
 
-  if (state.templates !== undefined && state.variables !== undefined) {
-    if (state.recovery !== undefined || state.conflicts !== undefined) {
+  if (s.templates !== undefined && s.variables !== undefined) {
+    if (s.recovery !== undefined || s.conflicts !== undefined) {
       return '1.0.0';
     }
     return '0.2.0';
   }
 
   if (
-    state.metadata !== null &&
-    state.metadata !== undefined &&
-    typeof state.metadata === 'object'
+    s.metadata !== null &&
+    s.metadata !== undefined &&
+    typeof s.metadata === 'object'
   ) {
+    const metadata = s.metadata as Record<string, unknown>;
     if (
-      (state.metadata.created !== null &&
-        state.metadata.created !== undefined) ||
-      (state.metadata.modified !== null &&
-        state.metadata.modified !== undefined)
+      (metadata.created !== null && metadata.created !== undefined) ||
+      (metadata.modified !== null && metadata.modified !== undefined)
     ) {
       return '0.1.0';
     }
   }
 
   if (
-    state.checklists !== null &&
-    state.checklists !== undefined &&
-    Array.isArray(state.checklists)
+    s.checklists !== null &&
+    s.checklists !== undefined &&
+    Array.isArray(s.checklists)
   ) {
     return '0.0.0';
   }
 
   if (
-    (state.activeInstance !== null && state.activeInstance !== undefined) ||
-    (state.completedSteps !== null && state.completedSteps !== undefined) ||
-    (state.currentStepId !== null && state.currentStepId !== undefined)
+    (s.activeInstance !== null && s.activeInstance !== undefined) ||
+    (s.completedSteps !== null && s.completedSteps !== undefined) ||
+    (s.currentStepId !== null && s.currentStepId !== undefined)
   ) {
     return '0.0.0';
   }
@@ -184,7 +181,7 @@ export function getVersionRange(versions: string[]): {
   };
 }
 
-export function inferStateStructure(state: any): {
+export function inferStateStructure(state: unknown): {
   hasChecklists: boolean;
   hasTemplates: boolean;
   hasVariables: boolean;
@@ -194,20 +191,15 @@ export function inferStateStructure(state: any): {
   hasMigrations: boolean;
   estimatedVersion: string;
 } {
+  const s = state as Record<string, unknown>;
   const structure = {
-    hasChecklists:
-      state.checklists !== undefined && Array.isArray(state.checklists),
-    hasTemplates:
-      state.templates !== undefined && Array.isArray(state.templates),
-    hasVariables:
-      state.variables !== undefined && typeof state.variables === 'object',
-    hasMetadata:
-      state.metadata !== undefined && typeof state.metadata === 'object',
-    hasRecovery: state.recovery !== undefined,
-    hasConflicts:
-      state.conflicts !== undefined && Array.isArray(state.conflicts),
-    hasMigrations:
-      state.migrations !== undefined && Array.isArray(state.migrations),
+    hasChecklists: s.checklists !== undefined && Array.isArray(s.checklists),
+    hasTemplates: s.templates !== undefined && Array.isArray(s.templates),
+    hasVariables: s.variables !== undefined && typeof s.variables === 'object',
+    hasMetadata: s.metadata !== undefined && typeof s.metadata === 'object',
+    hasRecovery: s.recovery !== undefined,
+    hasConflicts: s.conflicts !== undefined && Array.isArray(s.conflicts),
+    hasMigrations: s.migrations !== undefined && Array.isArray(s.migrations),
     estimatedVersion: '0.0.0',
   };
 
@@ -235,56 +227,64 @@ export async function validateStateIntegrity(state: StateSchema): Promise<{
 }> {
   const errors: string[] = [];
   const warnings: string[] = [];
+  const s = state as unknown as Record<string, unknown>;
 
-  if (!state.version && !state.schemaVersion) {
+  if (s.version === undefined && s.schemaVersion === undefined) {
     errors.push('State file missing version information');
   }
 
   if (
-    state.version &&
-    state.schemaVersion &&
-    state.version !== state.schemaVersion
+    s.version !== undefined &&
+    s.schemaVersion !== undefined &&
+    s.version !== s.schemaVersion
   ) {
     warnings.push(
-      `Version mismatch: version=${state.version}, schemaVersion=${state.schemaVersion}`
+      `Version mismatch: version=${s.version}, schemaVersion=${s.schemaVersion}`
     );
   }
 
-  if (!state.lastModified) {
+  if (s.lastModified === undefined) {
     warnings.push('State file missing lastModified timestamp');
   }
 
-  if (state.migrations && !Array.isArray(state.migrations)) {
+  if (s.migrations !== undefined && !Array.isArray(s.migrations)) {
     errors.push('Invalid migrations field: must be an array');
   }
 
-  if (state.checklists && !Array.isArray(state.checklists)) {
+  if (s.checklists !== undefined && !Array.isArray(s.checklists)) {
     errors.push('Invalid checklists field: must be an array');
   }
 
-  if (state.templates && !Array.isArray(state.templates)) {
+  if (s.templates !== undefined && !Array.isArray(s.templates)) {
     errors.push('Invalid templates field: must be an array');
   }
 
   if (
-    state.variables !== undefined &&
-    (typeof state.variables !== 'object' || Array.isArray(state.variables))
+    s.variables !== undefined &&
+    (typeof s.variables !== 'object' || Array.isArray(s.variables))
   ) {
     errors.push('Invalid variables field: must be an object');
   }
 
-  if (state.conflicts && !Array.isArray(state.conflicts)) {
+  if (s.conflicts !== undefined && !Array.isArray(s.conflicts)) {
     errors.push('Invalid conflicts field: must be an array');
   }
 
-  if (state.metadata) {
-    if (typeof state.metadata !== 'object') {
+  if (s.metadata !== undefined) {
+    if (typeof s.metadata !== 'object') {
       errors.push('Invalid metadata field: must be an object');
     } else {
-      if (state.metadata.created && !isValidDate(state.metadata.created)) {
+      const metadata = s.metadata as Record<string, unknown>;
+      if (
+        metadata.created !== undefined &&
+        !isValidDate(metadata.created as string)
+      ) {
         warnings.push('Invalid metadata.created timestamp');
       }
-      if (state.metadata.modified && !isValidDate(state.metadata.modified)) {
+      if (
+        metadata.modified !== undefined &&
+        !isValidDate(metadata.modified as string)
+      ) {
         warnings.push('Invalid metadata.modified timestamp');
       }
     }

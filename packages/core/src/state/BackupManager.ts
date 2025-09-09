@@ -1,7 +1,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
+import { createLogger } from '../utils/logger';
 import { MAX_BACKUP_COUNT } from './constants';
+
+const logger = createLogger('checklist:backup');
 import { BackupError, RecoveryError, StateCorruptedError } from './errors';
 import { ChecklistState, BackupManifest, BackupManifestEntry } from './types';
 import { StateValidator } from './validation';
@@ -113,7 +116,11 @@ export class BackupManager {
           await unlink(backupPath);
         }
       } catch (error) {
-        console.error(`Failed to delete old backup ${backup.filename}:`, error);
+        logger.error({
+          msg: 'Failed to delete old backup',
+          filename: backup.filename,
+          error,
+        });
       }
     }
 
@@ -131,10 +138,17 @@ export class BackupManager {
     for (const backup of manifest.backups) {
       try {
         const state = await this.recoverFromBackup(backup.filename);
-        console.log(`Successfully recovered from backup: ${backup.filename}`);
+        logger.info({
+          msg: 'Successfully recovered from backup',
+          filename: backup.filename,
+        });
         return state;
       } catch (error) {
-        console.error(`Failed to recover from ${backup.filename}:`, error);
+        logger.error({
+          msg: 'Failed to recover from backup',
+          filename: backup.filename,
+          error,
+        });
         continue;
       }
     }
@@ -201,10 +215,11 @@ export class BackupManager {
             deletedCount++;
           }
         } catch (error) {
-          console.error(
-            `Failed to delete old backup ${backup.filename}:`,
-            error
-          );
+          logger.error({
+            msg: 'Failed to delete old backup',
+            filename: backup.filename,
+            error,
+          });
         }
       } else {
         backupsToKeep.push(backup);

@@ -216,7 +216,7 @@ describe('WorkflowEngine Integration Tests', () => {
 
       // Mock a partial failure during next advance
       const originalEmit = engine.emit.bind(engine);
-      engine.emit = function(event: string, ...args: any[]) {
+      engine.emit = function(event: any, ...args: any[]) {
         if (event === 'step:changed') {
           // Simulate failure after state change but before completion
           engine.emit = originalEmit; // Restore for error event

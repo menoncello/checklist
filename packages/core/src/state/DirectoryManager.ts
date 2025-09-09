@@ -1,5 +1,8 @@
 import { existsSync, mkdirSync, chmodSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('checklist:directory');
 
 export class DirectoryManager {
   private baseDir: string;
@@ -64,7 +67,7 @@ export class DirectoryManager {
         }
       }
     } catch (error) {
-      console.error('Cleanup error:', error);
+      logger.error({ msg: 'Cleanup error', error });
     }
   }
 

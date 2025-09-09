@@ -4,7 +4,13 @@ import { join } from 'path';
 import { load } from 'js-yaml';
 
 describe('GitHub Workflow Validation', () => {
-  const projectRoot = process.cwd();
+  // Navigate to the actual project root - handle both running from root and from packages/core
+  const cwd = process.cwd();
+  const projectRoot = cwd.endsWith('/packages/core') 
+    ? join(cwd, '..', '..')
+    : cwd.includes('/packages/core') 
+      ? cwd.substring(0, cwd.indexOf('/packages/core'))
+      : cwd;
   const mainWorkflowPath = join(projectRoot, '.github', 'workflows', 'main.yml');
 
   test('main.yml workflow should exist', () => {

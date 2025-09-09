@@ -1,5 +1,6 @@
 import { StateManager } from '../state/StateManager';
 import { TransactionCoordinator } from '../state/TransactionCoordinator';
+import { createLogger, type Logger } from '../utils/logger';
 import { safeEval } from './conditions';
 import {
   WorkflowError,
@@ -48,9 +49,14 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
   private stateManager: StateManager;
   private transactionCoordinator: TransactionCoordinator;
   private initialized: boolean = false;
+  private logger: Logger;
 
-  constructor(private baseDir: string = '.checklist') {
+  constructor(
+    private baseDir: string = '.checklist',
+    logger?: Logger
+  ) {
     super();
+    this.logger = logger ?? createLogger('checklist:workflow:engine');
     this.state = this.createInitialState();
     this.template = { id: '', name: '', steps: [] };
     this.stateManager = new StateManager(baseDir);
@@ -76,9 +82,11 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
             // Apply recovered operations to workflow state
             if (entry.op === 'write' && entry.key.startsWith('/workflow/')) {
               // Handle workflow-specific state recovery
-              console.log(
-                `Recovering workflow operation: ${entry.op} ${entry.key}`
-              );
+              this.logger.info({
+                msg: 'Recovering workflow operation',
+                op: entry.op,
+                key: entry.key,
+              });
             }
           }
         );
@@ -86,7 +94,7 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
         if (recoveredCount > 0) {
           this.emit('recovery:completed', {
             type: 'wal',
-            recoveredOperations: recoveredCount,
+            recoveredCount,
             timestamp: new Date(),
           });
         }
@@ -497,7 +505,7 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
     }
   }
 
-  private buildContext(): Record<string, any> {
+  private buildContext(): Record<string, unknown> {
     return {
       ...this.state.variables,
       platform: process.platform,

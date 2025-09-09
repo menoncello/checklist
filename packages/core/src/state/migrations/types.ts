@@ -2,9 +2,9 @@ export interface Migration {
   fromVersion: string;
   toVersion: string;
   description: string;
-  up: (state: any) => any;
-  down: (state: any) => any;
-  validate?: (state: any) => boolean;
+  up: (state: unknown) => Record<string, unknown>;
+  down: (state: unknown) => Record<string, unknown>;
+  validate?: (state: unknown) => boolean;
 }
 
 export interface MigrationOptions {
@@ -50,18 +50,18 @@ export interface StateSchema {
   version: string;
   checksum?: string;
   lastModified: string;
-  activeInstance?: any;
-  checklists?: any[];
-  templates?: any[];
-  variables?: Record<string, any>;
-  settings?: any;
+  activeInstance?: unknown;
+  checklists?: unknown[];
+  templates?: unknown[];
+  variables?: Record<string, unknown>;
+  settings?: unknown;
   metadata?: {
     created: string;
     modified: string;
     lastMigration?: string;
   };
-  recovery?: any;
-  conflicts?: any[];
+  recovery?: unknown;
+  conflicts?: unknown[];
 }
 
 export interface MigrationRecord {
@@ -82,7 +82,7 @@ export type MigrationEventType =
 
 export interface MigrationEvent {
   type: MigrationEventType;
-  data: any;
+  data: unknown;
   timestamp: string;
 }
 

@@ -29,9 +29,9 @@ export async function writeToClipboard(
     ]);
   } catch (error) {
     if (fallback) {
-      // Fallback: Log to console for manual copy
-      console.log('Clipboard access failed. Please copy manually:');
-      console.log(text);
+      // Fallback: Return without error
+      // Caller should handle the fallback scenario
+      return;
     } else {
       throw error;
     }
@@ -56,8 +56,7 @@ export async function readFromClipboard(
     return text;
   } catch (error) {
     if (fallback) {
-      // Fallback: Return empty string
-      console.warn('Clipboard access failed:', error);
+      // Fallback: Return empty string silently
       return '';
     } else {
       throw error;

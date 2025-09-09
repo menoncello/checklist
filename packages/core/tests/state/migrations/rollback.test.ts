@@ -40,13 +40,13 @@ describe('Migration Rollback Scenarios', () => {
         toVersion: '1.0.0',
         description: 'First migration (will succeed)',
         up: (state) => ({
-          ...state,
+          ...(state as Record<string, unknown>),
           version: '1.0.0',
           schemaVersion: '1.0.0',
           metadata: { created: new Date().toISOString() }
         }),
         down: (state) => {
-          const { metadata, ...rest } = state;
+          const { metadata, ...rest } = state as any;
           return { ...rest, version: '0.0.0' };
         }
       });
@@ -56,12 +56,12 @@ describe('Migration Rollback Scenarios', () => {
         toVersion: '2.0.0',
         description: 'Second migration (will fail)',
         up: (state) => ({
-          ...state,
+          ...(state as Record<string, unknown>),
           version: '2.0.0',
           schemaVersion: '2.0.0',
           invalidField: 'this will fail validation'
         }),
-        down: (state) => ({ ...state, version: '1.0.0' }),
+        down: (state) => ({ ...(state as Record<string, unknown>), version: '1.0.0' }),
         validate: (state) => {
           // This validation will always fail
           return false;
@@ -103,7 +103,7 @@ describe('Migration Rollback Scenarios', () => {
         up: (state) => {
           throw new Error('Simulated migration error');
         },
-        down: (state) => state
+        down: (state) => state as Record<string, unknown>
       });
 
       const initialState = {
@@ -132,9 +132,9 @@ describe('Migration Rollback Scenarios', () => {
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
         description: 'First',
-        up: (state) => ({ ...state, version: '1.0.0', step1: true }),
+        up: (state) => ({ ...(state as Record<string, unknown>), version: '1.0.0', step1: true }),
         down: (state) => {
-          const { step1, ...rest } = state;
+          const { step1, ...rest } = state as any;
           return { ...rest, version: '0.0.0' };
         }
       });
@@ -143,9 +143,9 @@ describe('Migration Rollback Scenarios', () => {
         fromVersion: '1.0.0',
         toVersion: '1.5.0',
         description: 'Second',
-        up: (state) => ({ ...state, version: '1.5.0', step2: true }),
+        up: (state) => ({ ...(state as Record<string, unknown>), version: '1.5.0', step2: true }),
         down: (state) => {
-          const { step2, ...rest } = state;
+          const { step2, ...rest } = state as any;
           return { ...rest, version: '1.0.0' };
         }
       });
@@ -157,7 +157,7 @@ describe('Migration Rollback Scenarios', () => {
         up: (state) => {
           throw new Error('Third migration failed');
         },
-        down: (state) => ({ ...state, version: '1.5.0' })
+        down: (state) => ({ ...(state as Record<string, unknown>), version: '1.5.0' })
       });
 
       const initialState = {
@@ -189,7 +189,7 @@ describe('Migration Rollback Scenarios', () => {
         up: () => {
           throw new Error('Intentional failure');
         },
-        down: (state) => state
+        down: (state) => state as Record<string, unknown>
       });
 
       const initialState = { version: '0.0.0' };
@@ -215,7 +215,7 @@ describe('Migration Rollback Scenarios', () => {
         up: () => {
           throw new Error('Migration failed');
         },
-        down: (state) => state
+        down: (state) => state as Record<string, unknown>
       });
 
       const initialState = { version: '0.0.0' };
@@ -246,7 +246,7 @@ describe('Migration Rollback Scenarios', () => {
         up: () => {
           throw new Error('Failed');
         },
-        down: (state) => state
+        down: (state) => state as Record<string, unknown>
       });
 
       const initialState = {
@@ -280,7 +280,7 @@ describe('Migration Rollback Scenarios', () => {
         up: () => {
           throw new Error('Immediate failure');
         },
-        down: (state) => state
+        down: (state) => state as Record<string, unknown>
       });
 
       const initialState = { version: '0.0.0' };
@@ -304,7 +304,7 @@ describe('Migration Rollback Scenarios', () => {
           // Return invalid state structure
           return null as any;
         },
-        down: (state) => state,
+        down: (state) => state as Record<string, unknown>,
         validate: (state) => state !== null && typeof state === 'object'
       });
 
@@ -334,9 +334,9 @@ describe('Migration Rollback Scenarios', () => {
         description: 'Flaky migration',
         up: (state) => {
           attempt++;
-          return { ...state, version: '1.0.0', attempt };
+          return { ...(state as Record<string, unknown>), version: '1.0.0', attempt };
         },
-        down: (state) => ({ ...state, version: '0.0.0' }),
+        down: (state) => ({ ...(state as Record<string, unknown>), version: '0.0.0' }),
         validate: () => {
           // Fail first two attempts
           return attempt > 2;
@@ -367,7 +367,7 @@ describe('Migration Rollback Scenarios', () => {
         up: () => {
           throw new Error('Will fail');
         },
-        down: (state) => state
+        down: (state) => state as Record<string, unknown>
       });
 
       const initialState = { version: '0.0.0' };

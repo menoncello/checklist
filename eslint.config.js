@@ -19,7 +19,8 @@ export default [
       'test-setup.ts',
       '**/*.test.ts',
       '**/*.spec.ts',
-      'tests/**',
+      '**/*.bench.ts',
+      '**/tests/**',
       'performance.config.ts',
       '.vscode/**',
       '.husky/**'
@@ -47,7 +48,7 @@ export default [
         'varsIgnorePattern': '^_',
         'caughtErrorsIgnorePattern': '^_'
       }],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/prefer-nullish-coalescing': 'error',
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
@@ -68,7 +69,7 @@ export default [
       'unused-imports/no-unused-imports': 'error',
 
       // Code quality (MANDATORY)
-      'no-console': 'warn', // Use debug logger instead
+      'no-console': 'error', // Use Pino logger instead
       'no-debugger': 'error',
       'no-alert': 'error',
       'prefer-const': 'error',
@@ -83,7 +84,36 @@ export default [
       // Security rules (MANDATORY)
       'no-eval': 'error',
       'no-implied-eval': 'error',
-      'no-new-func': 'error'
+      'no-new-func': 'error',
+      
+      // Ban compromised packages (Security Fix Story 1.11)
+      'no-restricted-imports': ['error', {
+        'paths': [
+          {
+            'name': 'chalk',
+            'message': 'Use ansis instead of chalk (Security: chalk was compromised)'
+          },
+          {
+            'name': 'color-name',
+            'message': 'Package compromised with malware - do not use'
+          },
+          {
+            'name': 'color-convert',
+            'message': 'Package compromised with malware - do not use'
+          },
+          {
+            'name': 'ansi-styles',
+            'message': 'Package compromised with malware - use ansis instead'
+          }
+        ]
+      }]
+    }
+  },
+  {
+    // CLI and TUI packages need console for user interface
+    files: ['packages/cli/**/*.ts', 'packages/tui/**/*.ts'],
+    rules: {
+      'no-console': 'off'
     }
   }
 ];

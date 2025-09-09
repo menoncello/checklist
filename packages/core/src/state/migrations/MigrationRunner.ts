@@ -1,7 +1,10 @@
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { createLogger } from '../../utils/logger';
 import { MigrationRegistry } from './MigrationRegistry';
+
+const logger = createLogger('checklist:migration');
 import {
   Migration,
   MigrationOptions,
@@ -47,7 +50,7 @@ export class MigrationRunner extends EventEmitter {
 
       if (fromVersion === toVersion) {
         if (verbose) {
-          console.log('✅ State file is already at target version');
+          logger.info({ msg: 'State file is already at target version' });
         }
         return {
           success: true,
@@ -61,7 +64,7 @@ export class MigrationRunner extends EventEmitter {
 
       if (migrationPath.migrations.length === 0) {
         if (verbose) {
-          console.log('✅ No migrations needed');
+          logger.info({ msg: 'No migrations needed' });
         }
         return {
           success: true,
@@ -72,19 +75,23 @@ export class MigrationRunner extends EventEmitter {
       }
 
       if (verbose) {
-        console.log(`📦 Migrating from v${fromVersion} to v${toVersion}`);
-        console.log(
-          `📋 ${migrationPath.migrations.length} migration(s) to apply:`
-        );
+        logger.info({ msg: 'Starting migration', fromVersion, toVersion });
+        logger.info({
+          msg: 'Migrations to apply',
+          count: migrationPath.migrations.length,
+        });
         migrationPath.migrations.forEach((m) => {
-          console.log(
-            `  • v${m.fromVersion} → v${m.toVersion}: ${m.description}`
-          );
+          logger.info({
+            msg: 'Migration step',
+            from: m.fromVersion,
+            to: m.toVersion,
+            description: m.description,
+          });
         });
       }
 
       if (dryRun) {
-        console.log('🔍 Dry run mode - no changes will be made');
+        logger.info({ msg: 'Dry run mode - no changes will be made' });
         return {
           success: true,
           fromVersion,
@@ -99,11 +106,11 @@ export class MigrationRunner extends EventEmitter {
       if (createBackup) {
         backupPath = await this.createBackup(statePath, fromVersion);
         if (verbose) {
-          console.log(`💾 Backup created: ${backupPath}`);
+          logger.info({ msg: 'Backup created', backupPath });
         }
       }
 
-      let migratedState = state;
+      let migratedState = state as StateSchema;
       const appliedMigrations: string[] = [];
       const migrationRecords: MigrationRecord[] =
         (state.migrations as MigrationRecord[] | undefined) ?? [];
@@ -123,11 +130,17 @@ export class MigrationRunner extends EventEmitter {
         this.emit('migration:progress', progress);
 
         if (verbose) {
-          console.log(`⏳ Applying migration to v${migration.toVersion}...`);
+          logger.info({
+            msg: 'Applying migration',
+            toVersion: migration.toVersion,
+          });
         }
 
         try {
-          migratedState = await this.applyMigration(migration, migratedState);
+          migratedState = (await this.applyMigration(
+            migration,
+            migratedState
+          )) as StateSchema;
 
           if (migration.validate && !migration.validate(migratedState)) {
             throw new Error('Migration validation failed');
@@ -153,7 +166,10 @@ export class MigrationRunner extends EventEmitter {
           });
 
           if (verbose) {
-            console.log(`✅ Migrated to v${migration.toVersion}`);
+            logger.info({
+              msg: 'Migration completed',
+              toVersion: migration.toVersion,
+            });
           }
         } catch (error) {
           const migrationError = new MigrationError(
@@ -167,7 +183,7 @@ export class MigrationRunner extends EventEmitter {
 
           if (createBackup && backupPath !== undefined) {
             if (verbose) {
-              console.error(`❌ Migration failed, rolling back...`);
+              logger.error({ msg: 'Migration failed, rolling back' });
             }
             await this.rollback(statePath, backupPath);
           }
@@ -177,7 +193,7 @@ export class MigrationRunner extends EventEmitter {
       }
 
       if (verbose) {
-        console.log(`🎉 Successfully migrated to v${toVersion}`);
+        logger.info({ msg: 'Successfully migrated', toVersion });
       }
 
       this.emit('migration:complete', {
@@ -204,7 +220,10 @@ export class MigrationRunner extends EventEmitter {
     }
   }
 
-  private async applyMigration(migration: Migration, state: any): Promise<any> {
+  private async applyMigration(
+    migration: Migration,
+    state: unknown
+  ): Promise<unknown> {
     try {
       return migration.up(state);
     } catch (error) {
@@ -278,7 +297,7 @@ export class MigrationRunner extends EventEmitter {
         }
       }
     } catch (error) {
-      console.warn('Failed to rotate backups:', error);
+      logger.warn({ msg: 'Failed to rotate backups', error });
     }
   }
 

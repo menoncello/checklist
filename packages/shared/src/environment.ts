@@ -186,14 +186,14 @@ export const fallbacks = {
    * Get clipboard fallback
    */
   clipboard: {
-    async write(text: string): Promise<void> {
-      console.log('📋 Copy to clipboard:');
-      console.log(text);
+    async write(_text: string): Promise<void> {
+      // Clipboard not available in this environment
+      throw new Error('Clipboard write not available in this environment');
     },
 
     async read(): Promise<string> {
-      console.log('📋 Paste from clipboard not available');
-      return '';
+      // Clipboard not available in this environment
+      throw new Error('Clipboard read not available in this environment');
     },
   },
 

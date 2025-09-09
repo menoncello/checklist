@@ -5,7 +5,10 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { createLogger } from '../utils/logger';
 import { STATE_DIR } from './constants';
+
+const logger = createLogger('checklist:security-audit');
 
 export enum SecurityEventType {
   ACCESS_GRANTED = 'ACCESS_GRANTED',
@@ -69,7 +72,7 @@ export class SecurityAudit {
       // Start periodic flush
       this.startPeriodicFlush();
     } catch (error) {
-      console.error('Failed to initialize security audit:', error);
+      logger.error({ msg: 'Failed to initialize security audit', error });
     }
   }
 
@@ -339,7 +342,7 @@ export class SecurityAudit {
         await Bun.write(this.AUDIT_FILE, '');
       }
     } catch (error) {
-      console.error('Failed to ensure audit file:', error);
+      logger.error({ msg: 'Failed to ensure audit file', error });
     }
   }
 
@@ -366,7 +369,7 @@ export class SecurityAudit {
       // Create new empty file
       await Bun.write(this.AUDIT_FILE, '');
     } catch (error) {
-      console.error('Failed to rotate audit file:', error);
+      logger.error({ msg: 'Failed to rotate audit file', error });
     }
   }
 
@@ -425,7 +428,7 @@ export class SecurityAudit {
       // Clear buffer
       this.buffer = [];
     } catch (error) {
-      console.error('Failed to flush audit events:', error);
+      logger.error({ msg: 'Failed to flush audit events', error });
     }
   }
 

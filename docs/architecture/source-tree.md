@@ -7,7 +7,9 @@ checklist/
 ├── packages/                    # Monorepo workspace packages
 │   ├── core/                   # Core business logic
 │   │   ├── src/                # Source code
-│   │   │   └── index.ts        # Main entry point
+│   │   │   ├── index.ts        # Main entry point
+│   │   │   └── utils/          # Utility functions
+│   │   │       └── logger.ts   # Pino logger factory
 │   │   ├── tests/              # Test files
 │   │   │   ├── index.test.ts
 │   │   │   ├── env-validation.test.ts
@@ -55,6 +57,17 @@ checklist/
 │
 ├── coverage/                   # Test coverage reports
 │
+├── reports/                    # Generated reports
+│   └── mutation/              # StrykerJS mutation reports
+│       └── index.html
+│
+├── .logs/                     # Application log files
+│   ├── info/                  # Info level logs
+│   ├── error/                 # Error level logs
+│   └── debug/                 # Debug logs (dev only)
+│
+├── .stryker-tmp/              # StrykerJS temporary files
+│
 ├── .claude/                   # Claude AI integration
 │   └── commands/
 │       └── BMad/
@@ -68,6 +81,7 @@ checklist/
 ├── package.json              # Root package configuration
 ├── bunfig.toml              # Bun configuration
 ├── test-setup.ts            # Test setup file
+├── stryker.conf.js          # StrykerJS mutation testing config
 ├── eslint.config.js          # Linting rules
 ├── .prettierrc.js           # Code formatting
 ├── tsconfig.json            # TypeScript config

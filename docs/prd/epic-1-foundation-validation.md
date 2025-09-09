@@ -104,3 +104,73 @@
 5. Differential rendering (only redraw changes)
 6. Component testing framework established
 7. Example components demonstrate patterns
+
+## Story 1.10: Pino Logging Infrastructure
+
+**As a** developer,  
+**I want** Pino logging integrated throughout the application with structured logging,  
+**So that** we have production-ready logging with proper rotation, monitoring, and debugging capabilities.
+
+**Acceptance Criteria:**
+
+1. Pino logger configured with default log levels (debug, info, warn, error, fatal)
+2. Structured JSON output format for all log entries
+3. Log rotation implemented using Pino native plugins (pino-roll) with configurable policies
+4. File output configured using Pino file transport with separate files for different log levels
+5. Support for 3rd party services via pino-transport plugins only (no custom implementations)
+6. Debug library completely replaced with injectable Pino logger service
+7. Logger service created with clear interface for testing (mockable)
+8. All logging features must use Pino native capabilities or official Pino plugins only
+9. Logger must be fully mockable in all test scenarios with test doubles provided
+10. Performance: Logging overhead must not exceed 5ms per operation
+11. All log entries include contextual metadata (timestamp, module, trace ID)
+
+## Story 1.11: Replace Compromised NPM Packages - Security Fix
+
+**As a** developer,  
+**I want** to replace compromised npm packages with secure alternatives,  
+**So that** the codebase is protected from malware detected in critical dependencies.
+
+**Acceptance Criteria:**
+
+1. Replace chalk package with ansis in all CLI commands
+2. Remove all compromised packages (chalk, color-name, color-convert, debug)
+3. Maintain identical color output formatting in CLI
+4. All existing CLI commands continue to work unchanged
+5. Security audit passes without critical vulnerabilities
+6. No regression in CLI output formatting
+
+## Story 1.12: StrykerJS Mutation Testing Infrastructure
+
+**As a** developer,  
+**I want** StrykerJS configured for mutation testing with Bun integration,  
+**So that** we have high-quality test coverage validation and can identify weak test assertions.
+
+**Acceptance Criteria:**
+
+1. StrykerJS configured with command runner to execute Bun tests directly
+2. Mutation score threshold set to 85% minimum
+3. StrykerJS integrated into CI/CD pipeline with failure on threshold breach
+4. All default mutators enabled for comprehensive mutation coverage
+5. HTML reporter configured for visual mutation reports
+6. Incremental testing enabled for faster PR validation
+7. Dashboard integration for tracking mutation score trends
+8. Parallel execution configured for optimal performance
+
+## Story 1.13: IoC/Dependency Injection Pattern Implementation
+
+**As a** developer,  
+**I want** to implement Inversion of Control and Dependency Injection patterns for all services,  
+**So that** components are properly decoupled, testable, and maintainable.
+
+**Acceptance Criteria:**
+
+1. Define service interfaces for all major components (ILogger, IStateManager, etc.)
+2. Implement concrete service classes that fulfill interface contracts
+3. Create mock implementations for all service interfaces for testing
+4. Establish IoC container or factory pattern for dependency resolution
+5. All services use constructor injection (no global instances)
+6. Service provider pattern implemented for runtime configuration
+7. Full test coverage using mock services only
+8. Migration guide for converting existing code to DI pattern
+9. No performance degradation from DI overhead (<1ms per injection)

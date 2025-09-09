@@ -1,5 +1,56 @@
 # Testing Strategy (Complete with All Testing Utilities)
 
+## Mutation Testing Strategy
+
+### StrykerJS Configuration
+
+**Note:** StrykerJS configuration is split into Story 1.12 for dedicated mutation testing infrastructure.
+
+```javascript
+// stryker.conf.js
+module.exports = {
+  packageManager: 'npm',  // Required for StrykerJS
+  testRunner: 'command',   // Use command runner for Bun
+  commandRunner: {
+    command: 'bun test --bail --coverage'  // Execute Bun directly
+  },
+  mutate: ['packages/*/src/**/*.ts', '!**/*.test.ts', '!**/*.spec.ts'],
+  thresholds: {
+    high: 95,
+    low: 90,
+    break: 85 // Fail CI if below 85%
+  },
+  dashboard: {
+    project: 'github.com/your-org/checklist',
+    version: 'main',
+    module: 'checklist-core'
+  },
+  reporters: ['html', 'json', 'progress', 'dashboard'],
+  htmlReporter: {
+    fileName: 'reports/mutation/index.html'
+  },
+  incremental: true,
+  incrementalFile: '.stryker-tmp/incremental.json',
+  tempDirName: '.stryker-tmp',
+  timeoutMS: 60000,
+  concurrency: 4,
+  disableTypeChecks: false
+};
+```
+
+### Mutation Testing Workflow
+
+1. **Initial Analysis**: Run StrykerJS to establish baseline
+2. **Gap Identification**: Review surviving mutants report
+3. **Test Enhancement**: Add tests targeting surviving mutants
+4. **Continuous Monitoring**: Track mutation score trends
+
+### Mutation Score Requirements
+
+- **Minimum Threshold**: 85% mutation score
+- **Target Goal**: 90%+ for critical modules
+- **CI Integration**: Automatic failure below threshold
+
 ## Test Data Factory
 
 ```typescript

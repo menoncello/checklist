@@ -6,9 +6,8 @@ import { MigrationRegistry } from '@checklist/core/src/state/migrations/Migratio
 import { detectVersion } from '@checklist/core/src/state/migrations/versionDetection';
 import type { StateSchema } from '@checklist/core/src/state/migrations/types';
 
-// Skip these tests temporarily - they timeout in CI but pass locally
-// TODO: Investigate root cause of CI timeout issue
-describe.skip('CLI Migration Commands', () => {
+// Re-enabled tests after fixing timeout issues
+describe('CLI Migration Commands', () => {
   let tempDir: string;
   let statePath: string;
   let backupDir: string;
@@ -21,8 +20,10 @@ describe.skip('CLI Migration Commands', () => {
     statePath = path.join(tempDir, 'state.yaml');
     backupDir = path.join(tempDir, '.backup');
     
-    // Ensure temp directory exists
-    await Bun.write(path.join(tempDir, '.gitkeep'), '');
+    // Ensure temp directory exists using fs.promises
+    const { mkdir } = await import('fs/promises');
+    await mkdir(tempDir, { recursive: true });
+    await mkdir(backupDir, { recursive: true });
     
     // Create registry with test migrations
     registry = new MigrationRegistry();
@@ -31,7 +32,7 @@ describe.skip('CLI Migration Commands', () => {
       toVersion: '0.1.0',
       description: 'Add metadata fields',
       up: (state) => ({
-        ...state,
+        ...(state as Record<string, unknown>),
         version: '0.1.0',
         schemaVersion: '0.1.0',
         metadata: {
@@ -40,7 +41,8 @@ describe.skip('CLI Migration Commands', () => {
         }
       }),
       down: (state) => {
-        const { metadata, ...rest } = state;
+        const s = state as Record<string, unknown>;
+        const { metadata, ...rest } = s;
         return { ...rest, version: '0.0.0' };
       }
     });
@@ -50,7 +52,7 @@ describe.skip('CLI Migration Commands', () => {
       toVersion: '1.0.0',
       description: 'Add advanced features',
       up: (state) => ({
-        ...state,
+        ...(state as Record<string, unknown>),
         version: '1.0.0',
         schemaVersion: '1.0.0',
         templates: [],
@@ -59,14 +61,16 @@ describe.skip('CLI Migration Commands', () => {
         conflicts: []
       }),
       down: (state) => {
-        const { templates, variables, recovery, conflicts, ...rest } = state;
+        const s = state as Record<string, unknown>;
+        const { templates, variables, recovery, conflicts, ...rest } = s;
         return { ...rest, version: '0.1.0' };
       },
       validate: (state) => {
-        return Array.isArray(state.templates) && 
-               typeof state.variables === 'object' &&
-               typeof state.recovery === 'object' &&
-               Array.isArray(state.conflicts);
+        const s = state as Record<string, unknown>;
+        return Array.isArray(s.templates) && 
+               typeof s.variables === 'object' &&
+               typeof s.recovery === 'object' &&
+               Array.isArray(s.conflicts);
       }
     });
 

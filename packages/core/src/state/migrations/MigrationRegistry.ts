@@ -193,7 +193,7 @@ export class MigrationRegistry extends EventEmitter {
     this.emit('registry:cleared');
   }
 
-  toJSON(): any {
+  toJSON(): unknown {
     return {
       migrations: Array.from(this.migrations.entries()).map(
         ([key, migration]) => ({

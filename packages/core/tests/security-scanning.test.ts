@@ -5,7 +5,12 @@ import { load } from 'js-yaml';
 
 // Skip these tests in CI as they expect configuration files that don't exist yet
 describe.skip('Security Scanning Configuration', () => {
-  const projectRoot = process.cwd();
+  const cwd = process.cwd();
+  const projectRoot = cwd.endsWith('/packages/core') 
+    ? join(cwd, '..', '..')
+    : cwd.includes('/packages/core') 
+      ? cwd.substring(0, cwd.indexOf('/packages/core'))
+      : cwd;
   const securityWorkflowPath = join(projectRoot, '.github', 'workflows', 'security.yml');
 
   test('security.yml workflow should exist', () => {
