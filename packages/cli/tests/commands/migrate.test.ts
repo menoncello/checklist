@@ -20,8 +20,10 @@ describe('CLI Migration Commands', () => {
     statePath = path.join(tempDir, 'state.yaml');
     backupDir = path.join(tempDir, '.backup');
     
-    // Ensure temp directory exists
-    await Bun.write(path.join(tempDir, '.gitkeep'), '');
+    // Ensure temp directory exists using fs.promises
+    const { mkdir } = await import('fs/promises');
+    await mkdir(tempDir, { recursive: true });
+    await mkdir(backupDir, { recursive: true });
     
     // Create registry with test migrations
     registry = new MigrationRegistry();
