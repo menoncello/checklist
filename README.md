@@ -162,6 +162,27 @@ cat coverage/perf-report.json
 - **Core Package**: 90% coverage target
 - **New Code**: 100% coverage expected
 
+## Documentation
+
+### Main Documentation
+- **[Product Requirements](docs/prd.md)** - Complete product specifications
+- **[Architecture Overview](docs/architecture.md)** - System architecture and design
+- **[Frontend Specification](docs/front-end-spec.md)** - UI/UX detailed specifications
+- **[Development Brief](docs/brief.md)** - Project overview and objectives
+
+### Detailed Documentation
+- **[Product Requirements (PRD)](docs/prd/)** - Detailed PRD documents
+- **[User Stories](docs/stories/)** - Complete user stories with acceptance criteria
+- **[Architecture Details](docs/architecture/)** - Technical architecture documentation
+- **[Development Guides](docs/development/)** - Development workflows and guides
+- **[QA Documentation](docs/qa/)** - Quality assurance and testing documentation
+- **[Setup Guides](docs/guides/)** - Installation and configuration guides
+
+### Standards & Reports
+- **[Documentation Standards](docs/DOCUMENTATION-STANDARDS.md)** - Documentation guidelines
+- **[Cleanup Report](docs/FINAL-CLEANUP-REPORT.md)** - Latest documentation audit
+- **[Complete Audit Report](docs/COMPLETE-DOCUMENTATION-AUDIT-REPORT.md)** - Full documentation audit
+
 ## Contributing
 
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for development guidelines.
@@ -174,7 +195,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/checklist/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/checklist/discussions)
-- **Documentation**: [docs/](docs/)
 
 ## Acknowledgments
 

@@ -2,7 +2,7 @@
 
 This document has been sharded into multiple sections for better organization and maintainability. Each section is now in its own file within the `docs/prd/` directory.
 
-## 📚 Table of Contents
+## Table of Contents
 
 ### Project Overview
 
@@ -30,19 +30,19 @@ This document has been sharded into multiple sections for better organization an
 
 ## Quick Reference
 
-### 🎯 Key Goals
+### Key Goals
 
 - Enable developers to maintain workflow context across multiple BMAD projects
 - Reduce context switch time from **15-30 minutes to under 2 minutes**
 - Decrease workflow execution errors by **95%**
 - Achieve **90% workflow completion accuracy** without external docs
 
-### 📋 Core Requirements Summary
+### Core Requirements Summary
 
 - **10 Functional Requirements (FR1-FR10)** covering initialization, state tracking, command differentiation
 - **10 Non-Functional Requirements (NFR1-NFR10)** covering performance (<100ms), memory (<50MB), cross-platform support
 
-### 🚀 Epic Summary
+### Epic Summary
 
 1. **Foundation & Validation** - 6 stories including critical TUI spike
 2. **TUI Core with Performance** - 6 stories for terminal UI implementation
