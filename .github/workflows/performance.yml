@@ -15,6 +15,11 @@ on:
       - 'packages/**/*.ts'
       - 'packages/**/*.js'
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 env:
   BUN_VERSION: '1.2.21'
   NODE_ENV: 'test'
