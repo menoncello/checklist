@@ -35,3 +35,11 @@ export type {
   WatchOptions,
   FileChangeHandler,
 } from './IFileSystemService';
+
+export type {
+  IPerformanceMonitor,
+  PerformanceMetric,
+  BudgetViolation,
+  PerformanceReport,
+  TimerHandle,
+} from './IPerformanceMonitor';

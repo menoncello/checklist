@@ -1,6 +1,7 @@
 import type { IConfigService } from '../interfaces/IConfigService';
 import type { IFileSystemService } from '../interfaces/IFileSystemService';
 import type { ILogger } from '../interfaces/ILogger';
+import type { IPerformanceMonitor } from '../interfaces/IPerformanceMonitor';
 import type { IStateManager } from '../interfaces/IStateManager';
 import type { IWorkflowEngine } from '../interfaces/IWorkflowEngine';
 import { Container, Constructor, ServiceOptions } from './Container';
@@ -70,6 +71,14 @@ export class ServiceProvider {
     this.serviceBindings.set('IFileSystemService', implementation);
   }
 
+  registerPerformanceMonitor(
+    implementation: Constructor<IPerformanceMonitor>,
+    options?: ServiceOptions<IPerformanceMonitor>
+  ): void {
+    this.container.register('IPerformanceMonitor', implementation, options);
+    this.serviceBindings.set('IPerformanceMonitor', implementation);
+  }
+
   // Generic registration for custom services
   register<T>(
     name: string,
@@ -99,6 +108,10 @@ export class ServiceProvider {
 
   async getFileSystemService(): Promise<IFileSystemService> {
     return this.container.resolve<IFileSystemService>('IFileSystemService');
+  }
+
+  async getPerformanceMonitor(): Promise<IPerformanceMonitor> {
+    return this.container.resolve<IPerformanceMonitor>('IPerformanceMonitor');
   }
 
   async get<T>(name: string): Promise<T> {
