@@ -16,7 +16,7 @@ on:
       - 'packages/**/*.js'
 
 env:
-  BUN_VERSION: '1.2.x'
+  BUN_VERSION: '1.2.21'
   NODE_ENV: 'test'
   PERFORMANCE_MONITORING: 'true'
   BENCHMARK_ENABLED: 'true'

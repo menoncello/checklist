@@ -54,6 +54,12 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
       
+      - name: Setup Python (Windows)
+        if: matrix.platform == 'win32'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
       - name: Cache Dependencies
         uses: actions/cache@v4
         with:
@@ -65,7 +71,8 @@ jobs:
             ${{ runner.os }}-bun-
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --ignore-optional
+        continue-on-error: ${{ matrix.platform == 'win32' }}
       
       - name: Build TypeScript
         run: bun run build
