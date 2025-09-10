@@ -1,7 +1,7 @@
 # Story 1.7: Performance Monitoring Framework
 
 ## Status
-Ready for Done
+Done
 
 ## Story
 
