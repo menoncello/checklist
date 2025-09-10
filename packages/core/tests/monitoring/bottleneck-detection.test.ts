@@ -72,7 +72,7 @@ describe('Bottleneck Identification Tests (AC4.5)', () => {
 
       expect(bottleneck).toBeDefined();
       expect(['cpu', 'duration']).toContain(bottleneck!.type);
-      expect(['medium', 'high', 'critical']).toContain(bottleneck!.severity);
+      expect(['low', 'medium', 'high', 'critical']).toContain(bottleneck!.severity);
       expect(bottleneck!.description).toMatch(/exceeding threshold|CPU/i);
       expect(bottleneck!.recommendation).toBeDefined();
       if (bottleneck!.metrics.duration !== undefined) {

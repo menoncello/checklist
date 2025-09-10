@@ -1,0 +1,503 @@
+import { EventHandler } from '../framework/UIFramework.js';
+
+export interface EventSubscription {
+  id: string;
+  event: string;
+  handler: EventHandler;
+  once: boolean;
+  priority: number;
+  subscribedAt: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EventEmission {
+  event: string;
+  data: unknown;
+  timestamp: number;
+  source?: string;
+  propagationStopped: boolean;
+  handled: boolean;
+}
+
+export class EventManager {
+  private subscriptions = new Map<string, Set<EventSubscription>>();
+  private subscriptionId = 0;
+  private eventHistory: EventEmission[] = [];
+  private maxHistorySize = 1000;
+  private globalHandlers = new Set<EventHandler>();
+  private eventMetrics = new Map<string, EventMetrics>();
+  private isPaused = false;
+  private pausedEvents: EventEmission[] = [];
+
+  public on(
+    event: string,
+    handler: EventHandler,
+    options: EventSubscriptionOptions = {}
+  ): string {
+    const subscription: EventSubscription = {
+      id: `sub-${++this.subscriptionId}`,
+      event,
+      handler,
+      once: options.once ?? false,
+      priority: options.priority ?? 0,
+      subscribedAt: Date.now(),
+      metadata: options.metadata,
+    };
+
+    if (!this.subscriptions.has(event)) {
+      this.subscriptions.set(event, new Set());
+    }
+
+    const subs = this.subscriptions.get(event);
+    if (subs != null) {
+      subs.add(subscription);
+    }
+
+    // Sort by priority (higher priority first)
+    this.sortSubscriptionsByPriority(event);
+
+    this.updateEventMetrics(event, 'subscription_added');
+    return subscription.id;
+  }
+
+  public once(
+    event: string,
+    handler: EventHandler,
+    options: EventSubscriptionOptions = {}
+  ): string {
+    return this.on(event, handler, { ...options, once: true });
+  }
+
+  public off(event: string, handler?: EventHandler): number {
+    if (!this.subscriptions.has(event)) return 0;
+
+    const subscriptions = this.subscriptions.get(event);
+    if (subscriptions == null) return 0;
+    let removedCount = 0;
+
+    if (handler) {
+      // Remove specific handler
+      for (const subscription of subscriptions) {
+        if (subscription.handler === handler) {
+          subscriptions.delete(subscription);
+          removedCount++;
+        }
+      }
+    } else {
+      // Remove all handlers for the event
+      removedCount = subscriptions.size;
+      subscriptions.clear();
+    }
+
+    if (subscriptions.size === 0) {
+      this.subscriptions.delete(event);
+    }
+
+    this.updateEventMetrics(event, 'subscription_removed', removedCount);
+    return removedCount;
+  }
+
+  public offById(subscriptionId: string): boolean {
+    for (const [event, subscriptions] of this.subscriptions) {
+      for (const subscription of subscriptions) {
+        if (subscription.id === subscriptionId) {
+          subscriptions.delete(subscription);
+          if (subscriptions.size === 0) {
+            this.subscriptions.delete(event);
+          }
+          this.updateEventMetrics(event, 'subscription_removed');
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  public emit(event: string, data?: unknown, source?: string): boolean {
+    const emission: EventEmission = {
+      event,
+      data,
+      timestamp: Date.now(),
+      source,
+      propagationStopped: false,
+      handled: false,
+    };
+
+    if (this.isPaused) {
+      this.pausedEvents.push(emission);
+      return false;
+    }
+
+    return this.processEmission(emission);
+  }
+
+  private processEmission(emission: EventEmission): boolean {
+    this.recordEmission(emission);
+
+    let handlerCount = 0;
+    const subscriptions = this.subscriptions.get(emission.event);
+
+    if (subscriptions) {
+      // Convert to array and sort by priority
+      const sortedSubscriptions = Array.from(subscriptions).sort(
+        (a, b) => b.priority - a.priority
+      );
+
+      for (const subscription of sortedSubscriptions) {
+        if (emission.propagationStopped) break;
+
+        try {
+          const startTime = performance.now();
+          subscription.handler(emission.data);
+          const endTime = performance.now();
+
+          handlerCount++;
+          emission.handled = true;
+
+          this.updateEventMetrics(
+            emission.event,
+            'handler_executed',
+            1,
+            endTime - startTime
+          );
+
+          // Remove one-time subscriptions
+          if (subscription.once) {
+            subscriptions.delete(subscription);
+          }
+        } catch (error) {
+          this.handleEventError(error as Error, emission, subscription);
+        }
+      }
+
+      // Clean up empty event subscriptions
+      if (subscriptions.size === 0) {
+        this.subscriptions.delete(emission.event);
+      }
+    }
+
+    // Execute global handlers
+    this.globalHandlers.forEach((handler) => {
+      try {
+        handler(emission);
+        handlerCount++;
+      } catch (error) {
+        this.handleEventError(error as Error, emission);
+      }
+    });
+
+    this.updateEventMetrics(emission.event, 'emission_processed', handlerCount);
+    return handlerCount > 0;
+  }
+
+  public stopPropagation(event: string): void {
+    // This would be called by handlers to stop further propagation
+    // Implementation depends on how we track current emission
+    const currentEmission = this.getCurrentEmission(event);
+    if (currentEmission) {
+      currentEmission.propagationStopped = true;
+    }
+  }
+
+  private getCurrentEmission(event: string): EventEmission | null {
+    // Find the most recent emission of this event type
+    return (
+      this.eventHistory
+        .slice()
+        .reverse()
+        .find((emission) => emission.event === event) ?? null
+    );
+  }
+
+  private recordEmission(emission: EventEmission): void {
+    this.eventHistory.push(emission);
+
+    // Trim history if it exceeds max size
+    if (this.eventHistory.length > this.maxHistorySize) {
+      this.eventHistory = this.eventHistory.slice(-this.maxHistorySize);
+    }
+  }
+
+  private sortSubscriptionsByPriority(event: string): void {
+    const subscriptions = this.subscriptions.get(event);
+    if (subscriptions) {
+      // Convert to array, sort, and create new Set
+      const sortedArray = Array.from(subscriptions).sort(
+        (a, b) => b.priority - a.priority
+      );
+      this.subscriptions.set(event, new Set(sortedArray));
+    }
+  }
+
+  private handleEventError(
+    error: Error,
+    emission: EventEmission,
+    subscription?: EventSubscription
+  ): void {
+    console.error(`Event handling error for '${emission.event}':`, error);
+
+    // Emit error event
+    const errorEmission: EventEmission = {
+      event: 'eventError',
+      data: { error, originalEvent: emission.event, subscription },
+      timestamp: Date.now(),
+      source: 'EventManager',
+      propagationStopped: false,
+      handled: false,
+    };
+
+    // Process error emission without recursion
+    setTimeout(() => this.processEmission(errorEmission), 0);
+  }
+
+  private updateEventMetrics(
+    event: string,
+    action: string,
+    count: number = 1,
+    duration?: number
+  ): void {
+    if (!this.eventMetrics.has(event)) {
+      this.eventMetrics.set(event, {
+        subscriptionCount: 0,
+        emissionCount: 0,
+        handlerExecutions: 0,
+        totalHandlerTime: 0,
+        averageHandlerTime: 0,
+        errorCount: 0,
+        lastEmission: 0,
+      });
+    }
+
+    const metrics = this.eventMetrics.get(event);
+    if (metrics == null) return;
+
+    switch (action) {
+      case 'subscription_added':
+        metrics.subscriptionCount += count;
+        break;
+      case 'subscription_removed':
+        metrics.subscriptionCount -= count;
+        break;
+      case 'emission_processed':
+        metrics.emissionCount++;
+        metrics.lastEmission = Date.now();
+        break;
+      case 'handler_executed':
+        metrics.handlerExecutions += count;
+        if (duration !== undefined) {
+          metrics.totalHandlerTime += duration;
+          metrics.averageHandlerTime =
+            metrics.totalHandlerTime / metrics.handlerExecutions;
+        }
+        break;
+      case 'error':
+        metrics.errorCount++;
+        break;
+    }
+  }
+
+  public addGlobalHandler(handler: EventHandler): void {
+    this.globalHandlers.add(handler);
+  }
+
+  public removeGlobalHandler(handler: EventHandler): void {
+    this.globalHandlers.delete(handler);
+  }
+
+  public pause(): void {
+    this.isPaused = true;
+  }
+
+  public resume(): void {
+    this.isPaused = false;
+
+    // Process paused events
+    const pausedEvents = [...this.pausedEvents];
+    this.pausedEvents = [];
+
+    pausedEvents.forEach((emission) => {
+      this.processEmission(emission);
+    });
+  }
+
+  public isPausedState(): boolean {
+    return this.isPaused;
+  }
+
+  public clearPausedEvents(): void {
+    this.pausedEvents = [];
+  }
+
+  public getSubscriptions(event?: string): EventSubscription[] {
+    if (event != null && event.length > 0) {
+      const subscriptions = this.subscriptions.get(event);
+      return subscriptions ? Array.from(subscriptions) : [];
+    }
+
+    const allSubscriptions: EventSubscription[] = [];
+    this.subscriptions.forEach((subscriptions) => {
+      allSubscriptions.push(...Array.from(subscriptions));
+    });
+    return allSubscriptions;
+  }
+
+  public getEventHistory(event?: string, limit?: number): EventEmission[] {
+    let history =
+      event != null && event.length > 0
+        ? this.eventHistory.filter((emission) => emission.event === event)
+        : [...this.eventHistory];
+
+    if (limit) {
+      history = history.slice(-limit);
+    }
+
+    return history;
+  }
+
+  public getEventMetrics(
+    event?: string
+  ): EventMetrics | Map<string, EventMetrics> {
+    if (event) {
+      return (
+        this.eventMetrics.get(event) ?? {
+          subscriptionCount: 0,
+          emissionCount: 0,
+          handlerExecutions: 0,
+          totalHandlerTime: 0,
+          averageHandlerTime: 0,
+          errorCount: 0,
+          lastEmission: 0,
+        }
+      );
+    }
+
+    return new Map(this.eventMetrics);
+  }
+
+  public getRegisteredEvents(): string[] {
+    return Array.from(this.subscriptions.keys());
+  }
+
+  public hasSubscriptions(event: string): boolean {
+    const subscriptions = this.subscriptions.get(event);
+    return subscriptions ? subscriptions.size > 0 : false;
+  }
+
+  public getSubscriptionCount(event?: string): number {
+    if (event) {
+      const subscriptions = this.subscriptions.get(event);
+      return subscriptions ? subscriptions.size : 0;
+    }
+
+    let total = 0;
+    this.subscriptions.forEach((subscriptions) => {
+      total += subscriptions.size;
+    });
+    return total;
+  }
+
+  public clear(): void {
+    this.subscriptions.clear();
+    this.eventHistory = [];
+    this.globalHandlers.clear();
+    this.eventMetrics.clear();
+    this.pausedEvents = [];
+    this.isPaused = false;
+    this.subscriptionId = 0;
+  }
+
+  public debug(): EventManagerDebugInfo {
+    return {
+      totalSubscriptions: this.getSubscriptionCount(),
+      totalEvents: this.getRegisteredEvents().length,
+      totalEmissions: this.eventHistory.length,
+      isPaused: this.isPaused,
+      pausedEventCount: this.pausedEvents.length,
+      globalHandlerCount: this.globalHandlers.size,
+      subscriptionsByEvent: Object.fromEntries(
+        Array.from(this.subscriptions.entries()).map(([event, subs]) => [
+          event,
+          subs.size,
+        ])
+      ),
+      recentEmissions: this.getEventHistory(undefined, 10),
+    };
+  }
+
+  public validate(): EventManagerValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Check for high subscription count
+    if (this.getSubscriptionCount() > 1000) {
+      warnings.push(`High subscription count: ${this.getSubscriptionCount()}`);
+    }
+
+    // Check for memory leaks (large event history)
+    if (this.eventHistory.length >= this.maxHistorySize) {
+      warnings.push('Event history at maximum size, potential memory concern');
+    }
+
+    // Check for events with no subscriptions
+    const eventsWithoutSubscriptions = this.getRegisteredEvents().filter(
+      (event) => this.getSubscriptionCount(event) === 0
+    );
+
+    if (eventsWithoutSubscriptions.length > 0) {
+      warnings.push(
+        `${eventsWithoutSubscriptions.length} event(s) with no subscriptions`
+      );
+    }
+
+    // Check for high error rates
+    this.eventMetrics.forEach((metrics, event) => {
+      if (metrics.errorCount > 0 && metrics.emissionCount > 0) {
+        const errorRate = metrics.errorCount / metrics.emissionCount;
+        if (errorRate > 0.1) {
+          warnings.push(
+            `High error rate for event '${event}': ${(errorRate * 100).toFixed(1)}%`
+          );
+        }
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+}
+
+export interface EventSubscriptionOptions {
+  once?: boolean;
+  priority?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EventMetrics {
+  subscriptionCount: number;
+  emissionCount: number;
+  handlerExecutions: number;
+  totalHandlerTime: number;
+  averageHandlerTime: number;
+  errorCount: number;
+  lastEmission: number;
+}
+
+export interface EventManagerDebugInfo {
+  totalSubscriptions: number;
+  totalEvents: number;
+  totalEmissions: number;
+  isPaused: boolean;
+  pausedEventCount: number;
+  globalHandlerCount: number;
+  subscriptionsByEvent: Record<string, number>;
+  recentEmissions: EventEmission[];
+}
+
+export interface EventManagerValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
