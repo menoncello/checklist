@@ -32,6 +32,7 @@ reports/
 *.config.js
 *.config.ts
 .prettierignore
+.npmrc
 
 # License file
 LICENSE

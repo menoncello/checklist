@@ -15,8 +15,13 @@ on:
       - 'packages/**/*.ts'
       - 'packages/**/*.js'
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 env:
-  BUN_VERSION: '1.1.x'
+  BUN_VERSION: '1.2.21'
   NODE_ENV: 'test'
   PERFORMANCE_MONITORING: 'true'
   BENCHMARK_ENABLED: 'true'
@@ -82,7 +87,7 @@ jobs:
           fi
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: benchmark-results-${{ github.run_id }}
@@ -92,7 +97,7 @@ jobs:
           retention-days: 30
 
       - name: Download baseline results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         if: github.event_name == 'pull_request'
         with:
           name: baseline-benchmark-results
@@ -220,12 +225,12 @@ jobs:
 
     steps:
       - name: Download benchmark results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: benchmark-results-${{ github.run_id }}
 
       - name: Upload as baseline
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: baseline-benchmark-results
           path: benchmark-results.json

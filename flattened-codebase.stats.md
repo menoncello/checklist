@@ -1,22 +1,22 @@
 # 🧾 Flatten Stats for flattened-codebase.xml
 
 ## 📊 Summary
-- Total source size: 16.7 MB
+- Total source size: 16.8 MB
 - Generated XML size: 16.9 MB
-- Total lines of code: 48,603
-- Estimated tokens: 4,425,199
-- File breakdown: 239 text, 2 binary, 0 errors
+- Total lines of code: 49,843
+- Estimated tokens: 4,439,946
+- File breakdown: 244 text, 2 binary, 0 errors
 
 ## 📈 Size Percentiles
-Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
+Avg: 71,614 B, Median: 5,633 B, p90: 13,887 B, p95: 21,687 B, p99: 113,454 B
 
 ## 🧮 Size Histogram
 | Bucket | Files | Bytes |
 | --- | ---: | ---: |
 | 0–1KB | 18 | 11,514 |
-| 1–10KB | 176 | 920,441 |
-| 10–100KB | 44 | 693,505 |
-| 100KB–1MB | 1 | 112,347 |
+| 1–10KB | 179 | 939,910 |
+| 10–100KB | 46 | 728,623 |
+| 100KB–1MB | 1 | 113,454 |
 | 1–10MB | 2 | 15,823,582 |
 | 10–100MB | 0 | 0 |
 | >=100MB | 0 | 0 |
@@ -24,11 +24,11 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 ## 📦 Top Extensions by Bytes (Top 20)
 | Ext | Files | Bytes | % of total |
 | --- | ---: | ---: | ---: |
-| .html | 1 | 8,031,032 | 45.73% |
-| .json | 4 | 7,796,915 | 44.40% |
-| .md | 196 | 1,495,101 | 8.51% |
-| .lock | 1 | 112,347 | 0.64% |
-| .yml | 21 | 95,082 | 0.54% |
+| .html | 1 | 8,031,032 | 45.59% |
+| .json | 4 | 7,796,915 | 44.26% |
+| .md | 200 | 1,546,949 | 8.78% |
+| .lock | 1 | 113,454 | 0.64% |
+| .yml | 22 | 97,821 | 0.56% |
 | .ts | 6 | 15,672 | 0.09% |
 | .js | 3 | 7,032 | 0.04% |
 | <none> | 7 | 4,651 | 0.03% |
@@ -38,17 +38,17 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 ## 📂 Top Directories by Bytes (Top 20)
 | Directory | Files | Bytes | % of total |
 | --- | ---: | ---: | ---: |
-| reports | 2 | 15,823,582 | 90.10% |
-| reports/mutation | 2 | 15,823,582 | 90.10% |
-| docs | 161 | 1,180,836 | 6.72% |
-| docs/stories | 57 | 511,961 | 2.92% |
-| docs/qa | 61 | 478,130 | 2.72% |
-| docs/qa/assessments | 49 | 437,372 | 2.49% |
-| docs/stories/epic-1 | 21 | 320,700 | 1.83% |
+| reports | 2 | 15,823,582 | 89.82% |
+| reports/mutation | 2 | 15,823,582 | 89.82% |
+| docs | 166 | 1,235,927 | 7.02% |
+| docs/stories | 58 | 540,038 | 3.07% |
+| docs/qa | 65 | 505,144 | 2.87% |
+| docs/qa/assessments | 52 | 461,647 | 2.62% |
+| docs/stories/epic-1 | 22 | 348,777 | 1.98% |
 | .claude | 33 | 202,227 | 1.15% |
 | .claude/commands | 33 | 202,227 | 1.15% |
 | .claude/commands/BMad | 33 | 202,227 | 1.15% |
-| . | 17 | 160,812 | 0.92% |
+| . | 17 | 161,415 | 0.92% |
 | .claude/commands/BMad/tasks | 23 | 144,388 | 0.82% |
 | prompts | 9 | 115,954 | 0.66% |
 | docs/architecture | 22 | 75,514 | 0.43% |
@@ -57,7 +57,7 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 | .github | 11 | 59,701 | 0.34% |
 | .claude/commands/BMad/agents | 10 | 57,839 | 0.33% |
 | .github/workflows | 8 | 53,495 | 0.30% |
-| docs/qa/gates | 12 | 40,758 | 0.23% |
+| docs/qa/gates | 13 | 43,497 | 0.25% |
 
 ## 🌳 Depth Distribution
 | Depth | Count |
@@ -65,7 +65,7 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 | 1 | 17 |
 | 2 | 28 |
 | 3 | 46 |
-| 4 | 117 |
+| 4 | 122 |
 | 5 | 33 |
 
 ## 🧵 Longest Paths (Top 25)
@@ -79,13 +79,15 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 | .claude/commands/BMad/tasks/create-deep-research-prompt.md | 58 | 7,481 |
 | .claude/commands/BMad/tasks/generate-ai-frontend-prompt.md | 58 | 4,704 |
 | docs/stories/epic-1/story-1.13-ioc-dependency-injection.md | 58 | 25,051 |
+| docs/qa/assessments/1.8-terminal-canvas-trace-20250110.md | 57 | 8,458 |
 | docs/stories/epic-2/story-2.7-configuration-management.md | 57 | 6,015 |
 | docs/stories/epic-1/story-1.15-improve-mutation-score.md | 56 | 3,868 |
+| docs/qa/assessments/1.8-terminal-canvas-nfr-20250110.md | 55 | 3,463 |
 | docs/stories/epic-1/story-1.9-component-architecture.md | 55 | 4,762 |
 | docs/stories/epic-2/story-2.3-progress-visualization.md | 55 | 3,174 |
-| docs/stories/epic-1/story-1.7-performance-monitoring.md | 55 | 27,778 |
-| docs/stories/epic-3/story-3.8-template-documentation.md | 55 | 11,133 |
+| docs/stories/epic-1/story-1.7-performance-monitoring.md | 55 | 27,768 |
 | docs/stories/epic-3/story-3.7-template-import-export.md | 55 | 7,548 |
+| docs/stories/epic-3/story-3.8-template-documentation.md | 55 | 11,133 |
 | .claude/commands/BMad/tasks/brownfield-create-story.md | 54 | 4,680 |
 | .claude/commands/BMad/tasks/create-brownfield-story.md | 54 | 9,507 |
 | docs/stories/epic-1/story-1.16-code-quality-metrics.md | 54 | 5,664 |
@@ -94,12 +96,10 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 | docs/qa/gates/0.0-environment-setup-comprehensive.yml | 53 | 3,519 |
 | docs/stories/epic-1/story-1.0-database-state-setup.md | 53 | 26,519 |
 | docs/stories/epic-4/story-4.4-installation-updates.md | 53 | 3,571 |
-| docs/stories/epic-5/story-5.1-template-marketplace.md | 53 | 1,338 |
-| docs/architecture/decisions/ADR-001-ci-cd-choices.md | 52 | 2,792 |
 
 ## ⏱️ Temporal
-- Oldest: .claude/commands/BMad/agents/analyst.md (2025-09-09T19:23:35.069Z)
-- Newest: docs/qa/gates/1.7-performance-monitoring.yml (2025-09-10T00:40:01.566Z)
+- Oldest: .claude/commands/BMad/agents/analyst.md (2025-09-10T01:01:50.398Z)
+- Newest: docs/stories/epic-1/story-1.8-terminal-canvas.md (2025-09-10T15:45:41.492Z)
 
 | Age | Files | Bytes |
 | --- | ---: | ---: |
@@ -108,7 +108,7 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 | 1–6 months | 0 | 0 |
 | 7–30 days | 0 | 0 |
 | 1–7 days | 0 | 0 |
-| < 1 day | 241 | 17,561,389 |
+| < 1 day | 246 | 17,617,083 |
 
 ## ✅ Quality Signals
 - Zero-byte files: 0
@@ -119,18 +119,18 @@ Avg: 72,869 B, Median: 5,606 B, p90: 13,571 B, p95: 21,382 B, p99: 112,347 B
 - Suspiciously large files (>= 100 MB): 0
 
 ## 🗜️ Compressibility
-Sampled compressibility ratio: 31.73%
+Sampled compressibility ratio: 31.72%
 
 ## 🔧 Git
-- Tracked: 238 files, 17,535,390 bytes
-- Untracked: 3 files, 25,999 bytes
+- Tracked: 243 files, 17,602,423 bytes
+- Untracked: 3 files, 14,660 bytes
 
 ## 📚 Largest Files (Top 50)
 | Path | Size | % of total | LOC |
 | --- | ---: | ---: | ---: |
-| reports/mutation/index.html | 7.7 MB | 45.73% | 480 |
-| reports/mutation/mutation-report.json | 7.4 MB | 44.37% | 1 |
-| bun.lock | 109.7 KB | 0.64% | 1,023 |
+| reports/mutation/index.html | 7.7 MB | 45.59% | 480 |
+| reports/mutation/mutation-report.json | 7.4 MB | 44.23% | 1 |
+| bun.lock | 110.8 KB | 0.64% | 1,042 |
 | docs/stories/epic-1/story-1.6-workflow-engine.md | 28.5 KB | 0.17% | 865 |
 | docs/stories/epic-1/story-1.7-performance-monitoring.md | 27.1 KB | 0.16% | 737 |
 | docs/stories/epic-1/story-1.0-database-state-setup.md | 25.9 KB | 0.15% | 684 |
@@ -139,6 +139,7 @@ Sampled compressibility ratio: 31.73%
 | docs/stories/epic-1/story-1.13-ioc-dependency-injection.md | 24.5 KB | 0.14% | 615 |
 | docs/front-end-spec.md | 23.9 KB | 0.14% | 597 |
 | docs/stories/epic-1/story-1.6a-state-transactions.md | 23.1 KB | 0.13% | 582 |
+| docs/stories/epic-1/story-1.8-terminal-canvas.md | 22.2 KB | 0.13% | 535 |
 | docs/stories/epic-1/story-1.12-strykerjs-mutation-testing.md | 21.2 KB | 0.12% | 530 |
 | docs/stories/epic-1/story-1.2-cicd-pipeline.md | 20.9 KB | 0.12% | 565 |
 | prompts/09-progress-dashboard.md | 17.2 KB | 0.10% | 422 |
@@ -161,6 +162,7 @@ Sampled compressibility ratio: 31.73%
 | docs/qa/assessments/1.11-test-design-20250109.md | 12.4 KB | 0.07% | 241 |
 | docs/stories/epic-4/story-4.6-error-recovery.md | 12.1 KB | 0.07% | 476 |
 | docs/qa/assessments/1.6b-trace-20250109.md | 12.1 KB | 0.07% | 368 |
+| docs/qa/assessments/1.8-test-design-20250109.md | 12.1 KB | 0.07% | 199 |
 | docs/qa/assessments/1.0-risk-20250905.md | 12.0 KB | 0.07% | 335 |
 | docs/qa/assessments/1.10-test-design-20250908.md | 11.8 KB | 0.07% | 269 |
 | docs/qa/assessments/1.13-test-design-20250109.md | 11.6 KB | 0.07% | 246 |
@@ -176,5 +178,3 @@ Sampled compressibility ratio: 31.73%
 | docs/qa/assessments/1.2-trace-20250105.md | 10.1 KB | 0.06% | 321 |
 | docs/qa/assessments/1.11-risk-20250109.md | 10.0 KB | 0.06% | 274 |
 | .github/workflows/performance.yml | 10.0 KB | 0.06% | 273 |
-| docs/stories/epic-3/story-3.6-builtin-templates.md | 9.8 KB | 0.06% | 435 |
-| docs/qa/assessments/project-risk-20250904.md | 9.8 KB | 0.06% | 279 |

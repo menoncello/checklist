@@ -10,6 +10,19 @@
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "quality": "bun run lint && bun run format:check && bun run type-check",
+    "quality:fix": "bun run lint:fix && bun run format && bun run type-check"
+  },
+  "dependencies": {
+    "@checklist/core": "workspace:*",
+    "@checklist/shared": "workspace:*",
+    "supports-color": "^9.4.0"
+  },
+  "devDependencies": {
+    "pixelmatch": "^5.3.0"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.0.0"
   }
 }
