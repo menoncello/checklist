@@ -23,8 +23,13 @@
 | Static Analysis              | Semgrep            | 1.45.x        | Security patterns             | Finds security anti-patterns        |
 | **TUI/CLI Framework**        |
 | TUI Framework                | Custom ANSI        | 1.0.0         | Terminal UI rendering         | Full control, optimal performance   |
+| View System                  | Custom ViewSystem  | 1.0.0         | Screen/view management        | Story 1.9 - robust navigation       |
+| Layout Management            | Custom Components  | 1.0.0         | Header/footer/split layouts   | Story 1.9 - consistent patterns     |
+| Terminal Canvas              | Custom Canvas      | 1.0.0         | Low-level terminal rendering  | Story 1.8 - ANSI escape codes       |
+| Event Handling               | Custom EventBus    | 1.0.0         | Keyboard/UI event processing  | Story 1.8 - responsive input        |
 | CLI Parser                   | Bun.argv           | Built-in      | Command parsing               | Native Bun argument parsing         |
 | Terminal Detection           | supports-color     | 9.4.x         | Terminal capability detection | Graceful degradation                |
+| Performance Monitoring       | Custom Monitor     | 1.0.0         | TUI performance tracking      | Story 1.8 - <50ms requirements      |
 | **State & Data**             |
 | State Format                 | YAML               | js-yaml 4.1.x | State persistence             | Human-readable, Git-friendly        |
 | Schema Validation            | Ajv                | 8.12.x        | YAML/JSON schema validation   | Ensures state file integrity        |

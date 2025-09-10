@@ -37,6 +37,8 @@ graph TB
     subgraph "Presentation Layer"
         CLI[CLI Parser]
         TUI[TUI Renderer]
+        VS[View System]
+        TC[Terminal Canvas]
         NM[Notification Manager]
     end
 
@@ -90,7 +92,9 @@ graph TB
     end
 
     CLI --> WE
-    TUI --> WE
+    TUI --> VS
+    VS --> TC
+    TC --> WE
     WE --> TM
     WE --> CE
     WE --> VM
