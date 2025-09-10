@@ -84,6 +84,61 @@ export interface ViewSystemOptions {
   defaultLayout?: LayoutType;
 }
 
+export interface TabInfo {
+  readonly viewId: string;
+  readonly title: string;
+  readonly isActive: boolean;
+}
+
+export interface LayoutComponent {
+  readonly id: string;
+  readonly position: 'header' | 'footer' | 'sidebar-left' | 'sidebar-right';
+  render(context: LayoutContext): string;
+}
+
+export interface LayoutContext {
+  readonly width: number;
+  readonly height: number;
+  readonly currentView?: View;
+  readonly navigation?: {
+    canGoBack: boolean;
+    breadcrumbs: string[];
+  };
+  readonly status?: {
+    message: string;
+    type: 'info' | 'warning' | 'error' | 'success';
+  };
+  readonly keyBindings?: KeyBinding[];
+}
+
+export interface HeaderComponent extends LayoutComponent {
+  readonly position: 'header';
+  readonly showBreadcrumbs: boolean;
+  readonly showTitle: boolean;
+}
+
+export interface FooterComponent extends LayoutComponent {
+  readonly position: 'footer';
+  readonly showKeyBindings: boolean;
+  readonly showStatus: boolean;
+}
+
+export interface LayoutRender {
+  readonly header: string;
+  readonly footer: string;
+  readonly content: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    content: string;
+  };
+  readonly sidebars: {
+    left?: string;
+    right?: string;
+  };
+}
+
 export interface ViewSystem {
   // View Management
   registerView(id: string, view: View): void;
@@ -101,6 +156,20 @@ export interface ViewSystem {
   setLayout(layout: LayoutType): void;
   getLayout(): LayoutType;
   splitView(primary: string, secondary: string): Promise<void>;
+
+  // Layout Component Management
+  registerLayoutComponent(component: LayoutComponent): void;
+  unregisterLayoutComponent(componentId: string): void;
+  getLayoutComponent(componentId: string): LayoutComponent | undefined;
+  getLayoutComponents(position: LayoutComponent['position']): LayoutComponent[];
+  renderLayout(width: number, height: number): LayoutRender;
+
+  // Tab Management
+  addTab(viewId: string): Promise<void>;
+  removeTab(viewId: string): Promise<void>;
+  switchToTab(viewId: string): Promise<void>;
+  getTabs(): readonly TabInfo[];
+  getActiveTabId(): string | undefined;
 
   // State Management
   saveViewState(viewId: string): void;
