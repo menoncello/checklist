@@ -18,8 +18,86 @@ checklist/
 │   │
 │   ├── tui/                    # Terminal UI components
 │   │   ├── src/
-│   │   │   └── index.ts
+│   │   │   ├── index.ts        # Main TUI entry point
+│   │   │   ├── views/          # View system (Story 1.9)
+│   │   │   │   ├── ViewSystem.ts
+│   │   │   │   ├── BaseView.ts
+│   │   │   │   └── types.ts
+│   │   │   ├── navigation/     # Navigation system (Story 1.9)
+│   │   │   │   ├── NavigationStack.ts
+│   │   │   │   └── ViewRegistry.ts
+│   │   │   ├── layout/         # Layout management (Story 1.9)
+│   │   │   │   ├── LayoutManager.ts
+│   │   │   │   ├── DefaultHeaderComponent.ts
+│   │   │   │   └── DefaultFooterComponent.ts
+│   │   │   ├── framework/      # TUI framework (Story 1.8)
+│   │   │   │   ├── UIFramework.ts
+│   │   │   │   ├── TerminalCanvas.ts
+│   │   │   │   ├── ApplicationLoop.ts
+│   │   │   │   └── Lifecycle.ts
+│   │   │   ├── screens/        # Screen management (Story 1.8)
+│   │   │   │   ├── ScreenManager.ts
+│   │   │   │   ├── BaseScreen.ts
+│   │   │   │   └── ScreenStack.ts
+│   │   │   ├── components/     # UI components (Story 1.8)
+│   │   │   │   ├── ComponentRegistry.ts
+│   │   │   │   ├── BaseComponent.ts
+│   │   │   │   ├── ComponentInstance.ts
+│   │   │   │   └── VirtualizedList.ts
+│   │   │   ├── events/         # Event handling (Story 1.8)
+│   │   │   │   ├── EventManager.ts
+│   │   │   │   ├── KeyboardHandler.ts
+│   │   │   │   ├── EventBus.ts
+│   │   │   │   └── InputValidator.ts
+│   │   │   ├── terminal/       # Terminal capabilities (Story 1.8)
+│   │   │   │   ├── CapabilityDetector.ts
+│   │   │   │   ├── TerminalInfo.ts
+│   │   │   │   ├── FallbackRenderer.ts
+│   │   │   │   └── ColorSupport.ts
+│   │   │   ├── errors/         # Error handling (Story 1.8)
+│   │   │   │   ├── ErrorBoundary.ts
+│   │   │   │   ├── CrashRecovery.ts
+│   │   │   │   └── StatePreservation.ts
+│   │   │   ├── performance/    # Performance monitoring (Story 1.8)
+│   │   │   │   ├── PerformanceMonitor.ts
+│   │   │   │   ├── StartupProfiler.ts
+│   │   │   │   ├── MemoryTracker.ts
+│   │   │   │   └── MetricsCollector.ts
+│   │   │   ├── debug/          # Debug utilities (Story 1.8)
+│   │   │   │   ├── DebugRenderer.ts
+│   │   │   │   ├── EventLogger.ts
+│   │   │   │   ├── StateInspector.ts
+│   │   │   │   └── DebugCommands.ts
+│   │   │   ├── rendering/      # Rendering optimization (Story 1.8)
+│   │   │   │   ├── Viewport.ts
+│   │   │   │   └── RenderOptimizer.ts
+│   │   │   └── utils/          # TUI utilities (Story 1.8)
+│   │   │       ├── ResizeHandler.ts
+│   │   │       ├── ScrollManager.ts
+│   │   │       └── CleanShutdown.ts
 │   │   ├── tests/              # Test files
+│   │   │   ├── views/          # View system tests (Story 1.9)
+│   │   │   │   ├── ViewSystem.test.ts
+│   │   │   │   ├── NavigationStack.test.ts
+│   │   │   │   ├── ViewRegistry.test.ts
+│   │   │   │   ├── BaseView.test.ts
+│   │   │   │   ├── TabSwitching.test.ts
+│   │   │   │   ├── LayoutComponents.test.ts
+│   │   │   │   ├── KeyboardNavigation.test.ts
+│   │   │   │   └── Performance.test.ts
+│   │   │   └── framework/      # Framework tests (Story 1.8)
+│   │   │       ├── TerminalCanvas.test.ts
+│   │   │       ├── ApplicationLoop.test.ts
+│   │   │       ├── ScreenManager.test.ts
+│   │   │       ├── ComponentRegistry.test.ts
+│   │   │       ├── EventManager.test.ts
+│   │   │       ├── KeyboardHandler.test.ts
+│   │   │       ├── CapabilityDetector.test.ts
+│   │   │       ├── ErrorBoundary.test.ts
+│   │   │       ├── PerformanceMonitor.test.ts
+│   │   │       ├── MemoryTracker.test.ts
+│   │   │       ├── VirtualizedList.test.ts
+│   │   │       └── DebugRenderer.test.ts
 │   │   └── dist/
 │   │
 │   ├── shared/                 # Shared utilities
