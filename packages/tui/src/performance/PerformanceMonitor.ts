@@ -124,6 +124,64 @@ export class PerformanceMonitor {
     });
   }
 
+  // Public API methods for compatibility
+  public mark(name: string): number {
+    const now = performance.now();
+    this.recordMetricValue(name, now - this.startTime, { type: 'mark' });
+    return now;
+  }
+
+  public measure(name: string, startMark: string, endMark: string): number {
+    const start = this.metrics.find((m) => m.name === startMark)?.value ?? 0;
+    const end = this.metrics.find((m) => m.name === endMark)?.value ?? 0;
+    const duration = end - start;
+    this.recordMetricValue(name, duration, {
+      type: 'measure',
+      startMark,
+      endMark,
+    });
+    return duration;
+  }
+
+  public recordMetricValue(
+    name: string,
+    value: number,
+    metadata?: Record<string, unknown>
+  ): void {
+    const metric: PerformanceMetric = {
+      id: `${name}-${Date.now()}`,
+      name,
+      value,
+      timestamp: Date.now(),
+      metadata,
+    };
+
+    this.metrics.push(metric);
+
+    // Trim buffer if needed
+    if (this.metrics.length > this.config.metricsBufferSize) {
+      this.metrics.shift();
+    }
+  }
+
+  public generateReport(): {
+    marks: Record<string, number>;
+    measures: Record<string, number>;
+  } {
+    const marks: Record<string, number> = {};
+    const measures: Record<string, number> = {};
+
+    for (const metric of this.metrics) {
+      if (metric.metadata?.type === 'mark') {
+        marks[metric.name] = metric.value;
+      } else if (metric.metadata?.type === 'measure') {
+        measures[metric.name] = metric.value;
+      }
+    }
+
+    return { marks, measures };
+  }
+
   private captureBaseline(): void {
     this.memoryBaseline = process.memoryUsage();
   }

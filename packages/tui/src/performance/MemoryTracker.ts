@@ -340,6 +340,48 @@ export class MemoryTracker {
     return { slope, r2 };
   }
 
+  // Public API methods for compatibility
+  public start(): void {
+    if (!this.samplingTimer) {
+      this.startTracking();
+    }
+  }
+
+  public stop(): void {
+    if (this.samplingTimer) {
+      clearInterval(this.samplingTimer);
+      this.samplingTimer = null;
+    }
+  }
+
+  public getCurrentUsage(): MemorySnapshot {
+    return this.captureSnapshot();
+  }
+
+  public checkForLeak(baseline: number): boolean {
+    const current = this.captureSnapshot();
+    const growthRate =
+      ((current.heapUsed - baseline) / this.config.samplingInterval) * 1000;
+    return growthRate > this.config.leakDetectionThreshold;
+  }
+
+  public takeSnapshot(): MemorySnapshot {
+    return this.captureSnapshot();
+  }
+
+  public getGrowthRate(): { bytesPerSecond: number } {
+    if (this.snapshots.length < 2) {
+      return { bytesPerSecond: 0 };
+    }
+
+    const recent = this.snapshots[this.snapshots.length - 1];
+    const previous = this.snapshots[this.snapshots.length - 2];
+    const timeDiff = (recent.timestamp - previous.timestamp) / 1000;
+    const byteDiff = recent.heapUsed - previous.heapUsed;
+
+    return { bytesPerSecond: byteDiff / timeDiff };
+  }
+
   private setupGCMonitoring(): void {
     // GC monitoring is complex due to typing issues
     // We'll skip wrapping the GC function for now

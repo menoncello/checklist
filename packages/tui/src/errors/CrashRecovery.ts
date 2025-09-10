@@ -510,7 +510,7 @@ export class CrashRecovery {
     } catch (error) {
       console.error('Error during graceful shutdown:', error);
     } finally {
-      this.cleanup();
+      this.internalCleanup();
     }
   }
 
@@ -521,7 +521,7 @@ export class CrashRecovery {
     });
   }
 
-  private cleanup(): void {
+  private internalCleanup(): void {
     if (this.recoveryTimer) {
       clearTimeout(this.recoveryTimer);
       this.recoveryTimer = null;
@@ -680,6 +680,22 @@ export class CrashRecovery {
     if (handlers) {
       handlers.delete(handler);
     }
+  }
+
+  public cleanup(): void {
+    if (this.recoveryTimer) {
+      clearTimeout(this.recoveryTimer);
+      this.recoveryTimer = null;
+    }
+
+    if (this.backupTimer) {
+      clearInterval(this.backupTimer);
+      this.backupTimer = null;
+    }
+
+    this.eventHandlers.clear();
+    this.emergencyHandlers.clear();
+    this.criticalSections.clear();
   }
 
   private emit(event: string, data?: unknown): void {

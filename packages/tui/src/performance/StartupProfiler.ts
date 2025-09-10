@@ -196,6 +196,58 @@ export class StartupProfiler {
     this.emit('milestone', { milestone });
   }
 
+  // Convenience methods for compatibility
+  public start(name: string): void {
+    this.startPhase(name);
+  }
+
+  public end(name: string): void {
+    this.endPhase(name);
+  }
+
+  public getDuration(name: string): number {
+    const phase = this.phases.get(name);
+    return phase?.duration ?? 0;
+  }
+
+  public getTotalTime(): number {
+    let total = 0;
+    for (const phase of this.phases.values()) {
+      if (
+        phase.parent === undefined &&
+        phase.duration !== undefined &&
+        phase.duration !== null
+      ) {
+        total += phase.duration;
+      }
+    }
+    return total;
+  }
+
+  public getBreakdown(): Record<string, number> {
+    const breakdown: Record<string, number> = {};
+    for (const [name, phase] of this.phases.entries()) {
+      if (phase.duration !== undefined && phase.duration !== null) {
+        breakdown[name] = phase.duration;
+      }
+    }
+    return breakdown;
+  }
+
+  public getSlowPhases(threshold: number): string[] {
+    const slowPhases: string[] = [];
+    for (const [name, phase] of this.phases.entries()) {
+      if (
+        phase.duration !== undefined &&
+        phase.duration !== null &&
+        phase.duration > threshold
+      ) {
+        slowPhases.push(name);
+      }
+    }
+    return slowPhases;
+  }
+
   public measureFunction<T extends (...args: unknown[]) => unknown>(
     fn: T,
     phaseName: string,

@@ -14,6 +14,20 @@ export interface ErrorState {
   maxRetries: number;
 }
 
+export interface ErrorHistoryEntry {
+  error:
+    | Error
+    | {
+        name: string;
+        message: string;
+        stack?: string;
+      };
+  errorInfo: ErrorInfo;
+  errorId: string;
+  timestamp: number;
+  retryCount: number;
+}
+
 export interface ErrorBoundaryConfig {
   maxRetries: number;
   retryDelay: number;
@@ -143,6 +157,80 @@ export class ErrorBoundary {
     } else {
       this.emit('errorBoundaryExhausted', { error, errorInfo });
     }
+  }
+
+  // Public API methods for compatibility
+  public onError(handler: (error: Error, errorInfo: ErrorInfo) => void): void {
+    this.on(
+      'error',
+      ({ error, errorInfo }: { error: Error; errorInfo: ErrorInfo }) =>
+        handler(error, errorInfo)
+    );
+  }
+
+  public runWithBoundary(fn: () => void): void {
+    try {
+      fn();
+    } catch (error) {
+      this.handleError(error as Error, { componentStack: 'runWithBoundary' });
+    }
+  }
+
+  public async runAsyncWithBoundary(fn: () => Promise<void>): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      this.handleError(error as Error, {
+        componentStack: 'runAsyncWithBoundary',
+      });
+    }
+  }
+
+  public getFallbackUI(): string {
+    if (this.state.hasError && this.state.error) {
+      return this.config.fallbackRenderer(
+        this.state.error,
+        this.state.errorInfo ?? {}
+      );
+    }
+    return '';
+  }
+
+  public async retryOperation<T>(
+    operation: () => T,
+    maxRetries: number,
+    delay: number
+  ): Promise<T> {
+    let attempts = 0;
+    while (attempts < maxRetries) {
+      try {
+        return operation();
+      } catch (error) {
+        attempts++;
+        if (attempts >= maxRetries) {
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
+  public createComponentBoundary(name: string): ErrorBoundary {
+    const boundary = new ErrorBoundary({ ...this.config });
+    boundary.on(
+      'error',
+      ({ error, errorInfo }: { error: Error; errorInfo: ErrorInfo }) => {
+        this.emit('componentError', { component: name, error, errorInfo });
+      }
+    );
+    return boundary;
+  }
+
+  public reset(): void {
+    this.state = this.createInitialState();
+    this.errorHistory = [];
+    this.preservedState.clear();
   }
 
   private generateErrorId(): string {
@@ -477,18 +565,6 @@ export class ErrorBoundary {
       });
     }
   }
-}
-
-interface ErrorHistoryEntry {
-  errorId: string;
-  timestamp: number;
-  error: {
-    name: string;
-    message: string;
-    stack?: string;
-  };
-  errorInfo: ErrorInfo;
-  retryCount: number;
 }
 
 interface ErrorBoundaryMetrics {

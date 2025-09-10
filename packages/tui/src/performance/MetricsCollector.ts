@@ -157,6 +157,73 @@ export class MetricsCollector {
     });
   }
 
+  // Public API methods for compatibility
+  public start(): void {
+    this.startCollection();
+  }
+
+  public recordMetric(
+    name: string,
+    value: number,
+    metadata?: Record<string, unknown>
+  ): void {
+    this.record(name, value, {}, metadata);
+  }
+
+  public record(
+    name: string,
+    value: number,
+    tags: Record<string, string> = {},
+    metadata?: Record<string, unknown>
+  ): void {
+    const point: MetricPoint = {
+      timestamp: Date.now(),
+      value,
+      tags,
+      metadata,
+    };
+
+    if (!this.buffer.has(name)) {
+      this.buffer.set(name, []);
+    }
+    const bufferArray = this.buffer.get(name);
+    if (bufferArray) {
+      bufferArray.push(point);
+    }
+
+    // Update series
+    if (!this.series.has(name)) {
+      this.series.set(name, {
+        name,
+        points: [],
+        aggregations: {
+          count: 0,
+          sum: 0,
+          avg: 0,
+          min: value,
+          max: value,
+          p50: value,
+          p95: value,
+          p99: value,
+          latest: value,
+        },
+        tags,
+      });
+    }
+
+    const series = this.series.get(name);
+    if (!series) return;
+
+    series.points.push(point);
+    series.aggregations.count++;
+    series.aggregations.sum += value;
+    series.aggregations.avg =
+      series.aggregations.sum / series.aggregations.count;
+    series.aggregations.min = Math.min(series.aggregations.min, value);
+    series.aggregations.max = Math.max(series.aggregations.max, value);
+    series.aggregations.latest = value;
+  }
+
   private startCollection(): void {
     // Start flush timer
     this.flushTimer = setInterval(() => {
