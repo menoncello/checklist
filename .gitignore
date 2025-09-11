@@ -39,3 +39,9 @@ npm-debug.log*
 
 # StrykerJS temporary files
 .stryker-tmp/
+.stryker-cache/
+*.stryker-tmp/
+
+# Performance reports (large files)
+reports/performance/benchmark-*.json
+reports/mutation/index.html

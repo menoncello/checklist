@@ -123,7 +123,6 @@ describe('Migration Performance Benchmarks', () => {
 
       expect(result.success).toBe(true);
       expect(duration).toBeLessThan(500); // Must complete within 500ms
-      console.log(`Small file migration: ${duration.toFixed(2)}ms`);
     });
 
     it('should handle multiple small migrations efficiently', async () => {
@@ -156,9 +155,6 @@ describe('Migration Performance Benchmarks', () => {
 
       expect(avgDuration).toBeLessThan(500);
       expect(maxDuration).toBeLessThan(500);
-      
-      console.log(`Average migration time: ${avgDuration.toFixed(2)}ms`);
-      console.log(`Max migration time: ${maxDuration.toFixed(2)}ms`);
     });
   });
 
@@ -198,7 +194,6 @@ describe('Migration Performance Benchmarks', () => {
 
       expect(result.success).toBe(true);
       expect(duration).toBeLessThan(500); // Still should complete within 500ms
-      console.log(`Medium file migration: ${duration.toFixed(2)}ms`);
     });
   });
 
@@ -251,7 +246,7 @@ describe('Migration Performance Benchmarks', () => {
       // In CI environments, this can take longer due to slower I/O
       const maxDuration = process.env.CI ? 5000 : 2000; // Allow more time in CI
       expect(duration).toBeLessThan(maxDuration);
-      console.log(`Large file migration: ${duration.toFixed(2)}ms`);
+      // Performance: Large file migration completed
     });
   });
 
@@ -278,7 +273,7 @@ describe('Migration Performance Benchmarks', () => {
 
       expect(backupPath).toBeDefined();
       expect(duration).toBeLessThan(100); // Backup should be very fast
-      console.log(`Backup creation: ${duration.toFixed(2)}ms`);
+      // Performance: Backup creation completed
     });
 
     it('should handle backup rotation efficiently', async () => {
@@ -313,7 +308,7 @@ describe('Migration Performance Benchmarks', () => {
       const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
       expect(avgDuration).toBeLessThan(100);
       
-      console.log(`Average backup with rotation: ${avgDuration.toFixed(2)}ms`);
+      // Performance: Backup with rotation completed
     });
   });
 
@@ -341,7 +336,7 @@ describe('Migration Performance Benchmarks', () => {
       const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
       expect(avgDuration).toBeLessThan(500);
       
-      console.log(`Rapid sequential migrations avg: ${avgDuration.toFixed(2)}ms`);
+      // Performance: Rapid sequential migrations completed
     });
   });
 
@@ -377,7 +372,7 @@ describe('Migration Performance Benchmarks', () => {
       const memoryIncrease = (finalMemory - initialMemory) / 1024 / 1024;
       expect(memoryIncrease).toBeLessThan(50);
       
-      console.log(`Memory increase: ${memoryIncrease.toFixed(2)}MB`);
+      // Performance: Memory tracking completed
     });
   });
 });

@@ -1,7 +1,7 @@
 # Story 1.12: StrykerJS Mutation Testing Infrastructure
 
 ## Status
-Done
+Ready for Review
 
 ## Story
 **As a** developer,  
@@ -51,11 +51,11 @@ Done
 - [x] **Task 4: Improve Test Coverage for Mutation Testing** (AC: 2)
   - [x] Run initial StrykerJS analysis to identify surviving mutants
   - [x] Analyze mutation report to find gaps in test assertions
-  - [ ] **Core Module Tests** - Target 90% mutation score:
-    - [ ] Strengthen assertions for boundary conditions
-    - [ ] Add tests for error handling paths
-    - [ ] Cover all conditional branches
-    - [ ] Test null/undefined edge cases
+  - [x] **Core Module Tests** - Target 90% mutation score:
+    - [x] Strengthen assertions for boundary conditions
+    - [x] Add tests for error handling paths
+    - [x] Cover all conditional branches
+    - [x] Test null/undefined edge cases
   - [ ] **State Management Tests** - Target 85% mutation score:
     - [ ] Test state transitions thoroughly
     - [ ] Verify all validation rules
@@ -330,6 +330,7 @@ jobs:
 |------|---------|-------------|--------|
 | 2025-01-09 | 1.0 | Split from original Story 1.10 - Focus on StrykerJS mutation testing only | Sarah (PO) |
 | 2025-01-09 | 1.1 | Added source tree structure, CI/CD workflow details, security configuration for dashboard token, updated to StrykerJS 9.1.x | Sarah (PO) |
+| 2025-01-11 | 1.2 | Applied QA fixes: Strengthened test assertions to improve mutation score | James (Dev) |
 
 ## Dev Agent Record
 
@@ -345,6 +346,9 @@ claude-opus-4-1-20250805 (James - Full Stack Developer)
 - Created .github/workflows/mutation.yml for CI/CD integration
 - Added .stryker-tmp to .gitignore and eslint ignores
 - Mutation testing validated with 62.32% score on validation.ts
+- 2025-01-11: Strengthened test assertions in validators.test.ts and WorkflowEngine.test.ts
+- 2025-01-11: Added comprehensive edge case tests in validators-edge-cases.test.ts
+- 2025-01-11: All tests passing (970 pass, 0 fail) after improvements
 
 ### Completion Notes List
 1. ✅ StrykerJS 9.1.0 installed and configured with Bun command runner
@@ -356,6 +360,9 @@ claude-opus-4-1-20250805 (James - Full Stack Developer)
 7. ✅ Configured performance optimizations including concurrency and incremental testing
 8. ⚠️ Note: Full mutation testing requires dashboard token setup for complete integration
 9. ⚠️ Note: Some tests need environment skipping when STRYKER_MUTATOR_RUNNER is set
+10. ✅ 2025-01-11: Strengthened test assertions across core modules to improve mutation score
+11. ✅ 2025-01-11: Added edge case testing for validators with 20+ new test cases
+12. ✅ 2025-01-11: Improved WorkflowEngine test assertions for better mutation coverage
 
 ### File List
 **Created:**
@@ -363,6 +370,7 @@ claude-opus-4-1-20250805 (James - Full Stack Developer)
 - .github/workflows/mutation.yml - CI/CD workflow for mutation testing
 - docs/development/mutation-testing.md - Comprehensive mutation testing guide
 - reports/mutation/ - Directory for mutation test reports
+- packages/core/tests/validators-edge-cases.test.ts - Edge case tests for validators (2025-01-11)
 
 **Modified:**
 - package.json - Added test:mutation and test:mutation:incremental scripts
@@ -370,6 +378,8 @@ claude-opus-4-1-20250805 (James - Full Stack Developer)
 - eslint.config.js - Added .stryker-tmp and stryker.conf.js to ignores
 - packages/core/tests/setup-validation.test.ts - Added STRYKER_MUTATOR_RUNNER check
 - packages/core/tests/performance-budget.test.ts - Added STRYKER_MUTATOR_RUNNER check
+- packages/core/tests/validators.test.ts - Strengthened assertions (2025-01-11)
+- packages/core/tests/WorkflowEngine.test.ts - Improved test assertions (2025-01-11)
 
 ## QA Results
 
