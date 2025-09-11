@@ -36,6 +36,9 @@ describe('WorkflowEngine', () => {
     const currentStep = engine.getCurrentStep();
     expect(currentStep).toBeDefined();
     expect(currentStep?.id).toBe('step1');
+    expect(currentStep?.title).toBe('First Step');
+    expect(currentStep).not.toBeNull();
+    expect(typeof currentStep?.id).toBe('string');
   });
 
   test('advances through steps', async () => {
@@ -54,10 +57,15 @@ describe('WorkflowEngine', () => {
     
     let currentStep = engine.getCurrentStep();
     expect(currentStep?.id).toBe('step1');
+    expect(currentStep?.title).toBe('First Step');
+    expect(currentStep).not.toBeUndefined();
     
     const result1 = await engine.advance();
     expect(result1.success).toBe(true);
     expect(result1.step?.id).toBe('step2');
+    expect(result1.step?.title).toBe('Second Step');
+    expect(result1.error).toBeUndefined();
+    expect(result1.success).not.toBe(false);
     
     currentStep = engine.getCurrentStep();
     expect(currentStep?.id).toBe('step2');
@@ -65,6 +73,9 @@ describe('WorkflowEngine', () => {
     const result2 = await engine.advance();
     expect(result2.success).toBe(true);
     expect(result2.step?.id).toBe('step3');
+    expect(result2.step?.title).toBe('Third Step');
+    expect(result2.error).toBeUndefined();
+    expect(typeof result2.success).toBe('boolean');
   });
 
   test('goes back to previous step', async () => {
@@ -86,10 +97,15 @@ describe('WorkflowEngine', () => {
     
     let currentStep = engine.getCurrentStep();
     expect(currentStep?.id).toBe('step3');
+    expect(currentStep?.title).toBe('Third Step');
+    expect(currentStep).not.toBeNull();
     
     const result = await engine.goBack();
     expect(result.success).toBe(true);
     expect(result.step?.id).toBe('step2');
+    expect(result.step?.title).toBe('Second Step');
+    expect(result.error).toBeUndefined();
+    expect(result.success).not.toBe(false);
     
     currentStep = engine.getCurrentStep();
     expect(currentStep?.id).toBe('step2');

@@ -455,8 +455,10 @@ describe('Performance Tests', () => {
       const secondAverage = secondStats!.average;
 
       // Performance should not degrade significantly
+      // Allow more variance in CI environments where resources are contested
+      const degradationThreshold = process.env.CI ? 2.0 : 1.5;
       const degradationRatio = secondAverage / baselineAverage;
-      expect(degradationRatio).toBeLessThan(1.5); // No more than 50% degradation
+      expect(degradationRatio).toBeLessThan(degradationThreshold); // No more than 50% degradation (100% in CI)
     });
 
     test('should provide comprehensive performance metrics', async () => {

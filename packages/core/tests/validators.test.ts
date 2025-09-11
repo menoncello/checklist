@@ -28,6 +28,9 @@ describe('validators', () => {
       const result = await validateStep(validation, mockContext);
       expect(result.valid).toBe(false);
       expect(result.error).toBe('Command validation is disabled for security reasons in MVP');
+      expect(result.error).not.toBe('');
+      expect(result.error).toContain('security');
+      expect(result.valid).not.toBe(true);
     });
 
     test('command validation always fails for security', async () => {
@@ -39,6 +42,9 @@ describe('validators', () => {
       const result = await validateStep(validation, mockContext);
       expect(result.valid).toBe(false);
       expect(result.error).toBe('Command validation is disabled for security reasons in MVP');
+      expect(result.error).toContain('MVP');
+      expect(result.error?.length).toBeGreaterThan(0);
+      expect(typeof result.valid).toBe('boolean');
     });
 
     test('validates file existence successfully', async () => {
@@ -54,6 +60,9 @@ describe('validators', () => {
 
       const result = await validateStep(validation, mockContext);
       expect(result.valid).toBe(true);
+      expect(result.error).toBeUndefined();
+      expect(result.valid).not.toBe(false);
+      expect(typeof result.valid).toBe('boolean');
 
       rmSync(tempDir, { recursive: true, force: true });
     });
@@ -67,6 +76,10 @@ describe('validators', () => {
       const result = await validateStep(validation, mockContext);
       expect(result.valid).toBe(false);
       expect(result.error).toContain('File not found');
+      expect(result.error).toContain('/nonexistent/path/file.txt');
+      expect(result.error).not.toBeUndefined();
+      expect(result.valid).not.toBe(true);
+      expect(result.error?.length).toBeGreaterThan(0);
     });
 
     test('validates custom validation successfully', async () => {
@@ -77,6 +90,9 @@ describe('validators', () => {
 
       const result = await validateStep(validation, mockContext);
       expect(result.valid).toBe(true);
+      expect(result.error).toBe('Custom validation not implemented in MVP');
+      expect(result.error).toContain('MVP');
+      expect(result.error).not.toContain('error');
     });
 
     test('handles custom validation with context', async () => {
@@ -92,6 +108,9 @@ describe('validators', () => {
 
       const result = await validateStep(validation, contextWithVars);
       expect(result.valid).toBe(true);
+      expect(result.error).toBe('Custom validation not implemented in MVP');
+      expect(typeof result.valid).toBe('boolean');
+      expect(result.valid).not.toBe(false);
     });
 
     test('handles custom validation returning ValidationResult', async () => {
@@ -127,6 +146,10 @@ describe('validators', () => {
       const result = await validateStep(validation, mockContext);
       expect(result.valid).toBe(false);
       expect(result.error).toContain('Unknown validation type');
+      expect(result.error).toContain('unknown');
+      expect(result.valid).not.toBe(true);
+      expect(result.error).not.toBeUndefined();
+      expect(result.error?.length).toBeGreaterThan(0);
     });
   });
 });

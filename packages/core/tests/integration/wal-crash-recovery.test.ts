@@ -288,7 +288,7 @@ steps:
       expect(recoveredCount).toBe(operationCount);
       expect(duration).toBeLessThan(200); // Should be under 200ms for 100 operations
       
-      console.log(`Recovered ${operationCount} operations in ${duration.toFixed(2)}ms`);
+      // Performance: Recovered operations successfully
 
       await coordinator2.cleanup();
     });
