@@ -21,99 +21,156 @@ Draft
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Analyze Current Mutation Report** (AC: 1, 2)
-  - [ ] Run StrykerJS using existing configuration: `npx stryker run`
-  - [ ] Open mutation report at reports/mutation/index.html
-  - [ ] Identify surviving mutants by category (String Literal, Boolean, Arithmetic, etc.)
-  - [ ] Document weak test areas by package (core, tui, cli, shared)
-  - [ ] Create prioritized list based on mutant count and criticality
-  - [ ] Focus on core package first (target: 95% mutation score)
+- [ ] **Task 1: Establish Baseline and Analyze Current Mutation Report** (AC: 1, 2)
+  - [ ] Fix any failing tests first: `bun test`
+  - [ ] Run initial mutation test to establish baseline: `bun run test:mutation`
+  - [ ] Record current overall mutation score percentage
+  - [ ] Open HTML report at reports/mutation/index.html
+  - [ ] Document mutation scores per package:
+    - packages/core current score: ____%
+    - packages/tui current score: ____%
+    - packages/cli current score: ____%
+    - packages/shared current score: ____%
+  - [ ] List top 10 surviving mutant locations with file:line references
+  - [ ] Categorize surviving mutants by type:
+    - String Literal mutations: ___ count
+    - Boolean Substitution mutations: ___ count
+    - Arithmetic Operator mutations: ___ count
+    - Conditional Expression mutations: ___ count
+    - Array Method mutations: ___ count
+  - [ ] Prioritize packages by gap to target (core needs 95%, others 90%)
 
-- [ ] **Task 2: Strengthen Core Package Tests** (AC: 2, 3, 7)
-  - [ ] Review packages/core/tests/*.test.ts for weak assertions
-  - [ ] Replace truthy/falsy checks with exact value assertions
-  - [ ] Add boundary condition tests (null, undefined, empty arrays, zero values)
-  - [ ] Test error handling paths with specific error types and messages
-  - [ ] Verify all conditional branches are covered (if-else, switch, ternary)
-  - [ ] Use TestDataFactory from utils/test-factory.ts for consistent test data
-  - [ ] Ensure tests use mocks to maintain <500ms execution time
-  - [ ] Target 95% mutation score for core package
+- [ ] **Task 2: Fix Core Package String and Boolean Mutants** (AC: 2, 3, 7)
+  - [ ] Review packages/core/src/utils/logger.ts tests
+    - [ ] Assert exact log level strings, not just truthy values
+    - [ ] Test both enabled and disabled log levels
+  - [ ] Review packages/core/src/utils/performance.ts tests
+    - [ ] Add exact threshold comparison tests (99ms, 100ms, 101ms)
+    - [ ] Test warning message exact text output
+  - [ ] Review packages/core/src/utils/memory-manager.ts tests
+    - [ ] Test exact memory limit values and boundaries
+    - [ ] Assert on specific error messages for limit violations
+  - [ ] Review packages/core/src/utils/security.ts tests
+    - [ ] Test rate limiter with exact counts (0, 1, limit-1, limit, limit+1)
+    - [ ] Test path sanitizer with malicious paths (.., ~/, absolute paths)
+  - [ ] Use TestDataFactory from test-utils/TestDataFactory.ts for all mocks
+  - [ ] Run mutation test on core only: `npx stryker run --mutate "packages/core/**"`
+  - [ ] Verify core package reaches 95% mutation score
 
-- [ ] **Task 3: Improve TUI Package Tests** (AC: 2, 3, 7)
-  - [ ] Review packages/tui/tests/views/*.test.ts and tests/framework/*.test.ts
-  - [ ] Add tests for terminal capability detection edge cases
-  - [ ] Test ANSI escape sequence generation with exact string assertions
-  - [ ] Validate error boundaries and crash recovery paths
-  - [ ] Test resize event handling with various terminal dimensions
-  - [ ] Add visual regression tests using pixelmatch for rendering accuracy
-  - [ ] Use node-pty for realistic terminal emulation in complex scenarios
-  - [ ] Ensure differential rendering logic is thoroughly tested
-  - [ ] Target 90% mutation score for TUI package
+- [ ] **Task 3: Fix Core Package Conditional and Loop Mutants** (AC: 2, 3, 7)
+  - [ ] Identify all if-else statements without full branch coverage
+    - [ ] Add tests for both true and false conditions
+    - [ ] Test boundary conditions that trigger each branch
+  - [ ] Identify all switch statements
+    - [ ] Test every case including default
+    - [ ] Test with unexpected values
+  - [ ] Identify all ternary operators
+    - [ ] Test both outcomes explicitly
+  - [ ] Identify all loops (for, while, array methods)
+    - [ ] Test with empty arrays/collections
+    - [ ] Test with single item
+    - [ ] Test with multiple items
+    - [ ] Test loop boundary conditions
+  - [ ] Re-run core package mutation test to verify improvements
 
-- [ ] **Task 4: Enhance CLI Package Tests** (AC: 2, 3, 7)
-  - [ ] Review packages/cli/tests/*.test.ts for command handling
-  - [ ] Test Bun.argv parsing with malformed inputs
-  - [ ] Add tests for all command validation failures
-  - [ ] Verify exact error messages and exit codes
-  - [ ] Test command aliases and shortcuts
-  - [ ] Add tests for help text generation
-  - [ ] Use CommandCache from utils/command-cache.ts to speed up CLI tests
-  - [ ] Test concurrent command execution scenarios
-  - [ ] Target 90% mutation score for CLI package
+- [ ] **Task 4: Fix TUI Package Rendering Tests** (AC: 2, 3, 7)
+  - [ ] Review packages/tui/src/rendering/RenderOptimizer.ts tests
+    - [ ] Test exact ANSI escape sequences generated
+    - [ ] Test differential rendering with no changes, partial changes, full changes
+    - [ ] Test buffer overflow scenarios
+  - [ ] Review terminal capability detection tests
+    - [ ] Test with TERM=dumb (no capabilities)
+    - [ ] Test with TERM=xterm-256color (full capabilities)
+    - [ ] Test unicode support detection explicitly
+  - [ ] Review resize handling tests
+    - [ ] Test minimum dimensions (1x1, 80x24)
+    - [ ] Test maximum dimensions (9999x9999)
+    - [ ] Test resize during rendering
+  - [ ] Add tests for error recovery
+    - [ ] Test terminal disconnect scenarios
+    - [ ] Test invalid ANSI responses
+  - [ ] Run mutation test on TUI: `npx stryker run --mutate "packages/tui/**"`
+  - [ ] Verify TUI package reaches 90% mutation score
 
-- [ ] **Task 5: Update Shared Package Tests** (AC: 2, 3, 7)
-  - [ ] Review packages/shared/tests/*.test.ts utilities
-  - [ ] Add strict type validation tests with TypeScript guards
-  - [ ] Test utility functions with edge cases (empty inputs, max values)
-  - [ ] Verify schema validation with Ajv for malformed data
-  - [ ] Test async utilities with timeout and cancellation scenarios
-  - [ ] Add tests for resource cleanup and disposal patterns
-  - [ ] Use FastTimers from utils/fast-timers.ts for time-based tests
-  - [ ] Target 90% mutation score for shared package
+- [ ] **Task 5: Fix CLI Package Command Tests** (AC: 2, 3, 7)
+  - [ ] Review command parsing tests
+    - [ ] Test with empty arguments: `[]`
+    - [ ] Test with invalid flags: `['--invalid-flag']`
+    - [ ] Test with malformed values: `['--config', '']`
+  - [ ] Review command validation tests
+    - [ ] Test exact validation error messages
+    - [ ] Test all validation rules with boundary values
+  - [ ] Review help text generation
+    - [ ] Test exact help output format
+    - [ ] Test with all command variations
+  - [ ] Add exit code tests
+    - [ ] Test success exits with code 0
+    - [ ] Test various error exits with specific codes
+  - [ ] Run mutation test on CLI: `npx stryker run --mutate "packages/cli/**"`
+  - [ ] Verify CLI package reaches 90% mutation score
 
-- [ ] **Task 6: Validate Improvements** (AC: 1, 4, 6, 9)
-  - [ ] Run StrykerJS with updated tests: `npx stryker run`
-  - [ ] Verify overall mutation score >90% (check console output)
-  - [ ] Verify individual package scores meet targets:
-    - Core: 95%+
-    - TUI: 90%+
-    - CLI: 90%+
-    - Shared: 90%+
-  - [ ] Update stryker.conf.js threshold.break from 85 to 90
-  - [ ] Ensure all tests still pass with Bun: `bun test`
-  - [ ] Verify test execution time <500ms per test
-  - [ ] Generate final HTML report in reports/mutation/index.html
-  - [ ] Update dashboard configuration with new baseline
-  - [ ] Commit .stryker-tmp/incremental.json for faster future runs
+- [ ] **Task 6: Fix Shared Package Utility Tests** (AC: 2, 3, 7)
+  - [ ] Review type validation utilities
+    - [ ] Test with exact type checking (not just truthy)
+    - [ ] Test TypeScript type guards return values
+  - [ ] Review async utilities
+    - [ ] Test promise resolution and rejection paths
+    - [ ] Test timeout scenarios with exact timing
+    - [ ] Test cancellation at different stages
+  - [ ] Review collection utilities
+    - [ ] Test with empty arrays `[]`
+    - [ ] Test with single item `[1]`
+    - [ ] Test with duplicates
+    - [ ] Test with null/undefined items
+  - [ ] Run mutation test on shared: `npx stryker run --mutate "packages/shared/**"`
+  - [ ] Verify shared package reaches 90% mutation score
 
-- [ ] **Task 7: Maintain Test Quality** (AC: 5, 8)
-  - [ ] Review test readability - ensure clear test names and intentions
-  - [ ] Verify tests follow existing patterns:
-    - describe/it blocks structure
-    - Given-When-Then format for complex tests
-    - Consistent use of test utilities
-  - [ ] Add JSDoc comments for complex test scenarios
+- [ ] **Task 7: Final Validation and Configuration Update** (AC: 1, 4, 6, 9)
+  - [ ] Run full mutation test suite: `bun run test:mutation`
+  - [ ] Verify overall score reaches >90%
+  - [ ] Document final scores:
+    - Overall: ____%
+    - Core: ____%  (target: 95%)
+    - TUI: ____%   (target: 90%)
+    - CLI: ____%   (target: 90%)
+    - Shared: ____% (target: 90%)
+  - [ ] Update stryker.conf.js:
+    - [ ] Change thresholds.break from 85 to 90
+    - [ ] Commit configuration change
+  - [ ] Run all tests to ensure no regressions: `bun test`
+  - [ ] Verify all tests execute in <500ms
+  - [ ] Generate final reports:
+    - [ ] HTML report: reports/mutation/index.html
+    - [ ] JSON report: reports/mutation/mutation-report.json
+  - [ ] Commit incremental file: .stryker-tmp/incremental.json
+  - [ ] Update this story with final metrics in Dev Agent Record
+
+- [ ] **Task 8: Quality Assurance** (AC: 5, 8)
+  - [ ] Review all new/modified tests for readability
+    - [ ] Test names clearly describe what is being tested
+    - [ ] Arrange-Act-Assert pattern is followed
+  - [ ] Verify consistent test patterns:
+    - [ ] All tests use describe/it blocks
+    - [ ] Mock setup is consistent
+    - [ ] Error scenarios test both error type and message
   - [ ] Run quality checks: `bun run quality`
-  - [ ] Fix any ESLint issues: `bun run lint:fix`
-  - [ ] Ensure proper TypeScript types (no any without justification)
-  - [ ] Verify no performance regression:
-    - Run benchmarks: `bun run bench`
-    - Check test suite execution time
-    - Confirm <500ms per test maintained
-  - [ ] Update test documentation if new patterns introduced
+  - [ ] Fix any issues: `bun run quality:fix`
+  - [ ] Run performance benchmarks: `bun run bench`
+  - [ ] Ensure no performance regression from new tests
+  - [ ] Document any new testing patterns introduced
 
 ## Dev Notes
 
 ### Previous Story Insights
-**From Story 1.14 (Performance Tuning):**
-- Implemented TestDataFactory for fast test data generation with mocks
-- Created CommandCache utility to cache command outputs for faster tests
-- Implemented FastTimers utility for accelerated timer operations in tests
+**From Story 1.14 (Performance Tuning - COMPLETED):**
+- Implemented TestDataFactory in packages/core/tests/test-utils/TestDataFactory.ts for fast test data generation with mocks
+- Test utilities created but not all are present (CommandCache and FastTimers were planned but not found in codebase)
 - Configured global 500ms timeout for all tests via bunfig.toml
 - All unit tests optimized to <500ms using mock infrastructure
 - Fixed performance test issues by using mock loggers instead of real I/O
 - Removed console.log statements from tests that were causing output pollution
-[Source: Story 1.14 Dev Agent Record]
+- Security utilities added: InputRateLimiter, PathSanitizer, ResourceLimits
+[Source: Story 1.14 Dev Agent Record - Verified]
 
 ### Testing Standards
 - Tests must be placed in packages/*/tests/ directories
@@ -126,38 +183,61 @@ Draft
 [Source: architecture/testing-strategy.md#unit-test-performance-strategy]
 
 ### StrykerJS Configuration
-**Current Configuration in stryker.conf.js:**
+**ACTUAL Current Configuration in stryker.conf.js:**
 ```javascript
 module.exports = {
   packageManager: 'npm',  // Required for StrykerJS
   testRunner: 'command',   // Use command runner for Bun
   commandRunner: {
-    command: 'bun test --bail --coverage'  // Execute Bun directly
+    // Run only unit tests, excluding integration tests
+    command: 'STRYKER_MUTATOR_RUNNER=true bun test --test-name-pattern="^(?!.*Integration)"'
   },
-  mutate: ['packages/*/src/**/*.ts', '!**/*.test.ts', '!**/*.spec.ts'],
+  mutate: [
+    'packages/*/src/**/*.ts',
+    '!**/*.test.ts',
+    '!**/*.spec.ts',
+    '!**/*.d.ts',
+    '!**/index.ts', // Often just re-exports
+    '!**/~/**' // Exclude any tilde directories
+  ],
+  ignorePatterns: ['~/**', '.bun/**', 'node_modules/**/.git/**', '**/*.sock', '**/*.socket'],
   thresholds: {
     high: 95,
     low: 90,
-    break: 85 // Fail CI if below 85%
+    break: 85 // CI will fail if score falls below this
   },
-  dashboard: {
-    project: 'github.com/your-org/checklist',
-    version: 'main',
-    module: 'checklist-core'
-  },
-  reporters: ['html', 'json', 'progress', 'dashboard'],
+  reporters: ['html', 'json', 'progress', 'clear-text'],
   htmlReporter: {
     fileName: 'reports/mutation/index.html'
   },
+  jsonReporter: {
+    fileName: 'reports/mutation/mutation-report.json'
+  },
   incremental: true,
   incrementalFile: '.stryker-tmp/incremental.json',
-  tempDirName: '.stryker-tmp',
-  timeoutMS: 60000,
+  force: process.env.STRYKER_INCREMENTAL_FORCE !== 'false',
   concurrency: 4,
-  disableTypeChecks: false
+  maxTestRunnerReuse: 0, // Disable reuse for Bun compatibility
+  timeoutMS: 60000,
+  timeoutFactor: 1.5,
+  disableTypeChecks: false,
+  coverageAnalysis: 'perTest', // Better incremental performance
+  checkers: ['typescript'], // Enable type checking
+  logLevel: 'info',
+  fileLogLevel: 'debug',
+  tempDirName: '.stryker-tmp',
+  cleanTempDir: true,
+  dashboard: {
+    project: 'github.com/eduardomenoncello/checklist',
+    version: process.env.GITHUB_REF_NAME || 'local',
+    module: 'checklist-core',
+    baseUrl: 'https://dashboard.stryker-mutator.io/api/reports',
+    reportType: 'mutationScore'
+  },
+  plugins: ['@stryker-mutator/typescript-checker']
 };
 ```
-[Source: architecture/testing-strategy.md#strykerjs-configuration]
+[Source: stryker.conf.js - Actual file in project root]
 
 ### Mutation Testing Workflow
 1. **Initial Analysis**: Run StrykerJS to establish baseline (currently at 85% threshold)
@@ -167,26 +247,23 @@ module.exports = {
 [Source: architecture/testing-strategy.md#mutation-testing-workflow]
 
 ### Mutation Score Requirements
+- **Current Baseline**: Needs to be established by running mutation tests
 - **Current Minimum Threshold**: 85% mutation score (configured in stryker.conf.js)
 - **Target Goal**: >90% for this story (will update threshold.break to 90)
 - **Critical Modules Target**: 95% for core package
 - **CI Integration**: Automatic failure below threshold via stryker.conf.js
-[Source: architecture/testing-strategy.md#mutation-score-requirements]
+- **Incremental Testing**: Enabled by default with force mode for faster feedback
+[Source: stryker.conf.js verified configuration]
 
 ### Test Optimization Utilities (Available from Story 1.14)
-**Test Data Factory (packages/core/tests/utils/test-factory.ts):**
-- Use TestDataFactory.createTemplate() for test templates
-- Use TestDataFactory.createTestWorkspace() for isolated test environments
-- Implements efficient counter-based ID generation
-[Source: architecture/testing-strategy.md#test-data-factory]
+**Test Data Factory (packages/core/tests/test-utils/TestDataFactory.ts):** ✅ VERIFIED
+- Located at packages/core/tests/test-utils/TestDataFactory.ts (not in utils/)
+- Provides createMockLogger() for jest-style spy functions
+- Provides createInMemoryLogger() for integration tests
+- Provides createSilentLogger() for performance tests
+[Source: Actual file verified in codebase]
 
-**Command Cache (packages/core/tests/utils/command-cache.ts):**
-- Caches command outputs to avoid process spawning
-- Significantly reduces test execution time
-
-**Fast Timers (packages/core/tests/utils/fast-timers.ts):**
-- Accelerated timer operations for time-based tests
-- Prevents timeout issues in time-sensitive tests
+**Note:** CommandCache and FastTimers utilities mentioned in Story 1.14 were not found in the codebase and were not implemented.
 
 ### Coding Standards for Tests
 **ESLint Rules (Enforced):**
@@ -218,10 +295,10 @@ packages/
 │       ├── env-validation.test.ts
 │       ├── setup-validation.test.ts
 │       ├── performance.bench.ts
-│       └── utils/
-│           ├── test-factory.ts
-│           ├── command-cache.ts
-│           └── fast-timers.ts
+│       └── test-utils/
+│           ├── TestDataFactory.ts
+│           ├── MockLogger.ts
+│           └── LogAssertions.ts
 ├── tui/
 │   ├── src/                    # TUI source code
 │   └── tests/                  # TUI test files
@@ -269,8 +346,8 @@ packages/
 
 ### Available Testing Tools
 - **Bun Test**: Built-in test runner with native assertions
-- **StrykerJS 8.2.x**: Mutation testing framework
-- **Tinybench 2.5.x**: Micro-benchmarks for performance
+- **StrykerJS 9.1.x**: Mutation testing framework
+- **Tinybench 5.0.x**: Micro-benchmarks for performance
 - **Bun Coverage**: Built-in coverage reporting
 - **node-pty 1.0.x**: Terminal emulation for TUI tests
 - **pixelmatch 5.3.x**: Visual regression testing for terminal output
@@ -288,6 +365,8 @@ packages/
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2025-01-09 | 1.0 | Initial story creation | Sarah (PO) |
+| 2025-09-11 | 1.1 | Story validated and corrected: Added to Epic 1, updated StrykerJS config, verified utilities, refined tasks | Sarah (PO) |
+| 2025-09-12 | 1.2 | Technical validation: Updated StrykerJS version to 9.1.x, corrected test utility references, added test fix prerequisite | Dev Agent |
 
 ## Dev Agent Record
 
