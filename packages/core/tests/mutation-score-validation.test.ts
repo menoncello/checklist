@@ -38,9 +38,8 @@ describe('Mutation Score Validation - Integration', () => {
       const config = require('../../../stryker.conf.js');
       
       // Test exact command runner configuration (AC6: Bun integration)
-      expect(config.commandRunner.command).toContain('bun test');
-      expect(config.commandRunner.command).toContain('STRYKER_MUTATOR_RUNNER=true');
-      expect(config.commandRunner.command).toContain('--test-name-pattern');
+      // Updated to match the new wrapper script approach for Bun/Stryker compatibility
+      expect(config.commandRunner.command).toBe('./scripts/test-for-stryker.sh');
       
       // Validate integration doesn't break existing behavior
       expect(config.commandRunner.command).not.toContain('npm test');
@@ -184,9 +183,9 @@ describe('Mutation Score Validation - Integration', () => {
       expect(config.coverageAnalysis).toBe('perTest');
       
       // Validate performance optimizations
-      expect(config.concurrency).toBe(4);
+      expect(config.concurrency).toBe(2); // Reduced for faster runs and stability
       expect(config.maxTestRunnerReuse).toBe(0); // Bun compatibility
-      expect(config.timeoutMS).toBe(60000);
+      expect(config.timeoutMS).toBe(30000); // Reduced for faster iteration
     });
 
     it('should validate StrykerJS dashboard integration', () => {
