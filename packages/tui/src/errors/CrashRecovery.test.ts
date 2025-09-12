@@ -99,8 +99,8 @@ describe('CrashRecovery', () => {
       expect(metrics.maxRecoveryAttempts).toBe(5);
     });
 
-    it('should setup process handlers', () => {
-      crashRecovery = new CrashRecovery();
+    it('should setup process handlers when explicitly enabled', () => {
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: false });
 
       expect(processHandlers.has('uncaughtException')).toBe(true);
       expect(processHandlers.has('unhandledRejection')).toBe(true);
@@ -436,7 +436,8 @@ describe('CrashRecovery', () => {
       crashRecovery = new CrashRecovery();
     });
 
-    it('should initiate graceful shutdown', async () => {
+    it('should initiate graceful shutdown when process handlers enabled', async () => {
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: false });
       const handler = mock(() => {});
       crashRecovery.on('gracefulShutdown', handler);
 
@@ -448,16 +449,20 @@ describe('CrashRecovery', () => {
       );
     });
 
-    it('should call onGracefulShutdown callback', async () => {
+    it('should call onGracefulShutdown callback when process handlers enabled', async () => {
       const onGracefulShutdown = mock(() => {});
-      crashRecovery = new CrashRecovery({ onGracefulShutdown });
+      crashRecovery = new CrashRecovery({
+        onGracefulShutdown,
+        disableProcessHandlers: false,
+      });
 
       await crashRecovery.initiateGracefulShutdown('test');
 
       expect(onGracefulShutdown).toHaveBeenCalledTimes(1);
     });
 
-    it('should prevent multiple simultaneous shutdowns', async () => {
+    it('should prevent multiple simultaneous shutdowns when process handlers enabled', async () => {
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: false });
       const handler = mock(() => {});
       crashRecovery.on('gracefulShutdown', handler);
 
@@ -470,7 +475,8 @@ describe('CrashRecovery', () => {
       expect(handler).toHaveBeenCalledWith({ reason: 'first' });
     });
 
-    it('should handle SIGTERM signal', () => {
+    it('should handle SIGTERM signal when process handlers enabled', () => {
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: false });
       const handler = processHandlers.get('SIGTERM')?.[0];
       expect(handler).toBeDefined();
 
@@ -480,7 +486,8 @@ describe('CrashRecovery', () => {
       expect(shutdownSpy).toHaveBeenCalledWith('SIGTERM');
     });
 
-    it('should handle SIGINT signal', () => {
+    it('should handle SIGINT signal when process handlers enabled', () => {
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: false });
       const handler = processHandlers.get('SIGINT')?.[0];
       expect(handler).toBeDefined();
 
@@ -493,7 +500,7 @@ describe('CrashRecovery', () => {
 
   describe('process event handlers', () => {
     beforeEach(() => {
-      crashRecovery = new CrashRecovery();
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: false });
     });
 
     it('should handle uncaught exception', () => {
@@ -598,8 +605,11 @@ describe('CrashRecovery', () => {
       expect(metrics.criticalSectionCount).toBe(0);
     });
 
-    it('should cleanup on graceful shutdown', async () => {
-      crashRecovery = new CrashRecovery({ enableStateBackups: true });
+    it('should cleanup on graceful shutdown when process handlers enabled', async () => {
+      crashRecovery = new CrashRecovery({
+        enableStateBackups: true,
+        disableProcessHandlers: false,
+      });
 
       await crashRecovery.initiateGracefulShutdown('test');
 

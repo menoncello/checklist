@@ -75,6 +75,10 @@ class CrashRecovery {
   private crashLog: any[] = [];
   private recoveryStepHandlers: Function[] = [];
 
+  constructor(_config?: any) {
+    // Mock constructor - ignores config
+  }
+
   detectCrash(info: any): boolean {
     return info.severity === 'critical' && !info.recoverable;
   }
@@ -330,7 +334,7 @@ describe('Error Handling and Recovery (AC7, AC9)', () => {
     let statePreservation: StatePreservation;
 
     beforeEach(() => {
-      crashRecovery = new CrashRecovery();
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
       statePreservation = new StatePreservation();
     });
 
@@ -557,7 +561,7 @@ describe('Error Handling and Recovery (AC7, AC9)', () => {
 
     beforeEach(() => {
       errorBoundary = new ErrorBoundary();
-      crashRecovery = new CrashRecovery();
+      crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
       statePreservation = new StatePreservation();
     });
 

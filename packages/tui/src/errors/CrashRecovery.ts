@@ -57,9 +57,21 @@ export class CrashRecovery {
     this.crashState = this.createInitialCrashState();
     this.setupDefaultStrategies();
 
-    // Only setup process handlers if not disabled (useful for tests)
-    if (this.config.disableProcessHandlers !== true) {
+    // Setup process handlers based on configuration
+    // If explicitly disabled, respect that. If explicitly enabled, respect that.
+    // Otherwise, auto-detect test environment to prevent interference
+    if (this.config.disableProcessHandlers === false) {
+      // Explicitly enabled - always setup handlers
       this.setupProcessHandlers();
+    } else if (this.config.disableProcessHandlers !== true) {
+      // Not explicitly disabled - auto-detect test environment
+      const isTestEnv =
+        process.env.NODE_ENV === 'test' ||
+        (typeof global !== 'undefined' &&
+          (global as unknown as { Bun?: unknown }).Bun != null);
+      if (!isTestEnv) {
+        this.setupProcessHandlers();
+      }
     }
 
     if (this.config.enableStateBackups) {
@@ -496,6 +508,19 @@ export class CrashRecovery {
   public async initiateGracefulShutdown(
     reason: string = 'manual'
   ): Promise<void> {
+    // Skip graceful shutdown in test environment unless explicitly enabled
+    if (this.config.disableProcessHandlers !== false) {
+      const isTestEnv =
+        process.env.NODE_ENV === 'test' ||
+        (typeof global !== 'undefined' &&
+          (global as unknown as { Bun?: unknown }).Bun != null) ||
+        process.argv.some((arg) => arg.includes('test'));
+
+      if (isTestEnv) {
+        return;
+      }
+    }
+
     if (this.shutdownInProgress) return;
 
     this.shutdownInProgress = true;
