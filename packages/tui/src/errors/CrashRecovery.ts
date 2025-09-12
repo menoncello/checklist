@@ -40,6 +40,7 @@ export class CrashRecovery {
   private shutdownInProgress = false;
   private criticalSections = new Set<string>();
   private emergencyHandlers = new Set<() => void>();
+  private processHandlerRefs: Map<string, Function> = new Map();
 
   constructor(config: Partial<CrashRecoveryConfig> = {}) {
     this.config = {
@@ -74,31 +75,30 @@ export class CrashRecovery {
   }
 
   private setupProcessHandlers(): void {
-    // Handle uncaught exceptions
-    process.on('uncaughtException', (error) => {
+    // Create handlers and store references for cleanup
+    const uncaughtExceptionHandler = (error: Error) => {
       this.handleCrash(`Uncaught Exception: ${error.message}`, error);
-    });
+    };
 
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (reason, _promise) => {
+    const unhandledRejectionHandler = (
+      reason: unknown,
+      _promise: Promise<unknown>
+    ) => {
       this.handleCrash(
         `Unhandled Promise Rejection: ${reason}`,
         new Error(String(reason))
       );
-    });
+    };
 
-    // Handle SIGTERM gracefully
-    process.on('SIGTERM', () => {
+    const sigtermHandler = () => {
       this.initiateGracefulShutdown('SIGTERM');
-    });
+    };
 
-    // Handle SIGINT gracefully
-    process.on('SIGINT', () => {
+    const sigintHandler = () => {
       this.initiateGracefulShutdown('SIGINT');
-    });
+    };
 
-    // Handle memory warnings
-    process.on('warning', (warning) => {
+    const warningHandler = (warning: Error) => {
       if (
         warning.name === 'MaxListenersExceededWarning' ||
         warning.message.includes('memory')
@@ -108,7 +108,24 @@ export class CrashRecovery {
         // Preemptive cleanup if memory is getting low
         this.performMemoryCleanup();
       }
-    });
+    };
+
+    // Store handlers for cleanup
+    this.processHandlerRefs.set('uncaughtException', uncaughtExceptionHandler);
+    this.processHandlerRefs.set(
+      'unhandledRejection',
+      unhandledRejectionHandler
+    );
+    this.processHandlerRefs.set('SIGTERM', sigtermHandler);
+    this.processHandlerRefs.set('SIGINT', sigintHandler);
+    this.processHandlerRefs.set('warning', warningHandler);
+
+    // Register handlers
+    process.on('uncaughtException', uncaughtExceptionHandler);
+    process.on('unhandledRejection', unhandledRejectionHandler);
+    process.on('SIGTERM', sigtermHandler);
+    process.on('SIGINT', sigintHandler);
+    process.on('warning', warningHandler);
   }
 
   private setupDefaultStrategies(): void {
@@ -692,6 +709,12 @@ export class CrashRecovery {
       clearInterval(this.backupTimer);
       this.backupTimer = null;
     }
+
+    // Remove process event handlers
+    this.processHandlerRefs.forEach((handler, event) => {
+      process.removeListener(event, handler as (...args: unknown[]) => void);
+    });
+    this.processHandlerRefs.clear();
 
     this.eventHandlers.clear();
     this.emergencyHandlers.clear();

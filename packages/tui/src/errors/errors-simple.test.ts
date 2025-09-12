@@ -57,6 +57,8 @@ describe('Error Handling and Recovery - Simple Tests', () => {
 
       expect(crashState.crashed).toBe(true);
       expect(crashState.crashReason).toBe('Fatal error');
+
+      crashRecovery.cleanup();
     });
 
     it('should manage critical sections', () => {
@@ -67,6 +69,8 @@ describe('Error Handling and Recovery - Simple Tests', () => {
 
       crashRecovery.exitCriticalSection('test-section');
       expect(crashRecovery.isInCriticalSection()).toBe(false);
+
+      crashRecovery.cleanup();
     });
 
     it('should track recovery metrics', () => {
@@ -77,6 +81,8 @@ describe('Error Handling and Recovery - Simple Tests', () => {
 
       expect(metrics.hasCrashed).toBe(true);
       expect(metrics.recoveryAttempts).toBeDefined();
+
+      crashRecovery.cleanup();
     });
   });
 
