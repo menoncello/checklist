@@ -50,7 +50,7 @@ describe('Error Handling and Recovery - Simple Tests', () => {
 
   describe('Crash Recovery', () => {
     it('should handle crash conditions', () => {
-      const crashRecovery = new CrashRecovery();
+      const crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
 
       crashRecovery.handleCrash('Fatal error', new Error('Fatal'));
       const crashState = crashRecovery.getCrashState();
@@ -62,7 +62,7 @@ describe('Error Handling and Recovery - Simple Tests', () => {
     });
 
     it('should manage critical sections', () => {
-      const crashRecovery = new CrashRecovery();
+      const crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
 
       crashRecovery.enterCriticalSection('test-section');
       expect(crashRecovery.isInCriticalSection()).toBe(true);
@@ -74,7 +74,7 @@ describe('Error Handling and Recovery - Simple Tests', () => {
     });
 
     it('should track recovery metrics', () => {
-      const crashRecovery = new CrashRecovery();
+      const crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
 
       crashRecovery.handleCrash('Test crash');
       const metrics = crashRecovery.getMetrics();
