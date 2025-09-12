@@ -152,7 +152,7 @@ describe('WAL Crash Recovery', () => {
       
       await stateManager.cleanup();
       await coordinator.cleanup();
-    }, 15000);
+    }, 15000); // Integration test needs more time for I/O operations
 
     it('should handle concurrent recovery attempts', async () => {
       // Setup state with incomplete transaction
@@ -251,7 +251,7 @@ steps:
 
       await engine.cleanup();
       await coordinator.cleanup();
-    }, 15000);
+    }, 15000); // Integration test needs more time for I/O operations
   });
 
   describe('Performance During Recovery', () => {

@@ -174,3 +174,39 @@
 7. Full test coverage using mock services only
 8. Migration guide for converting existing code to DI pattern
 9. No performance degradation from DI overhead (<1ms per injection)
+
+## Story 1.14: Performance Tuning Optimization
+
+**As a** developer,  
+**I want** optimized performance in critical code paths,  
+**So that** the application meets the <100ms response time requirement consistently.
+
+**Acceptance Criteria:**
+
+1. Critical path operations execute in <100ms (95th percentile)
+2. Memory usage optimized to prevent leaks in long-running sessions
+3. TUI rendering maintains 60fps equivalent responsiveness
+4. Existing Tinybench performance tests continue to pass
+5. New performance optimizations follow existing code patterns
+6. Integration with logger (Pino) maintains current behavior
+7. Performance improvements covered by new benchmark tests
+8. No regression in existing functionality verified
+9. Performance metrics documented in reports/
+
+## Story 1.15: Improve Mutation Testing Score
+
+**As a** quality engineer,  
+**I want** improved mutation testing score above 90%,  
+**So that** our test suite reliably catches potential bugs and regressions.
+
+**Acceptance Criteria:**
+
+1. Mutation score increased to >90% (from current 85% threshold)
+2. Weak test assertions identified and strengthened
+3. New test cases added to kill surviving mutants
+4. Existing StrykerJS configuration (stryker.conf.js) continues to work
+5. New tests follow existing testing patterns
+6. Integration with Bun test runner maintains current behavior
+7. All new assertions are meaningful (not just to kill mutants)
+8. Test readability and maintainability preserved
+9. Mutation report shows clear improvement in reports/mutation/
