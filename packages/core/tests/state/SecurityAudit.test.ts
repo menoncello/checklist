@@ -369,6 +369,9 @@ describe('SecurityAudit', () => {
     });
 
     it('should count DENIED operations as failures', async () => {
+      // Ensure SecurityAudit is initialized before logging
+      await SecurityAudit.initialize();
+      
       await SecurityAudit.logEvent(SecurityEventType.LOCK_DENIED, 'Denied');
       await (SecurityAudit as any).flush();
       
@@ -377,6 +380,9 @@ describe('SecurityAudit', () => {
     });
 
     it('should count TIMEOUT operations as failures', async () => {
+      // Ensure SecurityAudit is initialized before logging
+      await SecurityAudit.initialize();
+      
       await SecurityAudit.logEvent(SecurityEventType.LOCK_TIMEOUT, 'Timeout');
       await (SecurityAudit as any).flush();
       
