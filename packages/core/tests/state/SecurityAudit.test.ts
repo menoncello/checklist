@@ -11,6 +11,7 @@ describe('SecurityAudit', () => {
     // Clear static state
     (SecurityAudit as any).buffer = [];
     (SecurityAudit as any).flushInterval = null;
+    (SecurityAudit as any).isInitialized = false;
     
     // Override paths for testing
     (SecurityAudit as any).AUDIT_FILE = auditFile;

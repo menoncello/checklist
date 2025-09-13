@@ -28,6 +28,7 @@ export class StateManager {
   private currentState?: ChecklistState;
   private baseDir: string;
   private logger = createLogger('checklist:state:manager');
+  private isRecovering = false;
 
   constructor(baseDir: string = '.checklist') {
     this.baseDir = baseDir;
@@ -68,7 +69,10 @@ export class StateManager {
       await this.directoryManager.initialize();
 
       // Check for incomplete transactions from WAL
-      if (await this.transactionCoordinator.hasIncompleteTransactions()) {
+      if (
+        !this.isRecovering &&
+        (await this.transactionCoordinator.hasIncompleteTransactions())
+      ) {
         this.logger.info({
           msg: 'Found incomplete transactions, attempting recovery',
         });
@@ -105,7 +109,10 @@ export class StateManager {
 
     try {
       // Check for incomplete transactions from WAL before loading state
-      if (await this.transactionCoordinator.hasIncompleteTransactions()) {
+      if (
+        !this.isRecovering &&
+        (await this.transactionCoordinator.hasIncompleteTransactions())
+      ) {
         this.logger.info({
           msg: 'Found incomplete transactions during load, attempting recovery',
         });
@@ -476,13 +483,29 @@ export class StateManager {
   }
 
   private async recoverFromWAL(): Promise<void> {
+    if (this.isRecovering) {
+      this.logger.debug({ msg: 'Recovery already in progress, skipping' });
+      return;
+    }
+
+    this.isRecovering = true;
     try {
       const recoveredCount = await this.transactionCoordinator.recoverFromWAL(
         async (entry) => {
           // Apply each WAL entry to the state
           if (entry.op === 'write' && entry.value !== undefined) {
-            // Apply write operation
-            await this.loadState();
+            // Apply write operation without triggering another recovery
+            // Load state if not already loaded
+            if (!this.currentState) {
+              const statePath = this.directoryManager.getStatePath();
+              const stateFile = Bun.file(statePath);
+              if (await stateFile.exists()) {
+                const content = await stateFile.text();
+                this.currentState = await this.validator.validate(
+                  JSON.parse(content)
+                );
+              }
+            }
             // Here we would apply the specific operation based on the key
             // For now, we'll just log it
             this.logger.debug({
@@ -517,6 +540,8 @@ export class StateManager {
     } catch (error) {
       this.logger.error({ msg: 'WAL recovery failed', error });
       throw new RecoveryError(`WAL recovery failed: ${error}`, false);
+    } finally {
+      this.isRecovering = false;
     }
   }
 
