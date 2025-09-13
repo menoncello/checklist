@@ -60,17 +60,24 @@ export class SecurityAudit {
   private static buffer: SecurityEvent[] = [];
   private static flushInterval: Timer | null = null;
   private static readonly FLUSH_INTERVAL_MS = 1000; // Flush every second
+  private static isInitialized = false;
 
   /**
    * Initialize the security audit system
    */
   public static async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
     try {
       // Ensure audit file exists
       await this.ensureAuditFile();
 
       // Start periodic flush
       this.startPeriodicFlush();
+
+      this.isInitialized = true;
     } catch (error) {
       logger.error({ msg: 'Failed to initialize security audit', error });
     }
@@ -327,6 +334,10 @@ export class SecurityAudit {
    */
   private static async ensureAuditFile(): Promise<void> {
     try {
+      // Ensure directory exists first
+      const dir = path.dirname(this.AUDIT_FILE);
+      await Bun.$`mkdir -p ${dir}`.quiet();
+
       const file = Bun.file(this.AUDIT_FILE);
 
       // Check if rotation is needed
@@ -455,5 +466,6 @@ export class SecurityAudit {
     }
 
     await this.flush();
+    this.isInitialized = false;
   }
 }

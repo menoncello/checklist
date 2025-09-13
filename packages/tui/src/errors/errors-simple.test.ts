@@ -50,33 +50,39 @@ describe('Error Handling and Recovery - Simple Tests', () => {
 
   describe('Crash Recovery', () => {
     it('should handle crash conditions', () => {
-      const crashRecovery = new CrashRecovery();
+      const crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
 
       crashRecovery.handleCrash('Fatal error', new Error('Fatal'));
       const crashState = crashRecovery.getCrashState();
 
       expect(crashState.crashed).toBe(true);
       expect(crashState.crashReason).toBe('Fatal error');
+
+      crashRecovery.cleanup();
     });
 
     it('should manage critical sections', () => {
-      const crashRecovery = new CrashRecovery();
+      const crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
 
       crashRecovery.enterCriticalSection('test-section');
       expect(crashRecovery.isInCriticalSection()).toBe(true);
 
       crashRecovery.exitCriticalSection('test-section');
       expect(crashRecovery.isInCriticalSection()).toBe(false);
+
+      crashRecovery.cleanup();
     });
 
     it('should track recovery metrics', () => {
-      const crashRecovery = new CrashRecovery();
+      const crashRecovery = new CrashRecovery({ disableProcessHandlers: true });
 
       crashRecovery.handleCrash('Test crash');
       const metrics = crashRecovery.getMetrics();
 
       expect(metrics.hasCrashed).toBe(true);
       expect(metrics.recoveryAttempts).toBeDefined();
+
+      crashRecovery.cleanup();
     });
   });
 

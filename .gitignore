@@ -45,3 +45,4 @@ npm-debug.log*
 # Performance reports (large files)
 reports/performance/benchmark-*.json
 reports/mutation/index.html
+.test-encryption/

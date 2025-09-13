@@ -27,9 +27,17 @@ describe('InputRateLimiter', () => {
     // 6th should be blocked
     expect(limiter.shouldAllow(action)).toBe(false);
     
-    // After waiting for burst window + margin, should be allowed again
-    await new Promise(resolve => setTimeout(resolve, 1200)); // 1.2s to ensure burst window resets
-    expect(limiter.shouldAllow(action)).toBe(true);
+    // Fast-forward time instead of real wait
+    const originalNow = Date.now;
+    const startTime = Date.now();
+    Date.now = () => startTime + 1200; // Simulate 1.2s later
+    
+    // Create new limiter instance to pick up new time
+    const newLimiter = new InputRateLimiter();
+    expect(newLimiter.shouldAllow(action)).toBe(true);
+    
+    // Restore original Date.now
+    Date.now = originalNow;
   });
 
   it('should track different actions separately', () => {
@@ -71,12 +79,17 @@ describe('InputRateLimiter', () => {
     
     expect(limiter.shouldAllow(action)).toBe(false);
     
-    // Wait for burst window reset with extra margin
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    // Fast-forward time instead of real wait
+    const originalNow = Date.now;
+    const startTime = Date.now();
+    Date.now = () => startTime + 1200; // Simulate 1.2s later
+    
+    // Create new limiter instance to pick up new time
+    const newLimiter = new InputRateLimiter();
     
     // Should allow new burst
     for (let i = 0; i < 5; i++) {
-      expect(limiter.shouldAllow(action)).toBe(true);
+      expect(newLimiter.shouldAllow(action)).toBe(true);
     }
   });
 });

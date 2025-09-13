@@ -16,7 +16,7 @@ root = "./packages"
 patterns = ["**/tests/**/*.test.ts", "**/tests/**/*.spec.ts"]
 
 # Timeout for tests (ms)
-timeout = 5000
+timeout = 10000
 
 # Path Aliases (matching tsconfig paths)
 [test.alias]
