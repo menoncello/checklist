@@ -7,7 +7,7 @@ describe('SecurityAudit', () => {
   const testDir = '.test-security';
   const auditFile = join(testDir, 'security-audit.log');
   
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear static state
     (SecurityAudit as any).buffer = [];
     (SecurityAudit as any).flushInterval = null;
@@ -18,6 +18,9 @@ describe('SecurityAudit', () => {
     
     // Mock environment
     Bun.env.USER = 'testuser';
+    
+    // Ensure test directory exists
+    await Bun.$`mkdir -p ${testDir}`.quiet();
   });
   
   afterEach(async () => {

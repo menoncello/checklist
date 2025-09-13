@@ -334,6 +334,10 @@ export class SecurityAudit {
    */
   private static async ensureAuditFile(): Promise<void> {
     try {
+      // Ensure directory exists first
+      const dir = path.dirname(this.AUDIT_FILE);
+      await Bun.$`mkdir -p ${dir}`.quiet();
+
       const file = Bun.file(this.AUDIT_FILE);
 
       // Check if rotation is needed
