@@ -1,7 +1,7 @@
 # Story 1.16: Code Quality Metrics Enforcement
 
 ## Status
-Draft
+Approved
 
 ## Story
 **As a** technical lead,
@@ -21,41 +21,68 @@ Draft
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Install and Configure ESLint Quality Plugins** (AC: 1, 2, 3, 4, 5)
-  - [ ] Install complexity analysis plugins: `bun add -D eslint-plugin-complexity eslint-plugin-max-lines-per-function`
-  - [ ] Update eslint.config.js to add new quality rules
-  - [ ] Configure max-lines rule: `['error', { max: 300, skipBlankLines: true, skipComments: true }]`
-  - [ ] Configure max-lines-per-function rule: `['error', { max: 30, skipBlankLines: true, skipComments: true }]`
-  - [ ] Configure complexity rule: `['error', { max: 10 }]`
-  - [ ] Configure max-depth rule: `['error', { max: 3 }]`
-  - [ ] Configure max-nested-callbacks rule: `['error', { max: 3 }]`
-  - [ ] Configure max-params rule: `['error', { max: 4 }]`
-  - [ ] Verify configuration works with existing "bun run lint" command
+- [ ] **Task 1: Configure ESLint Built-in Quality Rules** (AC: 1, 2, 3, 4, 5)
+  - [ ] Update eslint.config.js to add quality rules in the existing flat config format
+  - [ ] Add to the main rules object after line 89 (before security rules):
+    ```javascript
+    // Code quality metrics (Story 1.16)
+    'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
+    'max-lines-per-function': ['error', { max: 30, skipBlankLines: true, skipComments: true }],
+    'complexity': ['error', { max: 10 }],
+    'max-depth': ['error', { max: 3 }],
+    'max-nested-callbacks': ['error', { max: 3 }],
+    'max-params': ['error', { max: 4 }],
+    ```
+  - [ ] Verify configuration works with existing `bun run lint` command
+  - [ ] Test that violations are properly reported
+  - [ ] Ensure the rules apply to all TypeScript files except those in ignores
 
-- [ ] **Task 2: Setup Complexity Analysis Tool** (AC: 3, 7)
-  - [ ] Install complexity-report tool: `bun add -D complexity-report`
-  - [ ] Create npm script in root package.json: `"complexity": "complexity-report --output reports/quality/complexity/"`
-  - [ ] Ensure reports/quality/ directory structure exists
-  - [ ] Configure complexity-report to output JSON and HTML formats
-  - [ ] Add complexity thresholds to align with ESLint rules
-  - [ ] Document complexity thresholds in docs/architecture/coding-standards.md
+- [ ] **Task 2: Setup ESLint HTML Reporter for Quality Metrics** (AC: 7)
+  - [ ] Install ESLint HTML reporter: `bun install --frozen-lockfile` after adding to package.json:
+    ```json
+    "eslint-formatter-html": "^3.0.0"
+    ```
+  - [ ] Create npm script in root package.json:
+    ```json
+    "lint:report": "eslint . --format html --output-file reports/quality/eslint-report.html"
+    ```
+  - [ ] Create reports/quality/ directory structure:
+    ```bash
+    mkdir -p reports/quality
+    echo '/reports/' >> .gitignore  # If not already ignored
+    ```
+  - [ ] Test report generation: `bun run lint:report`
+  - [ ] Update docs/architecture/coding-standards.md with new quality thresholds section
 
 - [ ] **Task 3: Run Baseline Quality Analysis** (AC: 7, 8)
   - [ ] Execute `bun run lint` to capture current violations
-  - [ ] Run complexity analysis: `bun run complexity`
-  - [ ] Generate baseline quality report in reports/quality/baseline.json
-  - [ ] Identify all files exceeding the new thresholds
-  - [ ] Create prioritized refactoring list by package (core > tui > cli > shared)
-  - [ ] Document exemptions process in reports/quality/exemptions.md
+  - [ ] Generate HTML report: `bun run lint:report`
+  - [ ] Document files exceeding thresholds (based on initial scan):
+    - **Critical (>600 lines)**:
+      - packages/tui/src/performance/MetricsCollector.ts (823 lines)
+      - packages/tui/src/errors/CrashRecovery.ts (788 lines)
+      - packages/tui/src/components/VirtualList.ts (713 lines)
+      - packages/tui/src/performance/PerformanceMonitor.ts (686 lines)
+      - packages/tui/src/performance/StartupProfiler.ts (673 lines)
+      - packages/core/src/monitoring/PerformanceProfiler.ts (673 lines)
+    - **High Priority (>500 lines)**: 14 additional files
+  - [ ] Create prioritized refactoring list by impact (core > tui > cli > shared)
+  - [ ] Save baseline metrics: `bun run lint --format json > reports/quality/baseline.json`
 
-- [ ] **Task 4: Refactor Core Package** (AC: 8)
-  - [ ] Analyze packages/core/src/ for quality violations
-  - [ ] Split files exceeding 300 lines into logical modules
-  - [ ] Break down functions exceeding 30 lines using helper functions
-  - [ ] Reduce complexity by replacing nested conditionals with guard clauses
-  - [ ] Flatten nesting depth using early returns and function extraction
-  - [ ] Run `bun test packages/core` to ensure no regressions
-  - [ ] Verify mutation score remains above 85% threshold
+- [ ] **Task 4: Refactor Core Package** (AC: 8, 10)
+  - [ ] Priority files to refactor:
+    - packages/core/src/monitoring/PerformanceProfiler.ts (673 lines → split into ProfilerCore, ProfilerMetrics, ProfilerReporter)
+    - packages/core/src/workflow/WorkflowEngine.ts (607 lines → extract validators, processors)
+    - packages/core/src/state/StateManager.ts (589 lines → separate persistence, validation)
+  - [ ] Refactoring patterns to apply:
+    - Extract complex conditionals into named boolean functions
+    - Replace nested if-else with guard clauses and early returns
+    - Split large functions using Single Responsibility Principle
+    - Extract repeated code into utility functions
+  - [ ] After each file refactor:
+    - Run `bun test packages/core --coverage` to ensure coverage maintained
+    - Run `bun run test:mutation` to verify mutation score ≥85%
+    - Commit changes with descriptive message
 
 - [ ] **Task 5: Refactor TUI Package** (AC: 8)
   - [ ] Analyze packages/tui/src/ for quality violations
@@ -81,20 +108,40 @@ Draft
   - [ ] Ensure all shared utilities remain pure functions
   - [ ] Run `bun test packages/shared` to verify utilities
 
-- [ ] **Task 8: Update Pre-commit Hooks** (AC: 9)
-  - [ ] Update .husky/pre-commit to include quality checks
-  - [ ] Add ESLint quality rules check: `bun run lint`
-  - [ ] Add complexity analysis check: `bun run complexity --threshold`
-  - [ ] Ensure hook execution time remains <5 seconds
-  - [ ] Test hook with intentional violations to verify blocking
+- [ ] **Task 8: Verify Pre-commit Hooks** (AC: 9)
+  - [ ] Verify .husky/pre-commit already runs `bun run quality` (includes lint)
+  - [ ] Test that new quality rules are enforced by existing hook:
+    ```bash
+    # Create test file with violations
+    echo 'function test() {' > test-violation.ts
+    for i in {1..35}; do echo '  console.log("line");' >> test-violation.ts; done
+    echo '}' >> test-violation.ts
+    git add test-violation.ts
+    git commit -m "test" # Should fail
+    rm test-violation.ts
+    ```
+  - [ ] Measure hook execution time: `time bun run quality`
+  - [ ] Ensure execution remains <5 seconds
 
-- [ ] **Task 9: Integrate Quality Checks with CI/CD** (AC: 6, 7)
-  - [ ] Update .github/workflows/ci.yml to add quality metrics step
-  - [ ] Add step: "Check Code Quality" running `bun run lint`
-  - [ ] Add step: "Analyze Complexity" running `bun run complexity`
-  - [ ] Configure workflow to fail if thresholds are exceeded
-  - [ ] Configure artifact upload for reports/quality/ directory
-  - [ ] Add quality badge to README.md showing current status
+- [ ] **Task 9: Verify CI/CD Quality Integration** (AC: 6, 7)
+  - [ ] Verify .github/workflows/main.yml already runs lint at line 43-44
+  - [ ] Add HTML report generation to CI by updating main.yml after line 44:
+    ```yaml
+    - name: Generate Quality Report
+      run: bun run lint:report
+      continue-on-error: true
+
+    - name: Upload Quality Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: quality-reports
+        path: reports/quality/
+        retention-days: 30
+    ```
+  - [ ] Test CI pipeline with a PR containing violations
+  - [ ] Verify pipeline fails when thresholds exceeded
+  - [ ] Add status badge to README.md: `[![Lint](https://github.com/[org]/[repo]/actions/workflows/main.yml/badge.svg)](https://github.com/[org]/[repo]/actions/workflows/main.yml)`
 
 - [ ] **Task 10: Update Documentation** (AC: 7)
   - [ ] Update docs/architecture/coding-standards.md with new quality metrics section
@@ -179,7 +226,7 @@ The project uses StrykerJS with these thresholds:
 
 When refactoring code, ensure mutation score doesn't drop below 85% or CI will fail.
 
-### Testing Standards
+### Testing Standards and Maintenance Strategy
 [Source: architecture/testing-strategy.md]
 
 - Test files use `.test.ts` extension and are colocated with source files
@@ -187,6 +234,18 @@ When refactoring code, ensure mutation score doesn't drop below 85% or CI will f
 - Visual regression tests use pixelmatch with 0.1 threshold
 - All refactored code must maintain existing test coverage
 - New helper functions extracted during refactoring need unit tests
+
+### Test Maintenance During Refactoring
+[Source: Story 1.16 Requirements]
+
+**Strategy to maintain 85% mutation score during refactoring:**
+1. Run `bun run test:mutation` before starting each package refactor
+2. Save mutation report as baseline: `cp reports/mutation/index.html reports/mutation/baseline-{package}.html`
+3. After refactoring, run mutation tests again
+4. Compare scores - if dropped below 85%, add tests for surviving mutants
+5. Focus on meaningful assertions, not just killing mutants
+6. Use `bun test --watch` during refactoring for immediate feedback
+7. Run full test suite before committing: `bun test && bun run test:mutation`
 
 ### Package Dependencies from Previous Story
 [Source: Story 1.13 Dev Agent Record]
@@ -205,11 +264,43 @@ Ensure VSCode settings remain configured for:
 - ESLint auto-fix on save: enabled
 - Working directories for monorepo: `["packages/*"]`
 
+### Files Identified for Refactoring
+[Source: Codebase Analysis]
+
+**Files exceeding 300-line threshold (priority order):**
+
+1. **Core Package** (3 files):
+   - `packages/core/src/monitoring/PerformanceProfiler.ts` - 673 lines
+   - `packages/core/src/workflow/WorkflowEngine.ts` - 607 lines
+   - `packages/core/src/state/StateManager.ts` - 589 lines
+
+2. **TUI Package** (17 files):
+   - `packages/tui/src/performance/MetricsCollector.ts` - 823 lines
+   - `packages/tui/src/errors/CrashRecovery.ts` - 788 lines
+   - `packages/tui/src/components/VirtualList.ts` - 713 lines
+   - Plus 14 additional files ranging from 544-686 lines
+
+3. **CLI Package**: To be analyzed in Task 6
+4. **Shared Package**: To be analyzed in Task 7
+
+### Integration with Existing Quality Scripts
+[Source: package.json analysis]
+
+The project already has quality enforcement scripts that must continue to work:
+- `bun run quality`: Runs lint, format:check, and typecheck
+- `bun run quality:fix`: Auto-fixes issues where possible
+- `bun run lint`: Runs ESLint on all files
+- `bun run lint:fix`: Auto-fixes ESLint issues
+
+New quality rules will automatically be enforced through these existing scripts.
+
 ## Change Log
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2025-01-13 | 1.0 | Initial story creation | Bob (SM) |
 | 2025-01-13 | 2.0 | Complete rewrite with architecture alignment | Bob (SM) |
+| 2025-01-13 | 3.0 | Fixed critical issues: Added to Epic 1, replaced fictional packages with ESLint built-ins, aligned with project structure | Sarah (PO) |
+| 2025-01-13 | 4.0 | Story validated and approved for implementation - Readiness score: 9/10 | Sarah (PO) |
 
 ## Dev Agent Record
 
