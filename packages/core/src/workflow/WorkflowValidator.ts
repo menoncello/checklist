@@ -7,6 +7,7 @@ import {
   ValidationResult,
   StepContext,
   StepValidation,
+  CompletedStep,
 } from './types';
 import { validateStep as validateStepFunction } from './validators';
 
@@ -33,7 +34,7 @@ export class WorkflowValidator {
     try {
       this.logStepValidationStart(step);
       const stepContext = this.buildStepContext(step, state, template);
-      const result = await this.runValidations(step, stepContext);
+      const result = await this.runValidations(step, stepContext, template);
       this.logStepValidationComplete(step, result);
       return result;
     } catch (error) {
@@ -42,16 +43,22 @@ export class WorkflowValidator {
   }
 
   private logStepValidationStart(step: Step): void {
-    this.logger.debug({ msg: 'Validating step', stepId: step.id, stepTitle: step.title });
+    this.logger.debug({
+      msg: 'Validating step',
+      stepId: step.id,
+      stepTitle: step.title,
+    });
   }
 
-  private logStepValidationComplete(step: Step, result: ValidationResult): void {
+  private logStepValidationComplete(
+    step: Step,
+    result: ValidationResult
+  ): void {
     this.logger.debug({
       msg: 'Step validation completed',
       stepId: step.id,
-      isValid: result.isValid,
-      errors: result.errors.length,
-      warnings: result.warnings.length,
+      isValid: result.valid,
+      error: result.error,
     });
   }
 
@@ -63,54 +70,67 @@ export class WorkflowValidator {
       error: errorMessage,
     });
     return {
-      isValid: false,
-      errors: [errorMessage],
-      warnings: [],
+      valid: false,
+      error: errorMessage,
     };
   }
 
   private async runValidations(
     targetStep: Step,
-    stepContext: StepContext
+    stepContext: StepContext,
+    template: ChecklistTemplate
   ): Promise<ValidationResult> {
     const errors: string[] = [];
-    const warnings: string[] = [];
 
-    // Run built-in validations
-    try {
-      const builtInResult = await validateStepFunction(targetStep, stepContext);
-      if (builtInResult.isValid !== true) {
-        errors.push(...builtInResult.errors);
-        warnings.push(...builtInResult.warnings);
+    // Run built-in validations if defined
+    if (targetStep.validation && targetStep.validation.length > 0) {
+      for (const validation of targetStep.validation) {
+        try {
+          const builtInResult = await validateStepFunction(
+            validation,
+            stepContext
+          );
+          if (!builtInResult.valid) {
+            errors.push(builtInResult.error ?? 'Validation failed');
+          }
+        } catch (error) {
+          errors.push(
+            `Built-in validation failed: ${(error as Error).message}`
+          );
+        }
       }
-    } catch (error) {
-      errors.push(`Built-in validation failed: ${(error as Error).message}`);
     }
 
     // Run custom validations if defined
-    if (targetStep.validations !== null && targetStep.validations !== undefined && targetStep.validations.length > 0) {
-      await this.runAllCustomValidations(targetStep.validations, stepContext, errors, warnings);
-    }
+    await this.runAllCustomValidations(
+      targetStep,
+      stepContext,
+      template,
+      errors
+    );
 
     return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
+      valid: errors.length === 0,
+      error: errors.length > 0 ? errors.join('; ') : undefined,
     };
   }
 
   private async runAllCustomValidations(
-    validations: StepValidation[],
+    targetStep: Step,
     stepContext: StepContext,
-    errors: string[],
-    warnings: string[]
+    template: ChecklistTemplate,
+    errors: string[]
   ): Promise<void> {
-    for (const validation of validations) {
+    // Check for condition-based validation
+    if (targetStep.condition != null && targetStep.condition !== '') {
       try {
-        const customResult = await this.runCustomValidation(validation, stepContext);
-        if (customResult.isValid !== true) {
-          errors.push(...customResult.errors);
-          warnings.push(...customResult.warnings);
+        const conditionResult = this.evaluateCondition(
+          targetStep.condition,
+          stepContext,
+          template
+        );
+        if (!conditionResult) {
+          errors.push(`Condition validation failed for step: ${targetStep.id}`);
         }
       } catch (error) {
         errors.push(`Custom validation failed: ${(error as Error).message}`);
@@ -123,31 +143,30 @@ export class WorkflowValidator {
     stepContext: StepContext
   ): Promise<ValidationResult> {
     try {
-      if (validation.type === 'condition' && validation.condition !== null && validation.condition !== undefined) {
-        // Simple condition validation
-        const result = this.evaluateCondition(validation.condition, stepContext);
+      // StepValidation has type, check, and errorMessage properties
+      // We'll validate based on the type
+      if (validation.type === 'custom') {
+        // For custom type, we can check the condition in the check field
+        const result = this.safeEvaluateCondition(validation.check, {
+          vars: stepContext.variables,
+          step: stepContext.step,
+        });
         return {
-          isValid: result,
-          errors: result === true ? [] : [validation.message ?? 'Condition validation failed'],
-          warnings: [],
+          valid: result,
+          error: result
+            ? undefined
+            : (validation.errorMessage ?? 'Custom validation failed'),
         };
       }
 
-      if (validation.type === 'custom' && validation.validator !== null && validation.validator !== undefined) {
-        // Custom validator function
-        return await validation.validator(stepContext);
-      }
-
       return {
-        isValid: true,
-        errors: [],
-        warnings: [],
+        valid: true,
+        error: undefined,
       };
     } catch (error) {
       return {
-        isValid: false,
-        errors: [`Validation error: ${(error as Error).message}`],
-        warnings: [],
+        valid: false,
+        error: `Validation error: ${(error as Error).message}`,
       };
     }
   }
@@ -157,8 +176,10 @@ export class WorkflowValidator {
 
     if (!allowedTransitions?.includes(to)) {
       throw new ValidationError(
+        from,
+        'state_transition',
         `Invalid state transition from '${from}' to '${to}'. ` +
-        `Allowed transitions from '${from}': ${allowedTransitions?.join(', ') || 'none'}`
+          `Allowed transitions from '${from}': ${allowedTransitions?.join(', ') || 'none'}`
       );
     }
   }
@@ -166,41 +187,55 @@ export class WorkflowValidator {
   private buildStepContext(
     step: Step,
     state: WorkflowState,
-    template: ChecklistTemplate
+    _template: ChecklistTemplate
   ): StepContext {
     return {
       step,
       state,
-      template,
       variables: state.variables,
-      completedSteps: state.completedSteps,
-      currentStepIndex: state.currentStepIndex,
     };
   }
 
-  private evaluateCondition(condition: string, stepContext: StepContext): boolean {
+  private evaluateCondition(
+    condition: string,
+    stepContext: StepContext,
+    template: ChecklistTemplate
+  ): boolean {
     try {
       // Simple condition evaluation using context variables
+      const completedStepIds = stepContext.state.completedSteps.map(
+        (cs: CompletedStep) => cs.step.id
+      );
+      const progress = this.calculateProgress(stepContext.state, template);
+
       const context = {
         vars: stepContext.variables,
-        completedSteps: stepContext.completedSteps.map(step => step.stepId),
-        currentStepIndex: stepContext.currentStepIndex,
-        progress: stepContext.state.progress,
+        completedSteps: completedStepIds,
+        currentStepIndex: stepContext.state.currentStepIndex,
+        progress: progress,
       };
 
       // For now, just check if condition string evaluates to truthy
       // In a real implementation, this would use a safe expression evaluator
       return this.safeEvaluateCondition(condition, context);
     } catch (error) {
-      throw new ConditionEvaluationError(
-        `Failed to evaluate condition: ${condition}`,
-        condition,
-        error as Error
-      );
+      throw new ConditionEvaluationError(condition, error as Error);
     }
   }
 
-  private safeEvaluateCondition(condition: string, context: Record<string, unknown>): boolean {
+  private calculateProgress(
+    state: WorkflowState,
+    template: ChecklistTemplate
+  ): number {
+    const totalSteps = template.steps.length;
+    const completedSteps = state.completedSteps.length;
+    return totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+  }
+
+  private safeEvaluateCondition(
+    condition: string,
+    context: Record<string, unknown>
+  ): boolean {
     try {
       // Simple variable substitution for basic conditions
       let evaluatedCondition = condition;
@@ -208,11 +243,16 @@ export class WorkflowValidator {
       // Replace variable references
       for (const [key, value] of Object.entries(context)) {
         const regex = new RegExp(`\\b${key}\\b`, 'g');
-        evaluatedCondition = evaluatedCondition.replace(regex, JSON.stringify(value));
+        evaluatedCondition = evaluatedCondition.replace(
+          regex,
+          JSON.stringify(value)
+        );
       }
 
       // For safety, only allow simple boolean expressions
-      if (!/^[a-zA-Z0-9\s\[\]"'.,{}:()&|!<>=+-/*%]+$/.test(evaluatedCondition)) {
+      if (
+        !/^[a-zA-Z0-9\s\[\]"'.,{}:()&|!<>=+-/*%]+$/.test(evaluatedCondition)
+      ) {
         throw new Error('Unsafe expression detected');
       }
 

@@ -163,25 +163,13 @@ export class PathSanitizer {
 
     // Resolve to absolute path
     if (!isAbsolute(sanitized)) {
-      sanitized = basePath !== undefined
-        ? resolve(basePath, sanitized)
-        : resolve(process.cwd(), sanitized);
+      sanitized =
+        basePath !== undefined
+          ? resolve(basePath, sanitized)
+          : resolve(process.cwd(), sanitized);
     }
 
     return sanitized;
-  }
-
-  private isPathAllowed(path: string): boolean {
-    if (this.allowedBasePaths.length === 0) {
-      return true;
-    }
-    return this.allowedBasePaths.some(allowed => path.startsWith(allowed));
-  }
-
-  private containsSuspiciousPatterns(path: string): boolean {
-    const patterns = ['../', '..\\', '%2e%2e', '..%2f', '%2e%2e%2f', '..%5c', '%2e%2e%5c'];
-    const lowerPath = path.toLowerCase();
-    return patterns.some(pattern => lowerPath.includes(pattern));
   }
 
   /**

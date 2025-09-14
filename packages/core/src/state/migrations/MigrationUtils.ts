@@ -29,19 +29,22 @@ export class MigrationUtils {
     fromVersion: string,
     toVersion: string
   ): MigrationResult {
+    const migrationsToApply = migrationPath.migrations.map(
+      (m) => m.id ?? `${m.fromVersion}->${m.toVersion}`
+    );
+
     logger.info({
       msg: 'Dry run completed - no changes made',
       fromVersion,
       toVersion,
-      migrationsToApply: migrationPath.migrations.map(m => m.id),
+      migrationsToApply,
     });
 
     return {
       success: true,
       fromVersion,
       toVersion,
-      appliedMigrations: [],
-      dryRun: true,
+      appliedMigrations: migrationsToApply,
     };
   }
 
@@ -100,7 +103,7 @@ export class MigrationUtils {
 
     return {
       success: false,
-      error: errorMessage,
+      error: new Error(errorMessage),
       fromVersion: 'unknown',
       toVersion: targetVersion ?? 'unknown',
       appliedMigrations: [],

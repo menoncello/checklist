@@ -1,4 +1,4 @@
-import { TerminalCapabilities, RenderContext } from './UIFramework.js';
+import { TerminalCapabilities, RenderContext } from './UIFramework';
 
 export class TerminalCanvas {
   private width: number = 0;

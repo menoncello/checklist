@@ -6,13 +6,13 @@
  */
 
 // Types and interfaces
-export * from './types.js';
+export * from './types';
 
 // Core view system
-export { ViewSystem } from './ViewSystem.js';
-export { BaseView } from './BaseView.js';
+export { ViewSystem } from './ViewSystem';
+export { BaseView } from './BaseView';
 
 // Navigation components
-export { NavigationStack } from '../navigation/NavigationStack.js';
-export { ViewRegistry } from '../navigation/ViewRegistry.js';
-export type { ViewRegistrationInfo } from '../navigation/ViewRegistry.js';
+export { NavigationStack } from '../navigation/NavigationStack';
+export { ViewRegistry } from '../navigation/ViewRegistry';
+export type { ViewRegistrationInfo } from '../navigation/ViewRegistry';

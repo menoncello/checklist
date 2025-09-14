@@ -105,4 +105,41 @@ export class DirectoryManager {
   getStatePath(): string {
     return join(this.baseDir, 'state.yaml');
   }
+
+  // File operations - delegating to Bun's file system
+  async fileExists(filePath: string): Promise<boolean> {
+    const file = Bun.file(filePath);
+    return await file.exists();
+  }
+
+  async readFile(filePath: string): Promise<string> {
+    const file = Bun.file(filePath);
+    return await file.text();
+  }
+
+  async writeFile(filePath: string, content: string): Promise<void> {
+    await Bun.write(filePath, content);
+  }
+
+  async listFiles(dirPath: string): Promise<string[]> {
+    const glob = new Bun.Glob('*');
+    const files: string[] = [];
+    for await (const file of glob.scan({ cwd: dirPath, onlyFiles: true })) {
+      files.push(file);
+    }
+    return files;
+  }
+
+  async ensureDirectoriesExist(): Promise<void> {
+    await this.initialize();
+  }
+
+  async deleteFile(filePath: string): Promise<void> {
+    const { unlink } = await import('fs/promises');
+    await unlink(filePath);
+  }
+
+  getArchivePath(): string {
+    return join(this.baseDir, 'archive');
+  }
 }

@@ -2,7 +2,11 @@
  * Security event creation and basic logging functionality
  */
 
-import { SecurityEventType, SecuritySeverity, SecurityEvent } from './SecurityAudit';
+import {
+  SecurityEventType,
+  SecuritySeverity,
+  SecurityEvent,
+} from './SecurityAudit';
 
 export class SecurityEventLogger {
   private buffer: SecurityEvent[] = [];
@@ -30,7 +34,10 @@ export class SecurityEventLogger {
     return event;
   }
 
-  addStackTraceIfNeeded(event: SecurityEvent, options: { stackTrace?: boolean }): void {
+  addStackTraceIfNeeded(
+    event: SecurityEvent,
+    options: { stackTrace?: boolean }
+  ): void {
     if (this.shouldIncludeStackTrace(event, options)) {
       const stack = new Error().stack;
       if (this.isValidStack(stack)) {
@@ -68,8 +75,8 @@ export class SecurityEventLogger {
   ): boolean {
     return Boolean(
       options.stackTrace === true ||
-      event.severity === SecuritySeverity.CRITICAL ||
-      event.severity === SecuritySeverity.ERROR
+        event.severity === SecuritySeverity.CRITICAL ||
+        event.severity === SecuritySeverity.ERROR
     );
   }
 
@@ -78,17 +85,25 @@ export class SecurityEventLogger {
   }
 
   private getDefaultSeverity(type: SecurityEventType): SecuritySeverity {
-    // Use a lookup map for better complexity
+    // Use a lookup map for better complexity - aligned with SecurityAudit.getDefaultSeverity
     const severityMap: Record<SecurityEventType, SecuritySeverity> = {
-      [SecurityEventType.ACCESS_DENIED]: SecuritySeverity.ERROR,
-      [SecurityEventType.ENCRYPTION_FAILURE]: SecuritySeverity.ERROR,
-      [SecurityEventType.DECRYPTION_FAILURE]: SecuritySeverity.ERROR,
-      [SecurityEventType.LOCK_DENIED]: SecuritySeverity.ERROR,
-      [SecurityEventType.LOCK_TIMEOUT]: SecuritySeverity.ERROR,
-      [SecurityEventType.SUSPICIOUS_ACTIVITY]: SecuritySeverity.CRITICAL,
+      [SecurityEventType.ACCESS_GRANTED]: SecuritySeverity.INFO,
+      [SecurityEventType.ACCESS_DENIED]: SecuritySeverity.WARNING,
+      [SecurityEventType.STATE_READ]: SecuritySeverity.INFO,
+      [SecurityEventType.STATE_WRITE]: SecuritySeverity.INFO,
+      [SecurityEventType.STATE_DELETE]: SecuritySeverity.INFO,
       [SecurityEventType.SECRETS_DETECTED]: SecuritySeverity.CRITICAL,
-      [SecurityEventType.PERMISSION_CHANGE]: SecuritySeverity.WARNING,
-      [SecurityEventType.KEY_ROTATION]: SecuritySeverity.WARNING,
+      [SecurityEventType.ENCRYPTION_SUCCESS]: SecuritySeverity.INFO,
+      [SecurityEventType.ENCRYPTION_FAILURE]: SecuritySeverity.CRITICAL,
+      [SecurityEventType.DECRYPTION_SUCCESS]: SecuritySeverity.INFO,
+      [SecurityEventType.DECRYPTION_FAILURE]: SecuritySeverity.CRITICAL,
+      [SecurityEventType.KEY_ROTATION]: SecuritySeverity.INFO,
+      [SecurityEventType.LOCK_ACQUIRED]: SecuritySeverity.INFO,
+      [SecurityEventType.LOCK_DENIED]: SecuritySeverity.WARNING,
+      [SecurityEventType.LOCK_TIMEOUT]: SecuritySeverity.WARNING,
+      [SecurityEventType.PERMISSION_CHANGE]: SecuritySeverity.ERROR,
+      [SecurityEventType.SUSPICIOUS_ACTIVITY]: SecuritySeverity.WARNING,
+      [SecurityEventType.BACKUP_CREATED]: SecuritySeverity.INFO,
       [SecurityEventType.RECOVERY_ATTEMPT]: SecuritySeverity.WARNING,
     };
 

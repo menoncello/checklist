@@ -2,7 +2,11 @@
  * Security audit statistics calculation and reporting
  */
 
-import { SecurityEvent, SecurityEventType, SecuritySeverity } from './SecurityAudit';
+import {
+  SecurityEvent,
+  SecurityEventType,
+  SecuritySeverity,
+} from './SecurityAudit';
 
 export class SecurityStatistics {
   calculateStatistics(logs: SecurityEvent[]): {
@@ -59,7 +63,8 @@ export class SecurityStatistics {
     stats: ReturnType<typeof SecurityStatistics.prototype.initializeStats>,
     log: SecurityEvent
   ): void {
-    stats.eventsBySeverity[log.severity] = (stats.eventsBySeverity[log.severity] ?? 0) + 1;
+    stats.eventsBySeverity[log.severity] =
+      (stats.eventsBySeverity[log.severity] ?? 0) + 1;
   }
 
   private updateSpecialCounters(
@@ -67,11 +72,24 @@ export class SecurityStatistics {
     log: SecurityEvent
   ): void {
     if (log.severity === SecuritySeverity.CRITICAL) stats.criticalEvents++;
-    if (log.severity === SecuritySeverity.ERROR) stats.errorEvents++;
-    if (log.type === SecurityEventType.SUSPICIOUS_ACTIVITY) stats.suspiciousActivityCount++;
+    if (log.severity === SecuritySeverity.ERROR || this.isErrorEvent(log.type))
+      stats.errorEvents++;
+    if (log.type === SecurityEventType.SUSPICIOUS_ACTIVITY)
+      stats.suspiciousActivityCount++;
     if (this.isFailedOperation(log.type)) stats.failedAccessAttempts++;
-    if (log.type === SecurityEventType.ENCRYPTION_FAILURE) stats.encryptionFailures++;
+    if (log.type === SecurityEventType.ENCRYPTION_FAILURE)
+      stats.encryptionFailures++;
     if (log.type === SecurityEventType.LOCK_TIMEOUT) stats.lockTimeouts++;
+  }
+
+  private isErrorEvent(type: SecurityEventType): boolean {
+    return [
+      SecurityEventType.ACCESS_DENIED,
+      SecurityEventType.ENCRYPTION_FAILURE,
+      SecurityEventType.DECRYPTION_FAILURE,
+      SecurityEventType.LOCK_DENIED,
+      SecurityEventType.LOCK_TIMEOUT,
+    ].includes(type);
   }
 
   private isFailedOperation(type: SecurityEventType): boolean {

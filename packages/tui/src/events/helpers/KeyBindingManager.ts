@@ -1,34 +1,34 @@
-export interface KeyModifiers {
+export class KeyModifiers {
   ctrl?: boolean;
   alt?: boolean;
   shift?: boolean;
   meta?: boolean;
 }
 
-export interface KeyEvent {
-  key: string;
-  modifiers: KeyModifiers;
-  timestamp: number;
+export class KeyEvent {
+  key!: string;
+  modifiers!: KeyModifiers;
+  timestamp!: number;
   meta?: Record<string, unknown>;
 }
 
-export interface KeyBindingOptions {
+export class KeyBindingOptions {
   description?: string;
   priority?: number;
   global?: boolean;
   enabled?: boolean;
 }
 
-export interface KeyBinding {
-  id: string;
-  keys: string;
-  handler: (event: KeyEvent) => void | Promise<void>;
-  options: KeyBindingOptions;
+export class KeyBinding {
+  id!: string;
+  keys!: string;
+  handler!: (event: KeyEvent) => void | Promise<void>;
+  options!: KeyBindingOptions;
 }
 
-export interface ParsedKeyBinding {
-  key: string;
-  modifiers: KeyModifiers;
+export class ParsedKeyBinding {
+  key!: string;
+  modifiers!: KeyModifiers;
 }
 
 export class KeyBindingManager {
@@ -67,16 +67,18 @@ export class KeyBindingManager {
         if (!this.bindings.has(key)) {
           this.bindings.set(key, []);
         }
-        const keyBindings = this.bindings.get(key)!;
-        keyBindings.push(binding);
-        this.sortBindingsByPriority(keyBindings);
+        const keyBindings = this.bindings.get(key);
+        if (keyBindings) {
+          keyBindings.push(binding);
+          this.sortBindingsByPriority(keyBindings);
+        }
       }
     }
   }
 
   public removeBinding(id: string): boolean {
     // Check global bindings
-    const globalIndex = this.globalBindings.findIndex(b => b.id === id);
+    const globalIndex = this.globalBindings.findIndex((b) => b.id === id);
     if (globalIndex !== -1) {
       this.globalBindings.splice(globalIndex, 1);
       return true;
@@ -84,7 +86,7 @@ export class KeyBindingManager {
 
     // Check key-specific bindings
     for (const bindings of this.bindings.values()) {
-      const index = bindings.findIndex(b => b.id === id);
+      const index = bindings.findIndex((b) => b.id === id);
       if (index !== -1) {
         bindings.splice(index, 1);
         return true;
@@ -98,13 +100,17 @@ export class KeyBindingManager {
     const bindings: KeyBinding[] = [];
 
     // Add global bindings
-    bindings.push(...this.globalBindings.filter(b => b.options.enabled !== false));
+    bindings.push(
+      ...this.globalBindings.filter((b) => b.options.enabled !== false)
+    );
 
     // Add key-specific bindings
     if (keyEvent.key != null && keyEvent.key.length > 0) {
       const keyBindings = this.bindings.get(keyEvent.key);
       if (keyBindings) {
-        bindings.push(...keyBindings.filter(b => b.options.enabled !== false));
+        bindings.push(
+          ...keyBindings.filter((b) => b.options.enabled !== false)
+        );
       }
     }
 
@@ -155,17 +161,22 @@ export class KeyBindingManager {
     return [{ key, modifiers }];
   }
 
-  private modifiersMatch(eventMods: KeyModifiers, bindingMods: KeyModifiers): boolean {
+  private modifiersMatch(
+    eventMods: KeyModifiers,
+    bindingMods: KeyModifiers
+  ): boolean {
     return (
-      (eventMods.ctrl || false) === (bindingMods.ctrl || false) &&
-      (eventMods.alt || false) === (bindingMods.alt || false) &&
-      (eventMods.shift || false) === (bindingMods.shift || false) &&
-      (eventMods.meta || false) === (bindingMods.meta || false)
+      (eventMods.ctrl ?? false) === (bindingMods.ctrl ?? false) &&
+      (eventMods.alt ?? false) === (bindingMods.alt ?? false) &&
+      (eventMods.shift ?? false) === (bindingMods.shift ?? false) &&
+      (eventMods.meta ?? false) === (bindingMods.meta ?? false)
     );
   }
 
   private sortBindingsByPriority(bindings: KeyBinding[]): void {
-    bindings.sort((a, b) => (b.options.priority || 0) - (a.options.priority || 0));
+    bindings.sort(
+      (a, b) => (b.options.priority ?? 0) - (a.options.priority ?? 0)
+    );
   }
 
   public getAllBindings(): KeyBinding[] {
@@ -177,7 +188,7 @@ export class KeyBindingManager {
   }
 
   public getBindingsByKey(key: string): KeyBinding[] {
-    return this.bindings.get(key) || [];
+    return this.bindings.get(key) ?? [];
   }
 
   public getGlobalBindings(): KeyBinding[] {

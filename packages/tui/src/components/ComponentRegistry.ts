@@ -1,5 +1,5 @@
-import { Component, ComponentInstance } from '../framework/UIFramework.js';
-import { ComponentInstanceImpl } from './ComponentInstance.js';
+import { Component, ComponentInstance } from '../framework/UIFramework';
+import { ComponentInstanceImpl } from './ComponentInstance';
 
 export interface ComponentRegistration {
   name: string;
@@ -232,7 +232,7 @@ export class ComponentRegistry {
     this.validateInstanceCounts(warnings);
 
     return {
-      valid: errors.length === 0,
+      isValid: errors.length === 0,
       errors,
       warnings,
     };
@@ -286,17 +286,10 @@ export class ComponentRegistry {
   }
 
   private validateInstanceCounts(warnings: string[]): void {
-
     // Check for high instance count
     if (this.instances.size > 100) {
       warnings.push(`High instance count: ${this.instances.size} instances`);
     }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    };
   }
 
   public getMetrics() {

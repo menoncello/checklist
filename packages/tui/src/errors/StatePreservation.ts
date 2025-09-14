@@ -1,9 +1,24 @@
-import { DataProcessor } from './helpers/DataProcessor.js';
-import { SnapshotManager, PreservedState, StateSnapshot } from './helpers/SnapshotManager.js';
-import { StateSerializerManager, StateSerializer } from './helpers/StateSerializerManager.js';
-import { StorageManager, StatePreservationMetrics } from './helpers/StorageManager.js';
+import { DataProcessor } from './helpers/DataProcessor';
+import {
+  SnapshotManager,
+  PreservedState,
+  StateSnapshot,
+} from './helpers/SnapshotManager';
+import {
+  StateSerializerManager,
+  StateSerializer,
+} from './helpers/StateSerializerManager';
+import {
+  StorageManager,
+  StatePreservationMetrics,
+} from './helpers/StorageManager';
 
-export { PreservedState, StateSnapshot, StateSerializer, StatePreservationMetrics };
+export {
+  PreservedState,
+  StateSnapshot,
+  StateSerializer,
+  StatePreservationMetrics,
+};
 
 export interface StatePreservationConfig {
   maxStorageSize: number;
@@ -90,7 +105,9 @@ export class StatePreservation {
     }
 
     try {
-      const processed = this.dataProcessor.deprocessData(preserved.data as string);
+      const processed = this.dataProcessor.deprocessData(
+        preserved.data as string
+      );
       const restored = this.serializerManager.deserializeData(processed);
 
       this.emit('stateRestored', { key, state: preserved });
@@ -114,7 +131,11 @@ export class StatePreservation {
   }
 
   public restoreFromSnapshot(name: string, selective?: string[]): boolean {
-    const restored = this.snapshotManager.restoreFromSnapshot(name, this.states, selective);
+    const restored = this.snapshotManager.restoreFromSnapshot(
+      name,
+      this.states,
+      selective
+    );
     if (restored) {
       this.updateStorageSize();
       this.emit('snapshotRestored', { name, selective });
@@ -130,9 +151,10 @@ export class StatePreservation {
     const processed = this.dataProcessor.processData(serialized);
     const checksum = this.dataProcessor.calculateChecksum(processed);
 
-    const expiresAt = options.ttl != null
-      ? Date.now() + options.ttl
-      : Date.now() + this.config.defaultTTL;
+    const expiresAt =
+      options.ttl != null
+        ? Date.now() + options.ttl
+        : Date.now() + this.config.defaultTTL;
 
     return {
       id: `preserved-${Date.now()}-${Math.random()}`,
@@ -158,16 +180,14 @@ export class StatePreservation {
   }
 
   private updateStorageSize(): void {
-    this.storageManager.recalculateStorageSize(
-      this.states,
-      (state) => this.dataProcessor.estimateSize(JSON.stringify(state))
+    this.storageManager.recalculateStorageSize(this.states, (state) =>
+      this.dataProcessor.estimateSize(JSON.stringify(state))
     );
   }
 
   private performCleanup(): void {
-    const result = this.storageManager.performCleanup(
-      this.states,
-      (state) => this.dataProcessor.estimateSize(JSON.stringify(state))
+    const result = this.storageManager.performCleanup(this.states, (state) =>
+      this.dataProcessor.estimateSize(JSON.stringify(state))
     );
 
     if (result.cleaned > 0) {
@@ -181,7 +201,7 @@ export class StatePreservation {
       this.emit('statePersisted', { count: this.states.size });
     } catch (error) {
       this.emit('persistenceError', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

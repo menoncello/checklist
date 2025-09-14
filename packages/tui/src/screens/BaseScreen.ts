@@ -1,4 +1,4 @@
-import { Screen } from '../framework/UIFramework.js';
+import { Screen } from '../framework/UIFramework';
 
 export abstract class BaseScreen implements Screen {
   public abstract readonly id: string;
@@ -125,7 +125,11 @@ export abstract class BaseScreen implements Screen {
     return '─'.repeat(leftPadding) + titleText + '─'.repeat(rightPadding);
   }
 
-  private createBoxMiddleLines(x: number, width: number, height: number): string[] {
+  private createBoxMiddleLines(
+    x: number,
+    width: number,
+    height: number
+  ): string[] {
     const lines: string[] = [];
     for (let i = 1; i < height - 1; i++) {
       const line = '│' + ' '.repeat(width - 2) + '│';
@@ -134,7 +138,11 @@ export abstract class BaseScreen implements Screen {
     return lines;
   }
 
-  private createBoxBottomLine(x: number, width: number, height: number): string[] {
+  private createBoxBottomLine(
+    x: number,
+    width: number,
+    height: number
+  ): string[] {
     if (height > 1) {
       const bottomLine = '└' + '─'.repeat(width - 2) + '┘';
       return [this.padLine(bottomLine, x)];

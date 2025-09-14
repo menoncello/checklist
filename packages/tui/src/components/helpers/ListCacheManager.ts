@@ -43,7 +43,11 @@ export class ListCacheManager<T> {
     entry.lastAccess = Date.now();
   }
 
-  collectUncachedRanges(start: number, count: number, totalItems: number): {
+  collectUncachedRanges(
+    start: number,
+    count: number,
+    totalItems: number
+  ): {
     items: (T | null)[];
     uncachedRanges: CacheRange[];
   } {
@@ -52,7 +56,12 @@ export class ListCacheManager<T> {
     let currentGapStart = -1;
 
     for (let i = start; i < start + count; i++) {
-      const result = this.processIndex(i, totalItems, currentGapStart, uncachedRanges);
+      const result = this.processIndex(
+        i,
+        totalItems,
+        currentGapStart,
+        uncachedRanges
+      );
       items.push(result.item);
       currentGapStart = result.gapStart;
     }
@@ -83,10 +92,17 @@ export class ListCacheManager<T> {
       return { item: cached.item, gapStart: -1 };
     }
 
-    return { item: null, gapStart: currentGapStart === -1 ? index : currentGapStart };
+    return {
+      item: null,
+      gapStart: currentGapStart === -1 ? index : currentGapStart,
+    };
   }
 
-  private closeGap(gapStart: number, endIndex: number, uncachedRanges: CacheRange[]): void {
+  private closeGap(
+    gapStart: number,
+    endIndex: number,
+    uncachedRanges: CacheRange[]
+  ): void {
     if (gapStart !== -1) {
       uncachedRanges.push({
         start: gapStart,
@@ -95,7 +111,7 @@ export class ListCacheManager<T> {
     }
   }
 
-  assignLoadedItems<T>(
+  assignLoadedItems(
     loadedItems: T[],
     rangeStart: number,
     requestStart: number,

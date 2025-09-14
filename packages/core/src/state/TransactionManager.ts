@@ -5,7 +5,7 @@
 
 import { createLogger } from '../utils/logger';
 import { TransactionError } from './errors';
-import { ChecklistState, Transaction, Operation } from './types';
+import { ChecklistState, Operation, Transaction } from './types';
 
 const logger = createLogger('checklist:transaction-manager');
 
@@ -41,47 +41,83 @@ export class TransactionManager {
       msg: 'Operation added to transaction',
       transactionId,
       operationType: type,
-      path
+      path,
     });
 
     return operation;
   }
 
-  validateTransaction(transactionId: string, expectedOperations?: number): void {
+  validateTransaction(
+    transactionId: string,
+    expectedOperations?: number
+  ): void {
     const transaction = this.getTransaction(transactionId);
+    this.validateTransactionStatus(transaction, transactionId);
+    this.validateOperationCount(transaction, expectedOperations, transactionId);
+    this.validateOperationConsistency(transaction);
+  }
 
+  private validateTransactionStatus(
+    transaction: Transaction,
+    transactionId: string
+  ): void {
     if (transaction.status !== 'active') {
       throw new TransactionError(
         `Cannot validate ${transaction.status} transaction`,
-        'TRANSACTION_NOT_ACTIVE',
-        { transactionId, status: transaction.status }
+        transactionId
       );
     }
+  }
 
-    if (expectedOperations !== undefined && transaction.operations.length !== expectedOperations) {
+  private validateOperationCount(
+    transaction: Transaction,
+    expectedOperations: number | undefined,
+    transactionId: string
+  ): void {
+    if (expectedOperations === undefined) {
+      return;
+    }
+
+    if (transaction.operations.length !== expectedOperations) {
       throw new TransactionError(
         `Transaction operation count mismatch. Expected: ${expectedOperations}, Actual: ${transaction.operations.length}`,
-        'OPERATION_COUNT_MISMATCH',
-        { transactionId, expected: expectedOperations, actual: transaction.operations.length }
+        transactionId
       );
     }
-
-    this.validateOperationConsistency(transaction);
   }
 
   commitTransaction(transactionId: string): Transaction {
     const transaction = this.validateTransactionForCommit(transactionId);
+    this.markTransactionAsCommitted(transaction);
+    this.logTransactionCommit(transaction, transactionId);
+    return transaction;
+  }
+
+  private markTransactionAsCommitted(transaction: Transaction): void {
     transaction.status = 'committed';
     transaction.committedAt = new Date();
+  }
+
+  private logTransactionCommit(
+    transaction: Transaction,
+    transactionId: string
+  ): void {
+    if (!transaction.committedAt) {
+      throw new TransactionError(
+        'Transaction committedAt is not set',
+        transactionId
+      );
+    }
+
+    const duration =
+      transaction.committedAt.getTime() - transaction.startedAt.getTime();
 
     logger.info({
       msg: 'Transaction committed',
       transactionId,
       operationCount: transaction.operations.length,
-      duration: transaction.committedAt.getTime() - transaction.startedAt.getTime()
+      duration,
     });
-
-    return transaction;
   }
 
   rollbackTransaction(transactionId: string): ChecklistState {
@@ -95,7 +131,7 @@ export class TransactionManager {
     logger.info({
       msg: 'Transaction rolled back',
       transactionId,
-      operationCount: transaction.operations.length
+      operationCount: transaction.operations.length,
     });
 
     return snapshot;
@@ -104,17 +140,20 @@ export class TransactionManager {
   getTransaction(transactionId: string): Transaction {
     const transaction = this.transactions.get(transactionId);
     if (transaction === undefined) {
-      throw new TransactionError(
+      const error = new TransactionError(
         `Transaction not found: ${transactionId}`,
-        'TRANSACTION_NOT_FOUND',
-        { transactionId }
+        transactionId
       );
+      (error as Error & { code: string }).code = 'TRANSACTION_NOT_FOUND';
+      throw error;
     }
     return transaction;
   }
 
   getActiveTransactions(): Transaction[] {
-    return Array.from(this.transactions.values()).filter(t => t.status === 'active');
+    return Array.from(this.transactions.values()).filter(
+      (t) => t.status === 'active'
+    );
   }
 
   hasTransaction(transactionId: string): boolean {
@@ -127,15 +166,23 @@ export class TransactionManager {
 
   cleanup(): void {
     const activeTransactions = this.getActiveTransactions();
+    this.abortActiveTransactions(activeTransactions);
+    this.transactions.clear();
+  }
+
+  private abortActiveTransactions(activeTransactions: Transaction[]): void {
     for (const transaction of activeTransactions) {
-      logger.warn({
-        msg: 'Cleaning up active transaction',
-        transactionId: transaction.id,
-        operationCount: transaction.operations.length,
-      });
+      this.logTransactionCleanup(transaction);
       transaction.status = 'aborted';
     }
-    this.transactions.clear();
+  }
+
+  private logTransactionCleanup(transaction: Transaction): void {
+    logger.warn({
+      msg: 'Cleaning up active transaction',
+      transactionId: transaction.id,
+      operationCount: transaction.operations.length,
+    });
   }
 
   private validateActiveTransaction(transactionId: string): Transaction {
@@ -144,21 +191,24 @@ export class TransactionManager {
     if (transaction.status !== 'active') {
       throw new TransactionError(
         `Transaction is not active: ${transactionId} (status: ${transaction.status})`,
-        'TRANSACTION_NOT_ACTIVE',
-        { transactionId, status: transaction.status }
+        transactionId
       );
     }
 
     return transaction;
   }
 
-  private createOperation(type: string, path: string, data?: unknown): Operation {
+  private createOperation(
+    type: string,
+    path: string,
+    data?: unknown
+  ): Operation {
     return {
       id: crypto.randomUUID(),
       type,
       path,
       data,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -168,8 +218,7 @@ export class TransactionManager {
     if (transaction.operations.length === 0) {
       throw new TransactionError(
         'Cannot commit transaction with no operations',
-        'EMPTY_TRANSACTION',
-        { transactionId }
+        transactionId
       );
     }
 

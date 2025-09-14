@@ -213,12 +213,15 @@ export class InputValidator {
     return { isValid, sanitized, warnings };
   }
 
-  private processValidationRule(rule: ValidationRule, result: InputValidationResult): void {
+  private processValidationRule(
+    rule: ValidationRule,
+    result: InputValidationResult
+  ): void {
     const ruleResult = this.applyRule(rule, result.sanitized);
 
     if (!ruleResult.isValid) {
       result.isValid = false;
-      if (rule.errorMessage) {
+      if (rule.errorMessage != null && rule.errorMessage !== '') {
         result.errors.push(rule.errorMessage);
       }
     }

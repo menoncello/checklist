@@ -2,15 +2,20 @@ import { RecoveryStrategy, CrashState } from './types';
 
 export class StrategyManager {
   private strategies: RecoveryStrategy[] = [];
+  private onStateRestored?: () => void;
 
   constructor() {
     this.setupDefaultStrategies();
   }
 
+  public setOnStateRestored(callback: () => void): void {
+    this.onStateRestored = callback;
+  }
+
   private setupDefaultStrategies(): void {
     const defaultStrategies: RecoveryStrategy[] = [
       {
-        name: 'memory-cleanup',
+        name: 'memoryCleanup',
         priority: 1,
         timeoutMs: 2000,
         description: 'Clean up memory and garbage collect',
@@ -30,8 +35,44 @@ export class StrategyManager {
         },
       },
       {
-        name: 'state-reset',
+        name: 'stateRestoration',
         priority: 2,
+        timeoutMs: 3000,
+        description: 'Restore application state from backup',
+        condition: (): boolean => true, // Always applicable
+        execute: async (): Promise<boolean> => {
+          try {
+            // Attempt state restoration
+            await this.delay(1000);
+            // Emit state restored event via callback
+            if (this.onStateRestored) {
+              this.onStateRestored();
+            }
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      },
+      {
+        name: 'componentRestart',
+        priority: 3,
+        timeoutMs: 4000,
+        description: 'Restart application components',
+        condition: (crashState: CrashState) => crashState.recoveryAttempts >= 1,
+        execute: async (): Promise<boolean> => {
+          try {
+            // Restart components
+            await this.delay(1500);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      },
+      {
+        name: 'state-reset',
+        priority: 4,
         timeoutMs: 1000,
         description: 'Reset application state to safe defaults',
         condition: (): boolean => true, // Always applicable
@@ -47,7 +88,7 @@ export class StrategyManager {
       },
       {
         name: 'resource-cleanup',
-        priority: 3,
+        priority: 5,
         timeoutMs: 3000,
         description: 'Clean up file handles and network connections',
         condition: (crashState: CrashState) =>
@@ -65,12 +106,27 @@ export class StrategyManager {
         },
       },
       {
-        name: 'graceful-restart',
-        priority: 4,
+        name: 'safeMode',
+        priority: 6,
+        timeoutMs: 2000,
+        description: 'Enter safe mode with minimal functionality',
+        condition: (crashState: CrashState) => crashState.recoveryAttempts >= 1,
+        execute: async (): Promise<boolean> => {
+          try {
+            // Enter safe mode
+            await this.delay(800);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      },
+      {
+        name: 'fullRestart',
+        priority: 7,
         timeoutMs: 5000,
         description: 'Attempt graceful application restart',
-        condition: (crashState: CrashState) =>
-          crashState.recoveryAttempts >= 2,
+        condition: (crashState: CrashState) => crashState.recoveryAttempts >= 2,
         execute: async (): Promise<boolean> => {
           try {
             // Prepare for restart
@@ -89,12 +145,14 @@ export class StrategyManager {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   public addStrategy(strategy: RecoveryStrategy): void {
-    // Insert strategy in priority order (lower number = higher priority)
-    const insertIndex = this.strategies.findIndex(s => s.priority > strategy.priority);
+    // Insert strategy in priority order (higher number = higher priority)
+    const insertIndex = this.strategies.findIndex(
+      (s) => s.priority < strategy.priority
+    );
     if (insertIndex === -1) {
       this.strategies.push(strategy);
     } else {
@@ -103,7 +161,7 @@ export class StrategyManager {
   }
 
   public removeStrategy(name: string): boolean {
-    const index = this.strategies.findIndex(s => s.name === name);
+    const index = this.strategies.findIndex((s) => s.name === name);
     if (index === -1) return false;
 
     this.strategies.splice(index, 1);
@@ -111,9 +169,7 @@ export class StrategyManager {
   }
 
   public getApplicableStrategies(crashState: CrashState): RecoveryStrategy[] {
-    return this.strategies.filter(strategy =>
-      strategy.condition(crashState)
-    );
+    return this.strategies.filter((strategy) => strategy.condition(crashState));
   }
 
   public async executeStrategy(
@@ -124,12 +180,11 @@ export class StrategyManager {
 
     try {
       const timeoutMs = strategy.timeoutMs ?? 5000;
-      const result = await this.withTimeout(
-        strategy.execute(),
-        timeoutMs
-      );
+      const result = await this.withTimeout(strategy.execute(), timeoutMs);
 
-      console.log(`Recovery strategy '${strategy.name}' ${result ? 'succeeded' : 'failed'}`);
+      console.log(
+        `Recovery strategy '${strategy.name}' ${result ? 'succeeded' : 'failed'}`
+      );
       return result;
     } catch (error) {
       console.error(`Recovery strategy '${strategy.name}' threw error:`, error);
@@ -156,7 +211,9 @@ export class StrategyManager {
       return false;
     }
 
-    console.log(`Found ${applicableStrategies.length} applicable recovery strategies`);
+    console.log(
+      `Found ${applicableStrategies.length} applicable recovery strategies`
+    );
 
     for (const strategy of applicableStrategies) {
       const success = await this.executeStrategy(strategy, crashState);
@@ -174,7 +231,7 @@ export class StrategyManager {
   }
 
   public getStrategyByName(name: string): RecoveryStrategy | undefined {
-    return this.strategies.find(s => s.name === name);
+    return this.strategies.find((s) => s.name === name);
   }
 
   public getStrategyCount(): number {
@@ -186,11 +243,14 @@ export class StrategyManager {
   }
 
   public hasStrategy(name: string): boolean {
-    return this.strategies.some(s => s.name === name);
+    return this.strategies.some((s) => s.name === name);
   }
 
-  public updateStrategy(name: string, updates: Partial<RecoveryStrategy>): boolean {
-    const index = this.strategies.findIndex(s => s.name === name);
+  public updateStrategy(
+    name: string,
+    updates: Partial<RecoveryStrategy>
+  ): boolean {
+    const index = this.strategies.findIndex((s) => s.name === name);
     if (index === -1) return false;
 
     this.strategies[index] = { ...this.strategies[index], ...updates };

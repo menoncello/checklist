@@ -1,8 +1,8 @@
-export interface StateSerializer {
-  type: string;
-  serialize(data: unknown): string;
-  deserialize(data: string): unknown;
-  canHandle(data: unknown): boolean;
+export class StateSerializer {
+  type!: string;
+  serialize!: (data: unknown) => string;
+  deserialize!: (data: string) => unknown;
+  canHandle!: (data: unknown) => boolean;
 }
 
 export class StateSerializerManager {
@@ -18,7 +18,7 @@ export class StateSerializerManager {
       type: 'json',
       serialize: (data: unknown) => JSON.stringify(data),
       deserialize: (data: string) => JSON.parse(data),
-      canHandle: () => true
+      canHandle: () => true,
     });
 
     // Date serializer
@@ -26,7 +26,7 @@ export class StateSerializerManager {
       type: 'date',
       serialize: (data: unknown) => (data as Date).toISOString(),
       deserialize: (data: string) => new Date(data),
-      canHandle: (data: unknown) => data instanceof Date
+      canHandle: (data: unknown) => data instanceof Date,
     });
 
     // Map serializer
@@ -35,7 +35,7 @@ export class StateSerializerManager {
       serialize: (data: unknown) =>
         JSON.stringify(Array.from((data as Map<unknown, unknown>).entries())),
       deserialize: (data: string) => new Map(JSON.parse(data)),
-      canHandle: (data: unknown) => data instanceof Map
+      canHandle: (data: unknown) => data instanceof Map,
     });
 
     // Set serializer
@@ -44,7 +44,7 @@ export class StateSerializerManager {
       serialize: (data: unknown) =>
         JSON.stringify(Array.from((data as Set<unknown>).values())),
       deserialize: (data: string) => new Set(JSON.parse(data)),
-      canHandle: (data: unknown) => data instanceof Set
+      canHandle: (data: unknown) => data instanceof Set,
     });
 
     // Error serializer
@@ -55,7 +55,7 @@ export class StateSerializerManager {
         return JSON.stringify({
           name: error.name,
           message: error.message,
-          stack: error.stack
+          stack: error.stack,
         });
       },
       deserialize: (data: string) => {
@@ -65,7 +65,7 @@ export class StateSerializerManager {
         error.stack = parsed.stack;
         return error;
       },
-      canHandle: (data: unknown) => data instanceof Error
+      canHandle: (data: unknown) => data instanceof Error,
     });
   }
 

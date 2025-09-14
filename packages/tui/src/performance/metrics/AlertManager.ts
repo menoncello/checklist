@@ -29,6 +29,7 @@ export class AlertManager {
 
   private createMemoryRule(): AlertRule {
     return {
+      id: 'memory-usage',
       metric: 'memory.usage',
       threshold: 100 * 1024 * 1024, // 100MB
       operator: '>',
@@ -39,6 +40,7 @@ export class AlertManager {
 
   private createCpuRule(): AlertRule {
     return {
+      id: 'cpu-usage',
       metric: 'cpu.usage',
       threshold: 80,
       operator: '>',
@@ -49,6 +51,7 @@ export class AlertManager {
 
   private createResponseTimeRule(): AlertRule {
     return {
+      id: 'response-time',
       metric: 'response.time',
       threshold: 1000,
       operator: '>',
@@ -59,6 +62,7 @@ export class AlertManager {
 
   private createErrorRateRule(): AlertRule {
     return {
+      id: 'error-rate',
       metric: 'error.rate',
       threshold: 5,
       operator: '>',
@@ -69,6 +73,7 @@ export class AlertManager {
 
   private createDiskUsageRule(): AlertRule {
     return {
+      id: 'disk-usage',
       metric: 'disk.usage',
       threshold: 90,
       operator: '>',
@@ -95,20 +100,30 @@ export class AlertManager {
   }
 
   private shouldTriggerAlert(point: MetricPoint, rule: AlertRule): boolean {
+    if (rule.threshold == null || rule.operator == null) return false;
+
     switch (rule.operator) {
-      case '>': return point.value > rule.threshold;
-      case '<': return point.value < rule.threshold;
-      case '>=': return point.value >= rule.threshold;
-      case '<=': return point.value <= rule.threshold;
-      case '==': return point.value === rule.threshold;
-      case '!=': return point.value !== rule.threshold;
-      default: return false;
+      case '>':
+        return point.value > rule.threshold;
+      case '<':
+        return point.value < rule.threshold;
+      case '>=':
+        return point.value >= rule.threshold;
+      case '<=':
+        return point.value <= rule.threshold;
+      case '==':
+        return point.value === rule.threshold;
+      case '!=':
+        return point.value !== rule.threshold;
+      default:
+        return false;
     }
   }
 
   private createAlert(point: MetricPoint, rule: AlertRule): void {
     const alert: MetricAlert = {
       id: this.generateAlertId(),
+      ruleId: rule.id,
       timestamp: point.timestamp,
       severity: rule.severity,
       metric: rule.metric,
@@ -143,6 +158,6 @@ export class AlertManager {
   public getActiveAlerts(): MetricAlert[] {
     const now = Date.now();
     const threshold = 5 * 60 * 1000; // 5 minutes
-    return this.alerts.filter(alert => now - alert.timestamp < threshold);
+    return this.alerts.filter((alert) => now - alert.timestamp < threshold);
   }
 }

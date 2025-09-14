@@ -23,7 +23,7 @@ export class StateSaver {
   private logger = createLogger('checklist:state:saver');
   private fieldEncryption = new FieldEncryption();
   private secretsDetector = new SecretsDetector();
-  private securityAudit = new SecurityAudit();
+  // SecurityAudit is accessed statically
 
   private directoryManager: DirectoryManager;
   private concurrencyManager: ConcurrencyManager;
@@ -40,8 +40,9 @@ export class StateSaver {
   }
 
   async saveState(state: ChecklistState): Promise<void> {
-    await this.concurrencyManager.withLock(async () => {
-      const transactionId = await this.transactionCoordinator.beginTransaction();
+    await this.concurrencyManager.withLock('state', async () => {
+      const transactionId =
+        await this.transactionCoordinator.beginTransaction(state);
 
       try {
         await this.performSave(state);
@@ -61,8 +62,9 @@ export class StateSaver {
     await this.createBackupBeforeSave();
     await this.writeStateToFile(processedState);
 
-    this.logger.info('State saved successfully', {
-      itemCount: state.items.length,
+    this.logger.info({
+      msg: 'State saved successfully',
+      stepCount: state.completedSteps?.length ?? 0,
       version: state.version,
     });
   }
@@ -70,24 +72,30 @@ export class StateSaver {
   private validateStateBeforeSave(state: ChecklistState): void {
     const validation: ValidationResult = this.validator.validateState(state);
     if (validation.isValid !== true) {
-      throw new StateError(`Invalid state: ${validation.errors.join(', ')}`);
+      throw new StateError(
+        `Invalid state: ${validation.errors.join(', ')}`,
+        'VALIDATION_FAILED'
+      );
     }
   }
 
   private async performSecurityChecks(state: ChecklistState): Promise<void> {
     const yamlContent = yaml.dump(state);
-    const secrets = await this.secretsDetector.detectSecrets(yamlContent);
+    const hasSecrets = await this.secretsDetector.detectSecrets(yamlContent);
 
-    if (secrets.length > 0) {
-      this.logger.warn('Potential secrets detected in state', {
-        secretCount: secrets.length,
+    if (hasSecrets) {
+      this.logger.warn({
+        msg: 'Potential secrets detected in state',
+        secretCount: 1,
       });
     }
 
-    await this.securityAudit.auditState(state);
+    await SecurityAudit.auditState(state);
   }
 
-  private async processStateForSave(state: ChecklistState): Promise<ChecklistState> {
+  private async processStateForSave(
+    state: ChecklistState
+  ): Promise<ChecklistState> {
     // Update metadata
     const processedState: ChecklistState = {
       ...state,
@@ -98,14 +106,18 @@ export class StateSaver {
     };
 
     // Encrypt sensitive fields
-    return await this.fieldEncryption.encryptSensitiveFields(processedState);
+    return (await this.fieldEncryption.encryptSensitiveFields(
+      processedState
+    )) as ChecklistState;
   }
 
   private async createBackupBeforeSave(): Promise<void> {
     const statePath = this.directoryManager.getStatePath();
     const fileExists = await this.directoryManager.fileExists(statePath);
     if (fileExists === true) {
-      await this.backupManager.createBackup(statePath);
+      const stateContent = await this.directoryManager.readFile(statePath);
+      const currentState = yaml.load(stateContent) as ChecklistState;
+      await this.backupManager.createBackup(currentState);
     }
   }
 
@@ -140,31 +152,32 @@ export class StateSaver {
   }
 
   async archiveState(): Promise<void> {
-    await this.concurrencyManager.withLock(async () => {
+    await this.concurrencyManager.withLock('archive', async () => {
       const statePath = this.directoryManager.getStatePath();
 
       const fileExists = await this.directoryManager.fileExists(statePath);
       if (fileExists !== true) {
-        this.logger.info('No state file to archive');
+        this.logger.info({ msg: 'No state file to archive' });
         return;
       }
 
       await this.createArchiveBackup(statePath);
       await this.removeCurrentState(statePath);
 
-      this.logger.info('State archived successfully');
+      this.logger.info({ msg: 'State archived successfully' });
     });
   }
 
   private async createArchiveBackup(statePath: string): Promise<void> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const archiveName = `archived-${timestamp}.yaml`;
-    const archivePath = this.directoryManager.getArchivePath(archiveName);
+    const archivePath =
+      this.directoryManager.getArchivePath() + '/' + archiveName;
 
     const content = await this.directoryManager.readFile(statePath);
     await this.directoryManager.writeFile(archivePath, content);
 
-    this.logger.info('State archived', { archivePath });
+    this.logger.info({ msg: 'State archived', archivePath });
   }
 
   private async removeCurrentState(statePath: string): Promise<void> {

@@ -1,12 +1,12 @@
-export interface EventBusMetrics {
-  totalMessages: number;
-  messagesProcessed: number;
-  messagesDropped: number;
-  averageProcessingTime: number;
-  totalProcessingTime: number;
-  errorCount: number;
-  peakQueueSize: number;
-  uptime: number;
+export class EventBusMetrics {
+  totalMessages!: number;
+  messagesProcessed!: number;
+  messagesDropped!: number;
+  averageProcessingTime!: number;
+  totalProcessingTime!: number;
+  errorCount!: number;
+  peakQueueSize!: number;
+  uptime!: number;
 }
 
 export class BusMetrics {
@@ -18,7 +18,7 @@ export class BusMetrics {
     totalProcessingTime: 0,
     errorCount: 0,
     peakQueueSize: 0,
-    uptime: 0
+    uptime: 0,
   };
 
   private startTime: number;
@@ -55,13 +55,15 @@ export class BusMetrics {
   public getMetrics(): EventBusMetrics {
     return {
       ...this.metrics,
-      uptime: Date.now() - this.startTime
+      uptime: Date.now() - this.startTime,
     };
   }
 
   public getProcessingRate(): number {
     const uptimeSeconds = (Date.now() - this.startTime) / 1000;
-    return uptimeSeconds > 0 ? this.metrics.messagesProcessed / uptimeSeconds : 0;
+    return uptimeSeconds > 0
+      ? this.metrics.messagesProcessed / uptimeSeconds
+      : 0;
   }
 
   public getErrorRate(): number {
@@ -81,7 +83,7 @@ export class BusMetrics {
     const dropRate = this.getDropRate();
 
     // Health score based on error and drop rates
-    const healthScore = Math.max(0, 100 - (errorRate * 2) - (dropRate * 1.5));
+    const healthScore = Math.max(0, 100 - errorRate * 2 - dropRate * 1.5);
     return Math.round(healthScore);
   }
 
@@ -94,7 +96,7 @@ export class BusMetrics {
       totalProcessingTime: 0,
       errorCount: 0,
       peakQueueSize: 0,
-      uptime: 0
+      uptime: 0,
     };
     this.startTime = Date.now();
   }
@@ -113,7 +115,7 @@ export class BusMetrics {
       dropRate: this.getDropRate(),
       healthScore: this.getHealthScore(),
       averageProcessingTime: this.metrics.averageProcessingTime,
-      uptime: Date.now() - this.startTime
+      uptime: Date.now() - this.startTime,
     };
   }
 
@@ -128,7 +130,7 @@ export class BusMetrics {
       processingRate: this.getProcessingRate(),
       errorRate: this.getErrorRate(),
       dropRate: this.getDropRate(),
-      healthScore: this.getHealthScore()
+      healthScore: this.getHealthScore(),
     };
   }
 }

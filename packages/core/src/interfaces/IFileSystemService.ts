@@ -5,17 +5,20 @@ export interface FileInfo {
   isFile: boolean;
   createdAt: Date;
   modifiedAt: Date;
+  accessedAt?: Date;
   permissions?: string;
 }
 
 export interface ReadOptions {
   encoding?: 'utf8' | 'utf16le' | 'base64' | 'binary' | 'hex';
   flag?: string;
+  maxLength?: number;
 }
 
 export interface WriteOptions extends ReadOptions {
   mode?: number;
   flag?: string;
+  createDirectories?: boolean;
 }
 
 export interface WatchOptions {

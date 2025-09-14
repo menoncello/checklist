@@ -12,20 +12,26 @@ import { STATE_DIR } from './constants';
 const logger = createLogger('checklist:security-audit-file-manager');
 
 export class SecurityAuditFileManager {
-  private static readonly AUDIT_FILE = path.join(STATE_DIR, 'security-audit.log');
+  private auditFilePath: string;
   private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   private static readonly MAX_ROTATION_COUNT = 5;
 
+  constructor(
+    auditFilePath: string = path.join(STATE_DIR, 'security-audit.log')
+  ) {
+    this.auditFilePath = auditFilePath;
+  }
+
   async ensureAuditFile(): Promise<void> {
     try {
-      await fs.mkdir(path.dirname(SecurityAuditFileManager.AUDIT_FILE), { recursive: true });
+      await fs.mkdir(path.dirname(this.auditFilePath), { recursive: true });
 
       // Check if audit file exists, create if not
       try {
-        await fs.access(SecurityAuditFileManager.AUDIT_FILE);
+        await fs.access(this.auditFilePath);
       } catch {
         // File doesn't exist, create it
-        await fs.writeFile(SecurityAuditFileManager.AUDIT_FILE, '', 'utf8');
+        await fs.writeFile(this.auditFilePath, '', 'utf8');
         logger.info({ msg: 'Created security audit file' });
       }
 
@@ -43,22 +49,30 @@ export class SecurityAuditFileManager {
     }
 
     try {
-      const logEntries = events.map(event => JSON.stringify(event)).join('\n') + '\n';
-      await fs.appendFile(SecurityAuditFileManager.AUDIT_FILE, logEntries, 'utf8');
+      const logEntries =
+        events.map((event) => JSON.stringify(event)).join('\n') + '\n';
+      await fs.appendFile(this.auditFilePath, logEntries, 'utf8');
     } catch (error) {
-      logger.error({ msg: 'Failed to write audit events', error, count: events.length });
+      logger.error({
+        msg: 'Failed to write audit events',
+        error,
+        count: events.length,
+      });
       throw error;
     }
   }
 
   async readLogs(since?: Date): Promise<SecurityEvent[]> {
     try {
-      const content = await fs.readFile(SecurityAuditFileManager.AUDIT_FILE, 'utf8');
-      const lines = content.trim().split('\n').filter(line => line.length > 0);
+      const content = await fs.readFile(this.auditFilePath, 'utf8');
+      const lines = content
+        .trim()
+        .split('\n')
+        .filter((line) => line.length > 0);
 
       const logs = lines
-        .map(line => this.parseLogLine(line, since))
-        .filter(log => log !== null) as SecurityEvent[];
+        .map((line) => this.parseLogLine(line, since))
+        .filter((log) => log !== null) as SecurityEvent[];
 
       return logs;
     } catch (error) {
@@ -87,7 +101,7 @@ export class SecurityAuditFileManager {
 
   private async checkAndRotateIfNeeded(): Promise<void> {
     try {
-      const stats = await fs.stat(SecurityAuditFileManager.AUDIT_FILE);
+      const stats = await fs.stat(this.auditFilePath);
       if (stats.size > SecurityAuditFileManager.MAX_FILE_SIZE) {
         await this.rotateAuditFile();
       }
@@ -100,21 +114,22 @@ export class SecurityAuditFileManager {
   private async rotateAuditFile(): Promise<void> {
     try {
       // Rotate existing files
-      for (let i = SecurityAuditFileManager.MAX_ROTATION_COUNT - 1; i >= 1; i--) {
-        const oldFile = `${SecurityAuditFileManager.AUDIT_FILE}.${i}`;
-        const newFile = `${SecurityAuditFileManager.AUDIT_FILE}.${i + 1}`;
+      for (
+        let i = SecurityAuditFileManager.MAX_ROTATION_COUNT - 1;
+        i >= 1;
+        i--
+      ) {
+        const oldFile = `${this.auditFilePath}.${i}`;
+        const newFile = `${this.auditFilePath}.${i + 1}`;
 
         await this.rotateFile(oldFile, newFile, i);
       }
 
       // Move current file to .1
-      await fs.rename(
-        SecurityAuditFileManager.AUDIT_FILE,
-        `${SecurityAuditFileManager.AUDIT_FILE}.1`
-      );
+      await fs.rename(this.auditFilePath, `${this.auditFilePath}.1`);
 
       // Create new empty file
-      await fs.writeFile(SecurityAuditFileManager.AUDIT_FILE, '', 'utf8');
+      await fs.writeFile(this.auditFilePath, '', 'utf8');
 
       logger.info({ msg: 'Security audit file rotated' });
     } catch (error) {
@@ -123,7 +138,11 @@ export class SecurityAuditFileManager {
     }
   }
 
-  private async rotateFile(oldFile: string, newFile: string, index: number): Promise<void> {
+  private async rotateFile(
+    oldFile: string,
+    newFile: string,
+    index: number
+  ): Promise<void> {
     try {
       await fs.access(oldFile);
       if (index === SecurityAuditFileManager.MAX_ROTATION_COUNT - 1) {

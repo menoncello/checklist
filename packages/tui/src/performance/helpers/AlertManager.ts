@@ -1,20 +1,20 @@
-import { PerformanceMetric } from './MetricsTracker.js';
+import { PerformanceMetric } from './MetricsTracker';
 
-export interface PerformanceThreshold {
-  metric: string;
-  warningValue: number;
-  criticalValue: number;
-  direction: 'above' | 'below';
+export class PerformanceThreshold {
+  metric!: string;
+  warningValue!: number;
+  criticalValue!: number;
+  direction!: 'above' | 'below';
 }
 
-export interface PerformanceAlert {
-  id: string;
-  timestamp: number;
-  metric: string;
-  value: number;
-  threshold: PerformanceThreshold;
-  level: 'warning' | 'critical';
-  message: string;
+export class PerformanceAlert {
+  id!: string;
+  timestamp!: number;
+  metric!: string;
+  value!: number;
+  threshold!: PerformanceThreshold;
+  level!: 'warning' | 'critical';
+  message!: string;
 }
 
 export class AlertManager {
@@ -31,29 +31,29 @@ export class AlertManager {
         metric: 'memory.heapUsed',
         warningValue: 100 * 1024 * 1024, // 100MB
         criticalValue: 500 * 1024 * 1024, // 500MB
-        direction: 'above'
+        direction: 'above',
       },
       {
         metric: 'cpu.usage',
         warningValue: 70,
         criticalValue: 90,
-        direction: 'above'
+        direction: 'above',
       },
       {
         metric: 'render.frameTime',
         warningValue: 16.67, // 60fps
         criticalValue: 33.33, // 30fps
-        direction: 'above'
+        direction: 'above',
       },
       {
         metric: 'gc.duration',
         warningValue: 10,
         criticalValue: 50,
-        direction: 'above'
-      }
+        direction: 'above',
+      },
     ];
 
-    defaults.forEach(threshold => {
+    defaults.forEach((threshold) => {
       this.thresholds.set(threshold.metric, threshold);
     });
   }
@@ -108,9 +108,8 @@ export class AlertManager {
     level: 'warning' | 'critical'
   ): PerformanceAlert {
     const direction = threshold.direction === 'above' ? 'above' : 'below';
-    const thresholdValue = level === 'critical'
-      ? threshold.criticalValue
-      : threshold.warningValue;
+    const thresholdValue =
+      level === 'critical' ? threshold.criticalValue : threshold.warningValue;
 
     return {
       id: `alert-${Date.now()}-${Math.random()}`,
@@ -119,13 +118,13 @@ export class AlertManager {
       value: metric.value,
       threshold,
       level,
-      message: `Metric '${metric.name}' is ${direction} ${level} threshold: ${metric.value} ${direction} ${thresholdValue}`
+      message: `Metric '${metric.name}' is ${direction} ${level} threshold: ${metric.value} ${direction} ${thresholdValue}`,
     };
   }
 
   public getAlerts(level?: 'warning' | 'critical'): PerformanceAlert[] {
     if (level != null) {
-      return this.alerts.filter(alert => alert.level === level);
+      return this.alerts.filter((alert) => alert.level === level);
     }
     return [...this.alerts];
   }

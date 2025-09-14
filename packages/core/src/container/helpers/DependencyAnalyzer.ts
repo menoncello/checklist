@@ -1,9 +1,4 @@
-import type {
-  Container,
-  DependencyGraph,
-  DependencyNode,
-  Constructor,
-} from '../Container';
+import type { Container, DependencyGraph, DependencyNode } from '../Container';
 
 export interface CircularDependencyInfo {
   detected: boolean;
@@ -43,17 +38,17 @@ export class DependencyAnalyzer {
     const processedNodes = new Set<string>();
 
     for (const node of graph.nodes.values()) {
-      if (!processedNodes.has(node.name)) {
+      if (!processedNodes.has(node.id)) {
         this.addNodeDetails(lines, node);
-        processedNodes.add(node.name);
+        processedNodes.add(node.id);
       }
     }
   }
 
   private addNodeDetails(lines: string[], node: DependencyNode): void {
-    lines.push(`  ${node.name}`);
+    lines.push(`  ${node.id}`);
 
-    const dependencies = node.dependencies || [];
+    const dependencies = node.dependencies ?? [];
     for (const dep of dependencies) {
       lines.push(`    ├── ${dep}`);
     }
@@ -113,7 +108,10 @@ export class DependencyAnalyzer {
 
     const dependencies = graph.edges.get(node) ?? new Set();
     for (const dep of dependencies) {
-      const cycle = this.checkCycle(dep, graph, visited, stack, [...path, node]);
+      const cycle = this.checkCycle(dep, graph, visited, stack, [
+        ...path,
+        node,
+      ]);
       if (cycle !== null) return cycle;
     }
 

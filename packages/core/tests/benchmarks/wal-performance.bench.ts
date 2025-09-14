@@ -94,7 +94,7 @@ async function runWALBenchmarks() {
       const state = createTestState();
       const txId = await coordinator.beginTransaction(state);
       await coordinator.addOperation(txId, 'write', '/test', { value: 'data' });
-      await coordinator.commitTransaction(txId, async () => state);
+      await coordinator.commitTransaction(txId, async (transaction) => {});
     })
     .add('Transaction with 5 WAL writes', async () => {
       const coordinator = new TransactionCoordinator(testDir);
@@ -103,7 +103,7 @@ async function runWALBenchmarks() {
       for (let i = 0; i < 5; i++) {
         await coordinator.addOperation(txId, 'write', `/test${i}`, { value: `data${i}` });
       }
-      await coordinator.commitTransaction(txId, async () => state);
+      await coordinator.commitTransaction(txId, async (transaction) => {});
     })
     .add('Transaction rollback with WAL', async () => {
       const coordinator = new TransactionCoordinator(testDir);
@@ -142,7 +142,7 @@ async function runWALBenchmarks() {
       }
       
       const coordinator2 = new TransactionCoordinator(testDir);
-      await coordinator2.recoverFromWAL(async () => {});
+      await coordinator2.recoverFromWAL(state);
     })
     .add('WAL recovery with 50 entries', async () => {
       const coordinator = new TransactionCoordinator(testDir);
@@ -153,7 +153,7 @@ async function runWALBenchmarks() {
       }
       
       const coordinator2 = new TransactionCoordinator(testDir);
-      await coordinator2.recoverFromWAL(async () => {});
+      await coordinator2.recoverFromWAL(state);
     });
 
   await recoveryBench.run();

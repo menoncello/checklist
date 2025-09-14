@@ -1,6 +1,6 @@
-import { ColorSupport } from './ColorSupport.js';
-import { TerminalInfo } from './TerminalInfo.js';
-import { CapabilityTest } from './types.js';
+import { ColorSupport } from './ColorSupport';
+import { TerminalInfo } from './TerminalInfo';
+import { CapabilityTest } from './types';
 
 export class CapabilityTester {
   private terminalInfo: TerminalInfo;
@@ -99,10 +99,7 @@ export class CapabilityTester {
 
   public async runTestWithTimeout(test: CapabilityTest): Promise<boolean> {
     const timeoutPromise = new Promise<boolean>((_, reject) => {
-      setTimeout(
-        () => reject(new Error('Test timeout')),
-        test.timeout ?? 1000
-      );
+      setTimeout(() => reject(new Error('Test timeout')), test.timeout ?? 1000);
     });
 
     return Promise.race([test.test(), timeoutPromise]);
@@ -194,9 +191,7 @@ export class CapabilityTester {
 
   private isAlternateScreenCapable(term: string): boolean {
     return (
-      term.includes('xterm') ||
-      term.includes('screen') ||
-      term.includes('tmux')
+      term.includes('xterm') || term.includes('screen') || term.includes('tmux')
     );
   }
 
@@ -271,12 +266,9 @@ export class CapabilityTester {
     return new Promise((resolve) => {
       let responded = false;
 
-      const responseHandler = this.createResponseHandler(
-        resolve,
-        () => {
-          responded = true;
-        }
-      );
+      const responseHandler = this.createResponseHandler(resolve, () => {
+        responded = true;
+      });
 
       const timeoutHandle = this.setupQueryTimeout(
         timeout,
@@ -333,7 +325,10 @@ export class CapabilityTester {
     });
   }
 
-  private cleanupQuery(handler: (data: Buffer) => void, callback: () => void): void {
+  private cleanupQuery(
+    handler: (data: Buffer) => void,
+    callback: () => void
+  ): void {
     process.stdin.off('data', handler);
     callback();
   }

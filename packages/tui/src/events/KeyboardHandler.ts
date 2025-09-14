@@ -3,11 +3,11 @@ import {
   KeyEvent,
   KeyModifiers,
   KeyBinding,
-  KeyBindingOptions
-} from './helpers/KeyBindingManager.js';
-import { KeyMetricsTracker } from './helpers/KeyMetricsTracker.js';
-import { ControlCharacterParser } from './keyboard/ControlCharacterParser.js';
-import { EscapeSequenceParser } from './keyboard/EscapeSequenceParser.js';
+  KeyBindingOptions,
+} from './helpers/KeyBindingManager';
+import { KeyMetricsTracker } from './helpers/KeyMetricsTracker';
+import { ControlCharacterParser } from './keyboard/ControlCharacterParser';
+import { EscapeSequenceParser } from './keyboard/EscapeSequenceParser';
 
 export { KeyEvent, KeyModifiers, KeyBinding, KeyBindingOptions };
 
@@ -82,7 +82,7 @@ export class KeyboardHandler {
       key: '',
       modifiers: {},
       timestamp: Date.now(),
-      meta: {}
+      meta: {},
     };
 
     // Handle escape sequences
@@ -169,14 +169,20 @@ export class KeyboardHandler {
   }
 
   private setupDefaultBindings(): void {
-    this.bind('ctrl+c', () => this.emit('interrupt'),
-      { description: 'Send interrupt signal', priority: 100 });
+    this.bind('ctrl+c', () => this.emit('interrupt'), {
+      description: 'Send interrupt signal',
+      priority: 100,
+    });
 
-    this.bind('ctrl+d', () => this.emit('eof'),
-      { description: 'End of file', priority: 100 });
+    this.bind('ctrl+d', () => this.emit('eof'), {
+      description: 'End of file',
+      priority: 100,
+    });
 
-    this.bind('ctrl+z', () => this.emit('suspend'),
-      { description: 'Suspend process', priority: 100 });
+    this.bind('ctrl+z', () => this.emit('suspend'), {
+      description: 'Suspend process',
+      priority: 100,
+    });
   }
 
   public bind(
@@ -211,7 +217,7 @@ export class KeyboardHandler {
       timeout,
       startTime: Date.now(),
       onComplete,
-      onTimeout
+      onTimeout,
     };
 
     this.sequenceBuffer = [];
@@ -237,7 +243,7 @@ export class KeyboardHandler {
       bindings: this.bindingManager.getBindingCount(),
       mostUsed: this.metricsTracker.getMostUsedKeys(),
       typingSpeed: this.metricsTracker.getTypingSpeed(),
-      activeSequence: this.metricsTracker.getActiveSequence()
+      activeSequence: this.metricsTracker.getActiveSequence(),
     };
   }
 

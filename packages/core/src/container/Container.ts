@@ -5,6 +5,8 @@ import {
   ServiceResolver,
   ServiceDefinition,
   ServiceOptions,
+  ServiceLifecycle,
+  ServiceMetadata,
   LifecycleState,
   DependencyGraph,
   CircularDependencyError,
@@ -110,13 +112,9 @@ export class Container {
     }
   }
 
-  private async buildInstance<T>(
-    definition: ServiceDefinition
-  ): Promise<T> {
-    const deps = await this.resolveDependencies(
-      definition.dependencies ?? []
-    );
-    return await this.createInstance(definition.resolver, deps) as T;
+  private async buildInstance<T>(definition: ServiceDefinition): Promise<T> {
+    const deps = await this.resolveDependencies(definition.dependencies ?? []);
+    return (await this.createInstance(definition.resolver, deps)) as T;
   }
 
   private async runLifecycleHooks<T>(
@@ -155,10 +153,7 @@ export class Container {
   ): Promise<void> {
     this.lifecycleStates.set(name, LifecycleState.ERROR);
     if (definition.lifecycle?.onError) {
-      await definition.lifecycle.onError(
-        error,
-        undefined as unknown as never
-      );
+      await definition.lifecycle.onError(error, undefined as unknown as never);
     }
   }
 

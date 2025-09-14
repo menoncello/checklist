@@ -1,5 +1,5 @@
-import { Component, ComponentInstance } from '../framework/UIFramework.js';
-import { ComponentLifecycle, LifecyclePhase } from './ComponentLifecycle.js';
+import { Component, ComponentInstance } from '../framework/UIFramework';
+import { ComponentLifecycle, LifecyclePhase } from './ComponentLifecycle';
 
 // Component instance types
 export interface ComponentInstanceState {

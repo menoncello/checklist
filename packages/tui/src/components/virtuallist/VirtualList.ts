@@ -24,10 +24,10 @@ export class VirtualList<T = unknown> extends BaseComponent {
   private renderCache = new Map<string, string>();
 
   // Specialized managers
-  private virtualizationEngine: VirtualizationEngine<T>;
-  private selectionManager: SelectionManager;
-  private searchEngine: SearchEngine<T>;
-  private scrollManager: ScrollManager<T>;
+  private virtualizationEngine!: VirtualizationEngine<T>;
+  private selectionManager!: SelectionManager;
+  private searchEngine!: SearchEngine<T>;
+  private scrollManager!: ScrollManager<T>;
 
   constructor(props: Record<string, unknown> = {}) {
     super(props);
@@ -81,7 +81,10 @@ export class VirtualList<T = unknown> extends BaseComponent {
   }
 
   private initializeManagers(): void {
-    this.virtualizationEngine = new VirtualizationEngine(this.config, this.state);
+    this.virtualizationEngine = new VirtualizationEngine(
+      this.config,
+      this.state
+    );
 
     this.selectionManager = new SelectionManager(
       this.config,
@@ -190,7 +193,10 @@ export class VirtualList<T = unknown> extends BaseComponent {
   }
 
   private updateFocusAfterRemove(removedIndex: number): void {
-    if (this.state.focusedIndex >= removedIndex && this.state.focusedIndex > 0) {
+    if (
+      this.state.focusedIndex >= removedIndex &&
+      this.state.focusedIndex > 0
+    ) {
       this.state.focusedIndex--;
     }
   }

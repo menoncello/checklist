@@ -424,10 +424,10 @@ describe('Performance Requirements (AC11-13)', () => {
 
       const report = monitor.generateReport();
 
-      expect(report).toHaveProperty('marks');
-      expect(report).toHaveProperty('measures');
-      expect(typeof report.marks).toBe('object');
-      expect(typeof report.measures).toBe('object');
+      expect(report).toHaveProperty('metrics');
+      expect(report).toHaveProperty('benchmarks');
+      expect(Array.isArray(report.metrics)).toBe(true);
+      expect(Array.isArray(report.benchmarks)).toBe(true);
     });
   });
 });

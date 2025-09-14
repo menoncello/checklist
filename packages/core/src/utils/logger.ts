@@ -1,7 +1,10 @@
+import { mkdirSync } from 'fs';
+import { join } from 'path';
 import pino, {
   Logger as PinoLogger,
   LoggerOptions,
   ChildLoggerOptions,
+  TransportTargetOptions,
 } from 'pino';
 
 export interface LogContext {
@@ -103,15 +106,18 @@ export class LoggerService {
     const options = this.createLoggerOptions();
     const transports = this.configureTransports();
 
-    const pinoLogger = transports.length > 0
-      ? pino(options, pino.transport({ targets: transports }))
-      : pino(options);
+    const pinoLogger =
+      transports.length > 0
+        ? pino(options, pino.transport({ targets: transports }))
+        : pino(options);
 
     return new PinoLoggerWrapper(pinoLogger);
   }
 
   private isTestEnvironment(): boolean {
-    return Bun.env.NODE_ENV === 'test' && this.config.enableFileLogging !== true;
+    return (
+      Bun.env.NODE_ENV === 'test' && this.config.enableFileLogging !== true
+    );
   }
 
   private createSilentLogger(): Logger {
@@ -149,7 +155,9 @@ export class LoggerService {
     };
   }
 
-  private configureTransports(): TransportTargetOptions<Record<string, unknown>>[] {
+  private configureTransports(): TransportTargetOptions<
+    Record<string, unknown>
+  >[] {
     const transports: TransportTargetOptions<Record<string, unknown>>[] = [];
 
     this.addPrettyPrintTransport(transports);
@@ -162,7 +170,10 @@ export class LoggerService {
   private addPrettyPrintTransport(
     transports: TransportTargetOptions<Record<string, unknown>>[]
   ): void {
-    if (this.config.prettyPrint === true && Bun.env.NODE_ENV === 'development') {
+    if (
+      this.config.prettyPrint === true &&
+      Bun.env.NODE_ENV === 'development'
+    ) {
       transports.push({
         target: 'pino-pretty',
         options: {
@@ -189,12 +200,18 @@ export class LoggerService {
     transports.push(
       {
         target: 'pino-roll',
-        options: { file: join(logDirectory, 'info', 'app.log'), ...fileOptions },
+        options: {
+          file: join(logDirectory, 'info', 'app.log'),
+          ...fileOptions,
+        },
         level: 'info',
       },
       {
         target: 'pino-roll',
-        options: { file: join(logDirectory, 'error', 'error.log'), ...fileOptions },
+        options: {
+          file: join(logDirectory, 'error', 'error.log'),
+          ...fileOptions,
+        },
         level: 'error',
       }
     );
@@ -202,7 +219,10 @@ export class LoggerService {
     if (Bun.env.NODE_ENV === 'development') {
       transports.push({
         target: 'pino-roll',
-        options: { file: join(logDirectory, 'debug', 'debug.log'), ...fileOptions },
+        options: {
+          file: join(logDirectory, 'debug', 'debug.log'),
+          ...fileOptions,
+        },
         level: 'debug',
       });
     }
@@ -211,7 +231,11 @@ export class LoggerService {
   private addExternalTransports(
     transports: TransportTargetOptions<Record<string, unknown>>[]
   ): void {
-    if (!this.config.externalTransports || this.config.externalTransports.length === 0) return;
+    if (
+      !this.config.externalTransports ||
+      this.config.externalTransports.length === 0
+    )
+      return;
 
     for (const transport of this.config.externalTransports) {
       try {
@@ -220,12 +244,12 @@ export class LoggerService {
           options: transport.options ?? {},
           level: transport.level ?? this.config.level,
         });
-        } catch (_error) {
-          // External transport failed to load - skip it silently
-          // Can't log error because logger isn't created yet
-        }
+      } catch (_error) {
+        // External transport failed to load - skip it silently
+        // Can't log error because logger isn't created yet
       }
     }
+  }
 
   createLogger(namespace: string): Logger {
     const startTime = performance.now();

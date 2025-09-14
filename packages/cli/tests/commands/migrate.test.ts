@@ -277,10 +277,12 @@ describe('CLI Migration Commands', () => {
       expect(backups[0].version).toBeDefined();
       expect(backups[0].timestamp).toBeDefined();
       expect(backups[0].path).toBeDefined();
-      
+
       // Verify backups are sorted by timestamp (newest first)
       for (let i = 1; i < backups.length; i++) {
-        expect(backups[i - 1].timestamp >= backups[i].timestamp).toBe(true);
+        const prevDate = new Date(backups[i - 1].timestamp).getTime();
+        const currentDate = new Date(backups[i].timestamp).getTime();
+        expect(prevDate >= currentDate).toBe(true);
       }
     });
 
@@ -369,7 +371,7 @@ describe('CLI Migration Commands', () => {
       await Bun.write(statePath, yaml.dump(modifiedState));
       
       // Restore using backup info
-      await runner.restoreFromBackup(statePath, backups[0]);
+      await runner.rollback(statePath, backups[0].path);
       
       // Verify restoration
       const file = Bun.file(statePath);

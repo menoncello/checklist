@@ -1,8 +1,11 @@
-import { BusMessage } from './MessageQueue.js';
-import { MessageFilter } from './SubscriberManager.js';
+import { BusMessage } from './MessageQueue';
+import { MessageFilter } from './SubscriberManager';
 
 export class MessageMatcher {
-  public static matchesFilter(message: BusMessage, filter?: MessageFilter): boolean {
+  public static matchesFilter(
+    message: BusMessage,
+    filter?: MessageFilter
+  ): boolean {
     if (filter == null) return true;
 
     // Type matching
@@ -27,10 +30,14 @@ export class MessageMatcher {
     if (filter.target != null) {
       if (message.target == null) return false;
 
-      const messageTargets = Array.isArray(message.target) ? message.target : [message.target];
-      const filterTargets = Array.isArray(filter.target) ? filter.target : [filter.target];
+      const messageTargets = Array.isArray(message.target)
+        ? message.target
+        : [message.target];
+      const filterTargets = Array.isArray(filter.target)
+        ? filter.target
+        : [filter.target];
 
-      const hasMatch = filterTargets.some(filterTarget =>
+      const hasMatch = filterTargets.some((filterTarget) =>
         messageTargets.includes(filterTarget)
       );
 
@@ -39,10 +46,16 @@ export class MessageMatcher {
 
     // Priority matching
     if (filter.priority != null) {
-      if (filter.priority.min != null && message.priority < filter.priority.min) {
+      if (
+        filter.priority.min != null &&
+        message.priority < filter.priority.min
+      ) {
         return false;
       }
-      if (filter.priority.max != null && message.priority > filter.priority.max) {
+      if (
+        filter.priority.max != null &&
+        message.priority > filter.priority.max
+      ) {
         return false;
       }
     }
@@ -67,15 +80,18 @@ export class MessageMatcher {
     // If no target specified, matches all
     if (message.target == null) return true;
 
-    const targets = Array.isArray(message.target) ? message.target : [message.target];
+    const targets = Array.isArray(message.target)
+      ? message.target
+      : [message.target];
 
     // Check if subscriber ID or name matches any target
-    return targets.some(target =>
-      target === subscriberId ||
-      target === subscriberName ||
-      target === '*' ||
-      this.matchesPattern(subscriberId, target) ||
-      this.matchesPattern(subscriberName, target)
+    return targets.some(
+      (target) =>
+        target === subscriberId ||
+        target === subscriberName ||
+        target === '*' ||
+        this.matchesPattern(subscriberId, target) ||
+        this.matchesPattern(subscriberName, target)
     );
   }
 
@@ -105,34 +121,39 @@ export class MessageMatcher {
     let filtered = messages;
 
     if (filter.type != null) {
-      filtered = filtered.filter(msg => msg.type === filter.type);
+      filtered = filtered.filter((msg) => msg.type === filter.type);
     }
 
     if (filter.source != null) {
-      filtered = filtered.filter(msg => msg.source === filter.source);
+      filtered = filtered.filter((msg) => msg.source === filter.source);
     }
 
     if (filter.target != null) {
-      filtered = filtered.filter(msg => {
+      const targetValue = filter.target;
+      filtered = filtered.filter((msg) => {
         if (msg.target == null) return false;
         const targets = Array.isArray(msg.target) ? msg.target : [msg.target];
-        return targets.includes(filter.target!);
+        return targets.includes(targetValue);
       });
     }
 
     if (filter.priority != null) {
-      if (filter.priority.min != null) {
-        filtered = filtered.filter(msg => msg.priority >= filter.priority!.min!);
+      const priorityFilter = filter.priority;
+      if (priorityFilter.min != null) {
+        const minValue = priorityFilter.min;
+        filtered = filtered.filter((msg) => msg.priority >= minValue);
       }
-      if (filter.priority.max != null) {
-        filtered = filtered.filter(msg => msg.priority <= filter.priority!.max!);
+      if (priorityFilter.max != null) {
+        const maxValue = priorityFilter.max;
+        filtered = filtered.filter((msg) => msg.priority <= maxValue);
       }
     }
 
     if (filter.timeRange != null) {
-      filtered = filtered.filter(msg =>
-        msg.timestamp >= filter.timeRange!.start &&
-        msg.timestamp <= filter.timeRange!.end
+      const timeRange = filter.timeRange;
+      filtered = filtered.filter(
+        (msg) =>
+          msg.timestamp >= timeRange.start && msg.timestamp <= timeRange.end
       );
     }
 
@@ -170,22 +191,28 @@ export class MessageMatcher {
     }
 
     if (message.target != null) {
-      if (typeof message.target !== 'string' && !Array.isArray(message.target)) {
+      if (
+        typeof message.target !== 'string' &&
+        !Array.isArray(message.target)
+      ) {
         errors.push('Message target must be a string or array of strings');
       } else if (Array.isArray(message.target)) {
-        if (!message.target.every(t => typeof t === 'string')) {
+        if (!message.target.every((t) => typeof t === 'string')) {
           errors.push('All message targets must be strings');
         }
       }
     }
 
-    if (message.ttl != null && (typeof message.ttl !== 'number' || message.ttl <= 0)) {
+    if (
+      message.ttl != null &&
+      (typeof message.ttl !== 'number' || message.ttl <= 0)
+    ) {
       errors.push('Message TTL must be a positive number');
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -207,32 +234,47 @@ export class MessageMatcher {
       }
 
       if (query.targets != null && message.target != null) {
-        const messageTargets = Array.isArray(message.target) ? message.target : [message.target];
-        if (!query.targets.some(target => messageTargets.includes(target))) {
+        const messageTargets = Array.isArray(message.target)
+          ? message.target
+          : [message.target];
+        if (!query.targets.some((target) => messageTargets.includes(target))) {
           return false;
         }
       }
 
       if (query.priorityRange != null) {
-        if (query.priorityRange.min != null && message.priority < query.priorityRange.min) {
+        if (
+          query.priorityRange.min != null &&
+          message.priority < query.priorityRange.min
+        ) {
           return false;
         }
-        if (query.priorityRange.max != null && message.priority > query.priorityRange.max) {
+        if (
+          query.priorityRange.max != null &&
+          message.priority > query.priorityRange.max
+        ) {
           return false;
         }
       }
 
       if (query.timeRange != null) {
-        if (query.timeRange.start != null && message.timestamp < query.timeRange.start) {
+        if (
+          query.timeRange.start != null &&
+          message.timestamp < query.timeRange.start
+        ) {
           return false;
         }
-        if (query.timeRange.end != null && message.timestamp > query.timeRange.end) {
+        if (
+          query.timeRange.end != null &&
+          message.timestamp > query.timeRange.end
+        ) {
           return false;
         }
       }
 
       if (query.hasMetadata != null && message.metadata != null) {
-        if (!query.hasMetadata.every(key => key in message.metadata!)) {
+        const metadata = message.metadata;
+        if (!query.hasMetadata.every((key) => key in metadata)) {
           return false;
         }
       }

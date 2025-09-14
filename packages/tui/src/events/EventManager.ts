@@ -1,4 +1,4 @@
-import { EventHandler } from '../framework/UIFramework.js';
+import { EventHandler } from '../framework/UIFramework';
 
 export interface EventSubscription {
   id: string;
@@ -148,7 +148,11 @@ export class EventManager {
       for (const subscription of sortedSubscriptions) {
         if (emission.propagationStopped) break;
 
-        const executed = this.executeHandler(subscription, emission, subscriptions);
+        const executed = this.executeHandler(
+          subscription,
+          emission,
+          subscriptions
+        );
         if (executed) {
           handlerCount++;
         }

@@ -1,8 +1,11 @@
-import { MessageFilterMatcher } from './MessageFilterMatcher';
-import { MessageQueue, BusMessage } from './helpers/MessageQueue.js';
-import { SubscriberManager, Subscriber, MessageFilter } from './helpers/SubscriberManager.js';
-import { BusMetrics } from './helpers/BusMetrics.js';
-import { MessageMatcher } from './helpers/MessageMatcher.js';
+import { BusMetrics } from './helpers/BusMetrics';
+import { MessageMatcher } from './helpers/MessageMatcher';
+import { MessageQueue, BusMessage } from './helpers/MessageQueue';
+import {
+  SubscriberManager,
+  Subscriber,
+  MessageFilter,
+} from './helpers/SubscriberManager';
 
 export { BusMessage, MessageFilter, Subscriber };
 
@@ -26,11 +29,13 @@ export class EventBus {
   private busMetrics: BusMetrics;
   private messageIdCounter = 0;
 
-  constructor(options: {
-    maxQueueSize?: number;
-    maxHistorySize?: number;
-    batchSize?: number;
-  } = {}) {
+  constructor(
+    options: {
+      maxQueueSize?: number;
+      maxHistorySize?: number;
+      batchSize?: number;
+    } = {}
+  ) {
     this.messageQueue = new MessageQueue(
       options.maxQueueSize,
       options.maxHistorySize,
@@ -96,10 +101,10 @@ export class EventBus {
       id: `msg-${++this.messageIdCounter}`,
       type,
       data,
-      source: options.source || 'unknown',
+      source: options.source ?? 'unknown',
       target: options.target,
       timestamp: Date.now(),
-      priority: options.priority || 0,
+      priority: options.priority ?? 0,
       ttl: options.ttl,
       metadata: options.metadata,
     };
@@ -115,7 +120,9 @@ export class EventBus {
     this.busMetrics.updatePeakQueueSize(this.messageQueue.getQueueSize() + 1);
 
     this.messageQueue.enqueue(message);
-    await this.messageQueue.processQueue(messages => this.processBatch(messages));
+    await this.messageQueue.processQueue((messages) =>
+      this.processBatch(messages)
+    );
   }
 
   private deliverMessageSync(message: BusMessage): void {
@@ -129,7 +136,7 @@ export class EventBus {
         const result = subscriber.handler(message);
         if (result instanceof Promise) {
           // For sync delivery, we don't wait for promises
-          result.catch(error => {
+          result.catch((error) => {
             this.busMetrics.recordError();
             console.error(`Error in subscriber '${subscriber.name}':`, error);
           });
@@ -164,7 +171,10 @@ export class EventBus {
     this.busMetrics.recordProcessedMessage(performance.now() - startTime);
   }
 
-  private async executeSubscriber(subscriber: Subscriber, message: BusMessage): Promise<void> {
+  private async executeSubscriber(
+    subscriber: Subscriber,
+    message: BusMessage
+  ): Promise<void> {
     try {
       const result = subscriber.handler(message);
       if (result instanceof Promise) {
@@ -265,7 +275,7 @@ export class EventBus {
       subscriberCount: this.getSubscriberCount(),
       activeSubscribers: this.getActiveSubscriberCount(),
       metrics: this.getMetrics(),
-      subscribers: this.getSubscribers()
+      subscribers: this.getSubscribers(),
     };
   }
 
@@ -275,7 +285,7 @@ export class EventBus {
     const subscribers = this.getSubscribers();
 
     // Check for inactive subscribers
-    const inactiveCount = subscribers.filter(s => !s.active).length;
+    const inactiveCount = subscribers.filter((s) => !s.active).length;
     if (inactiveCount > 0) {
       warnings.push(`${inactiveCount} inactive subscribers found`);
     }
@@ -295,7 +305,7 @@ export class EventBus {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -324,7 +334,7 @@ export class EventBusChannel {
   ): Promise<void> {
     return this.bus.publish(type, data, {
       ...options,
-      source: this.channelName
+      source: this.channelName,
     });
   }
 
@@ -335,7 +345,7 @@ export class EventBusChannel {
   ): string {
     const channelFilter: MessageFilter = {
       ...filter,
-      source: this.channelName
+      source: this.channelName,
     };
     return this.bus.subscribe(name, handler, channelFilter);
   }

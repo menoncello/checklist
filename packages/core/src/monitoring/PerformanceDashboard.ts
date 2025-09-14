@@ -100,7 +100,7 @@ export class PerformanceDashboard {
 
     // Alert on new violations
     if (this.config.alertOnViolations && this.hasNewViolations(report)) {
-      this.alertViolations(report.violations);
+      this.alertNewViolations(report);
     }
 
     this.lastReport = report;
@@ -111,27 +111,23 @@ export class PerformanceDashboard {
       return; // No metrics to display
     }
 
-    /* eslint-disable no-console */
-    console.clear();
-    this.displayHeader(report);
+    // Clear terminal display is intentional for dashboard
+    process.stdout.write('\x1Bc');
+    this.logger.info({ msg: '🎯 Performance Dashboard' });
     this.displayTopOperations(report);
     this.displayViolations(report);
-    this.displayFooter();
-    /* eslint-enable no-console */
   }
 
   private displayHeader(report: PerformanceReport): void {
-    this.logger.info('🎯 Performance Dashboard');
-    this.logger.info('='.repeat(60));
-    this.logger.info(
-      `Health: ${this.getHealthEmoji(report.summary.overallHealth)} ${report.summary.overallHealth}`
-    );
-    this.logger.info(`Operations: ${report.summary.totalOperations}`);
-    this.logger.info(`Violations: ${report.summary.budgetViolations}`);
-    this.logger.info(
-      `Duration: ${Math.round(report.summary.measurementPeriod.duration)}ms`
-    );
-    this.logger.info('');
+    this.logger.info({
+      msg: '🎯 Performance Dashboard',
+      health: report.summary.overallHealth,
+      totalOperations: report.summary.totalOperations,
+      budgetViolations: report.summary.budgetViolations,
+      measurementDuration: Math.round(
+        report.summary.measurementPeriod.duration
+      ),
+    });
   }
 
   private displayTopOperations(report: PerformanceReport): void {
@@ -139,18 +135,12 @@ export class PerformanceDashboard {
       .sort(([, a], [, b]) => b.average - a.average)
       .slice(0, this.config.maxDisplayItems);
 
-    this.logger.info('📊 Top Operations (by avg duration):');
-    this.logger.info('-'.repeat(60));
-
+    this.logger.info({ msg: '📊 Top Operations (by avg duration):' });
     sortedMetrics.forEach(([operation, metric]) => {
-      const avgMs = metric.average.toFixed(2);
-      const maxMs = metric.max.toFixed(2);
-      const count = metric.count;
       const status = this.getMetricStatus(operation, metric, report.violations);
-
-      this.logger.info(
-        `${status} ${operation.padEnd(30)} ${avgMs}ms avg (max: ${maxMs}ms, n=${count})`
-      );
+      this.logger.info({
+        msg: `  ${status} ${operation}: ${metric.average.toFixed(2)}ms avg (${metric.count} calls, max: ${metric.max.toFixed(2)}ms)`,
+      });
     });
   }
 
@@ -159,21 +149,20 @@ export class PerformanceDashboard {
       return;
     }
 
-    this.logger.info('');
-    this.logger.info('⚠️  Budget Violations:');
-    this.logger.info('-'.repeat(60));
-
+    // Log violations for visibility
+    this.logger.warn({ msg: '⚠️  Budget Violations:' });
     report.violations.forEach((violation) => {
-      const severity = violation.severity === 'critical' ? '🔴' : '🟡';
-      this.logger.info(
-        `${severity} ${violation.operation}: ${violation.actual.toFixed(2)}ms (budget: ${violation.budget}ms, +${violation.exceedance.toFixed(1)}%)`
-      );
+      this.logger.warn({
+        msg: `  - ${violation.operation}: ${violation.actual.toFixed(2)}ms (budget: ${violation.budget}ms) [${violation.severity}]`,
+      });
     });
   }
 
   private displayFooter(): void {
-    this.logger.info('');
-    this.logger.info(`Last updated: ${new Date().toLocaleTimeString()}`);
+    this.logger.debug({
+      msg: 'Performance dashboard footer',
+      lastUpdated: new Date().toLocaleTimeString(),
+    });
   }
 
   private displayTableReport(report: PerformanceReport): void {
@@ -181,17 +170,17 @@ export class PerformanceDashboard {
       return;
     }
 
-    this.displayTableHeader();
+    // Clear terminal display is intentional for dashboard
+    process.stdout.write('\x1Bc');
+    this.logger.info({ msg: '🎯 Performance Dashboard - Table View' });
     this.displayMetricsTable(report);
     this.displayViolationsTable(report.violations);
   }
 
   private displayTableHeader(): void {
-    /* eslint-disable no-console */
-    console.clear();
-    console.log('🎯 Performance Dashboard - Table View');
-    console.log('='.repeat(80));
-    /* eslint-enable no-console */
+    this.logger.info({
+      msg: '🎯 Performance Dashboard - Table View',
+    });
   }
 
   private displayMetricsTable(report: PerformanceReport): void {
@@ -207,9 +196,8 @@ export class PerformanceDashboard {
       })
     );
 
-    /* eslint-disable no-console */
-    console.table(tableData);
-    /* eslint-enable no-console */
+    // Use logger structured output for table data
+    this.logger.info({ msg: 'Performance metrics table', table: tableData });
   }
 
   private displayViolationsTable(violations: BudgetViolation[]): void {
@@ -217,27 +205,24 @@ export class PerformanceDashboard {
       return;
     }
 
-    /* eslint-disable no-console */
-    console.log('⚠️  Violations:');
-    console.table(
-      violations.map((v) => ({
-        Operation: v.operation,
-        Budget: `${v.budget}ms`,
-        Actual: `${v.actual.toFixed(2)}ms`,
-        Exceedance: `+${v.exceedance.toFixed(1)}%`,
-        Severity: v.severity,
-      }))
-    );
-    /* eslint-enable no-console */
+    const tableData = violations.map((v) => ({
+      Operation: v.operation,
+      Budget: `${v.budget}ms`,
+      Actual: `${v.actual.toFixed(2)}ms`,
+      Exceedance: `+${v.exceedance.toFixed(1)}%`,
+      Severity: v.severity,
+    }));
+
+    this.logger.warn({ msg: '⚠️  Budget Violations:' });
+    // Use logger structured output for violations table
+    this.logger.warn({ msg: 'Budget violations table', violations: tableData });
   }
 
   private displayJsonReport(report: PerformanceReport): void {
-    /* eslint-disable no-console */
-    console.clear();
-    console.log('🎯 Performance Dashboard - JSON View');
-    console.log('='.repeat(60));
-    console.log(JSON.stringify(report, null, 2));
-    /* eslint-enable no-console */
+    // Clear terminal display is intentional for dashboard
+    process.stdout.write('\x1Bc');
+    this.logger.info({ msg: '🎯 Performance Dashboard - JSON View' });
+    this.logger.info({ msg: 'Performance report', report });
   }
 
   private getHealthEmoji(health: string): string {
@@ -284,7 +269,34 @@ export class PerformanceDashboard {
       return report.violations.length > 0;
     }
 
-    return report.violations.length > this.lastReport.violations.length;
+    // Check for new violations by comparing operations
+    const lastViolationOperations = this.lastReport.violations.map(
+      (v) => v.operation
+    );
+    const newViolations = report.violations.filter(
+      (v) => !lastViolationOperations.includes(v.operation)
+    );
+
+    return newViolations.length > 0;
+  }
+
+  private alertNewViolations(report: PerformanceReport): void {
+    if (!this.lastReport) {
+      // First report - alert on all violations
+      this.alertViolations(report.violations);
+      return;
+    }
+
+    // Check for new violations by comparing operations
+    const lastViolationOperations = this.lastReport.violations.map(
+      (v) => v.operation
+    );
+    const newViolations = report.violations.filter(
+      (v) => !lastViolationOperations.includes(v.operation)
+    );
+
+    // Alert each new violation
+    this.alertViolations(newViolations);
   }
 
   private alertViolations(violations: BudgetViolation[]): void {
@@ -325,7 +337,10 @@ export class PerformanceDashboard {
     ];
   }
 
-  private addViolationsToSummary(lines: string[], report: PerformanceReport): void {
+  private addViolationsToSummary(
+    lines: string[],
+    report: PerformanceReport
+  ): void {
     if (report.violations.length === 0) {
       return;
     }
@@ -338,7 +353,10 @@ export class PerformanceDashboard {
     });
   }
 
-  private addTopOperationsToSummary(lines: string[], report: PerformanceReport): void {
+  private addTopOperationsToSummary(
+    lines: string[],
+    report: PerformanceReport
+  ): void {
     const topOperations = Object.entries(report.metrics)
       .sort(([, a], [, b]) => b.average - a.average)
       .slice(0, 5);

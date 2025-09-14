@@ -9,7 +9,7 @@ import type {
   FooterComponent,
   LayoutContext,
   KeyBinding,
-} from '../views/types.js';
+} from '../views/types';
 
 export class DefaultFooterComponent implements FooterComponent {
   public readonly id = 'default-footer';

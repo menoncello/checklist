@@ -26,24 +26,35 @@ export class StateManager {
   constructor(baseDir: string = '.checklist') {
     // Initialize core dependencies
     const directoryManager = new DirectoryManager(baseDir);
-    const concurrencyManager = new ConcurrencyManager(directoryManager.getLockPath());
-    const transactionCoordinator = new TransactionCoordinator(directoryManager.getLogPath());
+    const concurrencyManager = new ConcurrencyManager(
+      directoryManager.getLockPath()
+    );
+    const transactionCoordinator = new TransactionCoordinator(
+      directoryManager.getLogPath()
+    );
     const validator = new StateValidator();
     const backupManager = new BackupManager(directoryManager.getBackupPath());
 
     // Initialize migration system
-    const migrationRunner = this.createMigrationRunner(directoryManager, backupManager);
+    const migrationRunner = this.createMigrationRunner(
+      directoryManager,
+      backupManager
+    );
 
     // Initialize specialized managers
-    this.initializer = new StateInitializer(directoryManager, validator, migrationRunner);
+    this.initializer = new StateInitializer(
+      directoryManager,
+      validator,
+      migrationRunner
+    );
     this.loader = new StateLoader(directoryManager, validator, migrationRunner);
-    this.saver = new StateSaver(
+    this.saver = new StateSaver({
       directoryManager,
       concurrencyManager,
       transactionCoordinator,
       validator,
-      backupManager
-    );
+      backupManager,
+    });
     this.migrationManager = new MigrationManager(
       directoryManager,
       migrationRunner,
@@ -53,11 +64,11 @@ export class StateManager {
 
   private createMigrationRunner(
     directoryManager: DirectoryManager,
-    backupManager: BackupManager
+    _backupManager: BackupManager
   ): MigrationRunner {
     const registry = new MigrationRegistry();
     migrations.forEach((m) => registry.registerMigration(m));
-    return new MigrationRunner(registry, directoryManager, backupManager);
+    return new MigrationRunner(registry, directoryManager.getBackupPath());
   }
 
   // State lifecycle methods
@@ -129,7 +140,7 @@ export class StateManager {
   }
 
   async cleanup(): Promise<void> {
-    this.logger.info('Cleaning up state manager resources');
+    this.logger.info({ msg: 'Cleaning up state manager resources' });
     this.currentState = undefined;
   }
 }

@@ -14,18 +14,28 @@ export class MigrationRecordKeeper {
     success: boolean;
     error?: Error;
   }): Promise<StateSchema> {
-    const { migration, state, statePath, startTime, endTime, success, error } = params;
+    const { migration, state, statePath, startTime, endTime, success, error } =
+      params;
 
     try {
-      const migrationRecord = await this.createMigrationRecord({ migration, startTime, endTime, success, error });
+      const migrationRecord = await this.createMigrationRecord({
+        migration,
+        startTime,
+        endTime,
+        success,
+        error,
+      });
       const updatedState = this.addMigrationRecord(state, migrationRecord);
       await this.persistState(updatedState, statePath);
 
-      this.logMigrationRecorded(migration, success, migrationRecord.duration);
+      const duration = endTime - startTime;
+      this.logMigrationRecorded(migration, success, duration);
       return updatedState;
     } catch (recordError) {
       this.logRecordingFailure(recordError as Error, migration);
-      throw new Error(`Failed to record migration: ${(recordError as Error).message}`);
+      throw new Error(
+        `Failed to record migration: ${(recordError as Error).message}`
+      );
     }
   }
 
@@ -36,29 +46,40 @@ export class MigrationRecordKeeper {
     success: boolean;
     error?: Error;
   }): Promise<MigrationRecord> {
-    const { migration, startTime, endTime, success, error } = params;
+    const {
+      migration,
+      startTime: _startTime,
+      endTime: _endTime,
+      success,
+      error,
+    } = params;
 
     const migrationRecord: MigrationRecord = {
-      id: migration.id,
-      fromVersion: migration.fromVersion,
-      toVersion: migration.toVersion,
+      from: migration.fromVersion,
+      to: migration.toVersion,
+      applied: new Date().toISOString(),
       appliedAt: new Date().toISOString(),
-      duration: endTime - startTime,
-      success,
-      checksum: await this.calculateMigrationChecksum(migration),
+      changes: success
+        ? [`Applied migration ${migration.id ?? 'unknown'}`]
+        : undefined,
     };
 
+    // Store additional metadata in changes array if needed
     if (error !== undefined) {
-      migrationRecord.error = {
-        message: error.message,
-        stack: error.stack,
-      };
+      migrationRecord.changes = [
+        ...(migrationRecord.changes ?? []),
+        `Error: ${error.message}`,
+      ];
     }
 
     return migrationRecord;
   }
 
-  private logMigrationRecorded(migration: Migration, success: boolean, duration: number): void {
+  private logMigrationRecorded(
+    migration: Migration,
+    success: boolean,
+    duration: number
+  ): void {
     logger.info({
       msg: 'Migration record saved',
       migrationId: migration.id,
@@ -75,18 +96,20 @@ export class MigrationRecordKeeper {
     });
   }
 
-  private addMigrationRecord(state: StateSchema, record: MigrationRecord): StateSchema {
+  private addMigrationRecord(
+    state: StateSchema,
+    record: MigrationRecord
+  ): StateSchema {
     const migrations = (state.migrations as MigrationRecord[]) ?? [];
 
     // Remove any existing record for this migration (for retries)
-    const filteredMigrations = migrations.filter(m =>
-      m.id !== record.id &&
-      !(m.fromVersion === record.fromVersion && m.toVersion === record.toVersion)
+    const filteredMigrations = migrations.filter(
+      (m) => !(m.from === record.from && m.to === record.to)
     );
 
     return {
       ...state,
-      version: record.toVersion,
+      version: record.to,
       migrations: [...filteredMigrations, record],
     };
   }
@@ -105,12 +128,16 @@ export class MigrationRecordKeeper {
     }
   }
 
-  async isAlreadyApplied(statePath: string, migration: Migration): Promise<boolean> {
+  async isAlreadyApplied(
+    statePath: string,
+    migration: Migration
+  ): Promise<boolean> {
     try {
       const history = await this.getMigrationHistory(statePath);
-      return history.some(record =>
-        record.id === migration.id ||
-        (record.fromVersion === migration.fromVersion && record.toVersion === migration.toVersion)
+      return history.some(
+        (record) =>
+          record.from === migration.fromVersion &&
+          record.to === migration.toVersion
       );
     } catch (error) {
       logger.warn({
@@ -122,12 +149,23 @@ export class MigrationRecordKeeper {
     }
   }
 
-  async getLastSuccessfulMigration(statePath: string): Promise<MigrationRecord | null> {
+  async getLastSuccessfulMigration(
+    statePath: string
+  ): Promise<MigrationRecord | null> {
     try {
       const history = await this.getMigrationHistory(statePath);
       const successfulMigrations = history
-        .filter(record => record.success === true)
-        .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+        .filter(
+          (record) =>
+            record.changes !== null &&
+            record.changes !== undefined &&
+            !record.changes.some((c) => c.startsWith('Error:'))
+        )
+        .sort((a, b) => {
+          const aTime = new Date(a.appliedAt ?? a.applied).getTime();
+          const bTime = new Date(b.appliedAt ?? b.applied).getTime();
+          return bTime - aTime;
+        });
 
       return successfulMigrations[0] ?? null;
     } catch (error) {
@@ -145,8 +183,13 @@ export class MigrationRecordKeeper {
       const state = await this.loadState(statePath);
       const migrations = (state.migrations as MigrationRecord[]) ?? [];
 
-      // Keep only successful migrations
-      const successfulMigrations = migrations.filter(record => record.success === true);
+      // Keep only successful migrations (those without error messages in changes)
+      const successfulMigrations = migrations.filter((record) => {
+        const hasErrorChanges = record.changes?.some((c) =>
+          c.startsWith('Error:')
+        );
+        return hasErrorChanges !== true;
+      });
 
       if (successfulMigrations.length !== migrations.length) {
         const cleanedState = {
@@ -172,7 +215,9 @@ export class MigrationRecordKeeper {
     }
   }
 
-  private async calculateMigrationChecksum(migration: Migration): Promise<string> {
+  private async calculateMigrationChecksum(
+    migration: Migration
+  ): Promise<string> {
     try {
       // Create a simple checksum based on migration properties
       const migrationString = JSON.stringify({
@@ -187,7 +232,9 @@ export class MigrationRecordKeeper {
       const data = encoder.encode(migrationString);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      const hashHex = hashArray
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
 
       return hashHex.substring(0, 16); // Use first 16 characters
     } catch (error) {
@@ -221,12 +268,15 @@ export class MigrationRecordKeeper {
     }
   }
 
-  private async persistState(state: StateSchema, statePath: string): Promise<void> {
+  private async persistState(
+    state: StateSchema,
+    statePath: string
+  ): Promise<void> {
     try {
       const yamlContent = yaml.dump(state, {
         indent: 2,
         lineWidth: -1,
-        sortKeys: true
+        sortKeys: true,
       });
 
       await Bun.write(statePath, yamlContent);

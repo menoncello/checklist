@@ -48,16 +48,26 @@ export interface MetricsReport {
   };
   series: MetricSeries[];
   alerts: MetricAlert[];
+  recommendations?: string[];
   performance: CollectorMetrics;
 }
 
 export interface MetricAlert {
   id: string;
+  ruleId?: string;
   timestamp: number;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity:
+    | 'low'
+    | 'medium'
+    | 'high'
+    | 'critical'
+    | 'warning'
+    | 'error'
+    | 'info';
   metric: string;
   value: number;
-  threshold: number;
+  threshold?: number;
+  condition?: string;
   message: string;
   tags: Record<string, string>;
 }
@@ -68,26 +78,44 @@ export interface MetricsCollectorConfig {
   aggregationInterval: number;
   retentionPeriod: number;
   enableAlerting: boolean;
+  enableAlerts?: boolean;
   maxAlerts: number;
   sampleRate: number;
   enableCompression: boolean;
+  compressionThreshold?: number;
   enableCollection?: boolean;
+  enableAggregation?: boolean;
+  exportFormat?: string;
+  persistMetrics?: boolean;
 }
 
 export interface AlertRule {
+  id: string;
   metric: string;
-  threshold: number;
-  operator: '>' | '<' | '>=' | '<=' | '==' | '!=';
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  threshold?: number;
+  condition?: string;
+  operator?: '>' | '<' | '>=' | '<=' | '==' | '!=';
+  severity:
+    | 'low'
+    | 'medium'
+    | 'high'
+    | 'critical'
+    | 'warning'
+    | 'error'
+    | 'info';
   message: string;
   tags?: Record<string, string>;
 }
 
 export interface CollectorMetrics {
   totalCollected: number;
+  totalPointsCollected?: number;
+  totalSeries?: number;
+  totalPoints?: number;
   bufferSize: number;
   memoryUsage: number;
   processedPerSecond: number;
+  collectionRate?: number;
   errorsCount: number;
   uptime: number;
 }

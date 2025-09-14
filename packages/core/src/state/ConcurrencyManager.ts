@@ -254,4 +254,13 @@ export class ConcurrencyManager {
       return null;
     }
   }
+
+  async withLock<T>(lockName: string, operation: () => Promise<T>): Promise<T> {
+    const lockId = await this.acquireLock(lockName);
+    try {
+      return await operation();
+    } finally {
+      await this.releaseLock(lockId);
+    }
+  }
 }

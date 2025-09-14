@@ -5,7 +5,7 @@ export { ComponentLifecycle } from './ComponentLifecycle';
 export { ComponentRegistry } from './ComponentRegistry';
 
 // Large list support components
-export { VirtualList } from './VirtualList';
+export { VirtualList } from './virtuallist/VirtualList';
 export { ScrollableContainer } from './ScrollableContainer';
 export { LargeListOptimizer } from './LargeListOptimizer';
 
@@ -45,8 +45,14 @@ export type {
   VirtualListConfig,
   VirtualListState,
   VirtualListRenderer,
-  VirtualListMetrics,
-} from './VirtualList';
+} from './virtuallist/types';
+
+// Virtual list metrics - temporary interface until available
+export interface VirtualListMetrics {
+  totalItems: number;
+  visibleItems: number;
+  renderedItems: number;
+}
 
 // Scrollable container types
 export type {
@@ -59,10 +65,12 @@ export type {
 export type {
   ListOptimizationConfig,
   ListDataSource,
-  CacheEntry,
-  LoadingChunk,
   OptimizationMetrics,
 } from './LargeListOptimizer';
+
+// Re-export cache types from their actual locations
+export type { CacheEntry } from './ListCacheManager';
+export type { LoadingChunk } from './ListChunkLoader';
 
 // Re-export framework types for convenience
 export type {

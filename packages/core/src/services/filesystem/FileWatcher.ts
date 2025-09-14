@@ -4,7 +4,10 @@
  */
 
 import { watch as fsWatch, FSWatcher } from 'fs';
-import type { WatchOptions, FileChangeHandler } from '../../interfaces/IFileSystemService';
+import type {
+  WatchOptions,
+  FileChangeHandler,
+} from '../../interfaces/IFileSystemService';
 import type { Logger } from '../../utils/logger';
 
 export class FileWatcher {
@@ -29,11 +32,7 @@ export class FileWatcher {
       filePath,
       { persistent: options?.persistent ?? true },
       (eventType, filename) => {
-        handler({
-          type: eventType as 'rename' | 'change',
-          path: filePath,
-          filename: filename ?? undefined,
-        });
+        handler(eventType as 'rename' | 'change', filename ?? filePath);
       }
     );
 
@@ -51,7 +50,10 @@ export class FileWatcher {
     });
   }
 
-  private createWatcherCleanupFunction(watcher: FSWatcher, filePath: string): () => void {
+  private createWatcherCleanupFunction(
+    watcher: FSWatcher,
+    filePath: string
+  ): () => void {
     return () => {
       watcher.close();
       this.logger.debug({ msg: 'File watcher closed', filePath });

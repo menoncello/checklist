@@ -1,8 +1,8 @@
-export interface PreservedState {
-  id: string;
-  timestamp: number;
-  data: unknown;
-  metadata: {
+export class PreservedState {
+  id!: string;
+  timestamp!: number;
+  data!: unknown;
+  metadata!: {
     source: string;
     version: string;
     checksum: string;
@@ -10,12 +10,12 @@ export interface PreservedState {
   expiresAt?: number;
 }
 
-export interface StateSnapshot {
-  id: string;
-  timestamp: number;
-  states: Map<string, PreservedState>;
-  totalSize: number;
-  compressed: boolean;
+export class StateSnapshot {
+  id!: string;
+  timestamp!: number;
+  states!: Map<string, PreservedState>;
+  totalSize!: number;
+  compressed!: boolean;
 }
 
 export class SnapshotManager {
@@ -45,15 +45,17 @@ export class SnapshotManager {
       }
     }
 
-    const totalSize = Array.from(selectedStates.values())
-      .reduce((size, state) => size + estimateSize(state), 0);
+    const totalSize = Array.from(selectedStates.values()).reduce(
+      (size, state) => size + estimateSize(state),
+      0
+    );
 
     const snapshot: StateSnapshot = {
       id: snapshotId,
       timestamp: Date.now(),
       states: selectedStates,
       totalSize,
-      compressed: totalSize > 10240 // Compress if larger than 10KB
+      compressed: totalSize > 10240, // Compress if larger than 10KB
     };
 
     this.snapshots.set(name, snapshot);
@@ -119,20 +121,20 @@ export class SnapshotManager {
         totalStates: 0,
         totalSize: 0,
         oldestSnapshot: 0,
-        newestSnapshot: 0
+        newestSnapshot: 0,
       };
     }
 
     const totalStates = snapshots.reduce((sum, s) => sum + s.states.size, 0);
     const totalSize = snapshots.reduce((sum, s) => sum + s.totalSize, 0);
-    const timestamps = snapshots.map(s => s.timestamp);
+    const timestamps = snapshots.map((s) => s.timestamp);
 
     return {
       count: snapshots.length,
       totalStates,
       totalSize,
       oldestSnapshot: Math.min(...timestamps),
-      newestSnapshot: Math.max(...timestamps)
+      newestSnapshot: Math.max(...timestamps),
     };
   }
 
@@ -166,7 +168,7 @@ export class SnapshotManager {
     // Convert Map to plain object for JSON serialization
     const exportData = {
       ...snapshot,
-      states: Object.fromEntries(snapshot.states.entries())
+      states: Object.fromEntries(snapshot.states.entries()),
     };
 
     return JSON.stringify(exportData, null, 2);
@@ -177,12 +179,12 @@ export class SnapshotManager {
       const importData = JSON.parse(data);
       const snapshot: StateSnapshot = {
         ...importData,
-        states: new Map(Object.entries(importData.states))
+        states: new Map(Object.entries(importData.states)),
       };
 
       this.snapshots.set(name, snapshot);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

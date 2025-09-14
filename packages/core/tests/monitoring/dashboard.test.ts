@@ -182,8 +182,7 @@ describe('Performance Dashboard Tests', () => {
       dashboard.displayReport();
 
       expect(mockPerformanceMonitor.generateReport).toHaveBeenCalled();
-      expect(console.clear).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('🎯 Performance Dashboard');
+      expect(logger.info).toHaveBeenCalledWith({ msg: '🎯 Performance Dashboard' });
     });
 
     test('should display table mode correctly', () => {
@@ -195,9 +194,7 @@ describe('Performance Dashboard Tests', () => {
       dashboard.displayReport();
 
       expect(mockPerformanceMonitor.generateReport).toHaveBeenCalled();
-      expect(console.clear).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('🎯 Performance Dashboard - Table View');
-      expect(console.table).toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith({ msg: '🎯 Performance Dashboard - Table View' });
     });
 
     test('should display JSON mode correctly', () => {
@@ -209,8 +206,13 @@ describe('Performance Dashboard Tests', () => {
       dashboard.displayReport();
 
       expect(mockPerformanceMonitor.generateReport).toHaveBeenCalled();
-      expect(console.clear).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('🎯 Performance Dashboard - JSON View');
+      expect(logger.info).toHaveBeenCalledWith({
+        msg: '🎯 Performance Dashboard - JSON View'
+      });
+      expect(logger.info).toHaveBeenCalledWith({
+        msg: 'Performance report',
+        report: sampleReport
+      });
     });
 
     test('should handle empty metrics gracefully', () => {
@@ -359,14 +361,16 @@ describe('Performance Dashboard Tests', () => {
       spyOn(console, 'log').mockImplementation(() => {});
 
       // First report with one violation
+      // Will call logger.warn 3 times: 1 for header, 1 for violation display, 1 for alert
       dashboard.displayReport();
 
-      expect(logger.warn).toHaveBeenCalledTimes(1);
+      expect(logger.warn).toHaveBeenCalledTimes(3);
 
-      // Second report with same violation - should not alert again
+      // Second report with same violation - should not alert again but still display
+      // Will call logger.warn 2 more times: 1 for header, 1 for violation display (no new alert)
       dashboard.displayReport();
 
-      expect(logger.warn).toHaveBeenCalledTimes(1); // Still only 1
+      expect(logger.warn).toHaveBeenCalledTimes(5); // 3 + 2
 
       // Third report with additional violation
       const reportWithMoreViolations: PerformanceReport = {
@@ -391,7 +395,8 @@ describe('Performance Dashboard Tests', () => {
 
       dashboard.displayReport();
 
-      expect(logger.warn).toHaveBeenCalledTimes(3); // Original + 2 new violations
+      // Will call logger.warn 4 more times: 1 for header, 2 for violation displays, 1 for new alert
+      expect(logger.warn).toHaveBeenCalledTimes(9); // 5 + 4
     });
 
     test('should handle critical violations with error level', () => {
@@ -445,7 +450,9 @@ describe('Performance Dashboard Tests', () => {
 
       dashboard.displayReport();
 
-      expect(logger.warn).not.toHaveBeenCalled();
+      // Will still call logger.warn for displaying violations (2 times: header + violation)
+      // but not for alerting
+      expect(logger.warn).toHaveBeenCalledTimes(2);
       expect(logger.error).not.toHaveBeenCalled();
     });
   });
@@ -624,7 +631,15 @@ describe('Performance Dashboard Tests', () => {
       dashboard.start();
       dashboard.stop();
 
-      expect(logger.info).toHaveBeenCalledTimes(2);
+      // Check that start and stop messages were logged
+      expect(logger.info).toHaveBeenCalledWith({
+        msg: 'Starting performance dashboard',
+        refreshInterval: 1000,
+        displayMode: 'console'
+      });
+      expect(logger.debug).toHaveBeenCalledWith({
+        msg: 'Performance dashboard stopped'
+      });
       expect(logger.debug).toHaveBeenCalledTimes(2);
     });
   });

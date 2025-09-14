@@ -3,9 +3,13 @@ export class TerminalVersionDetector {
     return env.termProgram ?? env.term;
   }
 
-  static getVersion(env: { termProgram?: string }): string | null {
+  static getVersion(_env: { termProgram?: string }): string | null {
     const programVersion = this.getTermProgramVersion();
-    if (programVersion !== null && programVersion !== undefined && programVersion !== '') {
+    if (
+      programVersion !== null &&
+      programVersion !== undefined &&
+      programVersion !== ''
+    ) {
       return programVersion;
     }
     return null;
@@ -30,13 +34,16 @@ export class TerminalVersionDetector {
     return null;
   }
 
-  static detectTerminalFamily(env: { term: string; termProgram?: string }): string {
+  static detectTerminalFamily(env: {
+    term: string;
+    termProgram?: string;
+  }): string {
     const term = env.term.toLowerCase();
     const program = env.termProgram?.toLowerCase();
 
-    if (program?.includes('iterm')) return 'iTerm2';
-    if (program?.includes('apple_terminal')) return 'Terminal.app';
-    if (program?.includes('vscode')) return 'VS Code';
+    if (program?.includes('iterm') === true) return 'iTerm2';
+    if (program?.includes('apple_terminal') === true) return 'Terminal.app';
+    if (program?.includes('vscode') === true) return 'VS Code';
     if (term.includes('alacritty')) return 'Alacritty';
     if (term.includes('kitty')) return 'Kitty';
     if (term.includes('wezterm')) return 'WezTerm';

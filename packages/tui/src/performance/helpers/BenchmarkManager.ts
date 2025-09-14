@@ -1,14 +1,14 @@
-export interface PerformanceBenchmark {
-  id: string;
-  name: string;
-  category: string;
-  startTime: number;
+export class PerformanceBenchmark {
+  id!: string;
+  name!: string;
+  category!: string;
+  startTime!: number;
   endTime?: number;
   duration?: number;
   metadata?: Record<string, unknown>;
 }
 
-export interface BenchmarkFilter {
+export class BenchmarkFilter {
   name?: string;
   category?: string;
   completed?: boolean;
@@ -34,7 +34,7 @@ export class BenchmarkManager {
       name,
       category,
       startTime: performance.now(),
-      metadata
+      metadata,
     };
 
     this.activeBenchmarks.set(id, benchmark);
@@ -51,7 +51,7 @@ export class BenchmarkManager {
     const completedBenchmark: PerformanceBenchmark = {
       ...benchmark,
       endTime,
-      duration: endTime - benchmark.startTime
+      duration: endTime - benchmark.startTime,
     };
 
     this.activeBenchmarks.delete(id);
@@ -72,7 +72,7 @@ export class BenchmarkManager {
     return ((...args: Parameters<T>): ReturnType<T> => {
       const benchmarkId = this.startBenchmark(name, category, {
         type: 'function',
-        functionName: fn.name || 'anonymous'
+        functionName: fn.name || 'anonymous',
       });
 
       try {
@@ -84,7 +84,7 @@ export class BenchmarkManager {
         if (benchmark != null) {
           benchmark.metadata = {
             ...benchmark.metadata,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           };
         }
         throw error;
@@ -108,7 +108,7 @@ export class BenchmarkManager {
       if (benchmark != null) {
         benchmark.metadata = {
           ...benchmark.metadata,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         };
       }
       throw error;
@@ -120,27 +120,29 @@ export class BenchmarkManager {
 
     if (filter != null) {
       if (filter.name != null) {
-        result = result.filter(b => b.name === filter.name);
+        result = result.filter((b) => b.name === filter.name);
       }
 
       if (filter.category != null) {
-        result = result.filter(b => b.category === filter.category);
+        result = result.filter((b) => b.category === filter.category);
       }
 
       if (filter.completed != null) {
-        result = result.filter(b => {
+        result = result.filter((b) => {
           const isCompleted = b.endTime != null;
           return filter.completed === isCompleted;
         });
       }
 
       if (filter.startTime != null) {
-        result = result.filter(b => b.startTime >= filter.startTime!);
+        const startTime = filter.startTime;
+        result = result.filter((b) => b.startTime >= startTime);
       }
 
       if (filter.endTime != null) {
-        result = result.filter(b =>
-          b.endTime != null && b.endTime <= filter.endTime!
+        const endTime = filter.endTime;
+        result = result.filter(
+          (b) => b.endTime != null && b.endTime <= endTime
         );
       }
 

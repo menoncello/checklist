@@ -1,12 +1,12 @@
-import { ShutdownExecutor } from '../shutdown/ShutdownExecutor.js';
-import { ShutdownTasks } from '../shutdown/ShutdownTasks.js';
+import { ShutdownExecutor } from '../shutdown/ShutdownExecutor';
+import { ShutdownTasks } from '../shutdown/ShutdownTasks';
 import {
   ShutdownTask,
   ShutdownConfig,
   ShutdownState,
   ShutdownMetrics,
   EventHandler,
-} from '../shutdown/types.js';
+} from '../shutdown/types';
 
 export class CleanShutdown {
   private config: ShutdownConfig;
@@ -43,7 +43,7 @@ export class CleanShutdown {
       state: this.state,
       shutdownTasks: this.shutdownTasks,
       logCallback: (message: string) => this.log(message),
-      emitCallback: (event: string, data?: unknown) => this.emit(event, data)
+      emitCallback: (event: string, data?: unknown) => this.emit(event, data),
     });
 
     this.setupSignalHandlers();
@@ -131,9 +131,8 @@ export class CleanShutdown {
 
     await this.executeShutdownSequence();
 
-    return this.shutdownPromise;
+    return this.shutdownPromise ?? Promise.resolve();
   }
-
 
   /**
    * Check if shutdown is already in progress
@@ -242,7 +241,12 @@ export class CleanShutdown {
     this.state.graceful = graceful;
   }
 
-  private calculateShutdownMetrics(): { duration: number; completed: number; failed: number; total: number } {
+  private calculateShutdownMetrics(): {
+    duration: number;
+    completed: number;
+    failed: number;
+    total: number;
+  } {
     return {
       duration: Date.now() - this.state.startTime,
       completed: this.state.completedTasks.length,
@@ -251,11 +255,21 @@ export class CleanShutdown {
     };
   }
 
-  private logShutdownCompletion(graceful: boolean, metrics: { duration: number; completed: number; failed: number; total: number }): void {
+  private logShutdownCompletion(
+    graceful: boolean,
+    metrics: {
+      duration: number;
+      completed: number;
+      failed: number;
+      total: number;
+    }
+  ): void {
     this.log(
       `Shutdown ${graceful ? 'completed gracefully' : 'forced'} in ${metrics.duration}ms`
     );
-    this.log(`Tasks: ${metrics.completed}/${metrics.total} completed, ${metrics.failed} failed`);
+    this.log(
+      `Tasks: ${metrics.completed}/${metrics.total} completed, ${metrics.failed} failed`
+    );
   }
 
   private executeCompletionCallback(graceful: boolean): void {
@@ -270,7 +284,15 @@ export class CleanShutdown {
     }
   }
 
-  private emitCompletionEvent(graceful: boolean, metrics: { duration: number; completed: number; failed: number; total: number }): void {
+  private emitCompletionEvent(
+    graceful: boolean,
+    metrics: {
+      duration: number;
+      completed: number;
+      failed: number;
+      total: number;
+    }
+  ): void {
     this.emit('shutdownComplete', {
       graceful,
       duration: metrics.duration,
@@ -306,7 +328,6 @@ export class CleanShutdown {
     // Clear all task timeouts
     this.executor.clearAllTimeouts();
   }
-
 
   // Public interface
   public isShuttingDown(): boolean {
@@ -401,4 +422,4 @@ export type {
   ShutdownConfig,
   ShutdownState,
   ShutdownMetrics,
-} from '../shutdown/types.js';
+} from '../shutdown/types';

@@ -71,7 +71,10 @@ export class MigrationRegistry extends EventEmitter {
   /**
    * Create empty migration path for same versions
    */
-  private createEmptyPath(fromVersion: string, toVersion: string): MigrationPath {
+  private createEmptyPath(
+    fromVersion: string,
+    toVersion: string
+  ): MigrationPath {
     return {
       migrations: [],
       fromVersion,
@@ -83,7 +86,10 @@ export class MigrationRegistry extends EventEmitter {
   /**
    * Validate that migration direction is forward
    */
-  private validateMigrationDirection(fromVersion: string, toVersion: string): void {
+  private validateMigrationDirection(
+    fromVersion: string,
+    toVersion: string
+  ): void {
     const comparison = compareVersions(fromVersion, toVersion);
     if (comparison > 0) {
       throw new MigrationError(
@@ -131,7 +137,10 @@ export class MigrationRegistry extends EventEmitter {
   }
 
   private dijkstraPath(start: string, end: string): string[] | null {
-    const pathFinder = new PathFinder(this.versionGraph, this.getAllVersions());
+    const pathFinder = new PathFinder(
+      this.versionGraph,
+      Array.from(this.getAllVersions())
+    );
     return pathFinder.findPath(start, end);
   }
 
@@ -189,6 +198,31 @@ export class MigrationRegistry extends EventEmitter {
           to: Array.from(toSet),
         })
       ),
+    };
+  }
+
+  getMigrationPath(
+    fromVersion: string,
+    toVersion: string
+  ): {
+    migrations: Migration[];
+    totalSteps: number;
+  } {
+    const migrations: Migration[] = [];
+    let currentVersion = fromVersion;
+
+    while (currentVersion !== toVersion) {
+      const migration = this.getMigration(currentVersion, toVersion);
+      if (!migration) {
+        break;
+      }
+      migrations.push(migration);
+      currentVersion = migration.toVersion;
+    }
+
+    return {
+      migrations,
+      totalSteps: migrations.length,
     };
   }
 }

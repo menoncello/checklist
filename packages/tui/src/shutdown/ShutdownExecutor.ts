@@ -1,5 +1,10 @@
-import { ShutdownTasks } from './ShutdownTasks.js';
-import { ShutdownTask, ShutdownConfig, ShutdownState, TaskExecutionContext } from './types.js';
+import { ShutdownTasks } from './ShutdownTasks';
+import {
+  ShutdownTask,
+  ShutdownConfig,
+  ShutdownState,
+  TaskExecutionContext,
+} from './types';
 
 interface ShutdownExecutorConfig {
   config: ShutdownConfig;
@@ -94,7 +99,10 @@ export class ShutdownExecutor {
     }
   }
 
-  private handleTaskSuccess(task: ShutdownTask, context: TaskExecutionContext): void {
+  private handleTaskSuccess(
+    task: ShutdownTask,
+    context: TaskExecutionContext
+  ): void {
     const duration = Date.now() - context.startTime;
     this.state.completedTasks.push(task.id);
     this.logCallback(`Task completed: ${task.name} (${duration}ms)`);
@@ -103,7 +111,11 @@ export class ShutdownExecutor {
     this.emitCallback('taskComplete', { task, duration });
   }
 
-  private handleTaskFailure(task: ShutdownTask, context: TaskExecutionContext, error: Error): void {
+  private handleTaskFailure(
+    task: ShutdownTask,
+    context: TaskExecutionContext,
+    error: Error
+  ): void {
     const duration = Date.now() - context.startTime;
     this.state.failedTasks.push(task.id);
     this.logCallback(
@@ -116,7 +128,10 @@ export class ShutdownExecutor {
     this.handleCriticalTaskFailure(task);
   }
 
-  private invokeTaskCompleteCallback(task: ShutdownTask, duration: number): void {
+  private invokeTaskCompleteCallback(
+    task: ShutdownTask,
+    duration: number
+  ): void {
     if (this.config.onTaskComplete) {
       try {
         this.config.onTaskComplete(task, duration);

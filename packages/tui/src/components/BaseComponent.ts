@@ -1,6 +1,10 @@
-import { Component } from '../framework/UIFramework.js';
-import { TableRenderer, type TableOptions } from './helpers/TableRenderer.js';
-import { TextFormatter, type TextFormatOptions, type AnsiStyle } from './helpers/TextFormatter.js';
+import { Component } from '../framework/UIFramework';
+import { TableRenderer, type TableOptions } from './helpers/TableRenderer';
+import {
+  TextFormatter,
+  type TextFormatOptions,
+  type AnsiStyle,
+} from './helpers/TextFormatter';
 
 // Base component types
 export type ComponentState = Record<string, unknown>;
@@ -292,5 +296,8 @@ export abstract class BaseComponent implements Component {
 }
 
 // Re-export helper types for backward compatibility
-export { type TextFormatOptions, type AnsiStyle } from './helpers/TextFormatter.js';
-export { type TableOptions } from './helpers/TableRenderer.js';
+export {
+  type TextFormatOptions,
+  type AnsiStyle,
+} from './helpers/TextFormatter';
+export { type TableOptions } from './helpers/TableRenderer';

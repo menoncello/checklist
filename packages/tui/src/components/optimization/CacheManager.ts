@@ -24,7 +24,10 @@ export class CacheManager<T> {
     if (!entry) return null;
 
     // Check if entry is expired
-    if (this.config.maxAge && Date.now() - entry.timestamp > this.config.maxAge) {
+    if (
+      this.config.maxAge != null &&
+      Date.now() - entry.timestamp > this.config.maxAge
+    ) {
       this.delete(index);
       return null;
     }
@@ -44,7 +47,7 @@ export class CacheManager<T> {
       item,
       timestamp: Date.now(),
       accessCount: 1,
-      lastAccess: Date.now()
+      lastAccess: Date.now(),
     };
 
     this.cache.set(index, entry);
@@ -55,7 +58,7 @@ export class CacheManager<T> {
   delete(index: number): boolean {
     const deleted = this.cache.delete(index);
     if (deleted) {
-      this.accessOrder = this.accessOrder.filter(i => i !== index);
+      this.accessOrder = this.accessOrder.filter((i) => i !== index);
     }
     return deleted;
   }
@@ -98,13 +101,13 @@ export class CacheManager<T> {
       size: this.cache.size,
       hitRate: totalAccesses > 0 ? totalHits / totalAccesses : 0,
       oldestEntry: now - oldestTime,
-      averageAge: totalAccesses > 0 ? totalAge / totalAccesses : 0
+      averageAge: totalAccesses > 0 ? totalAge / totalAccesses : 0,
     };
   }
 
   private updateAccessOrder(index: number): void {
     // Remove from current position
-    this.accessOrder = this.accessOrder.filter(i => i !== index);
+    this.accessOrder = this.accessOrder.filter((i) => i !== index);
     // Add to end (most recently used)
     this.accessOrder.push(index);
   }
@@ -125,17 +128,20 @@ export class CacheManager<T> {
   }
 
   cleanup(): void {
-    if (!this.config.maxAge) return;
+    if (this.config.maxAge == null) return;
 
     const now = Date.now();
     const toDelete: number[] = [];
 
     this.cache.forEach((entry, index) => {
-      if (now - entry.timestamp > this.config.maxAge!) {
+      if (
+        this.config.maxAge != null &&
+        now - entry.timestamp > this.config.maxAge
+      ) {
         toDelete.push(index);
       }
     });
 
-    toDelete.forEach(index => this.delete(index));
+    toDelete.forEach((index) => this.delete(index));
   }
 }

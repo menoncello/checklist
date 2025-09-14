@@ -1,6 +1,6 @@
-import { BusMessage } from './MessageQueue.js';
+import { BusMessage } from './MessageQueue';
 
-export interface MessageFilter {
+export class MessageFilter {
   type?: string | string[];
   source?: string | string[];
   target?: string | string[];
@@ -8,15 +8,15 @@ export interface MessageFilter {
   metadata?: Record<string, unknown>;
 }
 
-export interface Subscriber {
-  id: string;
-  name: string;
+export class Subscriber {
+  id!: string;
+  name!: string;
   filter?: MessageFilter;
-  handler: (message: BusMessage) => void | Promise<void>;
-  subscribed: number;
-  messagesReceived: number;
+  handler!: (message: BusMessage) => void | Promise<void>;
+  subscribed!: number;
+  messagesReceived!: number;
   lastMessage?: number;
-  active: boolean;
+  active!: boolean;
 }
 
 export class SubscriberManager {
@@ -57,7 +57,7 @@ export class SubscriberManager {
   }
 
   public getActiveSubscribers(): Subscriber[] {
-    return Array.from(this.subscribers.values()).filter(sub => sub.active);
+    return Array.from(this.subscribers.values()).filter((sub) => sub.active);
   }
 
   public setSubscriberActive(id: string, active: boolean): boolean {
@@ -72,7 +72,11 @@ export class SubscriberManager {
   public getTargetSubscribers(
     message: BusMessage,
     filterMatcher: (message: BusMessage, filter?: MessageFilter) => boolean,
-    targetMatcher: (message: BusMessage, subscriberId: string, subscriberName: string) => boolean
+    targetMatcher: (
+      message: BusMessage,
+      subscriberId: string,
+      subscriberName: string
+    ) => boolean
   ): Subscriber[] {
     const subscribers: Subscriber[] = [];
 
@@ -102,7 +106,8 @@ export class SubscriberManager {
   }
 
   public getActiveSubscriberCount(): number {
-    return Array.from(this.subscribers.values()).filter(sub => sub.active).length;
+    return Array.from(this.subscribers.values()).filter((sub) => sub.active)
+      .length;
   }
 
   public getSubscriberStats(): {
@@ -113,28 +118,40 @@ export class SubscriberManager {
     averageMessages: number;
   } {
     const subscribers = Array.from(this.subscribers.values());
-    const active = subscribers.filter(sub => sub.active);
-    const totalMessages = subscribers.reduce((sum, sub) => sum + sub.messagesReceived, 0);
+    const active = subscribers.filter((sub) => sub.active);
+    const totalMessages = subscribers.reduce(
+      (sum, sub) => sum + sub.messagesReceived,
+      0
+    );
 
     return {
       total: subscribers.length,
       active: active.length,
       inactive: subscribers.length - active.length,
       totalMessages,
-      averageMessages: subscribers.length > 0 ? totalMessages / subscribers.length : 0
+      averageMessages:
+        subscribers.length > 0 ? totalMessages / subscribers.length : 0,
     };
   }
 
-  public findSubscribersByFilter(searchFilter: Partial<MessageFilter>): Subscriber[] {
-    return Array.from(this.subscribers.values()).filter(subscriber => {
+  public findSubscribersByFilter(
+    searchFilter: Partial<MessageFilter>
+  ): Subscriber[] {
+    return Array.from(this.subscribers.values()).filter((subscriber) => {
       if (subscriber.filter == null) return false;
 
       // Simple matching - can be enhanced
-      if (searchFilter.type != null && subscriber.filter.type !== searchFilter.type) {
+      if (
+        searchFilter.type != null &&
+        subscriber.filter.type !== searchFilter.type
+      ) {
         return false;
       }
 
-      if (searchFilter.source != null && subscriber.filter.source !== searchFilter.source) {
+      if (
+        searchFilter.source != null &&
+        subscriber.filter.source !== searchFilter.source
+      ) {
         return false;
       }
 
@@ -158,17 +175,19 @@ export class SubscriberManager {
       exists: true,
       active: subscriber.active,
       lastActivity: subscriber.lastMessage,
-      messageCount: subscriber.messagesReceived
+      messageCount: subscriber.messagesReceived,
     };
   }
 
   public cleanup(): number {
     const before = this.subscribers.size;
-    const cutoff = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
 
     for (const [id, subscriber] of this.subscribers.entries()) {
-      if (!subscriber.active &&
-          (subscriber.lastMessage == null || subscriber.lastMessage < cutoff)) {
+      if (
+        !subscriber.active &&
+        (subscriber.lastMessage == null || subscriber.lastMessage < cutoff)
+      ) {
         this.subscribers.delete(id);
       }
     }
@@ -184,7 +203,7 @@ export class SubscriberManager {
     const exported: Record<string, Omit<Subscriber, 'handler'>> = {};
 
     for (const [id, subscriber] of this.subscribers.entries()) {
-      const { handler, ...subscriberData } = subscriber;
+      const { handler: _handler, ...subscriberData } = subscriber;
       exported[id] = subscriberData;
     }
 

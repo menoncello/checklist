@@ -16,8 +16,8 @@ export class SecuritySpecialEvents {
     details?: Record<string, unknown>
   ): Promise<void> {
     const type = this.getStateAccessEventType(operation);
-    const severity = success ? SecuritySeverity.INFO : SecuritySeverity.ERROR;
-    const message = `State ${operation} ${success ? 'succeeded' : 'failed'}: ${filePath}`;
+    const severity = success ? SecuritySeverity.INFO : SecuritySeverity.WARNING;
+    const message = `State ${operation} ${success ? 'succeeded' : 'failed'}`;
 
     const event = this.eventLogger.createSecurityEvent(type, message, {
       severity,
@@ -68,10 +68,14 @@ export class SecuritySpecialEvents {
         ? SecurityEventType.ENCRYPTION_SUCCESS
         : SecurityEventType.DECRYPTION_SUCCESS
       : operation === 'encrypt'
-      ? SecurityEventType.ENCRYPTION_FAILURE
-      : SecurityEventType.DECRYPTION_FAILURE;
+        ? SecurityEventType.ENCRYPTION_FAILURE
+        : SecurityEventType.DECRYPTION_FAILURE;
 
-    const severity = success ? SecuritySeverity.INFO : SecuritySeverity.ERROR;
+    const severity = success
+      ? SecuritySeverity.INFO
+      : operation === 'decrypt'
+        ? SecuritySeverity.ERROR
+        : SecuritySeverity.CRITICAL;
     const message = `${operation} operation ${success ? 'succeeded' : 'failed'}`;
 
     const event = this.eventLogger.createSecurityEvent(type, message, {
@@ -112,7 +116,9 @@ export class SecuritySpecialEvents {
       stackTrace: !success || Boolean(timeout),
     });
 
-    this.eventLogger.addStackTraceIfNeeded(event, { stackTrace: !success || Boolean(timeout) });
+    this.eventLogger.addStackTraceIfNeeded(event, {
+      stackTrace: !success || Boolean(timeout),
+    });
     this.eventLogger.addToBuffer(event);
   }
 
@@ -120,13 +126,11 @@ export class SecuritySpecialEvents {
     activity: string,
     details?: Record<string, unknown>
   ): Promise<void> {
-    const message = `Suspicious activity detected: ${activity}`;
-
     const event = this.eventLogger.createSecurityEvent(
       SecurityEventType.SUSPICIOUS_ACTIVITY,
-      message,
+      activity,
       {
-        severity: SecuritySeverity.CRITICAL,
+        severity: SecuritySeverity.WARNING,
         details: {
           activity,
           ...details,
@@ -139,7 +143,9 @@ export class SecuritySpecialEvents {
     this.eventLogger.addToBuffer(event);
   }
 
-  private getStateAccessEventType(operation: 'read' | 'write' | 'delete'): SecurityEventType {
+  private getStateAccessEventType(
+    operation: 'read' | 'write' | 'delete'
+  ): SecurityEventType {
     switch (operation) {
       case 'read':
         return SecurityEventType.STATE_READ;
@@ -160,15 +166,20 @@ export class SecuritySpecialEvents {
     }
 
     if (operation === 'acquire') {
-      return success ? SecurityEventType.LOCK_ACQUIRED : SecurityEventType.LOCK_DENIED;
+      return success
+        ? SecurityEventType.LOCK_ACQUIRED
+        : SecurityEventType.LOCK_DENIED;
     }
 
     return SecurityEventType.LOCK_ACQUIRED; // Release operations use same type
   }
 
-  private getLockSeverity(success: boolean, timeout?: boolean): SecuritySeverity {
-    if (Boolean(timeout)) return SecuritySeverity.ERROR;
-    return success ? SecuritySeverity.INFO : SecuritySeverity.ERROR;
+  private getLockSeverity(
+    success: boolean,
+    timeout?: boolean
+  ): SecuritySeverity {
+    if (Boolean(timeout)) return SecuritySeverity.WARNING;
+    return success ? SecuritySeverity.INFO : SecuritySeverity.WARNING;
   }
 
   private getLockMessage(

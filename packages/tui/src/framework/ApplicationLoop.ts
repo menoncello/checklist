@@ -1,4 +1,4 @@
-import { EventHandler } from './UIFramework.js';
+import { EventHandler } from './UIFramework';
 
 export interface LoopState {
   running: boolean;

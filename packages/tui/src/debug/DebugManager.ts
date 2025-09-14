@@ -1,4 +1,3 @@
-
 export interface DebugConfig {
   enabled: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
@@ -42,8 +41,8 @@ export interface ComponentDebugInfo {
   metrics?: Record<string, number>;
 }
 
-import { ConfigInitializer } from './helpers/ConfigInitializer.js';
-import { OverlayRenderer } from './rendering/OverlayRenderer.js';
+import { ConfigInitializer } from './helpers/ConfigInitializer';
+import { OverlayRenderer } from './rendering/OverlayRenderer';
 
 export class DebugManager {
   private config: DebugConfig;
@@ -63,9 +62,13 @@ export class DebugManager {
   constructor(config: Partial<DebugConfig> = {}) {
     this.config = ConfigInitializer.createDefaultConfig(config);
     this.metrics = ConfigInitializer.createDefaultMetrics();
-    ConfigInitializer.setupEventCapture(this.log.bind(this));
+    ConfigInitializer.setupEventCapture((level, category, message, data) => {
+      const validLevel = ['debug', 'info', 'warn', 'error'].includes(level)
+        ? (level as 'debug' | 'info' | 'warn' | 'error')
+        : 'info';
+      this.log(validLevel, category, message, data);
+    });
   }
-
 
   public enable(): void {
     this.config.enabled = true;
@@ -182,7 +185,7 @@ export class DebugManager {
       toggle: () => this.toggle(),
       clearLogs: () => this.clearLogs(),
       exportLogs: () => this.exportLogs(),
-      emit: (event: string, data: unknown) => this.emit(event, data)
+      emit: (event: string, data: unknown) => this.emit(event, data),
     };
 
     const result = this.handleKeypressWithContext(key, context);
@@ -193,39 +196,47 @@ export class DebugManager {
     return result;
   }
 
-  private handleKeypressWithContext(key: string, context: any): boolean {
-    if (!context.config.enabled) return false;
+  private handleKeypressWithContext(
+    key: string,
+    context: Record<string, unknown>
+  ): boolean {
+    const config = context.config as DebugConfig;
+    if (config.enabled !== true) return false;
 
-    const { hotkeys } = context.config;
+    const { hotkeys } = config;
 
     if (key === hotkeys.toggle) {
-      context.toggle();
+      const toggle = context.toggle as () => void;
+      toggle();
       return true;
     }
 
-    if (!context.isVisible) return false;
+    if (context.isVisible !== true) return false;
 
     const panelMap: Record<string, string> = {
       [hotkeys.logs]: 'logs',
       [hotkeys.metrics]: 'metrics',
       [hotkeys.components]: 'components',
       [hotkeys.events]: 'events',
-      [hotkeys.performance]: 'performance'
+      [hotkeys.performance]: 'performance',
     };
 
     if (panelMap[key]) {
       context.selectedPanel = panelMap[key];
-      context.emit('panelChanged', { panel: context.selectedPanel });
+      const emit = context.emit as (event: string, data: unknown) => void;
+      emit('panelChanged', { panel: context.selectedPanel });
       return true;
     }
 
     if (key === hotkeys.clear) {
-      context.clearLogs();
+      const clearLogs = context.clearLogs as () => void;
+      clearLogs();
       return true;
     }
 
     if (key === hotkeys.export) {
-      context.exportLogs();
+      const exportLogs = context.exportLogs as () => void;
+      exportLogs();
       return true;
     }
 

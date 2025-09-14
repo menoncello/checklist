@@ -32,9 +32,9 @@ export class EnvironmentDetector {
   }
 
   static getSessionType(env: EnvironmentInfo): string {
-    if (env.ssh) return 'SSH';
-    if (env.tmux) return 'tmux';
-    if (env.screen) return 'screen';
+    if (env.ssh === true) return 'SSH';
+    if (env.tmux === true) return 'tmux';
+    if (env.screen === true) return 'screen';
     return 'local';
   }
 

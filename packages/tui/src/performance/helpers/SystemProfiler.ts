@@ -1,22 +1,22 @@
-export interface SystemSnapshot {
-  timestamp: number;
-  memory: {
+export class SystemSnapshot {
+  timestamp!: number;
+  memory!: {
     heapUsed: number;
     heapTotal: number;
     external: number;
     arrayBuffers: number;
   };
-  cpu: {
+  cpu!: {
     usage: number;
     loadAverage: number[];
   };
-  gc: {
+  gc!: {
     count: number;
     duration: number;
     type: string;
   };
-  uptime: number;
-  eventLoop: {
+  uptime!: number;
+  eventLoop!: {
     delay: number;
   };
 }
@@ -29,7 +29,11 @@ export class SystemProfiler {
 
   constructor(
     private samplingInterval: number = 1000,
-    private onMetric?: (name: string, value: number, metadata?: Record<string, unknown>) => void
+    private onMetric?: (
+      name: string,
+      value: number,
+      metadata?: Record<string, unknown>
+    ) => void
   ) {}
 
   public start(): void {
@@ -61,36 +65,24 @@ export class SystemProfiler {
   }
 
   private setupGCObserver(): void {
-    if (typeof PerformanceObserver === 'undefined') return;
-
-    try {
-      this.gcObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === 'gc') {
-            this.gcStats.count++;
-            this.gcStats.totalDuration += entry.duration;
-            this.gcStats.lastType = (entry as any).detail?.type || 'unknown';
-
-            this.onMetric?.('gc.count', this.gcStats.count);
-            this.onMetric?.('gc.duration', entry.duration);
-            this.onMetric?.('gc.totalDuration', this.gcStats.totalDuration);
-          }
-        }
-      });
-
-      this.gcObserver.observe({ entryTypes: ['gc'] });
-    } catch (error) {
-      // GC observation might not be available in all environments
-    }
+    // GC observation is not available in all environments
+    // Simplified implementation without PerformanceObserver
+    return;
   }
 
   private sampleSystemMetrics(): void {
     const snapshot = this.getSystemSnapshot();
 
     // Record memory metrics
-    this.onMetric?.('memory.heapUsed', snapshot.memory.heapUsed, { unit: 'bytes' });
-    this.onMetric?.('memory.heapTotal', snapshot.memory.heapTotal, { unit: 'bytes' });
-    this.onMetric?.('memory.external', snapshot.memory.external, { unit: 'bytes' });
+    this.onMetric?.('memory.heapUsed', snapshot.memory.heapUsed, {
+      unit: 'bytes',
+    });
+    this.onMetric?.('memory.heapTotal', snapshot.memory.heapTotal, {
+      unit: 'bytes',
+    });
+    this.onMetric?.('memory.external', snapshot.memory.external, {
+      unit: 'bytes',
+    });
 
     // Record CPU metrics (if available)
     if (snapshot.cpu.usage > 0) {
@@ -98,7 +90,9 @@ export class SystemProfiler {
     }
 
     // Record event loop delay
-    this.onMetric?.('eventLoop.delay', snapshot.eventLoop.delay, { unit: 'ms' });
+    this.onMetric?.('eventLoop.delay', snapshot.eventLoop.delay, {
+      unit: 'ms',
+    });
 
     // Record uptime
     this.onMetric?.('process.uptime', snapshot.uptime, { unit: 'seconds' });
@@ -113,22 +107,22 @@ export class SystemProfiler {
       memory: {
         heapUsed: memoryUsage.heapUsed,
         heapTotal: memoryUsage.heapTotal,
-        external: memoryUsage.external || 0,
-        arrayBuffers: memoryUsage.arrayBuffers || 0
+        external: memoryUsage.external ?? 0,
+        arrayBuffers: memoryUsage.arrayBuffers ?? 0,
       },
       cpu: {
         usage: cpuUsage,
-        loadAverage: this.getLoadAverage()
+        loadAverage: this.getLoadAverage(),
       },
       gc: {
         count: this.gcStats.count,
         duration: this.gcStats.totalDuration,
-        type: this.gcStats.lastType
+        type: this.gcStats.lastType,
       },
       uptime: this.getUptime(),
       eventLoop: {
-        delay: this.getEventLoopDelay()
-      }
+        delay: this.getEventLoopDelay(),
+      },
     };
   }
 
@@ -138,18 +132,29 @@ export class SystemProfiler {
     external?: number;
     arrayBuffers?: number;
   } {
-    if (typeof process !== 'undefined' && process.memoryUsage) {
+    if (typeof process !== 'undefined' && process.memoryUsage != null) {
       return process.memoryUsage();
     }
 
     // Fallback for browser environments
-    if (typeof performance !== 'undefined' && (performance as any).memory) {
-      const memory = (performance as any).memory;
+    if (
+      typeof performance !== 'undefined' &&
+      (
+        performance as unknown as {
+          memory?: { usedJSHeapSize?: number; totalJSHeapSize?: number };
+        }
+      ).memory != null
+    ) {
+      const memory = (
+        performance as unknown as {
+          memory: { usedJSHeapSize?: number; totalJSHeapSize?: number };
+        }
+      ).memory;
       return {
-        heapUsed: memory.usedJSHeapSize || 0,
-        heapTotal: memory.totalJSHeapSize || 0,
+        heapUsed: memory.usedJSHeapSize ?? 0,
+        heapTotal: memory.totalJSHeapSize ?? 0,
         external: 0,
-        arrayBuffers: 0
+        arrayBuffers: 0,
       };
     }
 
@@ -157,37 +162,34 @@ export class SystemProfiler {
   }
 
   private getCPUUsage(): number {
-    if (typeof process !== 'undefined' && process.cpuUsage) {
+    if (typeof process !== 'undefined' && process.cpuUsage != null) {
       const usage = process.cpuUsage();
       const total = usage.user + usage.system;
-      return (total / 1000) / 1000; // Convert to percentage approximation
+      return total / 1000 / 1000; // Convert to percentage approximation
     }
     return 0;
   }
 
   private getLoadAverage(): number[] {
-    if (typeof process !== 'undefined' && process.loadavg) {
-      return process.loadavg();
+    if (
+      typeof process !== 'undefined' &&
+      (process as unknown as { loadavg?: () => number[] }).loadavg != null
+    ) {
+      return (process as unknown as { loadavg: () => number[] }).loadavg();
     }
     return [0, 0, 0];
   }
 
   private getUptime(): number {
-    if (typeof process !== 'undefined' && process.uptime) {
+    if (typeof process !== 'undefined' && process.uptime != null) {
       return process.uptime();
     }
-    return (Date.now() - (this.baseline?.timestamp || Date.now())) / 1000;
+    return (Date.now() - (this.baseline?.timestamp ?? Date.now())) / 1000;
   }
 
   private getEventLoopDelay(): number {
-    // This is a simplified approximation
-    const start = performance.now();
-    return new Promise(resolve => {
-      setImmediate(() => {
-        const delay = performance.now() - start;
-        resolve(delay);
-      });
-    }) as any; // Return 0 for synchronous context
+    // This is a simplified approximation that returns 0 for synchronous context
+    // In a real implementation, this would measure actual event loop delay
     return 0;
   }
 

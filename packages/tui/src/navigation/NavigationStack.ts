@@ -5,7 +5,7 @@
  * Implements a stack-based navigation system with state preservation.
  */
 
-import { NavigationStackEntry, ViewParams, ViewState } from '../views/types.js';
+import { NavigationStackEntry, ViewParams, ViewState } from '../views/types';
 
 export class NavigationStack {
   private readonly stack: NavigationStackEntry[] = [];

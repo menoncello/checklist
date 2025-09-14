@@ -4,13 +4,21 @@ export class ProcessHandlers {
   private shutdownInProgress = false;
   private gracefulShutdownTimeout: number;
   private emergencyHandlers = new Set<() => void>();
+  private onCrashCallback?: (reason: string, error?: Error) => void;
+  private crashRecoveryInstance?: unknown;
+  private onSignalCallback?: (signal: string) => void;
+  private onWarningCallback?: (warning: Error) => void;
 
   constructor(
     gracefulShutdownTimeout: number = 5000,
-    disableProcessHandlers: boolean = false
+    disableProcessHandlers: boolean = false,
+    onCrashCallback?: (reason: string, error?: Error) => void,
+    crashRecoveryInstance?: unknown
   ) {
     this.gracefulShutdownTimeout = gracefulShutdownTimeout;
     this.disableProcessHandlers = disableProcessHandlers;
+    this.onCrashCallback = onCrashCallback;
+    this.crashRecoveryInstance = crashRecoveryInstance;
 
     if (!this.disableProcessHandlers) {
       this.setupProcessHandlers();
@@ -40,8 +48,12 @@ export class ProcessHandlers {
       this.handleProcessCrash('Uncaught Exception', error);
     };
 
-    const handleUnhandledRejection = (reason: unknown, _promise: Promise<unknown>): void => {
-      const error = reason instanceof Error ? reason : new Error(String(reason));
+    const handleUnhandledRejection = (
+      reason: unknown,
+      _promise: Promise<unknown>
+    ): void => {
+      const error =
+        reason instanceof Error ? reason : new Error(String(reason));
       this.handleProcessCrash('Unhandled Promise Rejection', error);
     };
 
@@ -50,6 +62,17 @@ export class ProcessHandlers {
 
     process.on('uncaughtException', handleUncaughtException);
     process.on('unhandledRejection', handleUnhandledRejection);
+
+    // Handle process warnings
+    const handleWarning = (warning: Error): void => {
+      console.warn('Process warning:', warning);
+      if (this.onWarningCallback) {
+        this.onWarningCallback(warning);
+      }
+    };
+
+    this.processHandlerRefs.set('warning', handleWarning);
+    process.on('warning', handleWarning);
   }
 
   private createExitHandler(): () => void {
@@ -63,8 +86,19 @@ export class ProcessHandlers {
   private createSignalHandler(): (signal: string) => void {
     return (signal: string): void => {
       console.log(`\nReceived ${signal}. Initiating graceful shutdown...`);
-      this.initiateGracefulShutdown();
+      // Only use the callback - it should be set up by CrashRecovery
+      if (this.onSignalCallback) {
+        this.onSignalCallback(signal);
+      }
     };
+  }
+
+  public setOnSignalHandler(callback: (signal: string) => void): void {
+    this.onSignalCallback = callback;
+  }
+
+  public setOnWarningHandler(callback: (warning: Error) => void): void {
+    this.onWarningCallback = callback;
   }
 
   private handleProcessCrash(reason: string, error: Error): void {
@@ -78,11 +112,16 @@ export class ProcessHandlers {
     // Run emergency handlers
     this.runEmergencyHandlers();
 
+    // Call crash callback if provided
+    if (this.onCrashCallback) {
+      this.onCrashCallback(reason, error);
+    }
+
     // Attempt graceful shutdown
     this.initiateGracefulShutdown();
   }
 
-  private runEmergencyHandlers(): void {
+  public runEmergencyHandlers(): void {
     for (const handler of this.emergencyHandlers) {
       try {
         handler();
@@ -128,7 +167,7 @@ export class ProcessHandlers {
     // - Save state to disk
     // - Clean up resources
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   public addEmergencyHandler(handler: () => void): void {

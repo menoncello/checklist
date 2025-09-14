@@ -2,7 +2,7 @@
 
 import { MigrateCommand, MigrateOptions } from './commands/migrate';
 
-export const version = '1.0.0';
+export const version = '0.0.1';
 
 const args = Bun.argv.slice(2);
 const command = args[0];
@@ -53,7 +53,7 @@ function parseMigrateOptions(args: string[]): MigrateOptions {
     '--backup-only': 'backupOnly',
     '--list-backups': 'listBackups',
     '--verbose': 'verbose',
-    '-v': 'verbose'
+    '-v': 'verbose',
   };
 
   for (let i = 1; i < args.length; i++) {

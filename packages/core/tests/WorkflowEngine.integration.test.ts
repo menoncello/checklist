@@ -12,10 +12,13 @@ describe('WorkflowEngine Integration Tests', () => {
   let engine: WorkflowEngine;
   let tempDir: string;
   let stateManager: StateManager;
+  let transactionCoordinator: TransactionCoordinator;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'workflow-integration-'));
-    engine = new WorkflowEngine(tempDir);
+    stateManager = new StateManager(tempDir);
+    transactionCoordinator = new TransactionCoordinator(tempDir);
+    engine = new WorkflowEngine(stateManager, transactionCoordinator);
   });
 
   afterEach(async () => {
@@ -36,29 +39,31 @@ describe('WorkflowEngine Integration Tests', () => {
       };
 
       // Mock the loadTemplate function to return our test template
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       
       // First engine instance
       await engine.init('persist-test');
       await engine.advance();
       await engine.advance();
       
-      const firstProgress = engine.getProgress();
-      expect(firstProgress.currentStepIndex).toBe(2);
-      expect(firstProgress.completedSteps).toBe(2);
+      const state = engine.getState();
+      expect(state.currentStepIndex).toBe(2);
+      expect(state.completedSteps.length).toBe(2);
 
       // Cleanup first instance
       await engine.cleanup();
 
       // Create new engine instance with same directory
-      const engine2 = new WorkflowEngine(tempDir);
-      engine2['loadTemplate'] = () => Promise.resolve(template);
+      const stateManager2 = new StateManager(tempDir);
+      const transactionCoordinator2 = new TransactionCoordinator(tempDir);
+      const engine2 = new WorkflowEngine(stateManager2, transactionCoordinator2);
+      engine2['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine2.init('persist-test');
 
       // Should restore from persisted state
-      const restoredProgress = engine2.getProgress();
-      expect(restoredProgress.currentStepIndex).toBe(2);
-      expect(restoredProgress.completedSteps).toBe(2);
+      const restoredState = engine2.getState();
+      expect(restoredState.currentStepIndex).toBe(2);
+      expect(restoredState.completedSteps.length).toBe(2);
       
       const currentStep = engine2.getCurrentStep();
       expect(currentStep?.id).toBe('step3');
@@ -76,7 +81,7 @@ describe('WorkflowEngine Integration Tests', () => {
         })),
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('concurrent-test');
 
       // Attempt concurrent advances
@@ -88,9 +93,9 @@ describe('WorkflowEngine Integration Tests', () => {
       expect(successCount).toBeGreaterThan(0);
       
       // Check final state is consistent
-      const progress = engine.getProgress();
-      expect(progress.currentStepIndex).toBeLessThanOrEqual(10);
-      expect(progress.completedSteps).toBeLessThanOrEqual(10);
+      const state = engine.getState();
+      expect(state.currentStepIndex).toBeLessThanOrEqual(10);
+      expect(state.completedSteps.length).toBeLessThanOrEqual(10);
     });
 
     test('recovers from corrupted state', async () => {
@@ -103,7 +108,7 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('recovery-test');
       await engine.advance();
 
@@ -114,13 +119,15 @@ describe('WorkflowEngine Integration Tests', () => {
       }
 
       // Engine should handle corrupted state gracefully
-      const engine2 = new WorkflowEngine(tempDir);
+      const stateManager2 = new StateManager(tempDir);
+      const transactionCoordinator2 = new TransactionCoordinator(tempDir);
+      const engine2 = new WorkflowEngine(stateManager2, transactionCoordinator2);
       await engine2.init('recovery-test');
       
       // Should reset to initial state when corruption detected
-      const progress = engine2.getProgress();
-      expect(progress.currentStepIndex).toBe(0);
-      expect(progress.completedSteps).toBe(0);
+      const state = engine2.getState();
+      expect(state.currentStepIndex).toBe(0);
+      expect(state.completedSteps.length).toBe(0);
       
       await engine2.cleanup();
     });
@@ -148,7 +155,7 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       
       // Mock validation to fail
       const originalValidate = engine.validateStep.bind(engine);
@@ -168,7 +175,7 @@ describe('WorkflowEngine Integration Tests', () => {
       
       // State should remain at step1 due to rollback
       expect(engine.getCurrentStep()?.id).toBe('step2');
-      expect(engine.getProgress().currentStepIndex).toBe(1);
+      expect(engine.getState().currentStepIndex).toBe(1);
     });
 
     test('rolls back skip operation on failure', async () => {
@@ -182,17 +189,17 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('skip-rollback-test');
 
       // Test skip operation consistency
-      const initialSkippedCount = engine['state'].skippedSteps.length;
+      const initialSkippedCount = engine.getState().skippedSteps.length;
 
       // Test normal skip operation
       await engine.skip('Test skip');
       
       // Skipped steps should have increased
-      expect(engine['state'].skippedSteps.length).toBe(initialSkippedCount + 1);
+      expect(engine.getState().skippedSteps.length).toBe(initialSkippedCount + 1);
       expect(engine.getCurrentStep()?.id).toBe('step2');
     });
 
@@ -207,12 +214,12 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('consistency-test');
 
       // Advance once successfully
       await engine.advance();
-      const stateAfterAdvance = JSON.parse(JSON.stringify(engine['state']));
+      const stateAfterAdvance = JSON.parse(JSON.stringify(engine.getState()));
 
       // Mock a partial failure during next advance
       const originalEmit = engine.emit.bind(engine);
@@ -232,7 +239,7 @@ describe('WorkflowEngine Integration Tests', () => {
       }
 
       // State should be consistent - either fully advanced or rolled back
-      const currentState = engine['state'];
+      const currentState = engine.getState();
       expect(currentState.currentStepIndex).toBeGreaterThanOrEqual(1);
       expect(currentState.completedSteps.length).toBeGreaterThanOrEqual(1);
     });
@@ -258,7 +265,7 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('validation-recovery');
 
       // First validation should fail
@@ -282,20 +289,23 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('transition-recovery');
 
       // Test state consistency after operations
-      engine['state'].status = 'active';
-      
+      const state = engine.getState();
+      state.status = 'active';
+
       // Advance should maintain active state or complete if last step
       await engine.advance();
+      const newState = engine.getState();
       // Status could be 'active' or 'completed' depending on steps remaining
-      expect(['active', 'completed']).toContain(engine['state'].status);
-      
+      expect(['active', 'completed']).toContain(newState.status);
+
       // Reset should return to idle
       await engine.reset();
-      expect(engine['state'].status as string).toBe('idle');
+      const resetState = engine.getState();
+      expect(resetState.status as string).toBe('idle');
     });
 
     test('emits error events for recovery handling', async () => {
@@ -307,7 +317,7 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('error-event-test');
 
       const errors: WorkflowError[] = [];
@@ -348,7 +358,7 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('auto-recovery-test');
 
       // Test error emission and handling
@@ -376,26 +386,27 @@ describe('WorkflowEngine Integration Tests', () => {
         ],
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('backup-restore-test');
       
       // Advance and create a backup point
       await engine.advance();
-      const backupState = JSON.parse(JSON.stringify(engine['state']));
-      
+      const backupState = JSON.parse(JSON.stringify(engine.getState()));
+
       // Test state persistence and recovery
-      const currentIndex = engine['state'].currentStepIndex;
-      const currentStatus = engine['state'].status;
-      
+      const state = engine.getState();
+      const currentIndex = state.currentStepIndex;
+      const currentStatus = state.status;
+
       // Simulate state recovery check
-      if (engine['state'].currentStepIndex < 0) {
+      if (state.currentStepIndex < 0) {
         // Reset to valid state
-        engine['state'].currentStepIndex = 0;
-        engine['state'].status = 'active';
+        state.currentStepIndex = 0;
+        state.status = 'active';
       }
-      
+
       // State should be valid
-      expect(engine['state'].currentStepIndex).toBeGreaterThanOrEqual(0);
+      expect(state.currentStepIndex).toBeGreaterThanOrEqual(0);
       expect(engine.getCurrentStep()?.id).toBe('step2');
     });
   });
@@ -412,7 +423,7 @@ describe('WorkflowEngine Integration Tests', () => {
         })),
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(largeTemplate);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(largeTemplate);
       
       const startTime = performance.now();
       await engine.init('large-workflow', { includeEven: true });
@@ -441,7 +452,7 @@ describe('WorkflowEngine Integration Tests', () => {
         })),
       };
 
-      engine['loadTemplate'] = () => Promise.resolve(template);
+      engine['stateManager']['loadTemplate'] = () => Promise.resolve(template);
       await engine.init('memory-test');
       
       // Advance through all steps
@@ -450,13 +461,13 @@ describe('WorkflowEngine Integration Tests', () => {
       }
       
       // Check that history doesn't grow unbounded
-      const history = engine.getHistory();
-      expect(history.length).toBe(100);
-      
-      // Reset should clear memory
+      const state = engine.getState();
+      expect(state.completedSteps.length).toBe(100);
+
+      // Reset should clear state
       await engine.reset();
-      const resetHistory = engine.getHistory();
-      expect(resetHistory.length).toBe(0);
+      const resetState = engine.getState();
+      expect(resetState.completedSteps.length).toBe(0);
     });
   });
 });

@@ -5,9 +5,9 @@
  * and state preservation for the terminal UI application.
  */
 
-import { LayoutManager } from '../layout/LayoutManager.js';
-import { NavigationStack } from '../navigation/NavigationStack.js';
-import { ViewRegistry } from '../navigation/ViewRegistry.js';
+import { LayoutManager } from '../layout/LayoutManager';
+import { NavigationStack } from '../navigation/NavigationStack';
+import { ViewRegistry } from '../navigation/ViewRegistry';
 import {
   ViewSystem as IViewSystem,
   View,
@@ -20,7 +20,7 @@ import {
   TabInfo,
   LayoutComponent,
   LayoutRender,
-} from './types.js';
+} from './types';
 
 export class ViewSystem implements IViewSystem {
   private readonly navigationStack: NavigationStack;
@@ -257,12 +257,12 @@ export class ViewSystem implements IViewSystem {
       breadcrumbs: this.generateBreadcrumbs(),
     };
 
-    return this.layoutManager.renderLayout(
+    return this.layoutManager.renderLayout({
       width,
       height,
       currentView,
-      navigation
-    );
+      navigation,
+    });
   }
 
   private generateBreadcrumbs(): string[] {

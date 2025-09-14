@@ -46,7 +46,11 @@ export class MigrationProcessor {
   private async processSingleMigration(
     migration: Migration,
     state: StateSchema,
-    context: { index: number; totalMigrations: number; options: MigrationOptions }
+    context: {
+      index: number;
+      totalMigrations: number;
+      options: MigrationOptions;
+    }
   ): Promise<{
     state: StateSchema;
     migrationKey: string;
@@ -95,11 +99,13 @@ export class MigrationProcessor {
     migration: Migration,
     state: StateSchema
   ): Promise<StateSchema> {
-    if (migration.script === undefined || migration.script === null) {
-      throw new Error(`Migration script not found for ${migration.fromVersion}->${migration.toVersion}`);
+    if (!migration.migrate) {
+      throw new Error(
+        `Migration function not found for ${migration.fromVersion}->${migration.toVersion}`
+      );
     }
 
-    const migratedState = await migration.script.up(state);
+    const migratedState = await migration.migrate(state);
     return migratedState as StateSchema;
   }
 
@@ -108,16 +114,19 @@ export class MigrationProcessor {
     state: StateSchema
   ): Promise<void> {
     if (migration.validate && !migration.validate(state)) {
-      throw new Error(`Migration validation failed for ${migration.fromVersion}->${migration.toVersion}`);
+      throw new Error(
+        `Migration validation failed for ${migration.fromVersion}->${migration.toVersion}`
+      );
     }
   }
 
   private createMigrationRecord(migration: Migration): MigrationRecord {
     return {
-      fromVersion: migration.fromVersion,
-      toVersion: migration.toVersion,
+      from: migration.fromVersion,
+      to: migration.toVersion,
+      applied: new Date().toISOString(),
       appliedAt: new Date().toISOString(),
-      checksum: migration.checksum,
+      changes: [`Applied migration ${migration.id ?? 'unknown'}`],
     };
   }
 

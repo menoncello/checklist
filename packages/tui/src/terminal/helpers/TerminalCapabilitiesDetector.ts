@@ -17,7 +17,9 @@ export class TerminalCapabilitiesDetector {
       'konsole',
     ];
 
-    return knownColorTerminals.some(term => env.term.toLowerCase().includes(term));
+    return knownColorTerminals.some((term) =>
+      env.term.toLowerCase().includes(term)
+    );
   }
 
   static supports256Colors(env: EnvironmentInfo): boolean {
@@ -40,22 +42,22 @@ export class TerminalCapabilitiesDetector {
     if (env.colorTerm === 'truecolor') return true;
     if (env.colorTerm === '24bit') return true;
 
-    const trueColorTerminals = [
-      'alacritty',
-      'kitty',
-      'wezterm',
-      'iterm2',
-    ];
+    const trueColorTerminals = ['alacritty', 'kitty', 'wezterm', 'iterm2'];
 
-    return trueColorTerminals.some(term =>
-      env.term.toLowerCase().includes(term) ||
-      (env.termProgram && env.termProgram.toLowerCase().includes(term))
-    );
+    return trueColorTerminals.some((term) => {
+      const termLowerCase = env.term.toLowerCase();
+      const termProgramLowerCase = env.termProgram?.toLowerCase();
+
+      return (
+        termLowerCase.includes(term) ||
+        termProgramLowerCase?.includes(term) === true
+      );
+    });
   }
 
   static supportsUnicode(env: EnvironmentInfo): boolean {
-    if (env.lang && env.lang.toUpperCase().includes('UTF')) return true;
-    if (env.lc_all && env.lc_all.toUpperCase().includes('UTF')) return true;
+    if (env.lang?.toUpperCase().includes('UTF') === true) return true;
+    if (env.lc_all?.toUpperCase().includes('UTF') === true) return true;
 
     const unicodeTerminals = [
       'alacritty',
@@ -65,10 +67,15 @@ export class TerminalCapabilitiesDetector {
       'gnome-terminal',
     ];
 
-    return unicodeTerminals.some(term =>
-      env.term.toLowerCase().includes(term) ||
-      (env.termProgram && env.termProgram.toLowerCase().includes(term))
-    );
+    return unicodeTerminals.some((term) => {
+      const termLowerCase = env.term.toLowerCase();
+      const termProgramLowerCase = env.termProgram?.toLowerCase();
+
+      return (
+        termLowerCase.includes(term) ||
+        termProgramLowerCase?.includes(term) === true
+      );
+    });
   }
 
   static supportsMouseReporting(env: EnvironmentInfo): boolean {
@@ -82,11 +89,16 @@ export class TerminalCapabilitiesDetector {
       'konsole',
     ];
 
-    return mouseCapableTerminals.some(term => env.term.toLowerCase().includes(term));
+    return mouseCapableTerminals.some((term) =>
+      env.term.toLowerCase().includes(term)
+    );
   }
 
-  static getColorDepthLevel(colorDepth?: number): 'monochrome' | 'basic' | '256' | 'truecolor' {
-    if (!colorDepth) return 'basic';
+  static getColorDepthLevel(
+    colorDepth?: number
+  ): 'monochrome' | 'basic' | '256' | 'truecolor' {
+    if (colorDepth == null || colorDepth === 0 || Number.isNaN(colorDepth))
+      return 'basic';
     if (colorDepth >= 24) return 'truecolor';
     if (colorDepth >= 8) return '256';
     if (colorDepth >= 4) return 'basic';

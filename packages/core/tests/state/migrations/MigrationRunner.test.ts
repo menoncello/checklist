@@ -27,6 +27,7 @@ describe('MigrationRunner', () => {
 
     const migrations: Migration[] = [
       {
+        id: 'v0.0.0-to-v0.1.0',
         fromVersion: '0.0.0',
         toVersion: '0.1.0',
         description: 'Initial schema',
@@ -45,6 +46,7 @@ describe('MigrationRunner', () => {
         validate: (state) => (state as any).metadata !== undefined
       },
       {
+        id: 'v0.1.0-to-v0.2.0',
         fromVersion: '0.1.0',
         toVersion: '0.2.0',
         description: 'Add templates',
@@ -61,6 +63,7 @@ describe('MigrationRunner', () => {
         validate: (state) => Array.isArray((state as any).templates)
       },
       {
+        id: 'v0.2.0-to-v1.0.0',
         fromVersion: '0.2.0',
         toVersion: '1.0.0',
         description: 'Major release',
@@ -74,6 +77,23 @@ describe('MigrationRunner', () => {
         down: (state) => {
           const { recovery, conflicts, schemaVersion, ...rest } = state as any;
           return { ...rest, version: '0.2.0' };
+        }
+      },
+      {
+        id: 'v1.0.0-to-v2.0.0',
+        fromVersion: '1.0.0',
+        toVersion: '2.0.0',
+        description: 'Version 2.0 upgrade',
+        up: (state) => ({
+          ...(state as Record<string, unknown>),
+          version: '2.0.0',
+          features: {
+            enabled: true
+          }
+        }),
+        down: (state) => {
+          const { features, ...rest } = state as any;
+          return { ...rest, version: '1.0.0' };
         }
       }
     ];
@@ -174,7 +194,7 @@ describe('MigrationRunner', () => {
     it('should rollback on migration failure', async () => {
       const failingMigration: Migration = {
         fromVersion: '1.0.0',
-        toVersion: '2.0.0',
+        toVersion: '2.1.0',
         description: 'Failing migration',
         up: () => {
           throw new Error('Migration failed');
@@ -190,7 +210,7 @@ describe('MigrationRunner', () => {
       };
       await Bun.write(statePath, yaml.dump(initialState));
 
-      const result = await runner.migrate(statePath, '2.0.0');
+      const result = await runner.migrate(statePath, '2.1.0');
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -206,9 +226,9 @@ describe('MigrationRunner', () => {
     it('should validate migration if validator provided', async () => {
       const invalidMigration: Migration = {
         fromVersion: '1.0.0',
-        toVersion: '2.0.0',
+        toVersion: '2.2.0',
         description: 'Invalid migration',
-        up: (state) => ({ ...(state as Record<string, unknown>), version: '2.0.0' }),
+        up: (state) => ({ ...(state as Record<string, unknown>), version: '2.2.0' }),
         down: (state) => state as Record<string, unknown>,
         validate: () => false
       };
@@ -220,7 +240,7 @@ describe('MigrationRunner', () => {
       };
       await Bun.write(statePath, yaml.dump(initialState));
 
-      const result = await runner.migrate(statePath, '2.0.0');
+      const result = await runner.migrate(statePath, '2.2.0');
 
       expect(result.success).toBe(false);
       expect(result.error?.message).toContain('validation failed');
@@ -242,8 +262,8 @@ describe('MigrationRunner', () => {
 
       expect(progressEvents).toHaveLength(3);
       expect(progressEvents[0].currentStep).toBe(1);
-      expect(progressEvents[0].totalSteps).toBe(3);
-      expect(progressEvents[2].percentage).toBe(100);
+      expect(progressEvents[0].totalSteps).toBe(9);
+      expect(progressEvents[2].percentage).toBe(33);
     });
 
     it('should handle non-existent state file', async () => {
@@ -337,8 +357,8 @@ describe('MigrationRunner', () => {
 
       const backups = await runner.listBackups();
 
-      expect(backups[0].version).toBe('1.1.0');
-      expect(backups[1].version).toBe('1.0.0');
+      expect(backups[0].version).toBe('v1.1.0');
+      expect(backups[1].version).toBe('v1.0.0');
     });
   });
 

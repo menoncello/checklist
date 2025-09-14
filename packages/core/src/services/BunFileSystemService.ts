@@ -93,18 +93,12 @@ export class BunFileSystemService
   }
 
   // Directory Operations
-  async createDirectory(
-    dirPath: string,
-    options?: { recursive?: boolean; mode?: number }
-  ): Promise<void> {
-    await this.dirOps.createDirectory(dirPath, options);
+  async createDirectory(dirPath: string, recursive?: boolean): Promise<void> {
+    await this.dirOps.createDirectory(dirPath, { recursive });
   }
 
-  async removeDirectory(
-    dirPath: string,
-    options?: { recursive?: boolean; force?: boolean }
-  ): Promise<void> {
-    await this.dirOps.removeDirectory(dirPath, options);
+  async removeDirectory(dirPath: string, recursive?: boolean): Promise<void> {
+    await this.dirOps.removeDirectory(dirPath, { recursive });
   }
 
   async readDirectory(dirPath: string): Promise<string[]> {
@@ -142,11 +136,22 @@ export class BunFileSystemService
   }
 
   // File Watching
-  watchFile(
+  watch(
     filePath: string,
     handler: FileChangeHandler,
     options?: WatchOptions
   ): () => void {
     return this.watcher.watchFile(filePath, handler, options);
+  }
+
+  // Required BaseService methods
+  protected async onInitialize(): Promise<void> {
+    // Initialize file system service components
+    this.logger.debug({ msg: 'Initializing BunFileSystemService' });
+  }
+
+  protected async onShutdown(): Promise<void> {
+    // Clean up any resources
+    this.logger.debug({ msg: 'Shutting down BunFileSystemService' });
   }
 }

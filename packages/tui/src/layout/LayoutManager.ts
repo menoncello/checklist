@@ -10,7 +10,7 @@ import type {
   LayoutContext,
   LayoutRender,
   View,
-} from '../views/types.js';
+} from '../views/types';
 
 export class LayoutManager {
   private readonly components = new Map<string, LayoutComponent>();

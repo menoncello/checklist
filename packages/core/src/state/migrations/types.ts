@@ -1,9 +1,11 @@
 export interface Migration {
+  id?: string;
   fromVersion: string;
   toVersion: string;
   description: string;
   up: (state: unknown) => Record<string, unknown>;
   down: (state: unknown) => Record<string, unknown>;
+  migrate?: (state: unknown) => Promise<unknown>;
   validate?: (state: unknown) => boolean;
 }
 
@@ -41,6 +43,7 @@ export interface BackupInfo {
   path: string;
   version: string;
   timestamp: string;
+  createdAt?: string;
   size: number;
 }
 
@@ -68,6 +71,7 @@ export interface MigrationRecord {
   from: string;
   to: string;
   applied: string;
+  appliedAt?: string;
   changes?: string[];
 }
 

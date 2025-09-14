@@ -1,2 +1,2 @@
 // Re-export from modular implementation
-export * from './virtuallist';
+export * from './virtuallist/VirtualList';

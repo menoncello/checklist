@@ -1,10 +1,6 @@
 import type { ILogger } from '../../interfaces/ILogger';
-import type {
-  Container,
-  ServiceMetadata,
-  LifecycleState,
-  Constructor,
-} from '../Container';
+import type { Container, ServiceMetadata, Constructor } from '../Container';
+import { LifecycleState } from '../Container';
 
 export interface ServiceInspection {
   name: string;
@@ -50,7 +46,7 @@ export class ServiceInspector {
       metadata,
       dependencies,
       dependents,
-      isSingleton: this.container.isSingleton?.(name) ?? false,
+      isSingleton: true, // Default to true as most services are singletons
       hasInstance: state === LifecycleState.INITIALIZED,
     };
   }

@@ -1,13 +1,13 @@
-export interface PerformanceMetric {
-  id: string;
-  name: string;
-  value: number;
-  timestamp: number;
+export class PerformanceMetric {
+  id!: string;
+  name!: string;
+  value!: number;
+  timestamp!: number;
   tags?: Record<string, string>;
   metadata?: Record<string, unknown>;
 }
 
-export interface MetricFilter {
+export class MetricFilter {
   name?: string;
   tags?: Record<string, string>;
   startTime?: number;
@@ -41,7 +41,7 @@ export class MetricsTracker {
       name,
       value: duration,
       timestamp: Date.now(),
-      metadata: { type: 'measure', startMark, endMark }
+      metadata: { type: 'measure', startMark, endMark },
     });
 
     return duration;
@@ -67,7 +67,7 @@ export class MetricsTracker {
       value,
       timestamp: Date.now(),
       tags,
-      metadata
+      metadata,
     });
   }
 
@@ -76,22 +76,25 @@ export class MetricsTracker {
 
     if (filter != null) {
       if (filter.name != null) {
-        result = result.filter(m => m.name === filter.name);
+        result = result.filter((m) => m.name === filter.name);
       }
 
       if (filter.startTime != null) {
-        result = result.filter(m => m.timestamp >= filter.startTime!);
+        const startTime = filter.startTime;
+        result = result.filter((m) => m.timestamp >= startTime);
       }
 
       if (filter.endTime != null) {
-        result = result.filter(m => m.timestamp <= filter.endTime!);
+        const endTime = filter.endTime;
+        result = result.filter((m) => m.timestamp <= endTime);
       }
 
       if (filter.tags != null) {
-        result = result.filter(m => {
+        const filterTags = filter.tags;
+        result = result.filter((m) => {
           if (m.tags == null) return false;
-          return Object.entries(filter.tags!).every(
-            ([key, value]) => m.tags![key] === value
+          return Object.entries(filterTags).every(
+            ([key, value]) => m.tags?.[key] === value
           );
         });
       }
@@ -113,8 +116,8 @@ export class MetricsTracker {
     p95: number;
   } {
     const values = this.metrics
-      .filter(m => m.name === metricName)
-      .map(m => m.value)
+      .filter((m) => m.name === metricName)
+      .map((m) => m.value)
       .sort((a, b) => a - b);
 
     if (values.length === 0) {
@@ -128,7 +131,7 @@ export class MetricsTracker {
       max: values[values.length - 1],
       average: sum / values.length,
       median: this.percentile(values, 50),
-      p95: this.percentile(values, 95)
+      p95: this.percentile(values, 95),
     };
   }
 

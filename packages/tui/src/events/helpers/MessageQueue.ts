@@ -1,11 +1,11 @@
-export interface BusMessage {
-  id: string;
-  type: string;
-  data: unknown;
-  source: string;
+export class BusMessage {
+  id!: string;
+  type!: string;
+  data!: unknown;
+  source!: string;
   target?: string | string[];
-  timestamp: number;
-  priority: number;
+  timestamp!: number;
+  priority!: number;
   ttl?: number;
   metadata?: Record<string, unknown>;
 }
@@ -19,11 +19,7 @@ export class MessageQueue {
   private paused = false;
   private batchSize = 10;
 
-  constructor(
-    maxQueueSize = 1000,
-    maxHistorySize = 500,
-    batchSize = 10
-  ) {
+  constructor(maxQueueSize = 1000, maxHistorySize = 500, batchSize = 10) {
     this.maxQueueSize = maxQueueSize;
     this.maxHistorySize = maxHistorySize;
     this.batchSize = batchSize;
@@ -83,7 +79,9 @@ export class MessageQueue {
     try {
       while (this.messageQueue.length > 0 && !this.paused) {
         const batch = this.messageQueue.splice(0, this.batchSize);
-        const validMessages = batch.filter(msg => !this.isMessageExpired(msg));
+        const validMessages = batch.filter(
+          (msg) => !this.isMessageExpired(msg)
+        );
 
         if (validMessages.length > 0) {
           await processor(validMessages);
@@ -111,7 +109,7 @@ export class MessageQueue {
   }
 
   private async yield(): Promise<void> {
-    return new Promise(resolve => setImmediate(resolve));
+    return new Promise((resolve) => setImmediate(resolve));
   }
 
   public pause(): void {
@@ -131,27 +129,26 @@ export class MessageQueue {
     return this.messageQueue.length;
   }
 
-  public getMessageHistory(
-    filter?: {
-      type?: string;
-      source?: string;
-      limit?: number;
-      since?: number;
-    }
-  ): BusMessage[] {
+  public getMessageHistory(filter?: {
+    type?: string;
+    source?: string;
+    limit?: number;
+    since?: number;
+  }): BusMessage[] {
     let filtered = this.messageHistory;
 
     if (filter != null) {
       if (filter.type != null) {
-        filtered = filtered.filter(msg => msg.type === filter.type);
+        filtered = filtered.filter((msg) => msg.type === filter.type);
       }
 
       if (filter.source != null) {
-        filtered = filtered.filter(msg => msg.source === filter.source);
+        filtered = filtered.filter((msg) => msg.source === filter.source);
       }
 
       if (filter.since != null) {
-        filtered = filtered.filter(msg => msg.timestamp >= filter.since!);
+        const since = filter.since;
+        filtered = filtered.filter((msg) => msg.timestamp >= since);
       }
 
       if (filter.limit != null) {
@@ -197,7 +194,7 @@ export class MessageQueue {
       historySize: this.messageHistory.length,
       paused: this.paused,
       processing: this.processingQueue,
-      batchSize: this.batchSize
+      batchSize: this.batchSize,
     };
   }
 

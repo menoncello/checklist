@@ -1,5 +1,5 @@
-import { Screen } from '../framework/UIFramework.js';
-import { ScreenStack } from './ScreenStack.js';
+import { Screen } from '../framework/UIFramework';
+import { ScreenStack } from './ScreenStack';
 
 export interface ScreenTransition {
   type: 'push' | 'pop' | 'replace';
@@ -73,7 +73,11 @@ export class ScreenManager {
     const poppedScreen = this.stack.pop();
     const newCurrentScreen = this.stack.current();
 
-    const transition = this.createTransition('pop', poppedScreen, newCurrentScreen);
+    const transition = this.createTransition(
+      'pop',
+      poppedScreen,
+      newCurrentScreen
+    );
     await this.executeTransition(transition, async () => {
       await this.enterScreen(newCurrentScreen);
     });

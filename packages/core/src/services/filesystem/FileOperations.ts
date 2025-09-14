@@ -3,13 +3,19 @@
  * Handles reading, writing, copying, and moving files
  */
 
-import type { ReadOptions, WriteOptions } from '../../interfaces/IFileSystemService';
+import type {
+  ReadOptions,
+  WriteOptions,
+} from '../../interfaces/IFileSystemService';
 import type { Logger } from '../../utils/logger';
 
 export class FileOperations {
   private defaultEncoding: BufferEncoding = 'utf8';
 
-  constructor(private logger: Logger, defaultEncoding?: BufferEncoding) {
+  constructor(
+    private logger: Logger,
+    defaultEncoding?: BufferEncoding
+  ) {
     if (defaultEncoding !== undefined) {
       this.defaultEncoding = defaultEncoding;
     }
@@ -27,18 +33,19 @@ export class FileOperations {
   async readFile(filePath: string, options?: ReadOptions): Promise<string> {
     try {
       const file = Bun.file(filePath);
-      const encoding = options?.encoding ?? this.defaultEncoding;
 
       if (options?.maxLength !== undefined) {
         const buffer = await file.arrayBuffer();
         const limitedBuffer = buffer.slice(0, options.maxLength);
-        return new TextDecoder(encoding).decode(limitedBuffer);
+        return new TextDecoder().decode(limitedBuffer);
       }
 
       return await file.text();
     } catch (error) {
       this.logger.error({ msg: 'Failed to read file', filePath, error });
-      throw new Error(`Failed to read file: ${filePath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to read file: ${filePath} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -48,8 +55,14 @@ export class FileOperations {
       const arrayBuffer = await file.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (error) {
-      this.logger.error({ msg: 'Failed to read file as buffer', filePath, error });
-      throw new Error(`Failed to read file as buffer: ${filePath} - ${(error as Error).message}`);
+      this.logger.error({
+        msg: 'Failed to read file as buffer',
+        filePath,
+        error,
+      });
+      throw new Error(
+        `Failed to read file as buffer: ${filePath} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -70,7 +83,9 @@ export class FileOperations {
       this.logger.debug({ msg: 'File written successfully', filePath, mode });
     } catch (error) {
       this.logger.error({ msg: 'Failed to write file', filePath, error });
-      throw new Error(`Failed to write file: ${filePath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to write file: ${filePath} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -98,7 +113,9 @@ export class FileOperations {
       this.logger.debug({ msg: 'Data appended to file', filePath });
     } catch (error) {
       this.logger.error({ msg: 'Failed to append to file', filePath, error });
-      throw new Error(`Failed to append to file: ${filePath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to append to file: ${filePath} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -116,7 +133,9 @@ export class FileOperations {
       this.logger.debug({ msg: 'File deleted', filePath });
     } catch (error) {
       this.logger.error({ msg: 'Failed to delete file', filePath, error });
-      throw new Error(`Failed to delete file: ${filePath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to delete file: ${filePath} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -134,8 +153,15 @@ export class FileOperations {
 
       this.logger.debug({ msg: 'File copied', source, destination });
     } catch (error) {
-      this.logger.error({ msg: 'Failed to copy file', source, destination, error });
-      throw new Error(`Failed to copy file: ${source} -> ${destination} - ${(error as Error).message}`);
+      this.logger.error({
+        msg: 'Failed to copy file',
+        source,
+        destination,
+        error,
+      });
+      throw new Error(
+        `Failed to copy file: ${source} -> ${destination} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -146,8 +172,15 @@ export class FileOperations {
 
       this.logger.debug({ msg: 'File moved', source, destination });
     } catch (error) {
-      this.logger.error({ msg: 'Failed to move file', source, destination, error });
-      throw new Error(`Failed to move file: ${source} -> ${destination} - ${(error as Error).message}`);
+      this.logger.error({
+        msg: 'Failed to move file',
+        source,
+        destination,
+        error,
+      });
+      throw new Error(
+        `Failed to move file: ${source} -> ${destination} - ${(error as Error).message}`
+      );
     }
   }
 

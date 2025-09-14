@@ -39,11 +39,11 @@ export class ControlCharacterParser {
     29: { key: 'ctrl+]', char: '\x1d', ctrl: true },
     30: { key: 'ctrl+^', char: '\x1e', ctrl: true },
     31: { key: 'ctrl+_', char: '\x1f', ctrl: true },
-    127: { key: 'delete', char: '\x7f', ctrl: false, name: 'delete' }
+    127: { key: 'delete', char: '\x7f', ctrl: false, name: 'delete' },
   };
 
   static parse(charCode: number): ControlCharacter | null {
-    return this.controlChars[charCode] || null;
+    return this.controlChars[charCode] ?? null;
   }
 
   static isControlCharacter(charCode: number): boolean {
@@ -58,7 +58,10 @@ export class ControlCharacterParser {
     return Object.values(this.controlChars);
   }
 
-  static parseFromString(str: string, index: number = 0): ControlCharacter | null {
+  static parseFromString(
+    str: string,
+    index: number = 0
+  ): ControlCharacter | null {
     if (index >= str.length) return null;
     return this.parse(str.charCodeAt(index));
   }
@@ -69,7 +72,7 @@ export class ControlCharacterParser {
   }
 
   static formatKeyName(control: ControlCharacter): string {
-    if (control.name) {
+    if (control.name != null && control.name !== '') {
       return control.name;
     }
     return control.key;

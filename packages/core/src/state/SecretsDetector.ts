@@ -122,7 +122,12 @@ export class SecretsDetector {
 
       if (this.isValidSecret(secretMatch)) {
         const position = this.getLineColumn(content, match.index);
-        this.addDetectedSecret(detectedSecrets, pattern.name, secretMatch, position);
+        this.addDetectedSecret(
+          detectedSecrets,
+          pattern.name,
+          secretMatch,
+          position
+        );
       }
     }
   }
@@ -258,5 +263,15 @@ export class SecretsDetector {
         ? `\n  ... and ${detectedSecrets.length - 5} more`
         : '')
     );
+  }
+
+  async detectSecrets(content: string): Promise<boolean> {
+    const patterns = SecretsDetector.patterns;
+    for (const pattern of patterns) {
+      if (pattern.regex.test(content)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

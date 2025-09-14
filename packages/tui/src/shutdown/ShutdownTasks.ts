@@ -1,4 +1,4 @@
-import { ShutdownTask, ShutdownConfig } from './types.js';
+import { ShutdownTask, ShutdownConfig } from './types';
 
 export class ShutdownTasks {
   private config: ShutdownConfig;
@@ -98,7 +98,7 @@ export class ShutdownTasks {
   }
 
   public getTaskById(id: string): ShutdownTask | undefined {
-    return this.tasks.find(task => task.id === id);
+    return this.tasks.find((task) => task.id === id);
   }
 
   public clear(): void {

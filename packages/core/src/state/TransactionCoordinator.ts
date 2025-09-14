@@ -30,8 +30,11 @@ export class TransactionCoordinator {
   }
 
   async beginTransaction(currentState: ChecklistState): Promise<string> {
-    const transactionId = this.transactionManager.beginTransaction(currentState);
-    await this.transactionLogger.logTransaction('BEGIN', transactionId, { snapshot: true });
+    const transactionId =
+      this.transactionManager.beginTransaction(currentState);
+    await this.transactionLogger.logTransaction('BEGIN', transactionId, {
+      snapshot: true,
+    });
     return transactionId;
   }
 
@@ -41,7 +44,12 @@ export class TransactionCoordinator {
     path: string,
     data?: unknown
   ): Promise<void> {
-    const operation = this.transactionManager.addOperation(transactionId, type, path, data);
+    const operation = this.transactionManager.addOperation(
+      transactionId,
+      type,
+      path,
+      data
+    );
     await this.persistOperation(operation, transactionId);
     await this.transactionLogger.logOperation(operation, transactionId);
   }
@@ -50,20 +58,29 @@ export class TransactionCoordinator {
     transactionId: string,
     expectedOperations?: number
   ): Promise<void> {
-    this.transactionManager.validateTransaction(transactionId, expectedOperations);
+    this.transactionManager.validateTransaction(
+      transactionId,
+      expectedOperations
+    );
   }
 
   async commitTransaction(
     transactionId: string,
     stateValidator?: (transaction: Transaction) => Promise<void>
   ): Promise<void> {
-    const transaction = this.transactionManager.commitTransaction(transactionId);
+    const transaction =
+      this.transactionManager.commitTransaction(transactionId);
 
-    if (stateValidator !== undefined) {
-      await this.executeCommitPhase(transaction, stateValidator);
+    try {
+      if (stateValidator !== undefined) {
+        await this.executeCommitPhase(transaction, stateValidator);
+      }
+      await this.finalizeCommit(transactionId, transaction);
+    } catch (error) {
+      // If commit fails, rollback the transaction
+      await this.rollbackTransaction(transactionId);
+      throw error;
     }
-
-    await this.finalizeCommit(transactionId, transaction);
   }
 
   async rollbackTransaction(transactionId: string): Promise<ChecklistState> {
@@ -76,7 +93,10 @@ export class TransactionCoordinator {
     try {
       return this.transactionManager.getTransaction(transactionId);
     } catch (error) {
-      if (error instanceof TransactionError && error.code === 'TRANSACTION_NOT_FOUND') {
+      if (
+        error instanceof TransactionError &&
+        error.code === 'TRANSACTION_NOT_FOUND'
+      ) {
         return null;
       }
       throw error;
@@ -87,9 +107,7 @@ export class TransactionCoordinator {
     return this.transactionManager.getActiveTransactions();
   }
 
-  async recoverFromWAL(
-    currentState: ChecklistState
-  ): Promise<{
+  async recoverFromWAL(currentState: ChecklistState): Promise<{
     recoveredState: ChecklistState;
     recoveredTransactions: number;
   }> {
@@ -113,7 +131,9 @@ export class TransactionCoordinator {
     await this.recovery.rotateWAL(maxSize);
   }
 
-  async getWALEntries(): Promise<{ op: string; key: string; value?: unknown }[]> {
+  async getWALEntries(): Promise<
+    { op: string; key: string; value?: unknown }[]
+  > {
     return await this.wal.getWALEntries();
   }
 
@@ -126,9 +146,16 @@ export class TransactionCoordinator {
     logger.info({ msg: 'Transaction coordinator cleanup completed' });
   }
 
-  private async persistOperation(operation: Operation, transactionId: string): Promise<void> {
+  private async persistOperation(
+    operation: Operation,
+    transactionId: string
+  ): Promise<void> {
     try {
-      await this.wal.writeEntry(operation.type, operation.path, operation.data);
+      await this.wal.writeEntry({
+        op: operation.type as 'write' | 'delete',
+        key: operation.path,
+        value: operation.data,
+      });
     } catch (error) {
       logger.error({
         msg: 'Failed to persist operation to WAL',
@@ -136,11 +163,7 @@ export class TransactionCoordinator {
         operationId: operation.id,
         error,
       });
-      throw new TransactionError(
-        'Failed to persist operation',
-        'PERSISTENCE_FAILED',
-        { transactionId, operationId: operation.id, error: (error as Error).message }
-      );
+      throw new TransactionError('Failed to persist operation', transactionId);
     }
   }
 
@@ -163,28 +186,35 @@ export class TransactionCoordinator {
       });
       throw new TransactionError(
         'Transaction validation failed',
-        'COMMIT_VALIDATION_FAILED',
-        { transactionId: transaction.id, error: (error as Error).message }
+        transaction.id
       );
     }
   }
 
-  private async finalizeCommit(transactionId: string, transaction: Transaction): Promise<void> {
+  private async finalizeCommit(
+    transactionId: string,
+    transaction: Transaction
+  ): Promise<void> {
     this.transactionManager.removeTransaction(transactionId);
     await this.clearWALAfterCommit(transactionId);
     await this.transactionLogger.logTransaction('COMMIT', transactionId, {
       operationCount: transaction.operations.length,
-      duration: (transaction.committedAt?.getTime() ?? 0) - transaction.startedAt.getTime(),
+      duration:
+        (transaction.committedAt?.getTime() ?? 0) -
+        transaction.startedAt.getTime(),
     });
   }
 
   private async clearWALAfterCommit(transactionId: string): Promise<void> {
     try {
-      // In a real implementation, you would clear specific WAL entries for this transaction
-      // For now, we'll just log the intent
+      await this.wal.clear();
       logger.debug({ msg: 'WAL entries cleared after commit', transactionId });
     } catch (error) {
-      logger.warn({ msg: 'Failed to clear WAL entries after commit', transactionId, error });
+      logger.warn({
+        msg: 'Failed to clear WAL entries after commit',
+        transactionId,
+        error,
+      });
     }
   }
 }

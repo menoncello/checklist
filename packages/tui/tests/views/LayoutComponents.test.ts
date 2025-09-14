@@ -341,7 +341,7 @@ describe('Layout Components', () => {
       layoutManager.registerComponent(mockHeader);
       layoutManager.registerComponent(mockFooter);
 
-      const layout = layoutManager.renderLayout(80, 24, mockView);
+      const layout = layoutManager.renderLayout({ width: 80, height: 24, currentView: mockView });
 
       expect(layout.header).toContain('HEADER: test-header (80x24)');
       expect(layout.footer).toContain('FOOTER: test-footer (80x24)');
@@ -354,7 +354,7 @@ describe('Layout Components', () => {
       layoutManager.registerComponent(mockHeader);
       layoutManager.registerComponent(mockFooter);
 
-      const layout = layoutManager.renderLayout(100, 30, mockView);
+      const layout = layoutManager.renderLayout({ width: 100, height: 30, currentView: mockView });
 
       expect(layout.content.x).toBe(0); // No sidebars
       expect(layout.content.y).toBeGreaterThan(0); // Header takes space

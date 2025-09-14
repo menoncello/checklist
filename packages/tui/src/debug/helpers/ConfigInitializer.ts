@@ -57,7 +57,14 @@ export class ConfigInitializer {
     };
   }
 
-  static setupEventCapture(logFunction: (level: string, category: string, message: string, data?: any) => void): void {
+  static setupEventCapture(
+    logFunction: (
+      level: string,
+      category: string,
+      message: string,
+      data?: unknown
+    ) => void
+  ): void {
     if (typeof process !== 'undefined') {
       // Capture uncaught exceptions
       process.on('uncaughtException', (error) => {

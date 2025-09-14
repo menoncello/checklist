@@ -1,5 +1,5 @@
-import { CapabilityTester } from './CapabilityTester.js';
-import { CapabilityTest } from './types.js';
+import { CapabilityTester } from './CapabilityTester';
+import { CapabilityTest } from './types';
 
 export interface TestResult {
   success: boolean;
@@ -24,7 +24,7 @@ export class TestRunner {
     const warnings: string[] = [];
     const fallbacksUsed: string[] = [];
 
-    const testPromises = tests.map(test =>
+    const testPromises = tests.map((test) =>
       this.runSingleTest(test, warnings, fallbacksUsed)
     );
 
@@ -72,7 +72,7 @@ export class TestRunner {
 
   public async testSpecificCapability(capability: string): Promise<boolean> {
     const tests = this.tester.createCapabilityTests();
-    const test = tests.find(t => t.name === capability);
+    const test = tests.find((t) => t.name === capability);
 
     if (test === undefined) {
       throw new Error(`Unknown capability: ${capability}`);

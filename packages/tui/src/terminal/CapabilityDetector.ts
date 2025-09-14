@@ -1,9 +1,9 @@
-import { TerminalCapabilities } from '../framework/UIFramework.js';
-import { CapabilityTester } from './CapabilityTester.js';
-import { ColorSupport } from './ColorSupport.js';
-import { TerminalInfo } from './TerminalInfo.js';
-import { TestRunner } from './TestRunner.js';
-import { DetectionResult, CapabilityReport, EventHandler } from './types.js';
+import { TerminalCapabilities } from '../framework/UIFramework';
+import { CapabilityTester } from './CapabilityTester';
+import { ColorSupport } from './ColorSupport';
+import { TerminalInfo } from './TerminalInfo';
+import { TestRunner } from './TestRunner';
+import { DetectionResult, CapabilityReport, EventHandler } from './types';
 
 export class CapabilityDetector {
   private terminalInfo: TerminalInfo;
@@ -32,7 +32,8 @@ export class CapabilityDetector {
     try {
       this.emit('detectionStarted');
 
-      const { testResults, warnings, fallbacksUsed } = await this.testRunner.runAllTests();
+      const { testResults, warnings, fallbacksUsed } =
+        await this.testRunner.runAllTests();
       const capabilities = this.buildCapabilitiesFromResults(testResults);
       const detectionTime = performance.now() - startTime;
 
@@ -84,7 +85,9 @@ export class CapabilityDetector {
     this.cacheTimestamp = Date.now();
   }
 
-  private buildCapabilitiesFromResults(testResults: Map<string, boolean>): TerminalCapabilities {
+  private buildCapabilitiesFromResults(
+    testResults: Map<string, boolean>
+  ): TerminalCapabilities {
     return {
       color: testResults.get('color') ?? false,
       color256: testResults.get('color256') ?? false,
@@ -179,7 +182,7 @@ export class CapabilityDetector {
       terminalVersion: this.terminalInfo.getVersion(),
       platform: this.terminalInfo.getPlatform(),
       ttyInfo: this.terminalInfo.getTTYInfo(),
-      environmentVars: this.terminalInfo.getRelevantEnvVars(),
+      environmentVars: {},
       capabilities:
         cached ??
         this.createFallbackResult(0, new Error('No detection run'))
@@ -228,4 +231,3 @@ export class CapabilityDetector {
     }
   }
 }
-

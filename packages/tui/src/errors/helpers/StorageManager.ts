@@ -1,12 +1,12 @@
-import { PreservedState } from './SnapshotManager.js';
+import { PreservedState } from './SnapshotManager';
 
-export interface StatePreservationMetrics {
-  totalStates: number;
-  totalSize: number;
-  oldestState: number;
-  newestState: number;
-  expiredStates: number;
-  compressionRatio: number;
+export class StatePreservationMetrics {
+  totalStates!: number;
+  totalSize!: number;
+  oldestState!: number;
+  newestState!: number;
+  expiredStates!: number;
+  compressionRatio!: number;
 }
 
 export class StorageManager {
@@ -28,9 +28,14 @@ export class StorageManager {
     return this.currentStorageSize;
   }
 
-  public recalculateStorageSize(states: Map<string, PreservedState>, estimateSize: (state: PreservedState) => number): void {
-    this.currentStorageSize = Array.from(states.values())
-      .reduce((total, state) => total + estimateSize(state), 0);
+  public recalculateStorageSize(
+    states: Map<string, PreservedState>,
+    estimateSize: (state: PreservedState) => number
+  ): void {
+    this.currentStorageSize = Array.from(states.values()).reduce(
+      (total, state) => total + estimateSize(state),
+      0
+    );
   }
 
   public performCleanup(
@@ -75,11 +80,14 @@ export class StorageManager {
 
     return {
       cleaned: toDelete.length,
-      freed: freedSize
+      freed: freedSize,
     };
   }
 
-  public startCleanupTimer(intervalMs: number, cleanupCallback: () => void): void {
+  public startCleanupTimer(
+    intervalMs: number,
+    cleanupCallback: () => void
+  ): void {
     if (this.cleanupTimer != null) {
       clearInterval(this.cleanupTimer);
     }
@@ -87,19 +95,24 @@ export class StorageManager {
     this.cleanupTimer = setInterval(cleanupCallback, intervalMs);
   }
 
-  public startPersistTimer(intervalMs: number, persistCallback: () => Promise<void>): void {
+  public startPersistTimer(
+    intervalMs: number,
+    persistCallback: () => Promise<void>
+  ): void {
     if (this.persistTimer != null) {
       clearInterval(this.persistTimer);
     }
 
     this.persistTimer = setInterval(() => {
-      persistCallback().catch(error => {
+      persistCallback().catch((error) => {
         console.error('Failed to persist state:', error);
       });
     }, intervalMs);
   }
 
-  public async persistToDisk(states: Map<string, PreservedState>): Promise<void> {
+  public async persistToDisk(
+    states: Map<string, PreservedState>
+  ): Promise<void> {
     if (this.persistPath == null) {
       return;
     }
@@ -107,7 +120,7 @@ export class StorageManager {
     const data = {
       timestamp: Date.now(),
       states: Object.fromEntries(states.entries()),
-      totalSize: this.currentStorageSize
+      totalSize: this.currentStorageSize,
     };
 
     try {
@@ -116,9 +129,11 @@ export class StorageManager {
       const serialized = JSON.stringify(data);
 
       // Simulate async file operation
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
-      console.log(`Persisted ${states.size} states to ${this.persistPath} (${serialized.length} bytes)`);
+      console.log(
+        `Persisted ${states.size} states to ${this.persistPath} (${serialized.length} bytes)`
+      );
     } catch (error) {
       throw new Error(
         `Failed to persist to disk: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -134,17 +149,21 @@ export class StorageManager {
     try {
       // In a real implementation, use fs.readFile or similar
       // For now, we'll simulate the operation
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Simulate no persisted data for now
       return new Map<string, PreservedState>();
     } catch (error) {
-      console.warn(`Failed to load from disk: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn(
+        `Failed to load from disk: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       return null;
     }
   }
 
-  public getMetrics(states: Map<string, PreservedState>): StatePreservationMetrics {
+  public getMetrics(
+    states: Map<string, PreservedState>
+  ): StatePreservationMetrics {
     const stateArray = Array.from(states.values());
 
     if (stateArray.length === 0) {
@@ -154,23 +173,24 @@ export class StorageManager {
         oldestState: 0,
         newestState: 0,
         expiredStates: 0,
-        compressionRatio: 1
+        compressionRatio: 1,
       };
     }
 
     const now = Date.now();
-    const timestamps = stateArray.map(s => s.timestamp);
-    const expiredCount = stateArray.filter(s =>
-      s.expiresAt != null && now > s.expiresAt
+    const timestamps = stateArray.map((s) => s.timestamp);
+    const expiredCount = stateArray.filter(
+      (s) => s.expiresAt != null && now > s.expiresAt
     ).length;
 
     // Calculate compression ratio (simplified)
-    const compressedStates = stateArray.filter(s =>
-      typeof s.data === 'string' && s.data.startsWith('COMPRESSED:')
+    const compressedStates = stateArray.filter(
+      (s) => typeof s.data === 'string' && s.data.startsWith('COMPRESSED:')
     ).length;
-    const compressionRatio = stateArray.length > 0
-      ? 1 - (compressedStates / stateArray.length) * 0.3 // Assume 30% compression
-      : 1;
+    const compressionRatio =
+      stateArray.length > 0
+        ? 1 - (compressedStates / stateArray.length) * 0.3 // Assume 30% compression
+        : 1;
 
     return {
       totalStates: stateArray.length,
@@ -178,7 +198,7 @@ export class StorageManager {
       oldestState: Math.min(...timestamps),
       newestState: Math.max(...timestamps),
       expiredStates: expiredCount,
-      compressionRatio
+      compressionRatio,
     };
   }
 

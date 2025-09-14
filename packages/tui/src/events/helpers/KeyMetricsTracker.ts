@@ -1,17 +1,17 @@
-import { KeyEvent } from './KeyBindingManager.js';
+import { KeyEvent } from './KeyBindingManager';
 
-export interface KeyMetrics {
-  count: number;
-  lastPressed: number;
-  averageInterval: number;
-  totalTime: number;
+export class KeyMetrics {
+  count!: number;
+  lastPressed!: number;
+  averageInterval!: number;
+  totalTime!: number;
 }
 
-export interface KeySequenceMetrics {
-  sequence: string;
-  startTime: number;
-  keyCount: number;
-  completed: boolean;
+export class KeySequenceMetrics {
+  sequence!: string;
+  startTime!: number;
+  keyCount!: number;
+  completed!: boolean;
 }
 
 export class KeyMetricsTracker {
@@ -101,7 +101,9 @@ export class KeyMetricsTracker {
     return this.activeSequence ? { ...this.activeSequence } : null;
   }
 
-  public getMostUsedKeys(limit: number = 10): Array<{ key: string; count: number }> {
+  public getMostUsedKeys(
+    limit: number = 10
+  ): Array<{ key: string; count: number }> {
     return Array.from(this.keyMetrics.entries())
       .map(([key, metrics]) => ({ key, count: metrics.count }))
       .sort((a, b) => b.count - a.count)
@@ -127,7 +129,8 @@ export class KeyMetricsTracker {
     let count = 0;
 
     for (let i = 1; i < this.keyHistory.length; i++) {
-      totalInterval += this.keyHistory[i].timestamp - this.keyHistory[i - 1].timestamp;
+      totalInterval +=
+        this.keyHistory[i].timestamp - this.keyHistory[i - 1].timestamp;
       count++;
     }
 
@@ -149,7 +152,9 @@ export class KeyMetricsTracker {
     let maxCount = 0;
 
     if (this.keyHistory.length > 1) {
-      sessionDuration = this.keyHistory[this.keyHistory.length - 1].timestamp - this.keyHistory[0].timestamp;
+      sessionDuration =
+        this.keyHistory[this.keyHistory.length - 1].timestamp -
+        this.keyHistory[0].timestamp;
     }
 
     for (const [key, metrics] of this.keyMetrics.entries()) {
@@ -159,16 +164,15 @@ export class KeyMetricsTracker {
       }
     }
 
-    const averageKeysPerMinute = sessionDuration > 0
-      ? (totalKeys / (sessionDuration / 1000 / 60))
-      : 0;
+    const averageKeysPerMinute =
+      sessionDuration > 0 ? totalKeys / (sessionDuration / 1000 / 60) : 0;
 
     return {
       totalKeys,
       uniqueKeys,
       sessionDuration,
       averageKeysPerMinute,
-      mostUsedKey
+      mostUsedKey,
     };
   }
 
@@ -182,8 +186,8 @@ export class KeyMetricsTracker {
     const now = Date.now();
     const initialLength = this.keyHistory.length;
 
-    this.keyHistory = this.keyHistory.filter(event =>
-      now - event.timestamp <= maxAge
+    this.keyHistory = this.keyHistory.filter(
+      (event) => now - event.timestamp <= maxAge
     );
 
     return initialLength - this.keyHistory.length;

@@ -1,4 +1,4 @@
-import { TerminalCapabilities } from '../framework/UIFramework.js';
+import { TerminalCapabilities } from '../framework/UIFramework';
 
 export interface CapabilityTest {
   name: string;

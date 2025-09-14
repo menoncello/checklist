@@ -17,33 +17,42 @@ export class TransactionRecovery {
     private wal: WriteAheadLog
   ) {}
 
-  async recoverFromWAL(
-    currentState: ChecklistState
-  ): Promise<{
+  async recoverFromWAL(currentState: ChecklistState): Promise<{
     recoveredState: ChecklistState;
     recoveredTransactions: number;
   }> {
     try {
-      logger.info({ msg: 'Starting WAL recovery' });
-      const entries = await this.prepareWALRecovery();
-
-      if (entries.length === 0) {
-        logger.info({ msg: 'No WAL entries found for recovery' });
-        return { recoveredState: currentState, recoveredTransactions: 0 };
-      }
-
-      const result = await this.executeWALRecovery(currentState, entries);
-      await this.finalizeRecovery(entries.length, result.recoveredTransactions);
-
-      return result;
+      return await this.performWALRecovery(currentState);
     } catch (error) {
-      logger.error({ msg: 'WAL recovery failed', error });
-      throw new TransactionError(
-        'Failed to recover from WAL',
-        'WAL_RECOVERY_FAILED',
-        { error: (error as Error).message }
-      );
+      return this.handleWALRecoveryError(error);
     }
+  }
+
+  private async performWALRecovery(currentState: ChecklistState): Promise<{
+    recoveredState: ChecklistState;
+    recoveredTransactions: number;
+  }> {
+    logger.info({ msg: 'Starting WAL recovery' });
+    const entries = await this.prepareWALRecovery();
+
+    if (entries.length === 0) {
+      return this.handleNoWALEntries(currentState);
+    }
+
+    const result = await this.executeWALRecovery(currentState, entries);
+    await this.finalizeRecovery(entries.length, result.recoveredTransactions);
+
+    return result;
+  }
+
+  private handleNoWALEntries(currentState: ChecklistState) {
+    logger.info({ msg: 'No WAL entries found for recovery' });
+    return { recoveredState: currentState, recoveredTransactions: 0 };
+  }
+
+  private handleWALRecoveryError(error: unknown): never {
+    logger.error({ msg: 'WAL recovery failed', error });
+    throw new TransactionError('Failed to recover from WAL', 'wal-recovery');
   }
 
   async hasIncompleteTransactions(): Promise<boolean> {
@@ -51,7 +60,10 @@ export class TransactionRecovery {
       const entries = await this.wal.getWALEntries();
       return entries.length > 0;
     } catch (error) {
-      logger.error({ msg: 'Failed to check for incomplete transactions', error });
+      logger.error({
+        msg: 'Failed to check for incomplete transactions',
+        error,
+      });
       return false;
     }
   }
@@ -62,26 +74,38 @@ export class TransactionRecovery {
 
   async rotateWAL(maxSize: number = 10 * 1024 * 1024): Promise<void> {
     const currentSize = await this.getWALSize();
-    if (currentSize > maxSize) {
-      logger.info({
-        msg: 'Rotating WAL due to size',
-        currentSize,
-        maxSize,
-      });
-      await this.wal.rotate();
+
+    if (this.shouldRotateWAL(currentSize, maxSize)) {
+      await this.performWALRotation(currentSize, maxSize);
     }
   }
 
-  private async prepareWALRecovery(): Promise<{ op: string; key: string; value?: unknown }[]> {
+  private shouldRotateWAL(currentSize: number, maxSize: number): boolean {
+    return currentSize > maxSize;
+  }
+
+  private async performWALRotation(
+    currentSize: number,
+    maxSize: number
+  ): Promise<void> {
+    logger.info({
+      msg: 'Rotating WAL due to size',
+      currentSize,
+      maxSize,
+    });
+    await this.wal.rotate(maxSize);
+  }
+
+  private async prepareWALRecovery(): Promise<
+    { op: string; key: string; value?: unknown }[]
+  > {
     try {
+      // First replay the WAL to load entries from file
+      await this.wal.replay();
       return await this.wal.getWALEntries();
     } catch (error) {
       logger.error({ msg: 'Failed to read WAL entries', error });
-      throw new TransactionError(
-        'Cannot prepare WAL recovery',
-        'WAL_READ_FAILED',
-        { error: (error as Error).message }
-      );
+      throw new TransactionError('Cannot prepare WAL recovery', 'wal-read');
     }
   }
 
@@ -120,47 +144,69 @@ export class TransactionRecovery {
     entry: { op: string; key: string; value?: unknown }
   ): Promise<ChecklistState> {
     const { op, key, value } = entry;
+    this.logWALEntryProcessing(op, key, value);
 
+    const newState = { ...currentState };
+    this.applyWALOperation(newState, op, key, value);
+
+    return newState;
+  }
+
+  private logWALEntryProcessing(
+    op: string,
+    key: string,
+    value?: unknown
+  ): void {
     logger.debug({
       msg: 'Processing WAL entry',
       operation: op,
       key,
       hasValue: value !== undefined,
     });
+  }
 
-    // Apply operation based on type
-    const newState = { ...currentState };
-
+  private applyWALOperation(
+    newState: ChecklistState,
+    op: string,
+    key: string,
+    value?: unknown
+  ): void {
     switch (op) {
       case 'SET':
-        if (value !== undefined) {
-          // Apply the state change
-          this.applyStateChange(newState, key, value);
-        }
+        this.handleSetOperation(newState, key, value);
         break;
-
       case 'DELETE':
         this.applyStateDeletion(newState, key);
         break;
-
       case 'TRANSACTION_BEGIN':
-        // Transaction metadata, no state change needed
-        break;
-
       case 'TRANSACTION_COMMIT':
-        // Transaction finalization, no additional state change
         break;
-
       default:
-        logger.warn({ msg: 'Unknown WAL operation', operation: op, key });
+        this.handleUnknownOperation(op, key);
     }
-
-    return newState;
   }
 
-  private applyStateChange(state: ChecklistState, key: string, value: unknown): void {
+  private handleSetOperation(
+    newState: ChecklistState,
+    key: string,
+    value?: unknown
+  ): void {
+    if (value !== undefined) {
+      this.applyStateChange(newState, key, value);
+    }
+  }
+
+  private handleUnknownOperation(op: string, key: string): void {
+    logger.warn({ msg: 'Unknown WAL operation', operation: op, key });
+  }
+
+  private applyStateChange(
+    state: ChecklistState,
+    key: string,
+    value: unknown
+  ): void {
     const keyPath = key.split('.');
-    let current: Record<string, unknown> = state as Record<string, unknown>;
+    let current = state as unknown as Record<string, unknown>;
 
     // Navigate to the parent object
     for (let i = 0; i < keyPath.length - 1; i++) {
@@ -168,7 +214,7 @@ export class TransactionRecovery {
       if (current[part] === undefined) {
         current[part] = {};
       }
-      current = current[part];
+      current = current[part] as Record<string, unknown>;
     }
 
     // Set the final value
@@ -178,7 +224,7 @@ export class TransactionRecovery {
 
   private applyStateDeletion(state: ChecklistState, key: string): void {
     const keyPath = key.split('.');
-    let current: Record<string, unknown> = state as Record<string, unknown>;
+    let current = state as unknown as Record<string, unknown>;
 
     // Navigate to the parent object
     for (let i = 0; i < keyPath.length - 1; i++) {
@@ -186,7 +232,7 @@ export class TransactionRecovery {
       if (current[part] === undefined) {
         return; // Path doesn't exist, nothing to delete
       }
-      current = current[part];
+      current = current[part] as Record<string, unknown>;
     }
 
     // Delete the final key
@@ -194,22 +240,36 @@ export class TransactionRecovery {
     delete current[finalKey];
   }
 
-  private async finalizeRecovery(totalEntries: number, recoveredCount: number): Promise<void> {
+  private async finalizeRecovery(
+    totalEntries: number,
+    recoveredCount: number
+  ): Promise<void> {
+    this.logRecoveryCompletion(totalEntries, recoveredCount);
+
+    if (recoveredCount > 0) {
+      await this.clearWALAfterRecovery();
+    }
+  }
+
+  private logRecoveryCompletion(
+    totalEntries: number,
+    recoveredCount: number
+  ): void {
     logger.info({
       msg: 'WAL recovery completed',
       totalEntries,
       recoveredEntries: recoveredCount,
       failedEntries: totalEntries - recoveredCount,
     });
+  }
 
-    if (recoveredCount > 0) {
-      // Clear WAL after successful recovery
-      try {
-        await this.wal.clear();
-        logger.info({ msg: 'WAL cleared after successful recovery' });
-      } catch (error) {
-        logger.warn({ msg: 'Failed to clear WAL after recovery', error });
-      }
+  private async clearWALAfterRecovery(): Promise<void> {
+    try {
+      await this.wal.createBackup();
+      await this.wal.clear();
+      logger.info({ msg: 'WAL cleared after successful recovery' });
+    } catch (error) {
+      logger.warn({ msg: 'Failed to clear WAL after recovery', error });
     }
   }
 }

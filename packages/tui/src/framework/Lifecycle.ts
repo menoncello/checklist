@@ -1,4 +1,4 @@
-import { LifecycleState } from './UIFramework.js';
+import { LifecycleState } from './UIFramework';
 
 export type LifecyclePhase =
   | 'initializing'

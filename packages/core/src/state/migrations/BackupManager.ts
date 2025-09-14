@@ -9,14 +9,30 @@ export class BackupManager {
   private backupDir: string;
   private maxBackups: number;
 
-  constructor(backupDir: string = '.checklist/.backup', maxBackups: number = 10) {
+  constructor(
+    backupDir: string = '.checklist/.backup',
+    maxBackups: number = 10
+  ) {
     this.backupDir = backupDir;
     this.maxBackups = maxBackups;
   }
 
+  private validateBackupDir(backupDir: string): void {
+    // Check for path traversal attempts
+    if (
+      backupDir.includes('..') ||
+      backupDir.includes('/etc/') ||
+      backupDir.includes('\\etc\\')
+    ) {
+      throw new Error('Invalid backup directory path');
+    }
+  }
+
   async createBackup(statePath: string, version: string): Promise<string> {
+    this.validateBackupDir(this.backupDir);
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFilename = `state-${version}-${timestamp}.yaml`;
+    const backupFilename = `state-v${version}-${timestamp}.yaml`;
     const backupPath = path.join(this.backupDir, backupFilename);
 
     try {
@@ -53,11 +69,18 @@ export class BackupManager {
       if (backups.length <= this.maxBackups) return;
 
       const backupsToDelete = backups
-        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .sort((a, b) => {
+          const dateA =
+            a.createdAt != null ? new Date(a.createdAt).getTime() : 0;
+          const dateB =
+            b.createdAt != null ? new Date(b.createdAt).getTime() : 0;
+          return dateA - dateB;
+        })
         .slice(0, backups.length - this.maxBackups);
 
       for (const backup of backupsToDelete) {
-        await Bun.write(backup.path, ''); // Delete file content
+        const { unlink } = await import('fs/promises');
+        await unlink(backup.path);
         logger.debug({ msg: 'Rotated old backup', path: backup.path });
       }
     } catch (error) {
@@ -77,21 +100,32 @@ export class BackupManager {
         const fullPath = path.join(this.backupDir, entry);
         const stat = await Bun.file(fullPath).stat();
 
-        const match = entry.match(/state-(.+)-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/);
+        const match = entry.match(
+          /state-(v.+)-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)/
+        );
         if (match) {
           const [, version, timestamp] = match;
-          const createdAt = new Date(timestamp.replace(/-/g, ':').replace(/T(\d{2}):(\d{2}):(\d{2})/, 'T$1:$2:$3'));
+          // Convert from "2025-09-14T15-44-55-964Z" to "2025-09-14T15:44:55.964Z"
+          const createdAt = timestamp.replace(
+            /T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/,
+            'T$1:$2:$3.$4Z'
+          );
 
           backups.push({
             path: fullPath,
             version,
+            timestamp: createdAt,
             createdAt,
             size: stat.size,
           });
         }
       }
 
-      return backups.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return backups.sort((a, b) => {
+        const dateA = a.createdAt != null ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt != null ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA; // Sort in descending order (newest first)
+      });
     } catch (error) {
       logger.error({ msg: 'Failed to list backups', error });
       return [];
@@ -151,5 +185,14 @@ export class BackupManager {
     } catch (_error) {
       // Directory creation handled by Bun.write
     }
+  }
+
+  async restoreBackup(backupPath: string): Promise<StateSchema> {
+    const content = await Bun.file(backupPath).text();
+    return yaml.load(content) as StateSchema;
+  }
+
+  setMaxBackups(maxBackups: number): void {
+    this.maxBackups = maxBackups;
   }
 }

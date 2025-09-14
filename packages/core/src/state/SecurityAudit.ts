@@ -55,14 +55,30 @@ export interface SecurityEvent {
 
 export class SecurityAudit {
   private static readonly FLUSH_INTERVAL_MS = 1000; // Flush every second
+  private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  private static readonly MAX_ROTATION_COUNT = 5;
+  private static AUDIT_FILE = '.checklist/security-audit.log'; // Can be overridden for testing
   private static flushInterval: Timer | null = null;
   private static isInitialized = false;
+  private static autoFlushEnabled = true; // Can be disabled for testing
 
   // Composed services
   private static eventLogger = new SecurityEventLogger();
-  private static fileManager = new SecurityAuditFileManager();
+  private static _fileManager: SecurityAuditFileManager | null = null;
   private static statistics = new SecurityStatistics();
-  private static specialEvents = new SecuritySpecialEvents(SecurityAudit.eventLogger);
+  private static specialEvents = new SecuritySpecialEvents(
+    SecurityAudit.eventLogger
+  );
+
+  private static get fileManager(): SecurityAuditFileManager {
+    if (
+      !this._fileManager ||
+      this._fileManager['auditFilePath'] !== this.AUDIT_FILE
+    ) {
+      this._fileManager = new SecurityAuditFileManager(this.AUDIT_FILE);
+    }
+    return this._fileManager;
+  }
 
   /**
    * Initialize the security audit system
@@ -98,7 +114,10 @@ export class SecurityAudit {
     this.eventLogger.addStackTraceIfNeeded(event, options);
     this.eventLogger.addToBuffer(event);
 
-    if (this.eventLogger.shouldFlushImmediately(event)) {
+    if (
+      this.autoFlushEnabled &&
+      this.eventLogger.shouldFlushImmediately(event)
+    ) {
       await this.flush();
     }
   }
@@ -112,9 +131,19 @@ export class SecurityAudit {
     success: boolean,
     details?: Record<string, unknown>
   ): Promise<void> {
-    await this.specialEvents.logStateAccess(operation, filePath, success, details);
+    await this.specialEvents.logStateAccess(
+      operation,
+      filePath,
+      success,
+      details
+    );
 
-    if (this.eventLogger.shouldFlushImmediately(this.eventLogger.getBuffer().slice(-1)[0])) {
+    if (
+      this.autoFlushEnabled &&
+      this.eventLogger.shouldFlushImmediately(
+        this.eventLogger.getBuffer().slice(-1)[0]
+      )
+    ) {
       await this.flush();
     }
   }
@@ -128,7 +157,15 @@ export class SecurityAudit {
     details?: Record<string, unknown>
   ): Promise<void> {
     await this.specialEvents.logSecretsDetection(filePath, secretType, details);
-    await this.flush(); // Always flush critical events immediately
+
+    if (
+      this.autoFlushEnabled &&
+      this.eventLogger.shouldFlushImmediately(
+        this.eventLogger.getBuffer().slice(-1)[0]
+      )
+    ) {
+      await this.flush();
+    }
   }
 
   /**
@@ -141,7 +178,7 @@ export class SecurityAudit {
   ): Promise<void> {
     await this.specialEvents.logEncryption(operation, success, details);
 
-    if (!success) {
+    if (this.autoFlushEnabled && !success) {
       await this.flush(); // Flush failures immediately
     }
   }
@@ -158,7 +195,10 @@ export class SecurityAudit {
   }): Promise<void> {
     await this.specialEvents.logLockOperation(options);
 
-    if (!options.success || Boolean(options.timeout)) {
+    if (
+      this.autoFlushEnabled &&
+      (!options.success || Boolean(options.timeout))
+    ) {
       await this.flush(); // Flush failures and timeouts immediately
     }
   }
@@ -171,7 +211,15 @@ export class SecurityAudit {
     details?: Record<string, unknown>
   ): Promise<void> {
     await this.specialEvents.logSuspiciousActivity(activity, details);
-    await this.flush(); // Always flush critical events immediately
+
+    if (
+      this.autoFlushEnabled &&
+      this.eventLogger.shouldFlushImmediately(
+        this.eventLogger.getBuffer().slice(-1)[0]
+      )
+    ) {
+      await this.flush();
+    }
   }
 
   /**
@@ -227,9 +275,110 @@ export class SecurityAudit {
 
   private static startPeriodicFlush(): void {
     this.flushInterval ??= setInterval(() => {
-      this.flush().catch(error => {
+      this.flush().catch((error) => {
         logger.error({ msg: 'Periodic flush failed', error });
       });
     }, this.FLUSH_INTERVAL_MS);
+  }
+
+  /**
+   * Get default severity for an event type
+   */
+  static getDefaultSeverity(eventType: SecurityEventType): SecuritySeverity {
+    switch (eventType) {
+      case SecurityEventType.SECRETS_DETECTED:
+      case SecurityEventType.ENCRYPTION_FAILURE:
+      case SecurityEventType.DECRYPTION_FAILURE:
+        return SecuritySeverity.CRITICAL;
+
+      case SecurityEventType.ACCESS_DENIED:
+      case SecurityEventType.LOCK_DENIED:
+      case SecurityEventType.LOCK_TIMEOUT:
+      case SecurityEventType.SUSPICIOUS_ACTIVITY:
+      case SecurityEventType.RECOVERY_ATTEMPT:
+        return SecuritySeverity.WARNING;
+
+      case SecurityEventType.PERMISSION_CHANGE:
+        return SecuritySeverity.ERROR;
+
+      case SecurityEventType.ACCESS_GRANTED:
+      case SecurityEventType.STATE_READ:
+      case SecurityEventType.STATE_WRITE:
+      case SecurityEventType.STATE_DELETE:
+      case SecurityEventType.ENCRYPTION_SUCCESS:
+      case SecurityEventType.DECRYPTION_SUCCESS:
+      case SecurityEventType.KEY_ROTATION:
+      case SecurityEventType.LOCK_ACQUIRED:
+      case SecurityEventType.BACKUP_CREATED:
+      default:
+        return SecuritySeverity.INFO;
+    }
+  }
+
+  static async auditState(state: unknown): Promise<{
+    violations: string[];
+    passed: boolean;
+  }> {
+    const violations: string[] = [];
+
+    // Basic security checks
+    const stateStr = JSON.stringify(state);
+    if (
+      stateStr.includes('password') ||
+      stateStr.includes('secret') ||
+      stateStr.includes('token')
+    ) {
+      violations.push('State may contain sensitive data');
+    }
+
+    return {
+      violations,
+      passed: violations.length === 0,
+    };
+  }
+
+  /**
+   * Read audit logs (internal method exposed for testing)
+   */
+  private static async readLogs(since?: Date): Promise<SecurityEvent[]> {
+    return await this.fileManager.readLogs(since);
+  }
+
+  /**
+   * Get event buffer (internal method exposed for testing)
+   */
+  private static getBuffer(): SecurityEvent[] {
+    return this.eventLogger.getBuffer();
+  }
+
+  /**
+   * Clear event buffer (internal method exposed for testing)
+   */
+  private static clearBuffer(): void {
+    this.eventLogger.clearBuffer();
+  }
+
+  /**
+   * Ensure audit file exists (internal method exposed for testing)
+   */
+  private static async ensureAuditFile(): Promise<void> {
+    return await this.fileManager.ensureAuditFile();
+  }
+
+  /**
+   * Get buffer property for tests
+   */
+  private static get buffer(): SecurityEvent[] {
+    return this.eventLogger.getBuffer();
+  }
+
+  /**
+   * Set buffer property for tests (mainly for clearing)
+   */
+  private static set buffer(events: SecurityEvent[]) {
+    this.eventLogger.clearBuffer();
+    if (events?.length > 0) {
+      events.forEach((event) => this.eventLogger.addToBuffer(event));
+    }
   }
 }

@@ -122,7 +122,11 @@ export class WriteAheadLog {
 
     try {
       const walContent = await this.readWALContent();
-      if (walContent === null || walContent === undefined || walContent === '') {
+      if (
+        walContent === null ||
+        walContent === undefined ||
+        walContent === ''
+      ) {
         return [];
       }
 
@@ -208,7 +212,9 @@ export class WriteAheadLog {
     return batches;
   }
 
-  private async parseEntriesInParallel(batches: string[][]): Promise<WALEntry[]> {
+  private async parseEntriesInParallel(
+    batches: string[][]
+  ): Promise<WALEntry[]> {
     const parsedBatches = await Promise.all(
       batches.map(async (batch) => this.parseBatch(batch, false))
     );
@@ -221,7 +227,9 @@ export class WriteAheadLog {
     return entries;
   }
 
-  private async parseEntriesSequentially(batches: string[][]): Promise<WALEntry[]> {
+  private async parseEntriesSequentially(
+    batches: string[][]
+  ): Promise<WALEntry[]> {
     const entries: WALEntry[] = [];
 
     for (const batch of batches) {
@@ -232,13 +240,19 @@ export class WriteAheadLog {
     return entries;
   }
 
-  private parseBatch(batch: string[], includeDetailedErrors: boolean): WALEntry[] {
+  private parseBatch(
+    batch: string[],
+    includeDetailedErrors: boolean
+  ): WALEntry[] {
     return batch
       .map((line) => this.parseLine(line, includeDetailedErrors))
       .filter((entry): entry is WALEntry => entry !== null);
   }
 
-  private parseLine(line: string, includeDetailedErrors: boolean): WALEntry | null {
+  private parseLine(
+    line: string,
+    includeDetailedErrors: boolean
+  ): WALEntry | null {
     try {
       if (line.trim()) {
         return JSON.parse(line) as WALEntry;
@@ -247,7 +261,9 @@ export class WriteAheadLog {
     } catch (parseError) {
       if (line.trim()) {
         logger.warn({
-          msg: includeDetailedErrors ? 'Failed to parse WAL entry, skipping' : 'WAL parse error for line',
+          msg: includeDetailedErrors
+            ? 'Failed to parse WAL entry, skipping'
+            : 'WAL parse error for line',
           line: line.substring(0, 50),
         });
 
@@ -268,9 +284,10 @@ export class WriteAheadLog {
       entryCount,
     });
 
-    const expectedTime = entryCount > 50
-      ? Math.min(200, 4 * entryCount)
-      : Math.min(100, 2 * entryCount);
+    const expectedTime =
+      entryCount > 50
+        ? Math.min(200, 4 * entryCount)
+        : Math.min(100, 2 * entryCount);
 
     if (duration > expectedTime) {
       logger.warn({
@@ -281,6 +298,20 @@ export class WriteAheadLog {
 
   async getEntries(): Promise<WALEntry[]> {
     return [...this.entries];
+  }
+
+  // Alias for getEntries to maintain compatibility
+  async getWALEntries(): Promise<WALEntry[]> {
+    return this.getEntries();
+  }
+
+  // Alias for append
+  async writeEntry(entry: Omit<WALEntry, 'timestamp'>): Promise<void> {
+    return this.append(entry);
+  }
+
+  async getSize(): Promise<number> {
+    return this.size();
   }
 
   async exists(): Promise<boolean> {

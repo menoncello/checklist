@@ -214,7 +214,11 @@ export class FieldEncryption {
         return await this.encrypt(value);
       }
 
-      return await this.processValueRecursively(value, currentPath, processValue);
+      return await this.processValueRecursively(
+        value,
+        currentPath,
+        processValue
+      );
     };
 
     const data = await processValue(obj, path);
@@ -245,7 +249,11 @@ export class FieldEncryption {
     }
 
     if (this.isPlainObject(value)) {
-      return await this.processObject(value as Record<string, unknown>, currentPath, processValue);
+      return await this.processObject(
+        value as Record<string, unknown>,
+        currentPath,
+        processValue
+      );
     }
 
     return value;
@@ -258,10 +266,7 @@ export class FieldEncryption {
   ): Promise<unknown[]> {
     return await Promise.all(
       array.map((item, index) =>
-        processValue(
-          item,
-          currentPath ? `${currentPath}.${index}` : `${index}`
-        )
+        processValue(item, currentPath ? `${currentPath}.${index}` : `${index}`)
       )
     );
   }
@@ -319,7 +324,10 @@ export class FieldEncryption {
     }
 
     if (this.isPlainObject(value)) {
-      return await this.processObjectForDecryption(value as Record<string, unknown>, processValue);
+      return await this.processObjectForDecryption(
+        value as Record<string, unknown>,
+        processValue
+      );
     }
 
     return value;
@@ -396,5 +404,41 @@ export class FieldEncryption {
       metadata.keyId = crypto.randomBytes(8).toString('hex');
       await Bun.write(this.METADATA_FILE, JSON.stringify(metadata, null, 2));
     }
+  }
+
+  async encryptSensitiveFields(data: unknown): Promise<unknown> {
+    if (typeof data !== 'object' || data === null) {
+      return data;
+    }
+
+    const result = JSON.parse(JSON.stringify(data));
+    const sensitiveFields = [
+      'password',
+      'secret',
+      'token',
+      'apiKey',
+      'privateKey',
+    ];
+
+    const encryptObject = async (
+      obj: Record<string, unknown>
+    ): Promise<void> => {
+      for (const key in obj) {
+        if (
+          sensitiveFields.some((field) =>
+            key.toLowerCase().includes(field.toLowerCase())
+          )
+        ) {
+          if (typeof obj[key] === 'string') {
+            obj[key] = await FieldEncryption.encrypt(obj[key]);
+          }
+        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+          await encryptObject(obj[key] as Record<string, unknown>);
+        }
+      }
+    };
+
+    await encryptObject(result);
+    return result;
   }
 }

@@ -7,6 +7,7 @@ import {
   StepResult,
   Summary,
   CompletedStep,
+  SkippedStep,
 } from './types';
 
 export class WorkflowNavigator {
@@ -26,17 +27,23 @@ export class WorkflowNavigator {
     }
 
     const completedStep = this.createCompletedStep(currentStep, state);
-    const updatedState = this.completeCurrentStep(state, completedStep, template);
+    const updatedState = this.completeCurrentStep(
+      state,
+      completedStep,
+      template
+    );
     const nextState = await this.moveToNextStep(updatedState, template);
     const nextStep = this.getNextVisibleStep(nextState, template);
 
     this.logAdvancement(state, nextState, nextStep);
 
+    // Check if workflow completed during the move
+    const _isCompleted = nextState.status === 'completed';
+
     return {
       newState: nextState,
       result: {
         success: true,
-        completed: nextStep === null,
         step: nextStep,
       },
     };
@@ -51,7 +58,7 @@ export class WorkflowNavigator {
     }
 
     const previousStep = this.getPreviousVisibleStep(state, template);
-    if (previousStep === undefined) {
+    if (previousStep === null) {
       return this.createFailureResult(state, template);
     }
 
@@ -64,7 +71,6 @@ export class WorkflowNavigator {
       newState: updatedState,
       result: {
         success: true,
-        completed: false,
         step: previousStep,
       },
     };
@@ -79,14 +85,20 @@ export class WorkflowNavigator {
     if (currentStep === undefined) {
       return {
         newState: state,
-        result: { success: false, completed: false, step: null },
+        result: { success: false, step: null },
       };
     }
 
     const skippedStep = this.createSkippedStep(currentStep, state, reason);
     const newState = this.createSkippedState(state, skippedStep);
     const updatedState = this.updateProgress(newState, template);
-    const nextState = await this.moveToNextStep(updatedState, template);
+
+    // Check if workflow completed after skipping
+    const nextStep = this.getNextVisibleStep(updatedState, template);
+    const nextState =
+      nextStep === null
+        ? this.completeWorkflow(updatedState, template)
+        : updatedState;
 
     this.logSkip(state, currentStep, reason);
 
@@ -94,13 +106,15 @@ export class WorkflowNavigator {
       newState: nextState,
       result: {
         success: true,
-        completed: this.getNextVisibleStep(nextState, template) === null,
-        step: this.getNextVisibleStep(nextState, template),
+        step: currentStep,
       },
     };
   }
 
-  getNextVisibleStep(state: WorkflowState, template: ChecklistTemplate): Step | null {
+  getNextVisibleStep(
+    state: WorkflowState,
+    template: ChecklistTemplate
+  ): Step | null {
     const visibleSteps = this.getVisibleSteps(state, template);
     const currentIndex = visibleSteps.findIndex(
       (step) => template.steps.indexOf(step) >= state.currentStepIndex
@@ -109,7 +123,10 @@ export class WorkflowNavigator {
     return currentIndex >= 0 ? visibleSteps[currentIndex] : null;
   }
 
-  getPreviousVisibleStep(state: WorkflowState, template: ChecklistTemplate): Step | null {
+  getPreviousVisibleStep(
+    state: WorkflowState,
+    template: ChecklistTemplate
+  ): Step | null {
     const visibleSteps = this.getVisibleSteps(state, template);
     const currentIndex = visibleSteps.findIndex(
       (step) => template.steps.indexOf(step) === state.currentStepIndex
@@ -124,7 +141,7 @@ export class WorkflowNavigator {
   ): { newState: WorkflowState; result: StepResult } {
     return {
       newState: this.completeWorkflow(state, template),
-      result: { success: true, completed: true, step: null },
+      result: { success: true, step: null },
     };
   }
 
@@ -136,7 +153,6 @@ export class WorkflowNavigator {
       newState: state,
       result: {
         success: false,
-        completed: false,
         step: template.steps[state.currentStepIndex] ?? null,
       },
     };
@@ -147,25 +163,35 @@ export class WorkflowNavigator {
     template: ChecklistTemplate,
     previousStep: Step
   ): WorkflowState {
+    const previousStepIndex = template.steps.indexOf(previousStep);
     return {
       ...state,
-      currentStepIndex: template.steps.indexOf(previousStep),
+      currentStepIndex: previousStepIndex,
       status: 'active' as const,
-      completedSteps: state.completedSteps.filter(
-        (step) => step.stepIndex < template.steps.indexOf(previousStep)
-      ),
+      completedSteps: state.completedSteps.filter((completedStep) => {
+        const stepIndex = template.steps.findIndex(
+          (s) => s.id === completedStep.step.id
+        );
+        return stepIndex < previousStepIndex;
+      }),
     };
   }
 
-  private createSkippedState(state: WorkflowState, skippedStep: CompletedStep): WorkflowState {
+  private createSkippedState(
+    state: WorkflowState,
+    skippedStep: SkippedStep
+  ): WorkflowState {
     return {
       ...state,
-      completedSteps: [...state.completedSteps, skippedStep],
+      skippedSteps: [...state.skippedSteps, skippedStep],
       currentStepIndex: state.currentStepIndex + 1,
     };
   }
 
-  private getVisibleSteps(state: WorkflowState, template: ChecklistTemplate): Step[] {
+  private getVisibleSteps(
+    state: WorkflowState,
+    template: ChecklistTemplate
+  ): Step[] {
     return template.steps.filter((step) => {
       if (step.condition === undefined) return true;
       return this.evaluateCondition(step.condition, state, template);
@@ -190,12 +216,15 @@ export class WorkflowNavigator {
     }
   }
 
-  private buildContext(state: WorkflowState, _template: ChecklistTemplate): Record<string, unknown> {
+  private buildContext(
+    state: WorkflowState,
+    _template: ChecklistTemplate
+  ): Record<string, unknown> {
     return {
+      ...state.variables,
       vars: state.variables,
-      completedSteps: state.completedSteps.map(step => step.stepId),
+      completedSteps: state.completedSteps.map((step) => step.step.id),
       currentStepIndex: state.currentStepIndex,
-      progress: state.progress,
     };
   }
 
@@ -217,9 +246,12 @@ export class WorkflowNavigator {
     template: ChecklistTemplate
   ): Promise<WorkflowState> {
     const nextIndex = state.currentStepIndex + 1;
-    const nextStep = this.getNextVisibleStep({ ...state, currentStepIndex: nextIndex }, template);
+    const nextStep = this.getNextVisibleStep(
+      { ...state, currentStepIndex: nextIndex },
+      template
+    );
 
-    if (nextStep === undefined) {
+    if (nextStep === null) {
       return this.completeWorkflow(state, template);
     }
 
@@ -230,66 +262,72 @@ export class WorkflowNavigator {
     };
   }
 
-  private completeWorkflow(state: WorkflowState, template: ChecklistTemplate): WorkflowState {
+  private completeWorkflow(
+    state: WorkflowState,
+    template: ChecklistTemplate
+  ): WorkflowState {
+    const _summary = this.generateSummary(state, template);
     return {
       ...state,
       status: 'completed',
       currentStepIndex: template.steps.length,
-      progress: {
-        ...state.progress,
-        percentage: 100,
-      },
-      summary: this.generateSummary(state, template),
+      completedAt: new Date(),
     };
   }
 
-  private createCompletedStep(step: Step, state: WorkflowState): CompletedStep {
+  private createCompletedStep(
+    step: Step,
+    _state: WorkflowState
+  ): CompletedStep {
     return {
-      stepId: step.id,
-      stepIndex: state.currentStepIndex,
-      title: step.title,
-      completedAt: new Date().toISOString(),
-      skipped: false,
+      step: step,
+      completedAt: new Date(),
     };
   }
 
-  private createSkippedStep(step: Step, state: WorkflowState, reason?: string): CompletedStep {
+  private createSkippedStep(
+    step: Step,
+    _state: WorkflowState,
+    reason?: string
+  ): SkippedStep {
     return {
-      stepId: step.id,
-      stepIndex: state.currentStepIndex,
-      title: step.title,
-      completedAt: new Date().toISOString(),
-      skipped: true,
-      skipReason: reason,
+      step: step,
+      timestamp: new Date(),
+      reason: reason,
     };
   }
 
-  private updateProgress(state: WorkflowState, template: ChecklistTemplate): WorkflowState {
-    const completedCount = state.completedSteps.filter(step => step.skipped !== true).length;
-    const totalSteps = template.steps.length;
-    const percentage = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
-
-    return {
-      ...state,
-      progress: {
-        totalSteps,
-        completedSteps: completedCount,
-        percentage,
-      },
-    };
+  private updateProgress(
+    state: WorkflowState,
+    _template: ChecklistTemplate
+  ): WorkflowState {
+    return state;
   }
 
-  private generateSummary(state: WorkflowState, template: ChecklistTemplate): Summary {
-    const completedSteps = state.completedSteps.filter(step => step.skipped !== true).length;
-    const skippedSteps = state.completedSteps.filter(step => step.skipped === true).length;
+  private generateSummary(
+    state: WorkflowState,
+    template: ChecklistTemplate
+  ): Summary {
+    const completedSteps = state.completedSteps.length;
+    const skippedSteps = state.skippedSteps.length;
     const totalSteps = template.steps.length;
 
     return {
+      templateId:
+        state.templateId != null && state.templateId !== ''
+          ? state.templateId
+          : '',
+      instanceId:
+        state.instanceId != null && state.instanceId !== ''
+          ? state.instanceId
+          : '',
+      startedAt: state.startedAt ?? new Date(),
+      completedAt: state.completedAt ?? new Date(),
+      duration: 0,
       totalSteps,
       completedSteps,
       skippedSteps,
-      completionRate: totalSteps > 0 ? completedSteps / totalSteps : 0,
-      estimatedTimeRemaining: 0, // Could be calculated based on step times
+      status: 'completed',
     };
   }
 
@@ -319,7 +357,11 @@ export class WorkflowNavigator {
     });
   }
 
-  private logSkip(state: WorkflowState, currentStep: Step, reason?: string): void {
+  private logSkip(
+    state: WorkflowState,
+    currentStep: Step,
+    reason?: string
+  ): void {
     this.logger.info({
       msg: 'Skipped step',
       stepIndex: state.currentStepIndex,

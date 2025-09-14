@@ -1,9 +1,26 @@
-import { AlertManager, PerformanceAlert, PerformanceThreshold } from './helpers/AlertManager.js';
-import { BenchmarkManager, PerformanceBenchmark, BenchmarkFilter } from './helpers/BenchmarkManager.js';
-import { MetricsTracker, PerformanceMetric, MetricFilter } from './helpers/MetricsTracker.js';
-import { SystemProfiler, SystemSnapshot } from './helpers/SystemProfiler.js';
+import {
+  AlertManager,
+  PerformanceAlert,
+  PerformanceThreshold,
+} from './helpers/AlertManager';
+import {
+  BenchmarkManager,
+  PerformanceBenchmark,
+  BenchmarkFilter,
+} from './helpers/BenchmarkManager';
+import {
+  MetricsTracker,
+  PerformanceMetric,
+  MetricFilter,
+} from './helpers/MetricsTracker';
+import { SystemProfiler, SystemSnapshot } from './helpers/SystemProfiler';
 
-export { PerformanceMetric, PerformanceBenchmark, PerformanceAlert, PerformanceThreshold };
+export {
+  PerformanceMetric,
+  PerformanceBenchmark,
+  PerformanceAlert,
+  PerformanceThreshold,
+};
 export { MetricFilter, BenchmarkFilter, SystemSnapshot };
 
 export interface PerformanceMonitorConfig {
@@ -44,7 +61,9 @@ export class PerformanceMonitor {
     };
 
     this.metricsTracker = new MetricsTracker(this.config.metricsBufferSize);
-    this.benchmarkManager = new BenchmarkManager(this.config.benchmarksBufferSize);
+    this.benchmarkManager = new BenchmarkManager(
+      this.config.benchmarksBufferSize
+    );
     this.alertManager = new AlertManager(this.config.alertsBufferSize);
     this.systemProfiler = new SystemProfiler(
       this.config.samplingInterval,
@@ -56,7 +75,11 @@ export class PerformanceMonitor {
     }
   }
 
-  private handleSystemMetric(name: string, value: number, metadata?: Record<string, unknown>): void {
+  private handleSystemMetric(
+    name: string,
+    value: number,
+    metadata?: Record<string, unknown>
+  ): void {
     if (!this.config.enableMetrics) return;
 
     const metric: PerformanceMetric = {
@@ -64,7 +87,7 @@ export class PerformanceMonitor {
       name,
       value,
       timestamp: Date.now(),
-      metadata
+      metadata,
     };
 
     this.metricsTracker.recordMetric(metric);
@@ -150,7 +173,7 @@ export class PerformanceMonitor {
       metrics: this.metricsTracker.getMetrics(),
       benchmarks: this.benchmarkManager.getBenchmarks(),
       alerts: this.alertManager.getAlerts(),
-      systemSnapshot: this.systemProfiler.getSystemSnapshot()
+      systemSnapshot: this.systemProfiler.getSystemSnapshot(),
     };
   }
 
@@ -257,7 +280,10 @@ export class PerformanceMonitor {
         try {
           handler(data);
         } catch (error) {
-          console.error(`Error in performance monitor event handler for '${event}':`, error);
+          console.error(
+            `Error in performance monitor event handler for '${event}':`,
+            error
+          );
         }
       });
     }

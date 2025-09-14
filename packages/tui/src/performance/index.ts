@@ -11,7 +11,6 @@ export type {
   PerformanceMonitorConfig,
   MetricFilter,
   BenchmarkFilter,
-  MetricStatistics,
   SystemSnapshot,
 } from './PerformanceMonitor';
 
@@ -103,65 +102,178 @@ export class PerformanceManager {
     this.startReporting();
   }
 
-  private setupEventHandlers(): void {
-    // Forward monitor events
-    this.monitor.on('metricRecorded', (data: unknown) => {
-      const metricData = data as {
-        metric: {
-          name: string;
-          value: number;
-          tags?: Record<string, string>;
-          metadata?: unknown;
-        };
+  private handleMetricRecorded(data: unknown): void {
+    const metricData = data as {
+      metric: {
+        name: string;
+        value: number;
+        tags?: Record<string, string>;
+        metadata?: unknown;
       };
+    };
+    this.metricsCollector.collect(
+      metricData.metric.name,
+      metricData.metric.value,
+      metricData.metric.tags
+    );
+  }
+
+  private handlePhaseEnded(data: unknown): void {
+    this.emit('startupPhaseEnded', data);
+    const phaseData = data as { phase: { name: string; duration?: number } };
+    if (phaseData.phase.duration != null && phaseData.phase.duration !== 0) {
       this.metricsCollector.collect(
-        metricData.metric.name,
-        metricData.metric.value,
-        metricData.metric.tags,
-        metricData.metric.metadata as Record<string, unknown> | undefined
+        `startup_phase_${phaseData.phase.name}`,
+        phaseData.phase.duration,
+        { phase: phaseData.phase.name, category: 'startup' }
       );
+    }
+  }
+
+  private handleStartupComplete(data: unknown): void {
+    this.emit('startupComplete', data);
+    const startupData = data as { profile: { totalDuration?: number } };
+    if (
+      startupData.profile.totalDuration != null &&
+      startupData.profile.totalDuration !== 0
+    ) {
+      this.metricsCollector.collect(
+        'startup_total_time',
+        startupData.profile.totalDuration,
+        { category: 'startup' }
+      );
+    }
+  }
+
+  private handleMemorySnapshot(data: unknown): void {
+    const snapshotData = data as {
+      snapshot: { rss: number; heapUsed: number; heapTotal: number };
+    };
+    const snapshot = snapshotData.snapshot;
+    this.collectMemoryMetrics(snapshot);
+  }
+
+  private collectMemoryMetrics(snapshot: {
+    rss: number;
+    heapUsed: number;
+    heapTotal: number;
+  }): void {
+    this.metricsCollector.collect('memory_rss', snapshot.rss, {
+      type: 'system',
+    });
+    this.metricsCollector.collect('memory_heap_used', snapshot.heapUsed, {
+      type: 'system',
+    });
+    this.metricsCollector.collect('memory_heap_total', snapshot.heapTotal, {
+      type: 'system',
+    });
+  }
+
+  private createSystemReport(monitorSnapshot: unknown) {
+    const snapshot = monitorSnapshot as {
+      memory: NodeJS.MemoryUsage;
+      cpu: { user: number; system: number };
+    };
+    return {
+      memory: {
+        rss: snapshot.memory?.rss ?? 0,
+        heapUsed: snapshot.memory?.heapUsed ?? 0,
+        heapTotal: snapshot.memory?.heapTotal || 0,
+        external: snapshot.memory?.external || 0,
+        arrayBuffers: snapshot.memory?.arrayBuffers || 0,
+      },
+      cpu: {
+        user: snapshot.cpu?.user || 0,
+        system: snapshot.cpu?.system || 0,
+      },
+      eventLoopDelay: 0,
+    };
+  }
+
+  private createMemoryReport(memoryStats: unknown) {
+    const stats = memoryStats as {
+      current: NodeJS.MemoryUsage;
+      trends: unknown[];
+    };
+    return {
+      current: {
+        rss: stats.current?.rss || 0,
+        heapUsed: stats.current?.heapUsed || 0,
+        heapTotal: stats.current?.heapTotal || 0,
+        external: stats.current?.external || 0,
+        arrayBuffers: stats.current?.arrayBuffers || 0,
+      },
+      trends: stats.trends,
+      leaks: this.memoryTracker.getLeaks(),
+    };
+  }
+
+  private createMetricsReport(metricsReport: unknown) {
+    const report = metricsReport as {
+      summary: {
+        uniqueSeries: number;
+        totalPoints: number;
+        sampleRate: number;
+      };
+    };
+    return {
+      totalSeries: report.summary.uniqueSeries,
+      totalPoints: report.summary.totalPoints,
+      sampleRate: report.summary.sampleRate,
+    };
+  }
+
+  private createAlertsReport(_metricsReport: unknown) {
+    return {
+      performance: this.monitor.getAlerts(),
+      memory: this.createMemoryAlerts(),
+      metrics: this.metricsCollector.getAlerts(),
+    };
+  }
+
+  private createMemoryAlerts() {
+    return this.memoryTracker.getLeaks().map((leak) => ({
+      type: 'memory_leak',
+      severity: 'critical' as const,
+      message: `Memory leak detected: ${(leak as { type: string }).type}`,
+      timestamp: (leak as { timestamp: number }).timestamp,
+      data: leak,
+    }));
+  }
+
+  private setupEventHandlers(): void {
+    this.setupMonitorEventHandlers();
+    this.setupStartupProfilerEventHandlers();
+    this.setupMemoryTrackerEventHandlers();
+    this.setupMetricsCollectorEventHandlers();
+  }
+
+  private setupMonitorEventHandlers(): void {
+    this.monitor.on('metricRecorded', (data: unknown) => {
+      this.handleMetricRecorded(data);
       this.emit('metricRecorded', data);
     });
 
     this.monitor.on('performanceAlert', (data: unknown) => {
       this.emit('performanceAlert', data);
     });
+  }
 
-    // Forward startup profiler events
+  private setupStartupProfilerEventHandlers(): void {
     this.startupProfiler.on('phaseStarted', (data: unknown) => {
       this.emit('startupPhaseStarted', data);
     });
 
     this.startupProfiler.on('phaseEnded', (data: unknown) => {
-      this.emit('startupPhaseEnded', data);
-      // Collect phase metrics
-      const phaseData = data as { phase: { name: string; duration?: number } };
-      if (phaseData.phase.duration != null && phaseData.phase.duration !== 0) {
-        this.metricsCollector.collect(
-          `startup_phase_${phaseData.phase.name}`,
-          phaseData.phase.duration,
-          { phase: phaseData.phase.name, category: 'startup' }
-        );
-      }
+      this.handlePhaseEnded(data);
     });
 
     this.startupProfiler.on('startupComplete', (data: unknown) => {
-      this.emit('startupComplete', data);
-      // Collect overall startup metrics
-      const startupData = data as { profile: { totalDuration?: number } };
-      if (
-        startupData.profile.totalDuration != null &&
-        startupData.profile.totalDuration !== 0
-      ) {
-        this.metricsCollector.collect(
-          'startup_total_time',
-          startupData.profile.totalDuration,
-          { category: 'startup' }
-        );
-      }
+      this.handleStartupComplete(data);
     });
+  }
 
-    // Forward memory tracker events
+  private setupMemoryTrackerEventHandlers(): void {
     this.memoryTracker.on('memoryAlert', (data: unknown) => {
       this.emit('memoryAlert', data);
     });
@@ -171,23 +283,11 @@ export class PerformanceManager {
     });
 
     this.memoryTracker.on('memorySnapshot', (data: unknown) => {
-      // Collect memory metrics
-      const snapshotData = data as {
-        snapshot: { rss: number; heapUsed: number; heapTotal: number };
-      };
-      const snapshot = snapshotData.snapshot;
-      this.metricsCollector.collect('memory_rss', snapshot.rss, {
-        type: 'system',
-      });
-      this.metricsCollector.collect('memory_heap_used', snapshot.heapUsed, {
-        type: 'system',
-      });
-      this.metricsCollector.collect('memory_heap_total', snapshot.heapTotal, {
-        type: 'system',
-      });
+      this.handleMemorySnapshot(data);
     });
+  }
 
-    // Forward metrics collector events
+  private setupMetricsCollectorEventHandlers(): void {
     this.metricsCollector.on('alertTriggered', (data: unknown) => {
       this.emit('metricsAlert', data);
     });
@@ -217,8 +317,37 @@ export class PerformanceManager {
       timestamp,
       uptime: monitorSnapshot.uptime,
       system: {
-        memory: monitorSnapshot.memory,
-        cpu: monitorSnapshot.cpu,
+        memory: {
+          rss:
+            (monitorSnapshot as unknown as { memory: NodeJS.MemoryUsage })
+              .memory?.rss || 0,
+          heapUsed:
+            (monitorSnapshot as unknown as { memory: NodeJS.MemoryUsage })
+              .memory?.heapUsed || 0,
+          heapTotal:
+            (monitorSnapshot as unknown as { memory: NodeJS.MemoryUsage })
+              .memory?.heapTotal || 0,
+          external:
+            (monitorSnapshot as unknown as { memory: NodeJS.MemoryUsage })
+              .memory?.external || 0,
+          arrayBuffers:
+            (monitorSnapshot as unknown as { memory: NodeJS.MemoryUsage })
+              .memory?.arrayBuffers || 0,
+        },
+        cpu: {
+          user:
+            (
+              monitorSnapshot as unknown as {
+                cpu: { user: number; system: number };
+              }
+            ).cpu?.user || 0,
+          system:
+            (
+              monitorSnapshot as unknown as {
+                cpu: { user: number; system: number };
+              }
+            ).cpu?.system || 0,
+        },
         eventLoopDelay: 0, // Will be populated from metrics
       },
       startup: startupProfile,
@@ -251,12 +380,14 @@ export class PerformanceManager {
   }
 
   private generateRecommendations(metricsReport: {
-    recommendations: string[];
+    recommendations?: string[];
   }): string[] {
     const recommendations: string[] = [];
 
     // Add metrics collector recommendations
-    recommendations.push(...metricsReport.recommendations);
+    if (metricsReport.recommendations) {
+      recommendations.push(...metricsReport.recommendations);
+    }
 
     // Add memory recommendations
     const memoryStats = this.memoryTracker.getStatistics();
@@ -299,7 +430,7 @@ export class PerformanceManager {
   }
 
   public startBenchmark(id: string, name: string, category?: string): void {
-    this.monitor.startBenchmark(id, name, category);
+    this.monitor.startBenchmark(id, name, { category: category ?? 'default' });
   }
 
   public endBenchmark(id: string): unknown {
@@ -353,8 +484,8 @@ export class PerformanceManager {
     return this.monitor.getSystemSnapshot();
   }
 
-  public queryMetrics(query: unknown): unknown {
-    return this.metricsCollector.query(query as Record<string, unknown>);
+  public queryMetrics(query: Record<string, unknown>): unknown {
+    return this.metricsCollector.query(query);
   }
 
   public getPerformanceReport(): PerformanceReport {

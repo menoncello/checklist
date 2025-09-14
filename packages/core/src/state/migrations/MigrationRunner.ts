@@ -54,8 +54,14 @@ export class MigrationRunner extends EventEmitter {
     );
 
     // Forward events from executor
-    this.executor.on('progress', (progress) => this.emit('progress', progress));
-    this.executor.on('error', (errorInfo) => this.emit('error', errorInfo));
+    this.executor.on('progress', (progress) => {
+      this.emit('progress', progress);
+      this.emit('migration:progress', progress);
+    });
+    this.executor.on('error', (errorInfo) => {
+      this.emit('error', errorInfo);
+      this.emit('migration:error', errorInfo);
+    });
   }
 
   async migrate(
@@ -66,8 +72,8 @@ export class MigrationRunner extends EventEmitter {
     try {
       const context = await this.prepareMigrationContext(
         statePath,
-        targetVersion,
-        options
+        options,
+        targetVersion
       );
 
       if (context.earlyReturn) {
@@ -90,20 +96,26 @@ export class MigrationRunner extends EventEmitter {
   }
 
   async rollback(statePath: string, backupPath: string): Promise<void> {
+    this.emit('rollback:start');
     await this.backupManager.rollback(statePath, backupPath);
+    this.emit('rollback:complete');
   }
 
   // Private implementation methods
   private async prepareMigrationContext(
     statePath: string,
-    targetVersion?: string,
-    options: MigrationOptions
+    options: MigrationOptions,
+    targetVersion?: string
   ): Promise<MigrationContext> {
     const { dryRun = false, verbose = false } = options;
     const state = await this.loadState(statePath);
     const { fromVersion, toVersion } = this.getVersions(state, targetVersion);
 
-    const earlyResult = this.checkForEarlyReturn(fromVersion, toVersion, verbose);
+    const earlyResult = this.checkForEarlyReturn(
+      fromVersion,
+      toVersion,
+      verbose
+    );
     if (earlyResult) {
       return { earlyReturn: earlyResult };
     }
@@ -135,26 +147,70 @@ export class MigrationRunner extends EventEmitter {
     const { state, fromVersion, toVersion, migrationPath, statePath } = context;
 
     // Context is validated, so these are guaranteed to be defined
-    const backupPath = createBackup
-      ? await this.backupManager.createBackup(statePath as string, fromVersion as string)
-      : undefined;
+    // Only create backup if state file exists
+    let backupPath: string | undefined;
+    if (createBackup) {
+      const file = Bun.file(statePath as string);
+      if (await file.exists()) {
+        backupPath = await this.backupManager.createBackup(
+          statePath as string,
+          fromVersion as string
+        );
+      }
+    }
 
-    const appliedMigrations = await this.executor.executeMigrations(
-      migrationPath as { migrations: Migration[]; totalSteps: number },
-      state as StateSchema,
-      statePath as string,
-      { createBackup, backupPath, verbose }
-    );
+    try {
+      const appliedMigrations = await this.executor.executeMigrations(
+        migrationPath as { migrations: Migration[]; totalSteps: number },
+        state as StateSchema,
+        statePath as string,
+        { createBackup, backupPath, verbose }
+      );
 
-    MigrationUtils.logSuccess(appliedMigrations.length, toVersion as string, verbose);
+      MigrationUtils.logSuccess(
+        appliedMigrations.length,
+        toVersion as string,
+        verbose
+      );
 
-    return {
-      success: true,
-      fromVersion: fromVersion as string,
-      toVersion: toVersion as string,
-      appliedMigrations,
-      backupPath,
-    };
+      return {
+        success: true,
+        fromVersion: fromVersion as string,
+        toVersion: toVersion as string,
+        appliedMigrations,
+        backupPath,
+      };
+    } catch (error) {
+      // Emit migration error event
+      this.emit('migration:error', {
+        error: error as Error,
+        fromVersion: fromVersion as string,
+        toVersion: toVersion as string,
+      });
+
+      // Rollback on failure
+      if (backupPath !== null && backupPath !== undefined) {
+        try {
+          this.emit('rollback:start');
+          await this.backupManager.rollback(statePath as string, backupPath);
+          this.emit('rollback:complete');
+        } catch (rollbackError) {
+          logger.error({
+            msg: 'Rollback failed during migration failure',
+            error: rollbackError,
+          });
+        }
+      }
+
+      return {
+        success: false,
+        fromVersion: fromVersion as string,
+        toVersion: toVersion as string,
+        appliedMigrations: [],
+        error: error as Error,
+        backupPath,
+      };
+    }
   }
 
   private checkForEarlyReturn(
@@ -177,19 +233,40 @@ export class MigrationRunner extends EventEmitter {
     state: StateSchema;
     statePath: string;
   }): MigrationContext {
-    const { migrationPath, fromVersion, toVersion, dryRun, verbose, state, statePath } = params;
+    const {
+      migrationPath,
+      fromVersion,
+      toVersion,
+      dryRun,
+      verbose,
+      state,
+      statePath,
+    } = params;
 
     if (migrationPath.migrations.length === 0) {
       return {
-        earlyReturn: MigrationUtils.noMigrationsResult(fromVersion, toVersion, verbose),
+        earlyReturn: MigrationUtils.noMigrationsResult(
+          fromVersion,
+          toVersion,
+          verbose
+        ),
       };
     }
 
-    MigrationUtils.logMigrationPlan(migrationPath, fromVersion, toVersion, verbose);
+    MigrationUtils.logMigrationPlan(
+      migrationPath,
+      fromVersion,
+      toVersion,
+      verbose
+    );
 
     if (dryRun) {
       return {
-        earlyReturn: MigrationUtils.dryRunResult(migrationPath, fromVersion, toVersion),
+        earlyReturn: MigrationUtils.dryRunResult(
+          migrationPath,
+          fromVersion,
+          toVersion
+        ),
       };
     }
 
@@ -223,7 +300,12 @@ export class MigrationRunner extends EventEmitter {
     try {
       const file = Bun.file(statePath);
       if (!(await file.exists())) {
-        throw new Error(`State file not found: ${statePath}`);
+        // Create initial state when file doesn't exist
+        logger.info({
+          msg: 'State file not found, creating initial state',
+          path: statePath,
+        });
+        return this.createInitialState();
       }
 
       const content = await file.text();
@@ -238,5 +320,49 @@ export class MigrationRunner extends EventEmitter {
       logger.error({ msg: 'Failed to load state', error, path: statePath });
       throw error;
     }
+  }
+
+  private createInitialState(): StateSchema {
+    return {
+      version: '0.0.0',
+      schemaVersion: '0.0.0',
+      checklists: [],
+      lastModified: new Date().toISOString(),
+    };
+  }
+
+  // Additional methods required by tests
+  setMaxBackups(maxBackups: number): void {
+    this.backupManager.setMaxBackups(maxBackups);
+  }
+
+  async restoreFromBackup(backupPath: string): Promise<StateSchema> {
+    return await this.backupManager.restoreBackup(backupPath);
+  }
+
+  async migrateState(
+    state: StateSchema,
+    fromVersion: string,
+    toVersion: string
+  ): Promise<StateSchema> {
+    const migrationPath = this.registry.getMigrationPath(
+      fromVersion,
+      toVersion
+    );
+
+    if (migrationPath.migrations.length === 0) {
+      return state;
+    }
+
+    let currentState = state;
+    for (const migration of migrationPath.migrations) {
+      if (!migration.migrate) {
+        throw new Error('Migration function not found');
+      }
+      const migrationResult = await migration.migrate(currentState);
+      currentState = migrationResult as StateSchema;
+    }
+
+    return currentState;
   }
 }
