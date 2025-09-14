@@ -113,25 +113,34 @@ export class PerformanceDashboard {
 
     /* eslint-disable no-console */
     console.clear();
-    console.log('🎯 Performance Dashboard');
-    console.log('='.repeat(60));
-    console.log(
+    this.displayHeader(report);
+    this.displayTopOperations(report);
+    this.displayViolations(report);
+    this.displayFooter();
+    /* eslint-enable no-console */
+  }
+
+  private displayHeader(report: PerformanceReport): void {
+    this.logger.info('🎯 Performance Dashboard');
+    this.logger.info('='.repeat(60));
+    this.logger.info(
       `Health: ${this.getHealthEmoji(report.summary.overallHealth)} ${report.summary.overallHealth}`
     );
-    console.log(`Operations: ${report.summary.totalOperations}`);
-    console.log(`Violations: ${report.summary.budgetViolations}`);
-    console.log(
+    this.logger.info(`Operations: ${report.summary.totalOperations}`);
+    this.logger.info(`Violations: ${report.summary.budgetViolations}`);
+    this.logger.info(
       `Duration: ${Math.round(report.summary.measurementPeriod.duration)}ms`
     );
-    console.log('');
+    this.logger.info('');
+  }
 
-    // Display top operations by average duration
+  private displayTopOperations(report: PerformanceReport): void {
     const sortedMetrics = Object.entries(report.metrics)
       .sort(([, a], [, b]) => b.average - a.average)
       .slice(0, this.config.maxDisplayItems);
 
-    console.log('📊 Top Operations (by avg duration):');
-    console.log('-'.repeat(60));
+    this.logger.info('📊 Top Operations (by avg duration):');
+    this.logger.info('-'.repeat(60));
 
     sortedMetrics.forEach(([operation, metric]) => {
       const avgMs = metric.average.toFixed(2);
@@ -139,28 +148,32 @@ export class PerformanceDashboard {
       const count = metric.count;
       const status = this.getMetricStatus(operation, metric, report.violations);
 
-      console.log(
+      this.logger.info(
         `${status} ${operation.padEnd(30)} ${avgMs}ms avg (max: ${maxMs}ms, n=${count})`
       );
     });
+  }
 
-    // Display violations if any
-    if (report.violations.length > 0) {
-      console.log('');
-      console.log('⚠️  Budget Violations:');
-      console.log('-'.repeat(60));
-
-      report.violations.forEach((violation) => {
-        const severity = violation.severity === 'critical' ? '🔴' : '🟡';
-        console.log(
-          `${severity} ${violation.operation}: ${violation.actual.toFixed(2)}ms (budget: ${violation.budget}ms, +${violation.exceedance.toFixed(1)}%)`
-        );
-      });
+  private displayViolations(report: PerformanceReport): void {
+    if (report.violations.length === 0) {
+      return;
     }
 
-    console.log('');
-    console.log(`Last updated: ${new Date().toLocaleTimeString()}`);
-    /* eslint-enable no-console */
+    this.logger.info('');
+    this.logger.info('⚠️  Budget Violations:');
+    this.logger.info('-'.repeat(60));
+
+    report.violations.forEach((violation) => {
+      const severity = violation.severity === 'critical' ? '🔴' : '🟡';
+      this.logger.info(
+        `${severity} ${violation.operation}: ${violation.actual.toFixed(2)}ms (budget: ${violation.budget}ms, +${violation.exceedance.toFixed(1)}%)`
+      );
+    });
+  }
+
+  private displayFooter(): void {
+    this.logger.info('');
+    this.logger.info(`Last updated: ${new Date().toLocaleTimeString()}`);
   }
 
   private displayTableReport(report: PerformanceReport): void {
@@ -168,6 +181,20 @@ export class PerformanceDashboard {
       return;
     }
 
+    this.displayTableHeader();
+    this.displayMetricsTable(report);
+    this.displayViolationsTable(report.violations);
+  }
+
+  private displayTableHeader(): void {
+    /* eslint-disable no-console */
+    console.clear();
+    console.log('🎯 Performance Dashboard - Table View');
+    console.log('='.repeat(80));
+    /* eslint-enable no-console */
+  }
+
+  private displayMetricsTable(report: PerformanceReport): void {
     const tableData = Object.entries(report.metrics).map(
       ([operation, metric]) => ({
         Operation: operation,
@@ -181,23 +208,26 @@ export class PerformanceDashboard {
     );
 
     /* eslint-disable no-console */
-    console.clear();
-    console.log('🎯 Performance Dashboard - Table View');
-    console.log('='.repeat(80));
     console.table(tableData);
+    /* eslint-enable no-console */
+  }
 
-    if (report.violations.length > 0) {
-      console.log('⚠️  Violations:');
-      console.table(
-        report.violations.map((v) => ({
-          Operation: v.operation,
-          Budget: `${v.budget}ms`,
-          Actual: `${v.actual.toFixed(2)}ms`,
-          Exceedance: `+${v.exceedance.toFixed(1)}%`,
-          Severity: v.severity,
-        }))
-      );
+  private displayViolationsTable(violations: BudgetViolation[]): void {
+    if (violations.length === 0) {
+      return;
     }
+
+    /* eslint-disable no-console */
+    console.log('⚠️  Violations:');
+    console.table(
+      violations.map((v) => ({
+        Operation: v.operation,
+        Budget: `${v.budget}ms`,
+        Actual: `${v.actual.toFixed(2)}ms`,
+        Exceedance: `+${v.exceedance.toFixed(1)}%`,
+        Severity: v.severity,
+      }))
+    );
     /* eslint-enable no-console */
   }
 
@@ -279,38 +309,50 @@ export class PerformanceDashboard {
       return 'No performance metrics available';
     }
 
-    const lines = [
+    const lines = this.createSummaryHeader(report);
+    this.addViolationsToSummary(lines, report);
+    this.addTopOperationsToSummary(lines, report);
+
+    return lines.join('\n');
+  }
+
+  private createSummaryHeader(report: PerformanceReport): string[] {
+    return [
       `Performance Summary (${report.summary.overallHealth})`,
       `Total Operations: ${report.summary.totalOperations}`,
       `Budget Violations: ${report.summary.budgetViolations}`,
       `Measurement Duration: ${Math.round(report.summary.measurementPeriod.duration)}ms`,
     ];
+  }
 
-    if (report.violations.length > 0) {
-      lines.push('');
-      lines.push('Budget Violations:');
-      report.violations.forEach((violation) => {
-        lines.push(
-          `  - ${violation.operation}: ${violation.actual.toFixed(2)}ms (budget: ${violation.budget}ms)`
-        );
-      });
+  private addViolationsToSummary(lines: string[], report: PerformanceReport): void {
+    if (report.violations.length === 0) {
+      return;
     }
 
+    lines.push('', 'Budget Violations:');
+    report.violations.forEach((violation) => {
+      lines.push(
+        `  - ${violation.operation}: ${violation.actual.toFixed(2)}ms (budget: ${violation.budget}ms)`
+      );
+    });
+  }
+
+  private addTopOperationsToSummary(lines: string[], report: PerformanceReport): void {
     const topOperations = Object.entries(report.metrics)
       .sort(([, a], [, b]) => b.average - a.average)
       .slice(0, 5);
 
-    if (topOperations.length > 0) {
-      lines.push('');
-      lines.push('Top Operations (by avg duration):');
-      topOperations.forEach(([operation, metric]) => {
-        lines.push(
-          `  - ${operation}: ${metric.average.toFixed(2)}ms avg (${metric.count} calls)`
-        );
-      });
+    if (topOperations.length === 0) {
+      return;
     }
 
-    return lines.join('\n');
+    lines.push('', 'Top Operations (by avg duration):');
+    topOperations.forEach(([operation, metric]) => {
+      lines.push(
+        `  - ${operation}: ${metric.average.toFixed(2)}ms avg (${metric.count} calls)`
+      );
+    });
   }
 
   // Cleanup method

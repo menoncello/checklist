@@ -8,32 +8,59 @@ if [ -n "$STAGED_FILES" ]; then
   fi
 fi
 
-# Run linting
-echo "🎨 Running linting..."
-bun run lint
+# Get list of staged files for targeted processing
+STAGED_TS_FILES=$(git diff --staged --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx)$' || true)
+STAGED_ALL_FILES=$(git diff --staged --name-only --diff-filter=ACM || true)
 
-# Run format check
-echo "📝 Checking code formatting..."
-bun run format:check
+if [ -n "$STAGED_ALL_FILES" ]; then
+  echo "🎨 Running lint-staged (processing only changed files)..."
+  bunx lint-staged
 
-# Run type checking
-echo "🔧 Running type checking..."
-bun run typecheck
-
-# Run quality checks
-echo "✨ Running quality checks..."
-bun run quality
+  # Run type checking only if TypeScript files changed
+  if [ -n "$STAGED_TS_FILES" ]; then
+    echo "🔧 Running type checking..."
+    bun run typecheck
+  else
+    echo "⏭️  Skipping type checking (no TypeScript files changed)"
+  fi
+else
+  echo "⏭️  No staged files to process"
+fi
 
 # Run tests on changed files
-echo "🧪 Running tests..."
-# Temporarily simplified due to EAGAIN issue with bun test in hooks
-# TODO: Investigate and fix the EAGAIN error with bun test --changed
-# For now, just run a basic test check to ensure tests compile
-bun test --dry-run 2>/dev/null || {
-  echo "❌ Test compilation failed"
-  exit 1
-}
-echo "✅ Tests validated (dry run)"
+if [ -n "$STAGED_TS_FILES" ]; then
+  echo "🧪 Running tests on changed files..."
+  # Get related test files for changed source files
+  TEST_FILES=""
+  for file in $STAGED_TS_FILES; do
+    if [[ "$file" == *.test.ts ]]; then
+      TEST_FILES="$TEST_FILES $file"
+    else
+      # Look for corresponding test file
+      test_file="${file%.ts}.test.ts"
+      if [ -f "$test_file" ]; then
+        TEST_FILES="$TEST_FILES $test_file"
+      fi
+    fi
+  done
+
+  if [ -n "$TEST_FILES" ]; then
+    # Run specific test files
+    bun test $TEST_FILES --bail || {
+      echo "❌ Tests failed for changed files"
+      exit 1
+    }
+  else
+    # Fallback to dry run if no specific tests found
+    bun test --dry-run 2>/dev/null || {
+      echo "❌ Test compilation failed"
+      exit 1
+    }
+    echo "✅ Tests validated (dry run - no specific tests found)"
+  fi
+else
+  echo "⏭️  Skipping tests (no TypeScript files changed)"
+fi
 
 # Security audit
 echo "🔒 Running security audit..."

@@ -1,28 +1,16 @@
 import { TerminalCapabilities } from '../framework/UIFramework.js';
+import { CapabilityTester } from './CapabilityTester.js';
 import { ColorSupport } from './ColorSupport.js';
 import { TerminalInfo } from './TerminalInfo.js';
-
-export interface CapabilityTest {
-  name: string;
-  test: () => Promise<boolean>;
-  fallback?: boolean;
-  timeout?: number;
-  description?: string;
-}
-
-export interface DetectionResult {
-  capabilities: TerminalCapabilities;
-  detectionTime: number;
-  testResults: Map<string, boolean>;
-  warnings: string[];
-  fallbacksUsed: string[];
-}
+import { TestRunner } from './TestRunner.js';
+import { DetectionResult, CapabilityReport, EventHandler } from './types.js';
 
 export class CapabilityDetector {
   private terminalInfo: TerminalInfo;
   private colorSupport: ColorSupport;
-  private testResults = new Map<string, boolean>();
-  private eventHandlers = new Map<string, Set<Function>>();
+  private tester: CapabilityTester;
+  private testRunner: TestRunner;
+  private eventHandlers = new Map<string, Set<EventHandler>>();
   private detectionCache: DetectionResult | null = null;
   private cacheExpiry = 5 * 60 * 1000; // 5 minutes
   private cacheTimestamp = 0;
@@ -30,53 +18,37 @@ export class CapabilityDetector {
   constructor() {
     this.terminalInfo = new TerminalInfo();
     this.colorSupport = new ColorSupport();
+    this.tester = new CapabilityTester(this.terminalInfo, this.colorSupport);
+    this.testRunner = new TestRunner(this.tester);
   }
 
   public async detect(forceRefresh: boolean = false): Promise<DetectionResult> {
     if (!forceRefresh && this.isCacheValid()) {
-      return (
-        this.detectionCache ??
-        this.createFallbackResult(0, new Error('Invalid cache'))
-      );
+      return this.getCachedResult();
     }
 
     const startTime = performance.now();
-    const warnings: string[] = [];
-    const fallbacksUsed: string[] = [];
 
     try {
       this.emit('detectionStarted');
 
-      // Run all capability tests
-      const testPromises = this.createCapabilityTests().map((test) =>
-        this.runTest(test, warnings, fallbacksUsed)
-      );
+      const { testResults, warnings, fallbacksUsed } = await this.testRunner.runAllTests();
+      const capabilities = this.buildCapabilitiesFromResults(testResults);
+      const detectionTime = performance.now() - startTime;
 
-      await Promise.all(testPromises);
-
-      // Build capabilities object
-      const capabilities = this.buildCapabilities();
-
-      const endTime = performance.now();
-      const detectionTime = endTime - startTime;
-
-      const result: DetectionResult = {
+      const result = this.createDetectionResult({
         capabilities,
         detectionTime,
-        testResults: new Map(this.testResults),
+        testResults,
         warnings,
         fallbacksUsed,
-      };
+      });
 
-      // Cache the result
-      this.detectionCache = result;
-      this.cacheTimestamp = Date.now();
-
+      this.cacheResult(result);
       this.emit('detectionCompleted', result);
       return result;
     } catch (error) {
       this.emit('detectionError', error);
-      // Return fallback capabilities
       return this.createFallbackResult(
         performance.now() - startTime,
         error as Error
@@ -84,281 +56,43 @@ export class CapabilityDetector {
     }
   }
 
-  private createCapabilityTests(): CapabilityTest[] {
-    return [
-      {
-        name: 'color',
-        test: () => this.testColorSupport(),
-        fallback: false,
-        timeout: 1000,
-        description: 'Basic color support (16 colors)',
-      },
-      {
-        name: 'color256',
-        test: () => this.testColor256Support(),
-        fallback: false,
-        timeout: 1000,
-        description: '256 color support',
-      },
-      {
-        name: 'trueColor',
-        test: () => this.testTrueColorSupport(),
-        fallback: false,
-        timeout: 1000,
-        description: '24-bit true color support',
-      },
-      {
-        name: 'unicode',
-        test: () => this.testUnicodeSupport(),
-        fallback: true,
-        timeout: 500,
-        description: 'Unicode character support',
-      },
-      {
-        name: 'mouse',
-        test: () => this.testMouseSupport(),
-        fallback: false,
-        timeout: 2000,
-        description: 'Mouse event support',
-      },
-      {
-        name: 'altScreen',
-        test: () => this.testAlternateScreenSupport(),
-        fallback: false,
-        timeout: 1500,
-        description: 'Alternate screen buffer support',
-      },
-      {
-        name: 'cursorShape',
-        test: () => this.testCursorShapeSupport(),
-        fallback: false,
-        timeout: 1000,
-        description: 'Cursor shape modification support',
-      },
-      {
-        name: 'windowTitle',
-        test: () => this.testWindowTitleSupport(),
-        fallback: false,
-        timeout: 1000,
-        description: 'Window title modification support',
-      },
-      {
-        name: 'clipboard',
-        test: () => this.testClipboardSupport(),
-        fallback: false,
-        timeout: 1500,
-        description: 'Clipboard access support',
-      },
-    ];
-  }
-
-  private async runTest(
-    test: CapabilityTest,
-    warnings: string[],
-    fallbacksUsed: string[]
-  ): Promise<void> {
-    try {
-      const timeoutPromise = new Promise<boolean>((_, reject) => {
-        setTimeout(
-          () => reject(new Error('Test timeout')),
-          test.timeout ?? 1000
-        );
-      });
-
-      const testResult = await Promise.race([test.test(), timeoutPromise]);
-
-      this.testResults.set(test.name, testResult);
-    } catch (error) {
-      const fallback = test.fallback ?? false;
-      this.testResults.set(test.name, fallback);
-
-      if (fallback) {
-        fallbacksUsed.push(test.name);
-      } else {
-        warnings.push(
-          `Failed to detect ${test.name}: ${(error as Error).message}`
-        );
-      }
-    }
-  }
-
-  private async testColorSupport(): Promise<boolean> {
-    // Check environment variables first
-    const colorSupport = this.colorSupport.detectBasicColor();
-    if (colorSupport !== null) return colorSupport;
-
-    // Fallback to terminal type detection
-    return this.terminalInfo.supportsColor();
-  }
-
-  private async testColor256Support(): Promise<boolean> {
-    const colorSupport = this.colorSupport.detect256Color();
-    if (colorSupport !== null) return colorSupport;
-
-    // Check terminal capabilities
-    const term = this.terminalInfo.getTerminalType();
-    return term.includes('256color') || term.includes('xterm');
-  }
-
-  private async testTrueColorSupport(): Promise<boolean> {
-    const trueColorSupport = this.colorSupport.detectTrueColor();
-    if (trueColorSupport !== null) return trueColorSupport;
-
-    // Query terminal for true color support
-    return this.queryTerminalCapability('\x1b[48;2;1;2;3m\x1b[0m', 1000);
-  }
-
-  private async testUnicodeSupport(): Promise<boolean> {
-    try {
-      // Test Unicode environment
-      const lang = Bun.env.LANG ?? '';
-      if (lang.includes('UTF-8') || lang.includes('utf8')) return true;
-
-      // Test if we can output Unicode characters
-      return this.testUnicodeOutput();
-    } catch {
-      return false;
-    }
-  }
-
-  private async testUnicodeOutput(): Promise<boolean> {
-    // This would ideally test actual Unicode rendering
-    // For now, check encoding support
-    try {
-      const testString = '▲△▼▽◆◇○●★☆';
-      const encoded = Buffer.from(testString, 'utf8');
-      const decoded = encoded.toString('utf8');
-      return decoded === testString;
-    } catch {
-      return false;
-    }
-  }
-
-  private async testMouseSupport(): Promise<boolean> {
-    // Check if terminal supports mouse events
-    const term = this.terminalInfo.getTerminalType();
-
-    // Known terminals with mouse support
-    const mouseCapableTerminals = [
-      'xterm',
-      'screen',
-      'tmux',
-      'alacritty',
-      'kitty',
-    ];
-
-    if (mouseCapableTerminals.some((t) => term.includes(t))) {
-      return this.queryTerminalCapability('\x1b[?1000h\x1b[?1000l', 500);
-    }
-
-    return false;
-  }
-
-  private async testAlternateScreenSupport(): Promise<boolean> {
-    const term = this.terminalInfo.getTerminalType();
-
-    // Most modern terminals support alternate screen
-    if (
-      term.includes('xterm') ||
-      term.includes('screen') ||
-      term.includes('tmux')
-    ) {
-      return true;
-    }
-
-    // Test by attempting to switch to alternate screen briefly
-    return this.queryTerminalCapability('\x1b[?1049h\x1b[?1049l', 500);
-  }
-
-  private async testCursorShapeSupport(): Promise<boolean> {
-    const term = this.terminalInfo.getTerminalType();
-
-    // Check for known terminals with cursor shape support
-    const cursorShapeTerminals = [
-      'xterm',
-      'gnome-terminal',
-      'alacritty',
-      'kitty',
-    ];
-    return cursorShapeTerminals.some((t) => term.includes(t));
-  }
-
-  private async testWindowTitleSupport(): Promise<boolean> {
-    // Only test if we're in a graphical terminal
-    if (
-      (Bun.env.SSH_TTY !== undefined && Bun.env.SSH_TTY.length > 0) ||
-      (Bun.env.SSH_CONNECTION !== undefined &&
-        Bun.env.SSH_CONNECTION.length > 0)
-    )
-      return false;
-
-    const term = this.terminalInfo.getTerminalType();
+  private getCachedResult(): DetectionResult {
     return (
-      term.includes('xterm') ||
-      term.includes('gnome') ||
-      term.includes('alacritty')
+      this.detectionCache ??
+      this.createFallbackResult(0, new Error('Invalid cache'))
     );
   }
 
-  private async testClipboardSupport(): Promise<boolean> {
-    // Check for OSC 52 clipboard support
-    const term = this.terminalInfo.getTerminalType();
-    const clipboardCapableTerminals = [
-      'xterm',
-      'alacritty',
-      'kitty',
-      'wezterm',
-    ];
-
-    return clipboardCapableTerminals.some((t) => term.includes(t));
-  }
-
-  private async queryTerminalCapability(
-    sequence: string,
-    timeout: number
-  ): Promise<boolean> {
-    if (process.stdin.isTTY !== true || process.stdout.isTTY !== true)
-      return false;
-
-    return new Promise((resolve) => {
-      let responded = false;
-
-      const responseHandler = (_data: Buffer) => {
-        if (responded) return;
-        responded = true;
-        process.stdin.off('data', responseHandler);
-        resolve(true);
-      };
-
-      const timeoutHandle = setTimeout(() => {
-        if (responded) return;
-        responded = true;
-        process.stdin.off('data', responseHandler);
-        resolve(false);
-      }, timeout);
-
-      // Set up response handler
-      process.stdin.on('data', responseHandler);
-
-      // Send query sequence
-      process.stdout.write(sequence);
-
-      // Clean up timeout on resolution
-      Promise.resolve().then(() => {
-        clearTimeout(timeoutHandle);
-      });
-    });
-  }
-
-  private buildCapabilities(): TerminalCapabilities {
+  private createDetectionResult(params: {
+    capabilities: TerminalCapabilities;
+    detectionTime: number;
+    testResults: Map<string, boolean>;
+    warnings: string[];
+    fallbacksUsed: string[];
+  }): DetectionResult {
     return {
-      color: this.testResults.get('color') ?? false,
-      color256: this.testResults.get('color256') ?? false,
-      trueColor: this.testResults.get('trueColor') ?? false,
-      unicode: this.testResults.get('unicode') ?? false,
-      mouse: this.testResults.get('mouse') ?? false,
-      altScreen: this.testResults.get('altScreen') ?? false,
-      cursorShape: this.testResults.get('cursorShape') ?? false,
+      capabilities: params.capabilities,
+      detectionTime: params.detectionTime,
+      testResults: new Map(params.testResults),
+      warnings: params.warnings,
+      fallbacksUsed: params.fallbacksUsed,
+    };
+  }
+
+  private cacheResult(result: DetectionResult): void {
+    this.detectionCache = result;
+    this.cacheTimestamp = Date.now();
+  }
+
+  private buildCapabilitiesFromResults(testResults: Map<string, boolean>): TerminalCapabilities {
+    return {
+      color: testResults.get('color') ?? false,
+      color256: testResults.get('color256') ?? false,
+      trueColor: testResults.get('trueColor') ?? false,
+      unicode: testResults.get('unicode') ?? false,
+      mouse: testResults.get('mouse') ?? false,
+      altScreen: testResults.get('altScreen') ?? false,
+      cursorShape: testResults.get('cursorShape') ?? false,
     };
   }
 
@@ -421,46 +155,19 @@ export class CapabilityDetector {
   }
 
   public async testSpecificCapability(capability: string): Promise<boolean> {
-    const test = this.createCapabilityTests().find(
-      (t) => t.name === capability
-    );
-    if (test === undefined) {
-      throw new Error(`Unknown capability: ${capability}`);
-    }
-
-    try {
-      return await test.test();
-    } catch (_error) {
-      return test.fallback ?? false;
-    }
+    return this.testRunner.testSpecificCapability(capability);
   }
 
   public getTestResults(): Map<string, boolean> {
-    return new Map(this.testResults);
+    return this.testRunner.getTestResults();
   }
 
   public getSupportedCapabilities(): string[] {
-    const capabilities: string[] = [];
-
-    for (const [capability, supported] of this.testResults) {
-      if (supported) {
-        capabilities.push(capability);
-      }
-    }
-
-    return capabilities;
+    return this.testRunner.getSupportedCapabilities();
   }
 
   public getUnsupportedCapabilities(): string[] {
-    const capabilities: string[] = [];
-
-    for (const [capability, supported] of this.testResults) {
-      if (!supported) {
-        capabilities.push(capability);
-      }
-    }
-
-    return capabilities;
+    return this.testRunner.getUnsupportedCapabilities();
   }
 
   public generateReport(): CapabilityReport {
@@ -488,7 +195,7 @@ export class CapabilityDetector {
     };
   }
 
-  public on(event: string, handler: Function): void {
+  public on(event: string, handler: EventHandler): void {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
@@ -498,7 +205,7 @@ export class CapabilityDetector {
     }
   }
 
-  public off(event: string, handler: Function): void {
+  public off(event: string, handler: EventHandler): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers !== undefined) {
       handlers.delete(handler);
@@ -522,23 +229,3 @@ export class CapabilityDetector {
   }
 }
 
-export interface CapabilityReport {
-  terminalType: string;
-  terminalVersion: string | null;
-  platform: string;
-  ttyInfo: {
-    isTTY: boolean;
-    columns: number;
-    rows: number;
-  };
-  environmentVars: Record<string, string>;
-  capabilities: TerminalCapabilities;
-  testResults: Record<string, boolean>;
-  supported: string[];
-  unsupported: string[];
-  cacheInfo: {
-    hasCache: boolean;
-    cacheAge: number;
-    isValid: boolean;
-  };
-}

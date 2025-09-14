@@ -1,42 +1,21 @@
-export interface ShutdownTask {
-  id: string;
-  name: string;
-  priority: number;
-  timeout: number;
-  execute: () => Promise<void>;
-  onError?: (error: Error) => void;
-  critical?: boolean;
-}
-
-export interface ShutdownConfig {
-  gracefulTimeout: number;
-  forceTimeout: number;
-  enableLogging: boolean;
-  saveState: boolean;
-  onShutdownStart?: () => void;
-  onShutdownComplete?: (graceful: boolean) => void;
-  onTaskComplete?: (task: ShutdownTask, duration: number) => void;
-  onTaskError?: (task: ShutdownTask, error: Error) => void;
-}
-
-export interface ShutdownState {
-  initiated: boolean;
-  graceful: boolean;
-  startTime: number;
-  completedTasks: string[];
-  failedTasks: string[];
-  currentTask?: string;
-  phase: 'idle' | 'graceful' | 'forced' | 'complete';
-}
+import { ShutdownExecutor } from '../shutdown/ShutdownExecutor.js';
+import { ShutdownTasks } from '../shutdown/ShutdownTasks.js';
+import {
+  ShutdownTask,
+  ShutdownConfig,
+  ShutdownState,
+  ShutdownMetrics,
+  EventHandler,
+} from '../shutdown/types.js';
 
 export class CleanShutdown {
   private config: ShutdownConfig;
-  private shutdownTasks: ShutdownTask[] = [];
   private state: ShutdownState;
-  private eventHandlers = new Map<string, Set<Function>>();
-  private gracefulTimer: Timer | null = null;
-  private forceTimer: Timer | null = null;
-  private taskTimeouts = new Map<string, Timer>();
+  private shutdownTasks: ShutdownTasks;
+  private executor: ShutdownExecutor;
+  private eventHandlers = new Map<string, Set<EventHandler>>();
+  private gracefulTimer: NodeJS.Timeout | null = null;
+  private forceTimer: NodeJS.Timeout | null = null;
   private shutdownPromise: Promise<void> | null = null;
   private resolveShutdown: (() => void) | null = null;
 
@@ -58,8 +37,18 @@ export class CleanShutdown {
       phase: 'idle',
     };
 
+    this.shutdownTasks = new ShutdownTasks(this.config);
+    this.executor = new ShutdownExecutor({
+      config: this.config,
+      state: this.state,
+      shutdownTasks: this.shutdownTasks,
+      logCallback: (message: string) => this.log(message),
+      emitCallback: (event: string, data?: unknown) => this.emit(event, data)
+    });
+
     this.setupSignalHandlers();
     this.setupDefaultTasks();
+    this.setupExecutorListeners();
   }
 
   private setupSignalHandlers(): void {
@@ -97,74 +86,21 @@ export class CleanShutdown {
   }
 
   private setupDefaultTasks(): void {
-    // Save application state
-    this.addTask({
-      id: 'save-state',
-      name: 'Save Application State',
-      priority: 100,
-      timeout: 5000,
-      execute: async () => {
-        if (this.config.saveState) {
-          await this.saveApplicationState();
-        }
-      },
-      critical: true,
-    });
+    this.shutdownTasks.setupDefaultTasks();
+  }
 
-    // Close database connections
-    this.addTask({
-      id: 'close-connections',
-      name: 'Close Database Connections',
-      priority: 90,
-      timeout: 10000,
-      execute: async () => {
-        await this.closeDatabaseConnections();
-      },
-    });
-
-    // Stop timers and intervals
-    this.addTask({
-      id: 'stop-timers',
-      name: 'Stop Timers and Intervals',
-      priority: 80,
-      timeout: 2000,
-      execute: async () => {
-        await this.stopTimersAndIntervals();
-      },
-    });
-
-    // Cleanup temporary resources
-    this.addTask({
-      id: 'cleanup-temp',
-      name: 'Cleanup Temporary Resources',
-      priority: 70,
-      timeout: 3000,
-      execute: async () => {
-        await this.cleanupTemporaryResources();
-      },
-    });
-
-    // Final cleanup
-    this.addTask({
-      id: 'final-cleanup',
-      name: 'Final Cleanup',
-      priority: 10,
-      timeout: 1000,
-      execute: async () => {
-        await this.performFinalCleanup();
-      },
+  private setupExecutorListeners(): void {
+    this.on('requestForcedShutdown', () => {
+      this.forceShutdown();
     });
   }
 
   public addTask(task: ShutdownTask): void {
-    // Prevent adding tasks after shutdown has started
     if (this.state.initiated) {
       throw new Error('Cannot add tasks after shutdown has been initiated');
     }
 
-    this.shutdownTasks.push(task);
-    this.shutdownTasks.sort((a, b) => b.priority - a.priority);
-
+    this.shutdownTasks.addTask(task);
     this.log(`Added shutdown task: ${task.name} (priority: ${task.priority})`);
   }
 
@@ -173,28 +109,55 @@ export class CleanShutdown {
       throw new Error('Cannot remove tasks after shutdown has been initiated');
     }
 
-    const index = this.shutdownTasks.findIndex((task) => task.id === id);
-    if (index !== -1) {
-      const task = this.shutdownTasks.splice(index, 1)[0];
+    const task = this.shutdownTasks.getTaskById(id);
+    const removed = this.shutdownTasks.removeTask(id);
+
+    if (removed && task) {
       this.log(`Removed shutdown task: ${task.name}`);
-      return true;
     }
-    return false;
+
+    return removed;
   }
 
   public async initiate(reason: string = 'manual'): Promise<void> {
-    if (this.state.initiated) {
+    if (this.isAlreadyShuttingDown()) {
       return this.shutdownPromise ?? Promise.resolve();
     }
 
+    this.initializeShutdownState(reason);
+    this.executeStartCallback();
+    this.setupShutdownPromise();
+    this.setupShutdownTimers();
+
+    await this.executeShutdownSequence();
+
+    return this.shutdownPromise;
+  }
+
+
+  /**
+   * Check if shutdown is already in progress
+   */
+  private isAlreadyShuttingDown(): boolean {
+    return this.state.initiated;
+  }
+
+  /**
+   * Initialize shutdown state
+   */
+  private initializeShutdownState(reason: string): void {
     this.state.initiated = true;
     this.state.startTime = Date.now();
     this.state.phase = 'graceful';
 
     this.log(`Initiating shutdown: ${reason}`);
     this.emit('shutdownStart', { reason });
+  }
 
-    // Call start callback
+  /**
+   * Execute start callback if configured
+   */
+  private executeStartCallback(): void {
     if (this.config.onShutdownStart) {
       try {
         this.config.onShutdownStart();
@@ -204,13 +167,21 @@ export class CleanShutdown {
         );
       }
     }
+  }
 
-    // Create shutdown promise
+  /**
+   * Setup shutdown promise for async coordination
+   */
+  private setupShutdownPromise(): void {
     this.shutdownPromise = new Promise((resolve) => {
       this.resolveShutdown = resolve;
     });
+  }
 
-    // Set up timers
+  /**
+   * Setup shutdown timeout timers
+   */
+  private setupShutdownTimers(): void {
     this.gracefulTimer = setTimeout(() => {
       this.log('Graceful shutdown timeout, switching to forced shutdown');
       this.forceShutdown();
@@ -220,114 +191,14 @@ export class CleanShutdown {
       this.log('Force shutdown timeout, exiting immediately');
       this.emergencyExit();
     }, this.config.gracefulTimeout + this.config.forceTimeout);
-
-    // Execute shutdown tasks
-    await this.executeShutdownTasks();
-
-    return this.shutdownPromise;
   }
 
-  private async executeShutdownTasks(): Promise<void> {
-    this.log(`Executing ${this.shutdownTasks.length} shutdown tasks`);
-
-    for (const task of this.shutdownTasks) {
-      if (this.state.phase === 'forced') {
-        // Skip non-critical tasks during forced shutdown
-        if (task.critical !== true) {
-          this.log(
-            `Skipping non-critical task during forced shutdown: ${task.name}`
-          );
-          continue;
-        }
-      }
-
-      this.state.currentTask = task.id;
-      await this.executeTask(task);
-    }
-
-    this.state.currentTask = undefined;
+  /**
+   * Execute the main shutdown sequence
+   */
+  private async executeShutdownSequence(): Promise<void> {
+    await this.executor.executeShutdownTasks();
     this.completeShutdown(true);
-  }
-
-  private async executeTask(task: ShutdownTask): Promise<void> {
-    const startTime = Date.now();
-    this.log(`Executing task: ${task.name}`);
-
-    try {
-      // Set task timeout
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        const timer = setTimeout(() => {
-          reject(new Error(`Task timeout: ${task.name}`));
-        }, task.timeout);
-
-        this.taskTimeouts.set(task.id, timer);
-      });
-
-      // Execute task with timeout
-      await Promise.race([task.execute(), timeoutPromise]);
-
-      // Clear timeout
-      const timer = this.taskTimeouts.get(task.id);
-      if (timer !== undefined) {
-        clearTimeout(timer);
-        this.taskTimeouts.delete(task.id);
-      }
-
-      const duration = Date.now() - startTime;
-      this.state.completedTasks.push(task.id);
-      this.log(`Task completed: ${task.name} (${duration}ms)`);
-
-      // Call task complete callback
-      if (this.config.onTaskComplete) {
-        try {
-          this.config.onTaskComplete(task, duration);
-        } catch (error) {
-          this.log(
-            `Error in task complete callback: ${(error as Error).message}`
-          );
-        }
-      }
-
-      this.emit('taskComplete', { task, duration });
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      this.state.failedTasks.push(task.id);
-      this.log(
-        `Task failed: ${task.name} (${duration}ms) - ${(error as Error).message}`
-      );
-
-      // Call task error callback
-      if (task.onError) {
-        try {
-          task.onError(error as Error);
-        } catch (callbackError) {
-          this.log(
-            `Error in task error callback: ${(callbackError as Error).message}`
-          );
-        }
-      }
-
-      // Call global task error callback
-      if (this.config.onTaskError) {
-        try {
-          this.config.onTaskError(task, error as Error);
-        } catch (callbackError) {
-          this.log(
-            `Error in global task error callback: ${(callbackError as Error).message}`
-          );
-        }
-      }
-
-      this.emit('taskError', { task, error, duration });
-
-      // If it's a critical task and we're in graceful shutdown, switch to forced
-      if (task.critical === true && this.state.phase === 'graceful') {
-        this.log(
-          `Critical task failed, switching to forced shutdown: ${task.name}`
-        );
-        this.forceShutdown();
-      }
-    }
   }
 
   private forceShutdown(): void {
@@ -356,23 +227,38 @@ export class CleanShutdown {
       return;
     }
 
+    this.updateShutdownState(graceful);
+    const metrics = this.calculateShutdownMetrics();
+    this.logShutdownCompletion(graceful, metrics);
+    this.cleanup();
+    this.executeCompletionCallback(graceful);
+    this.emitCompletionEvent(graceful, metrics);
+    this.resolveShutdownPromise();
+    this.scheduleProcessExit(graceful);
+  }
+
+  private updateShutdownState(graceful: boolean): void {
     this.state.phase = 'complete';
     this.state.graceful = graceful;
+  }
 
-    const duration = Date.now() - this.state.startTime;
-    const completed = this.state.completedTasks.length;
-    const failed = this.state.failedTasks.length;
-    const total = this.shutdownTasks.length;
+  private calculateShutdownMetrics(): { duration: number; completed: number; failed: number; total: number } {
+    return {
+      duration: Date.now() - this.state.startTime,
+      completed: this.state.completedTasks.length,
+      failed: this.state.failedTasks.length,
+      total: this.shutdownTasks.getTasks().length,
+    };
+  }
 
+  private logShutdownCompletion(graceful: boolean, metrics: { duration: number; completed: number; failed: number; total: number }): void {
     this.log(
-      `Shutdown ${graceful ? 'completed gracefully' : 'forced'} in ${duration}ms`
+      `Shutdown ${graceful ? 'completed gracefully' : 'forced'} in ${metrics.duration}ms`
     );
-    this.log(`Tasks: ${completed}/${total} completed, ${failed} failed`);
+    this.log(`Tasks: ${metrics.completed}/${metrics.total} completed, ${metrics.failed} failed`);
+  }
 
-    // Clear timers
-    this.cleanup();
-
-    // Call completion callback
+  private executeCompletionCallback(graceful: boolean): void {
     if (this.config.onShutdownComplete) {
       try {
         this.config.onShutdownComplete(graceful);
@@ -382,21 +268,25 @@ export class CleanShutdown {
         );
       }
     }
+  }
 
+  private emitCompletionEvent(graceful: boolean, metrics: { duration: number; completed: number; failed: number; total: number }): void {
     this.emit('shutdownComplete', {
       graceful,
-      duration,
-      completed,
-      failed,
-      total,
+      duration: metrics.duration,
+      completed: metrics.completed,
+      failed: metrics.failed,
+      total: metrics.total,
     });
+  }
 
-    // Resolve shutdown promise
+  private resolveShutdownPromise(): void {
     if (this.resolveShutdown !== null) {
       this.resolveShutdown();
     }
+  }
 
-    // Exit process
+  private scheduleProcessExit(graceful: boolean): void {
     setTimeout(() => {
       process.exit(graceful ? 0 : 1);
     }, 100);
@@ -414,42 +304,9 @@ export class CleanShutdown {
     }
 
     // Clear all task timeouts
-    for (const timer of this.taskTimeouts.values()) {
-      clearTimeout(timer);
-    }
-    this.taskTimeouts.clear();
+    this.executor.clearAllTimeouts();
   }
 
-  // Default task implementations
-  private async saveApplicationState(): Promise<void> {
-    // This would save actual application state
-    this.log('Saving application state');
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  private async closeDatabaseConnections(): Promise<void> {
-    // This would close actual database connections
-    this.log('Closing database connections');
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  private async stopTimersAndIntervals(): Promise<void> {
-    // This would stop actual timers and intervals
-    this.log('Stopping timers and intervals');
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  private async cleanupTemporaryResources(): Promise<void> {
-    // This would clean up temporary files, caches, etc.
-    this.log('Cleaning up temporary resources');
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-
-  private async performFinalCleanup(): Promise<void> {
-    // This would perform final cleanup tasks
-    this.log('Performing final cleanup');
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
 
   // Public interface
   public isShuttingDown(): boolean {
@@ -461,11 +318,12 @@ export class CleanShutdown {
   }
 
   public getTasks(): ShutdownTask[] {
-    return [...this.shutdownTasks];
+    return this.shutdownTasks.getTasks();
   }
 
   public getMetrics(): ShutdownMetrics {
-    const total = this.shutdownTasks.length;
+    const tasks = this.shutdownTasks.getTasks();
+    const total = tasks.length;
     const completed = this.state.completedTasks.length;
     const failed = this.state.failedTasks.length;
     const duration =
@@ -504,7 +362,7 @@ export class CleanShutdown {
     }
   }
 
-  public on(event: string, handler: Function): void {
+  public on(event: string, handler: EventHandler): void {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
@@ -514,7 +372,7 @@ export class CleanShutdown {
     }
   }
 
-  public off(event: string, handler: Function): void {
+  public off(event: string, handler: EventHandler): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers !== undefined) {
       handlers.delete(handler);
@@ -537,14 +395,10 @@ export class CleanShutdown {
   }
 }
 
-export interface ShutdownMetrics {
-  initiated: boolean;
-  phase: string;
-  graceful: boolean;
-  duration: number;
-  totalTasks: number;
-  completedTasks: number;
-  failedTasks: number;
-  successRate: number;
-  currentTask?: string;
-}
+// Re-export types for convenience
+export type {
+  ShutdownTask,
+  ShutdownConfig,
+  ShutdownState,
+  ShutdownMetrics,
+} from '../shutdown/types.js';

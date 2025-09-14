@@ -100,14 +100,16 @@ export class EventManager {
   public offById(subscriptionId: string): boolean {
     for (const [event, subscriptions] of this.subscriptions) {
       for (const subscription of subscriptions) {
-        if (subscription.id === subscriptionId) {
-          subscriptions.delete(subscription);
-          if (subscriptions.size === 0) {
-            this.subscriptions.delete(event);
-          }
-          this.updateEventMetrics(event, 'subscription_removed');
-          return true;
+        if (subscription.id !== subscriptionId) {
+          continue;
         }
+
+        subscriptions.delete(subscription);
+        if (subscriptions.size === 0) {
+          this.subscriptions.delete(event);
+        }
+        this.updateEventMetrics(event, 'subscription_removed');
+        return true;
       }
     }
     return false;
@@ -146,27 +148,9 @@ export class EventManager {
       for (const subscription of sortedSubscriptions) {
         if (emission.propagationStopped) break;
 
-        try {
-          const startTime = performance.now();
-          subscription.handler(emission.data);
-          const endTime = performance.now();
-
+        const executed = this.executeHandler(subscription, emission, subscriptions);
+        if (executed) {
           handlerCount++;
-          emission.handled = true;
-
-          this.updateEventMetrics(
-            emission.event,
-            'handler_executed',
-            1,
-            endTime - startTime
-          );
-
-          // Remove one-time subscriptions
-          if (subscription.once) {
-            subscriptions.delete(subscription);
-          }
-        } catch (error) {
-          this.handleEventError(error as Error, emission, subscription);
         }
       }
 
@@ -188,6 +172,37 @@ export class EventManager {
 
     this.updateEventMetrics(emission.event, 'emission_processed', handlerCount);
     return handlerCount > 0;
+  }
+
+  private executeHandler(
+    subscription: EventSubscription,
+    emission: EventEmission,
+    subscriptions: Set<EventSubscription>
+  ): boolean {
+    try {
+      const startTime = performance.now();
+      subscription.handler(emission.data);
+      const endTime = performance.now();
+
+      emission.handled = true;
+
+      this.updateEventMetrics(
+        emission.event,
+        'handler_executed',
+        1,
+        endTime - startTime
+      );
+
+      // Remove one-time subscriptions
+      if (subscription.once) {
+        subscriptions.delete(subscription);
+      }
+
+      return true;
+    } catch (error) {
+      this.handleEventError(error as Error, emission, subscription);
+      return false;
+    }
   }
 
   public stopPropagation(event: string): void {

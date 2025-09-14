@@ -3,6 +3,10 @@ import type {
   PerformanceMetric,
 } from '../interfaces/IPerformanceMonitor';
 import type { Logger } from '../utils/logger';
+import { RegressionClassifier } from './helpers/RegressionClassifier';
+import { RegressionReportGenerator } from './helpers/RegressionReportGenerator';
+import { StatisticalAnalyzer } from './helpers/StatisticalAnalyzer';
+import { TrendAnalyzer, TrendResult } from './helpers/TrendAnalyzer';
 
 /**
  * Performance regression detection configuration
@@ -34,22 +38,7 @@ export interface RegressionResult {
   recommendation: string;
 }
 
-/**
- * Trend analysis result
- */
-export interface TrendResult {
-  operation: string;
-  trendDirection: 'improving' | 'stable' | 'degrading';
-  changeRate: number; // change per time unit
-  dataPoints: Array<{
-    timestamp: number;
-    value: number;
-  }>;
-  prediction?: {
-    nextValue: number;
-    confidence: number;
-  };
-}
+export { TrendResult } from './helpers/TrendAnalyzer';
 
 /**
  * Performance regression detector
@@ -57,6 +46,10 @@ export interface TrendResult {
 export class PerformanceRegressionDetector {
   private config: RegressionConfig;
   private logger: Logger;
+  private statisticalAnalyzer: StatisticalAnalyzer;
+  private trendAnalyzer: TrendAnalyzer;
+  private reportGenerator: RegressionReportGenerator;
+  private classifier: RegressionClassifier;
   private historicalData: Map<
     string,
     Array<{
@@ -67,7 +60,7 @@ export class PerformanceRegressionDetector {
 
   constructor(config: Partial<RegressionConfig>, logger: Logger) {
     this.config = {
-      regressionThreshold: 20, // 20% slower is considered regression
+      regressionThreshold: 20,
       minSamples: 5,
       confidenceLevel: 0.8,
       enableTrendAnalysis: true,
@@ -75,6 +68,17 @@ export class PerformanceRegressionDetector {
       ...config,
     };
     this.logger = logger;
+    this.statisticalAnalyzer = new StatisticalAnalyzer(
+      this.config.regressionThreshold,
+      this.config.confidenceLevel
+    );
+    this.trendAnalyzer = new TrendAnalyzer(
+      this.statisticalAnalyzer,
+      this.config.trendWindow,
+      this.config.minSamples
+    );
+    this.reportGenerator = new RegressionReportGenerator();
+    this.classifier = new RegressionClassifier();
   }
 
   /**
@@ -91,26 +95,11 @@ export class PerformanceRegressionDetector {
     )) {
       const baselineMetric = baselineReport.metrics[operation];
 
-      if (baselineMetric === undefined) {
-        this.logger.debug({
-          msg: 'No baseline data for operation',
-          operation,
-        });
+      if (!this.hasValidBaseline(operation, baselineMetric)) {
         continue;
       }
 
-      // Check minimum sample requirements
-      if (
-        currentMetric.count < this.config.minSamples ||
-        baselineMetric.count < this.config.minSamples
-      ) {
-        this.logger.debug({
-          msg: 'Insufficient samples for operation',
-          operation,
-          currentSamples: currentMetric.count,
-          baselineSamples: baselineMetric.count,
-          minRequired: this.config.minSamples,
-        });
+      if (!this.hasSufficientSamples(operation, currentMetric, baselineMetric)) {
         continue;
       }
 
@@ -121,52 +110,21 @@ export class PerformanceRegressionDetector {
       );
       results.push(result);
 
-      if (result.hasRegression) {
-        this.logger.warn({
-          msg: 'Performance regression detected',
-          operation: result.operation,
-          severity: result.severity,
-          changePercent: result.changePercent,
-          confidence: result.confidence,
-        });
-      }
+      this.logRegressionResult(result);
     }
 
-    return results.sort((a, b) => b.changePercent - a.changePercent);
+    return this.sortRegressionResults(results);
   }
 
-  /**
-   * Analyze individual operation for regression
-   */
   private analyzeRegression(
     operation: string,
     current: PerformanceMetric,
     baseline: PerformanceMetric
   ): RegressionResult {
-    // Use P95 if available, otherwise average
-    const currentValue = current.p95 ?? current.average;
-    const baselineValue = baseline.p95 ?? baseline.average;
-
-    const changePercent =
-      ((currentValue - baselineValue) / baselineValue) * 100;
-    const hasRegression = changePercent > this.config.regressionThreshold;
-
-    // Calculate statistical confidence using coefficient of variation
-    const currentCV = this.calculateCV(current);
-    const baselineCV = this.calculateCV(baseline);
-    const confidence = this.calculateConfidence(
-      currentCV,
-      baselineCV,
-      current.count,
-      baseline.count
-    );
-
-    const severity = this.determineSeverity(changePercent, confidence);
-    const recommendation = this.generateRecommendation(
-      severity,
-      changePercent,
-      operation
-    );
+    const { changePercent, hasRegression } = this.statisticalAnalyzer.calculatePerformanceChange(current, baseline);
+    const confidence = this.statisticalAnalyzer.calculateRegressionConfidence(current, baseline);
+    const severity = this.classifier.determineSeverity(changePercent, confidence);
+    const recommendation = this.classifier.generateRecommendation(severity, changePercent, operation);
 
     return {
       operation,
@@ -181,67 +139,62 @@ export class PerformanceRegressionDetector {
   }
 
   /**
-   * Calculate coefficient of variation for stability assessment
+   * Check if baseline data is available for the operation
    */
-  private calculateCV(metric: PerformanceMetric): number {
-    if (metric.average === 0) return 0;
-
-    // Estimate standard deviation from min/max (rough approximation)
-    const estimatedStdDev = (metric.max - metric.min) / 4; // Rough estimate
-    return estimatedStdDev / metric.average;
+  private hasValidBaseline(operation: string, baselineMetric: PerformanceMetric | undefined): boolean {
+    if (baselineMetric === undefined) {
+      this.logger.debug({
+        msg: 'No baseline data for operation',
+        operation,
+      });
+      return false;
+    }
+    return true;
   }
 
   /**
-   * Calculate statistical confidence in the regression detection
+   * Check if there are sufficient samples for comparison
    */
-  private calculateConfidence(
-    currentCV: number,
-    baselineCV: number,
-    currentCount: number,
-    baselineCount: number
-  ): number {
-    // Simple confidence calculation based on sample size and variance
-    const avgCV = (currentCV + baselineCV) / 2;
-    const sampleFactor = Math.min(currentCount, baselineCount) / 100; // Normalize to 0-1
-    const varianceFactor = Math.max(0, 1 - avgCV); // Lower variance = higher confidence
-
-    return Math.min(1, sampleFactor * varianceFactor * 0.8 + 0.2);
+  private hasSufficientSamples(
+    operation: string,
+    currentMetric: PerformanceMetric,
+    baselineMetric: PerformanceMetric
+  ): boolean {
+    if (
+      currentMetric.count < this.config.minSamples ||
+      baselineMetric.count < this.config.minSamples
+    ) {
+      this.logger.debug({
+        msg: 'Insufficient samples for operation',
+        operation,
+        currentSamples: currentMetric.count,
+        baselineSamples: baselineMetric.count,
+        minRequired: this.config.minSamples,
+      });
+      return false;
+    }
+    return true;
   }
 
   /**
-   * Determine severity of regression
+   * Log regression detection result
    */
-  private determineSeverity(
-    changePercent: number,
-    confidence: number
-  ): RegressionResult['severity'] {
-    if (confidence < 0.5) return 'minor'; // Low confidence
-
-    if (changePercent >= 100) return 'critical'; // 100%+ slower
-    if (changePercent >= 50) return 'major'; // 50-99% slower
-    if (changePercent >= 25) return 'moderate'; // 25-49% slower
-    return 'minor'; // 20-24% slower
-  }
-
-  /**
-   * Generate actionable recommendation
-   */
-  private generateRecommendation(
-    severity: RegressionResult['severity'],
-    changePercent: number,
-    operation: string
-  ): string {
-    switch (severity) {
-      case 'critical':
-        return `URGENT: ${operation} is ${changePercent.toFixed(1)}% slower. Immediate investigation required. Consider rollback if affecting users.`;
-      case 'major':
-        return `HIGH PRIORITY: ${operation} shows significant performance degradation (${changePercent.toFixed(1)}%). Profile the operation to identify bottlenecks.`;
-      case 'moderate':
-        return `MEDIUM PRIORITY: ${operation} performance declined by ${changePercent.toFixed(1)}%. Review recent changes and optimize if possible.`;
-      case 'minor':
-        return `LOW PRIORITY: Minor regression in ${operation} (${changePercent.toFixed(1)}%). Monitor for continued degradation.`;
+  private logRegressionResult(result: RegressionResult): void {
+    if (result.hasRegression) {
+      this.logger.warn({
+        msg: 'Performance regression detected',
+        operation: result.operation,
+        severity: result.severity,
+        changePercent: result.changePercent,
+        confidence: result.confidence,
+      });
     }
   }
+
+  private sortRegressionResults(results: RegressionResult[]): RegressionResult[] {
+    return this.classifier.sortRegressionResults(results);
+  }
+
 
   /**
    * Add historical data point for trend analysis
@@ -263,147 +216,13 @@ export class PerformanceRegressionDetector {
     this.historicalData.set(operation, history);
   }
 
-  /**
-   * Analyze performance trends over time
-   */
   analyzeTrends(): TrendResult[] {
     if (!this.config.enableTrendAnalysis) return [];
-
-    const results: TrendResult[] = [];
-
-    for (const [operation, history] of this.historicalData) {
-      if (history.length < this.config.minSamples) continue;
-
-      const trendResult = this.calculateTrend(operation, history);
-      results.push(trendResult);
-    }
-
-    return results;
+    return this.trendAnalyzer.analyzeTrends(this.historicalData);
   }
 
-  /**
-   * Calculate trend for specific operation
-   */
-  private calculateTrend(
-    operation: string,
-    history: Array<{ timestamp: number; metric: PerformanceMetric }>
-  ): TrendResult {
-    const recentHistory = history.slice(-this.config.trendWindow);
-    const dataPoints = recentHistory.map((h) => ({
-      timestamp: h.timestamp,
-      value: h.metric.p95 ?? h.metric.average,
-    }));
-
-    // Simple linear regression for trend calculation
-    const { slope, confidence } = this.calculateLinearRegression(dataPoints);
-
-    const trendDirection = this.determineTrendDirection(slope, confidence);
-    const changeRate = slope; // Change per millisecond
-
-    // Simple prediction (next data point)
-    const lastPoint = dataPoints[dataPoints.length - 1];
-    const timeDelta = 60000; // Predict 1 minute ahead
-    const nextValue = lastPoint.value + slope * timeDelta;
-
-    return {
-      operation,
-      trendDirection,
-      changeRate,
-      dataPoints,
-      prediction: {
-        nextValue: Math.max(0, nextValue),
-        confidence,
-      },
-    };
-  }
-
-  /**
-   * Simple linear regression calculation
-   */
-  private calculateLinearRegression(
-    points: Array<{ timestamp: number; value: number }>
-  ): { slope: number; confidence: number } {
-    if (points.length < 2) return { slope: 0, confidence: 0 };
-
-    const n = points.length;
-    const sumX = points.reduce((sum, p) => sum + p.timestamp, 0);
-    const sumY = points.reduce((sum, p) => sum + p.value, 0);
-    const sumXY = points.reduce((sum, p) => sum + p.timestamp * p.value, 0);
-    const sumXX = points.reduce((sum, p) => sum + p.timestamp * p.timestamp, 0);
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-
-    // Calculate R-squared for confidence
-    const meanY = sumY / n;
-    const ssTotal = points.reduce(
-      (sum, p) => sum + Math.pow(p.value - meanY, 2),
-      0
-    );
-    const ssResidual = points.reduce((sum, p) => {
-      const predicted = slope * p.timestamp + (sumY - slope * sumX) / n;
-      return sum + Math.pow(p.value - predicted, 2);
-    }, 0);
-
-    const rSquared = ssTotal > 0 ? 1 - ssResidual / ssTotal : 0;
-    const confidence = Math.max(0, Math.min(1, rSquared));
-
-    return { slope, confidence };
-  }
-
-  /**
-   * Determine trend direction
-   */
-  private determineTrendDirection(
-    slope: number,
-    confidence: number
-  ): TrendResult['trendDirection'] {
-    if (confidence < 0.3) return 'stable'; // Low confidence = stable
-
-    const threshold = 0.001; // Adjust based on your metrics scale
-
-    if (slope > threshold) return 'degrading'; // Performance getting worse
-    if (slope < -threshold) return 'improving'; // Performance getting better
-    return 'stable';
-  }
-
-  /**
-   * Generate regression summary report
-   */
   generateRegressionReport(regressions: RegressionResult[]): string {
-    if (regressions.length === 0) {
-      return '✅ No performance regressions detected.';
-    }
-
-    const lines = ['🚨 Performance Regression Report\n'];
-
-    const critical = regressions.filter((r) => r.severity === 'critical');
-    const major = regressions.filter((r) => r.severity === 'major');
-    const moderate = regressions.filter((r) => r.severity === 'moderate');
-    const minor = regressions.filter((r) => r.severity === 'minor');
-
-    lines.push(
-      `Summary: ${critical.length} critical, ${major.length} major, ${moderate.length} moderate, ${minor.length} minor\n`
-    );
-
-    [
-      { severity: 'critical', items: critical, emoji: '🔴' },
-      { severity: 'major', items: major, emoji: '🟠' },
-      { severity: 'moderate', items: moderate, emoji: '🟡' },
-      { severity: 'minor', items: minor, emoji: '🟢' },
-    ].forEach(({ severity, items, emoji }) => {
-      if (items.length > 0) {
-        lines.push(`${emoji} ${severity.toUpperCase()} Regressions:`);
-        items.forEach((item) => {
-          lines.push(
-            `  • ${item.operation}: +${item.changePercent.toFixed(1)}% (${item.confidence.toFixed(2)} confidence)`
-          );
-          lines.push(`    ${item.recommendation}`);
-        });
-        lines.push('');
-      }
-    });
-
-    return lines.join('\n');
+    return this.reportGenerator.generateRegressionReport(regressions);
   }
 
   /**

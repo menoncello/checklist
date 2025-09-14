@@ -205,53 +205,84 @@ export class FieldEncryption {
       value: unknown,
       currentPath: string
     ): Promise<unknown> => {
-      // Skip if already encrypted
-      if (
-        value !== null &&
-        value !== undefined &&
-        typeof value === 'object' &&
-        'encrypted' in value &&
-        (value as Record<string, unknown>).encrypted === true
-      ) {
+      if (this.isAlreadyEncrypted(value)) {
         return value;
       }
 
-      // Check if this path should be encrypted
-      if (currentPath && this.shouldEncrypt(currentPath)) {
+      if (this.shouldEncryptPath(currentPath)) {
         encryptedPaths.push(currentPath);
         return await this.encrypt(value);
       }
 
-      // Recursively process objects and arrays
-      if (Array.isArray(value)) {
-        return await Promise.all(
-          value.map((item, index) =>
-            processValue(
-              item,
-              currentPath ? `${currentPath}.${index}` : `${index}`
-            )
-          )
-        );
-      } else if (
-        value !== null &&
-        value !== undefined &&
-        typeof value === 'object'
-      ) {
-        const result: Record<string, unknown> = {};
-
-        for (const [key, val] of Object.entries(value)) {
-          const newPath = currentPath ? `${currentPath}.${key}` : key;
-          result[key] = await processValue(val, newPath);
-        }
-
-        return result;
-      }
-
-      return value;
+      return await this.processValueRecursively(value, currentPath, processValue);
     };
 
     const data = await processValue(obj, path);
     return { data, encryptedPaths };
+  }
+
+  private static isAlreadyEncrypted(value: unknown): boolean {
+    return (
+      value !== null &&
+      value !== undefined &&
+      typeof value === 'object' &&
+      'encrypted' in value &&
+      (value as Record<string, unknown>).encrypted === true
+    );
+  }
+
+  private static shouldEncryptPath(currentPath: string): boolean {
+    return currentPath.length > 0 && this.shouldEncrypt(currentPath);
+  }
+
+  private static async processValueRecursively(
+    value: unknown,
+    currentPath: string,
+    processValue: (value: unknown, path: string) => Promise<unknown>
+  ): Promise<unknown> {
+    if (Array.isArray(value)) {
+      return await this.processArray(value, currentPath, processValue);
+    }
+
+    if (this.isPlainObject(value)) {
+      return await this.processObject(value as Record<string, unknown>, currentPath, processValue);
+    }
+
+    return value;
+  }
+
+  private static async processArray(
+    array: unknown[],
+    currentPath: string,
+    processValue: (value: unknown, path: string) => Promise<unknown>
+  ): Promise<unknown[]> {
+    return await Promise.all(
+      array.map((item, index) =>
+        processValue(
+          item,
+          currentPath ? `${currentPath}.${index}` : `${index}`
+        )
+      )
+    );
+  }
+
+  private static async processObject(
+    obj: Record<string, unknown>,
+    currentPath: string,
+    processValue: (value: unknown, path: string) => Promise<unknown>
+  ): Promise<Record<string, unknown>> {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, val] of Object.entries(obj)) {
+      const newPath = currentPath ? `${currentPath}.${key}` : key;
+      result[key] = await processValue(val, newPath);
+    }
+
+    return result;
+  }
+
+  private static isPlainObject(value: unknown): boolean {
+    return value !== null && value !== undefined && typeof value === 'object';
   }
 
   /**
@@ -259,38 +290,52 @@ export class FieldEncryption {
    */
   public static async decryptObject(obj: unknown): Promise<unknown> {
     const processValue = async (value: unknown): Promise<unknown> => {
-      // Check if this is an encrypted field
-      if (
-        value !== null &&
-        value !== undefined &&
-        typeof value === 'object' &&
-        'encrypted' in value &&
-        (value as Record<string, unknown>).encrypted === true
-      ) {
+      if (this.isEncryptedField(value)) {
         return await this.decrypt(value as EncryptedField);
       }
 
-      // Recursively process objects and arrays
-      if (Array.isArray(value)) {
-        return await Promise.all(value.map((item) => processValue(item)));
-      } else if (
-        value !== null &&
-        value !== undefined &&
-        typeof value === 'object'
-      ) {
-        const result: Record<string, unknown> = {};
-
-        for (const [key, val] of Object.entries(value)) {
-          result[key] = await processValue(val);
-        }
-
-        return result;
-      }
-
-      return value;
+      return await this.processDecryptionRecursively(value, processValue);
     };
 
     return await processValue(obj);
+  }
+
+  private static isEncryptedField(value: unknown): boolean {
+    return (
+      value !== null &&
+      value !== undefined &&
+      typeof value === 'object' &&
+      'encrypted' in value &&
+      (value as Record<string, unknown>).encrypted === true
+    );
+  }
+
+  private static async processDecryptionRecursively(
+    value: unknown,
+    processValue: (value: unknown) => Promise<unknown>
+  ): Promise<unknown> {
+    if (Array.isArray(value)) {
+      return await Promise.all(value.map((item) => processValue(item)));
+    }
+
+    if (this.isPlainObject(value)) {
+      return await this.processObjectForDecryption(value as Record<string, unknown>, processValue);
+    }
+
+    return value;
+  }
+
+  private static async processObjectForDecryption(
+    obj: Record<string, unknown>,
+    processValue: (value: unknown) => Promise<unknown>
+  ): Promise<Record<string, unknown>> {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, val] of Object.entries(obj)) {
+      result[key] = await processValue(val);
+    }
+
+    return result;
   }
 
   /**

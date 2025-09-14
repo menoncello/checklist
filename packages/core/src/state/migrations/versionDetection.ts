@@ -1,57 +1,78 @@
 import { StateSchema, VersionDetectionError } from './types';
 
 export async function detectVersion(state: unknown): Promise<string> {
+  validateStateObject(state);
+
+  const s = state as Record<string, unknown>;
+
+  const explicitVersion = getExplicitVersion(s);
+  if (explicitVersion !== null) return explicitVersion;
+
+  const inferredVersion = inferVersionFromStructure(s);
+  return inferredVersion;
+}
+
+function validateStateObject(state: unknown): void {
   if (state === null || state === undefined || typeof state !== 'object') {
     throw new VersionDetectionError('Invalid state object');
   }
+}
 
-  const s = state as Record<string, unknown>;
+function getExplicitVersion(s: Record<string, unknown>): string | null {
   if (s.schemaVersion !== undefined && typeof s.schemaVersion === 'string') {
     return s.schemaVersion;
   }
-
   if (s.version !== undefined && typeof s.version === 'string') {
     return s.version;
   }
+  return null;
+}
 
-  if (s.templates !== undefined && s.variables !== undefined) {
-    if (s.recovery !== undefined || s.conflicts !== undefined) {
-      return '1.0.0';
-    }
-    return '0.2.0';
+function inferVersionFromStructure(s: Record<string, unknown>): string {
+  if (hasTemplatesAndVariables(s)) {
+    return hasRecoveryOrConflicts(s) ? '1.0.0' : '0.2.0';
   }
 
-  if (
-    s.metadata !== null &&
-    s.metadata !== undefined &&
-    typeof s.metadata === 'object'
-  ) {
-    const metadata = s.metadata as Record<string, unknown>;
-    if (
-      (metadata.created !== null && metadata.created !== undefined) ||
-      (metadata.modified !== null && metadata.modified !== undefined)
-    ) {
-      return '0.1.0';
-    }
+  if (hasMetadataWithTimestamps(s)) {
+    return '0.1.0';
   }
 
-  if (
-    s.checklists !== null &&
-    s.checklists !== undefined &&
-    Array.isArray(s.checklists)
-  ) {
-    return '0.0.0';
-  }
-
-  if (
-    (s.activeInstance !== null && s.activeInstance !== undefined) ||
-    (s.completedSteps !== null && s.completedSteps !== undefined) ||
-    (s.currentStepId !== null && s.currentStepId !== undefined)
-  ) {
+  if (hasChecklistsArray(s) || hasWorkflowFields(s)) {
     return '0.0.0';
   }
 
   return '0.0.0';
+}
+
+function hasTemplatesAndVariables(s: Record<string, unknown>): boolean {
+  return s.templates !== undefined && s.variables !== undefined;
+}
+
+function hasRecoveryOrConflicts(s: Record<string, unknown>): boolean {
+  return s.recovery !== undefined || s.conflicts !== undefined;
+}
+
+function hasMetadataWithTimestamps(s: Record<string, unknown>): boolean {
+  if (s.metadata === null || s.metadata === undefined || typeof s.metadata !== 'object') {
+    return false;
+  }
+  const metadata = s.metadata as Record<string, unknown>;
+  return (
+    (metadata.created !== null && metadata.created !== undefined) ||
+    (metadata.modified !== null && metadata.modified !== undefined)
+  );
+}
+
+function hasChecklistsArray(s: Record<string, unknown>): boolean {
+  return s.checklists !== null && s.checklists !== undefined && Array.isArray(s.checklists);
+}
+
+function hasWorkflowFields(s: Record<string, unknown>): boolean {
+  return (
+    (s.activeInstance !== null && s.activeInstance !== undefined) ||
+    (s.completedSteps !== null && s.completedSteps !== undefined) ||
+    (s.currentStepId !== null && s.currentStepId !== undefined)
+  );
 }
 
 export function isCompatibleVersion(
@@ -192,7 +213,13 @@ export function inferStateStructure(state: unknown): {
   estimatedVersion: string;
 } {
   const s = state as Record<string, unknown>;
-  const structure = {
+  const structure = detectStateComponents(s);
+  structure.estimatedVersion = determineStateVersion(structure);
+  return structure;
+}
+
+function detectStateComponents(s: Record<string, unknown>) {
+  return {
     hasChecklists: s.checklists !== undefined && Array.isArray(s.checklists),
     hasTemplates: s.templates !== undefined && Array.isArray(s.templates),
     hasVariables: s.variables !== undefined && typeof s.variables === 'object',
@@ -202,22 +229,30 @@ export function inferStateStructure(state: unknown): {
     hasMigrations: s.migrations !== undefined && Array.isArray(s.migrations),
     estimatedVersion: '0.0.0',
   };
+}
 
-  if (
-    structure.hasMigrations &&
-    structure.hasRecovery &&
-    structure.hasConflicts
-  ) {
-    structure.estimatedVersion = '1.0.0';
-  } else if (structure.hasTemplates && structure.hasVariables) {
-    structure.estimatedVersion = '0.2.0';
-  } else if (structure.hasMetadata) {
-    structure.estimatedVersion = '0.1.0';
-  } else if (structure.hasChecklists) {
-    structure.estimatedVersion = '0.0.0';
+function determineStateVersion(structure: {
+  hasChecklists: boolean;
+  hasTemplates: boolean;
+  hasVariables: boolean;
+  hasMetadata: boolean;
+  hasRecovery: boolean;
+  hasConflicts: boolean;
+  hasMigrations: boolean;
+}): string {
+  if (structure.hasMigrations && structure.hasRecovery && structure.hasConflicts) {
+    return '1.0.0';
   }
-
-  return structure;
+  if (structure.hasTemplates && structure.hasVariables) {
+    return '0.2.0';
+  }
+  if (structure.hasMetadata) {
+    return '0.1.0';
+  }
+  if (structure.hasChecklists) {
+    return '0.0.0';
+  }
+  return '0.0.0';
 }
 
 export async function validateStateIntegrity(state: StateSchema): Promise<{
@@ -229,6 +264,27 @@ export async function validateStateIntegrity(state: StateSchema): Promise<{
   const warnings: string[] = [];
   const s = state as unknown as Record<string, unknown>;
 
+  validateVersionFields(s, errors, warnings);
+  validateArrayFields(s, errors);
+  validateObjectFields(s, errors);
+  validateMetadata(s, errors, warnings);
+
+  if (s.lastModified === undefined) {
+    warnings.push('State file missing lastModified timestamp');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+function validateVersionFields(
+  s: Record<string, unknown>,
+  errors: string[],
+  warnings: string[]
+): void {
   if (s.version === undefined && s.schemaVersion === undefined) {
     errors.push('State file missing version information');
   }
@@ -242,59 +298,51 @@ export async function validateStateIntegrity(state: StateSchema): Promise<{
       `Version mismatch: version=${s.version}, schemaVersion=${s.schemaVersion}`
     );
   }
+}
 
-  if (s.lastModified === undefined) {
-    warnings.push('State file missing lastModified timestamp');
-  }
+function validateArrayFields(s: Record<string, unknown>, errors: string[]): void {
+  const arrayFields = [
+    { name: 'migrations', value: s.migrations },
+    { name: 'checklists', value: s.checklists },
+    { name: 'templates', value: s.templates },
+    { name: 'conflicts', value: s.conflicts },
+  ];
 
-  if (s.migrations !== undefined && !Array.isArray(s.migrations)) {
-    errors.push('Invalid migrations field: must be an array');
-  }
+  arrayFields.forEach(({ name, value }) => {
+    if (value !== undefined && !Array.isArray(value)) {
+      errors.push(`Invalid ${name} field: must be an array`);
+    }
+  });
+}
 
-  if (s.checklists !== undefined && !Array.isArray(s.checklists)) {
-    errors.push('Invalid checklists field: must be an array');
-  }
-
-  if (s.templates !== undefined && !Array.isArray(s.templates)) {
-    errors.push('Invalid templates field: must be an array');
-  }
-
+function validateObjectFields(s: Record<string, unknown>, errors: string[]): void {
   if (
     s.variables !== undefined &&
     (typeof s.variables !== 'object' || Array.isArray(s.variables))
   ) {
     errors.push('Invalid variables field: must be an object');
   }
+}
 
-  if (s.conflicts !== undefined && !Array.isArray(s.conflicts)) {
-    errors.push('Invalid conflicts field: must be an array');
+function validateMetadata(
+  s: Record<string, unknown>,
+  errors: string[],
+  warnings: string[]
+): void {
+  if (s.metadata === undefined) return;
+
+  if (typeof s.metadata !== 'object') {
+    errors.push('Invalid metadata field: must be an object');
+    return;
   }
 
-  if (s.metadata !== undefined) {
-    if (typeof s.metadata !== 'object') {
-      errors.push('Invalid metadata field: must be an object');
-    } else {
-      const metadata = s.metadata as Record<string, unknown>;
-      if (
-        metadata.created !== undefined &&
-        !isValidDate(metadata.created as string)
-      ) {
-        warnings.push('Invalid metadata.created timestamp');
-      }
-      if (
-        metadata.modified !== undefined &&
-        !isValidDate(metadata.modified as string)
-      ) {
-        warnings.push('Invalid metadata.modified timestamp');
-      }
-    }
+  const metadata = s.metadata as Record<string, unknown>;
+  if (metadata.created !== undefined && !isValidDate(metadata.created as string)) {
+    warnings.push('Invalid metadata.created timestamp');
   }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-  };
+  if (metadata.modified !== undefined && !isValidDate(metadata.modified as string)) {
+    warnings.push('Invalid metadata.modified timestamp');
+  }
 }
 
 function isValidDate(dateString: string): boolean {

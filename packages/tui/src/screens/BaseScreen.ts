@@ -89,42 +89,57 @@ export abstract class BaseScreen implements Screen {
     return { width: this.width, height: this.height };
   }
 
-  protected createBox(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    title?: string
-  ): string {
+  protected createBox(options: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    title?: string;
+  }): string {
+    const { x, width, height, title } = options;
     const lines: string[] = [];
 
-    // Top border
+    lines.push(this.createBoxTopLine(x, width, title));
+    lines.push(...this.createBoxMiddleLines(x, width, height));
+    lines.push(...this.createBoxBottomLine(x, width, height));
+
+    return lines.join('\n');
+  }
+
+  private createBoxTopLine(x: number, width: number, title?: string): string {
     let topLine = '┌';
     if (title != null && title.length > 0) {
-      const titleText = ` ${title} `;
-      const remainingWidth = width - titleText.length - 2;
-      const leftPadding = Math.floor(remainingWidth / 2);
-      const rightPadding = remainingWidth - leftPadding;
-      topLine += '─'.repeat(leftPadding) + titleText + '─'.repeat(rightPadding);
+      topLine += this.createTitleBorder(title, width);
     } else {
       topLine += '─'.repeat(width - 2);
     }
     topLine += '┐';
-    lines.push(this.padLine(topLine, x));
+    return this.padLine(topLine, x);
+  }
 
-    // Middle lines
+  private createTitleBorder(title: string, width: number): string {
+    const titleText = ` ${title} `;
+    const remainingWidth = width - titleText.length - 2;
+    const leftPadding = Math.floor(remainingWidth / 2);
+    const rightPadding = remainingWidth - leftPadding;
+    return '─'.repeat(leftPadding) + titleText + '─'.repeat(rightPadding);
+  }
+
+  private createBoxMiddleLines(x: number, width: number, height: number): string[] {
+    const lines: string[] = [];
     for (let i = 1; i < height - 1; i++) {
       const line = '│' + ' '.repeat(width - 2) + '│';
       lines.push(this.padLine(line, x));
     }
+    return lines;
+  }
 
-    // Bottom border
+  private createBoxBottomLine(x: number, width: number, height: number): string[] {
     if (height > 1) {
       const bottomLine = '└' + '─'.repeat(width - 2) + '┘';
-      lines.push(this.padLine(bottomLine, x));
+      return [this.padLine(bottomLine, x)];
     }
-
-    return lines.join('\n');
+    return [];
   }
 
   protected createMenu(options: string[], selectedIndex: number = 0): string {
@@ -200,33 +215,29 @@ export abstract class BaseScreen implements Screen {
   protected applyStyle(text: string, style: ScreenStyle): string {
     let result = text;
 
-    if (style.color) {
-      const colorCodes: Record<string, string> = {
-        black: '\x1b[30m',
-        red: '\x1b[31m',
-        green: '\x1b[32m',
-        yellow: '\x1b[33m',
-        blue: '\x1b[34m',
-        magenta: '\x1b[35m',
-        cyan: '\x1b[36m',
-        white: '\x1b[37m',
-      };
-      result = (colorCodes[style.color] ?? '') + result;
-    }
+    result = this.applyForegroundColor(result, style.color);
+    result = this.applyBackgroundColor(result, style.backgroundColor);
+    result = this.applyTextDecorations(result, style);
 
-    if (style.backgroundColor) {
-      const bgColorCodes: Record<string, string> = {
-        black: '\x1b[40m',
-        red: '\x1b[41m',
-        green: '\x1b[42m',
-        yellow: '\x1b[43m',
-        blue: '\x1b[44m',
-        magenta: '\x1b[45m',
-        cyan: '\x1b[46m',
-        white: '\x1b[47m',
-      };
-      result = (bgColorCodes[style.backgroundColor] ?? '') + result;
-    }
+    return result + '\x1b[0m';
+  }
+
+  private applyForegroundColor(text: string, color?: string): string {
+    if (color === undefined || color === '') return text;
+
+    const colorCodes = this.getForegroundColorCodes();
+    return (colorCodes[color] ?? '') + text;
+  }
+
+  private applyBackgroundColor(text: string, backgroundColor?: string): string {
+    if (backgroundColor === undefined || backgroundColor === '') return text;
+
+    const bgColorCodes = this.getBackgroundColorCodes();
+    return (bgColorCodes[backgroundColor] ?? '') + text;
+  }
+
+  private applyTextDecorations(text: string, style: ScreenStyle): string {
+    let result = text;
 
     if (style.bold === true) result = '\x1b[1m' + result;
     if (style.italic === true) result = '\x1b[3m' + result;
@@ -234,7 +245,33 @@ export abstract class BaseScreen implements Screen {
     if (style.dim === true) result = '\x1b[2m' + result;
     if (style.reverse === true) result = '\x1b[7m' + result;
 
-    return result + '\x1b[0m';
+    return result;
+  }
+
+  private getForegroundColorCodes(): Record<string, string> {
+    return {
+      black: '\x1b[30m',
+      red: '\x1b[31m',
+      green: '\x1b[32m',
+      yellow: '\x1b[33m',
+      blue: '\x1b[34m',
+      magenta: '\x1b[35m',
+      cyan: '\x1b[36m',
+      white: '\x1b[37m',
+    };
+  }
+
+  private getBackgroundColorCodes(): Record<string, string> {
+    return {
+      black: '\x1b[40m',
+      red: '\x1b[41m',
+      green: '\x1b[42m',
+      yellow: '\x1b[43m',
+      blue: '\x1b[44m',
+      magenta: '\x1b[45m',
+      cyan: '\x1b[46m',
+      white: '\x1b[47m',
+    };
   }
 
   public on(event: string, handler: Function): void {

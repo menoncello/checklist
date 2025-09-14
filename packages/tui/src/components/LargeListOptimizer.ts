@@ -1,3 +1,9 @@
+import { ListCacheManager } from './ListCacheManager';
+import { ListChunkLoader } from './ListChunkLoader';
+import { ListPreloader } from './ListPreloader';
+import { CacheManager } from './optimization/CacheManager.js';
+import { MetricsCollector } from './optimization/MetricsCollector.js';
+
 export interface ListOptimizationConfig {
   enableVirtualization: boolean;
   enableCaching: boolean;
@@ -20,20 +26,6 @@ export interface ListDataSource<T> {
   filter?(predicate: (item: T) => boolean): Promise<number[]> | number[];
 }
 
-export interface CacheEntry<T> {
-  item: T;
-  timestamp: number;
-  accessCount: number;
-  lastAccess: number;
-}
-
-export interface LoadingChunk {
-  start: number;
-  end: number;
-  promise: Promise<unknown>;
-  requestTime: number;
-}
-
 export interface OptimizationMetrics {
   totalItems: number;
   cachedItems: number;
@@ -52,12 +44,15 @@ export interface OptimizationMetrics {
 export class LargeListOptimizer<T> {
   private config: ListOptimizationConfig;
   private dataSource: ListDataSource<T>;
-  private cache = new Map<number, CacheEntry<T>>();
-  private loadingChunks = new Map<string, LoadingChunk>();
+  private cacheManager: ListCacheManager<T>;
+  private chunkLoader: ListChunkLoader;
+  private preloader: ListPreloader;
   private accessPattern: number[] = [];
+  private cache: CacheManager<T>;
+  private metricsCollector: MetricsCollector;
+  private loadingChunks = new Map<string, { start: number; end: number; promise: Promise<unknown>; requestTime: number }>();
   private metrics: OptimizationMetrics;
   private eventHandlers = new Map<string, Set<Function>>();
-  private frameTimeHistory: number[] = [];
   private lastFrameTime = performance.now();
   private debounceTimer: Timer | null = null;
 
@@ -66,7 +61,21 @@ export class LargeListOptimizer<T> {
     config: Partial<ListOptimizationConfig> = {}
   ) {
     this.dataSource = dataSource;
-    this.config = {
+    this.config = this.createDefaultConfig(config);
+    this.metrics = this.createDefaultMetrics();
+    this.cacheManager = new ListCacheManager<T>(this.config.cacheSize);
+    this.cache = new CacheManager<T>({
+      enableCaching: this.config.enableCaching,
+      cacheSize: this.config.cacheSize
+    });
+    this.metricsCollector = new MetricsCollector();
+    this.chunkLoader = new ListChunkLoader();
+    this.preloader = new ListPreloader(this.config.preloadDistance);
+    this.updateTotalItems();
+  }
+
+  private createDefaultConfig(config: Partial<ListOptimizationConfig>): ListOptimizationConfig {
+    return {
       enableVirtualization: true,
       enableCaching: true,
       enableLazyLoading: true,
@@ -79,8 +88,10 @@ export class LargeListOptimizer<T> {
       enableWorkerOptimization: false,
       ...config,
     };
+  }
 
-    this.metrics = {
+  private createDefaultMetrics(): ListOptimizationMetrics {
+    return {
       totalItems: 0,
       cachedItems: 0,
       cacheHitRate: 0,
@@ -94,8 +105,6 @@ export class LargeListOptimizer<T> {
         smoothnessScore: 100,
       },
     };
-
-    this.updateTotalItems();
   }
 
   private async updateTotalItems(): Promise<void> {
@@ -111,14 +120,10 @@ export class LargeListOptimizer<T> {
     this.recordAccess(index);
 
     // Check cache first
-    if (this.config.enableCaching) {
-      const cached = this.cache.get(index);
-      if (cached) {
-        cached.accessCount++;
-        cached.lastAccess = Date.now();
-        this.updateCacheMetrics();
-        return cached.item;
-      }
+    const cached = this.cache.get(index);
+    if (cached != null) {
+      this.updateCacheMetrics();
+      return cached;
     }
 
     // Load item (potentially with chunking)
@@ -126,7 +131,7 @@ export class LargeListOptimizer<T> {
       return this.loadItemWithChunking(index);
     } else {
       const item = await this.dataSource.getItem(index);
-      this.cacheItem(index, item);
+      this.cache.set(index, item);
       return item;
     }
   }
@@ -182,14 +187,7 @@ export class LargeListOptimizer<T> {
           range.count
         );
 
-        for (let i = 0; i < loadedItems.length; i++) {
-          const index = range.start + i;
-          const localIndex = index - start;
-
-          if (localIndex >= 0 && localIndex < items.length) {
-            items[localIndex] = loadedItems[i];
-          }
-        }
+        this.assignLoadedItems(loadedItems, range.start, start, items);
       } catch (error) {
         this.emit('loadError', { range, error });
       }
@@ -346,39 +344,59 @@ export class LargeListOptimizer<T> {
 
   private async performPreload(currentIndex: number): Promise<void> {
     const direction = this.detectScrollDirection();
-    const preloadIndices: number[] = [];
+    const preloadIndices = this.getPreloadIndices(currentIndex, direction);
+    this.executePreloadInBackground(preloadIndices);
+  }
 
-    // Determine preload range based on direction
+  private getPreloadIndices(currentIndex: number, direction: string): number[] {
     if (direction === 'down') {
-      for (let i = 1; i <= this.config.preloadDistance; i++) {
-        const index = currentIndex + i;
-        if (index < this.metrics.totalItems && !this.cache.has(index)) {
-          preloadIndices.push(index);
-        }
-      }
+      return this.getDownwardPreloadIndices(currentIndex);
     } else if (direction === 'up') {
-      for (let i = 1; i <= this.config.preloadDistance; i++) {
-        const index = currentIndex - i;
-        if (index >= 0 && !this.cache.has(index)) {
-          preloadIndices.push(index);
-        }
-      }
+      return this.getUpwardPreloadIndices(currentIndex);
     } else {
-      // Bidirectional preload
-      for (let i = 1; i <= this.config.preloadDistance / 2; i++) {
-        const upIndex = currentIndex - i;
-        const downIndex = currentIndex + i;
+      return this.getBidirectionalPreloadIndices(currentIndex);
+    }
+  }
 
-        if (upIndex >= 0 && !this.cache.has(upIndex)) {
-          preloadIndices.push(upIndex);
-        }
-        if (downIndex < this.metrics.totalItems && !this.cache.has(downIndex)) {
-          preloadIndices.push(downIndex);
-        }
+  private getDownwardPreloadIndices(currentIndex: number): number[] {
+    const preloadIndices: number[] = [];
+    for (let i = 1; i <= this.config.preloadDistance; i++) {
+      const index = currentIndex + i;
+      if (index < this.metrics.totalItems && !this.cache.has(index)) {
+        preloadIndices.push(index);
       }
     }
+    return preloadIndices;
+  }
 
-    // Load in background (don't await)
+  private getUpwardPreloadIndices(currentIndex: number): number[] {
+    const preloadIndices: number[] = [];
+    for (let i = 1; i <= this.config.preloadDistance; i++) {
+      const index = currentIndex - i;
+      if (index >= 0 && !this.cache.has(index)) {
+        preloadIndices.push(index);
+      }
+    }
+    return preloadIndices;
+  }
+
+  private getBidirectionalPreloadIndices(currentIndex: number): number[] {
+    const preloadIndices: number[] = [];
+    for (let i = 1; i <= this.config.preloadDistance / 2; i++) {
+      const upIndex = currentIndex - i;
+      const downIndex = currentIndex + i;
+
+      if (upIndex >= 0 && !this.cache.has(upIndex)) {
+        preloadIndices.push(upIndex);
+      }
+      if (downIndex < this.metrics.totalItems && !this.cache.has(downIndex)) {
+        preloadIndices.push(downIndex);
+      }
+    }
+    return preloadIndices;
+  }
+
+  private executePreloadInBackground(preloadIndices: number[]): void {
     for (const index of preloadIndices.slice(0, 50)) {
       // Limit concurrent preloads
       this.loadItemWithChunking(index).catch(() => {
@@ -387,24 +405,15 @@ export class LargeListOptimizer<T> {
     }
   }
 
-  private detectScrollDirection(): 'up' | 'down' | 'none' {
-    if (this.accessPattern.length < 3) return 'none';
+  private assignLoadedItems(loadedItems: T[], rangeStart: number, start: number, items: (T | null)[]): void {
+    for (let i = 0; i < loadedItems.length; i++) {
+      const index = rangeStart + i;
+      const localIndex = index - start;
 
-    const recent = this.accessPattern.slice(-5);
-    let upCount = 0;
-    let downCount = 0;
-
-    for (let i = 1; i < recent.length; i++) {
-      if (recent[i] > recent[i - 1]) {
-        downCount++;
-      } else if (recent[i] < recent[i - 1]) {
-        upCount++;
+      if (localIndex >= 0 && localIndex < items.length) {
+        items[localIndex] = loadedItems[i];
       }
     }
-
-    if (downCount > upCount) return 'down';
-    if (upCount > downCount) return 'up';
-    return 'none';
   }
 
   private updateCacheMetrics(): void {
@@ -425,43 +434,15 @@ export class LargeListOptimizer<T> {
   }
 
   private updateLoadTimeMetric(loadTime: number): void {
-    const alpha = 0.1; // Exponential moving average factor
-    this.metrics.averageLoadTime =
-      this.metrics.averageLoadTime * (1 - alpha) + loadTime * alpha;
+    this.metricsCollector.recordLoadTime(loadTime);
   }
 
   public trackFrameTime(): void {
     if (!this.config.enableMetrics) return;
 
     const now = performance.now();
-    const frameTime = now - this.lastFrameTime;
+    this.metricsCollector.recordFrame(now);
     this.lastFrameTime = now;
-
-    this.frameTimeHistory.push(frameTime);
-    if (this.frameTimeHistory.length > 60) {
-      // Keep last 60 frames
-      this.frameTimeHistory.shift();
-    }
-
-    // Calculate FPS metrics
-    if (this.frameTimeHistory.length >= 10) {
-      const avgFrameTime =
-        this.frameTimeHistory.reduce((sum, time) => sum + time, 0) /
-        this.frameTimeHistory.length;
-      this.metrics.scrollPerformance.averageFPS = 1000 / avgFrameTime;
-
-      // Count frame drops (>33ms = below 30fps)
-      this.metrics.scrollPerformance.frameDrops = this.frameTimeHistory.filter(
-        (time) => time > 33
-      ).length;
-
-      // Calculate smoothness score (0-100)
-      const variance = this.calculateVariance(this.frameTimeHistory);
-      this.metrics.scrollPerformance.smoothnessScore = Math.max(
-        0,
-        100 - variance / 10
-      );
-    }
   }
 
   private calculateVariance(values: number[]): number {
@@ -516,10 +497,19 @@ export class LargeListOptimizer<T> {
   }
 
   public getMetrics(): OptimizationMetrics {
-    // Calculate memory usage estimate
-    this.metrics.memoryUsage = this.cache.size * 1024; // Rough estimate
+    // Update metrics from helpers
+    const cacheStats = this.cache.getStats();
+    const collectedMetrics = this.metricsCollector.getMetrics(
+      this.metrics.totalItems,
+      cacheStats.size,
+      cacheStats.hitRate,
+      this.cache.getMemoryUsage()
+    );
 
-    return { ...this.metrics };
+    return {
+      ...this.metrics,
+      ...collectedMetrics
+    };
   }
 
   public updateConfig(newConfig: Partial<ListOptimizationConfig>): void {

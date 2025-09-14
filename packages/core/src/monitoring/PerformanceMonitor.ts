@@ -114,7 +114,12 @@ export class PerformanceMonitorService
       return;
     }
 
-    // Add to raw metrics buffer
+    const rawEntries = this.updateRawMetrics(operation, duration);
+    this.updateAggregatedMetrics(operation, duration, rawEntries);
+    this.checkBudgetViolation(operation, duration);
+  }
+
+  private updateRawMetrics(operation: string, duration: number): MetricEntry[] {
     const rawEntries = this.rawMetrics.get(operation) ?? [];
     rawEntries.push({
       operation,
@@ -128,8 +133,10 @@ export class PerformanceMonitorService
     }
 
     this.rawMetrics.set(operation, rawEntries);
+    return rawEntries;
+  }
 
-    // Update aggregated metrics
+  private updateAggregatedMetrics(operation: string, duration: number, rawEntries: MetricEntry[]): void {
     const metric = this.metrics.get(operation) ?? {
       count: 0,
       total: 0,
@@ -144,23 +151,28 @@ export class PerformanceMonitorService
     metric.max = Math.max(metric.max, duration);
     metric.average = metric.total / metric.count;
 
-    // Calculate percentiles from raw data
-    if (rawEntries.length >= 10) {
-      const sortedDurations = rawEntries
-        .map((e) => e.duration)
-        .sort((a, b) => a - b);
-      const p95Index = Math.ceil(sortedDurations.length * 0.95) - 1;
-      const p99Index = Math.ceil(sortedDurations.length * 0.99) - 1;
+    this.calculatePercentiles(metric, rawEntries);
+    this.metrics.set(operation, metric);
+  }
 
-      metric.p95 = sortedDurations[p95Index];
-      metric.p99 = sortedDurations[p99Index];
+  private calculatePercentiles(metric: PerformanceMetric, rawEntries: MetricEntry[]): void {
+    if (rawEntries.length < 10) {
+      return;
     }
 
-    this.metrics.set(operation, metric);
+    const sortedDurations = rawEntries
+      .map((e) => e.duration)
+      .sort((a, b) => a - b);
+    const p95Index = Math.ceil(sortedDurations.length * 0.95) - 1;
+    const p99Index = Math.ceil(sortedDurations.length * 0.99) - 1;
 
-    // Check budget violations
+    metric.p95 = sortedDurations[p95Index];
+    metric.p99 = sortedDurations[p99Index];
+  }
+
+  private checkBudgetViolation(operation: string, duration: number): void {
     const budget = this.budgets.get(operation);
-    if (budget && duration > budget.maxMs) {
+    if (budget !== undefined && duration > budget.maxMs) {
       this.handleBudgetExceeded(operation, duration, budget);
     }
   }

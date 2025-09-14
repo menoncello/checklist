@@ -1,3 +1,4 @@
+
 export interface DebugConfig {
   enabled: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
@@ -41,6 +42,9 @@ export interface ComponentDebugInfo {
   metrics?: Record<string, number>;
 }
 
+import { ConfigInitializer } from './helpers/ConfigInitializer.js';
+import { OverlayRenderer } from './rendering/OverlayRenderer.js';
+
 export class DebugManager {
   private config: DebugConfig;
   private logs: DebugLogEntry[] = [];
@@ -57,60 +61,11 @@ export class DebugManager {
   private logIdCounter = 0;
 
   constructor(config: Partial<DebugConfig> = {}) {
-    this.config = {
-      enabled: false,
-      logLevel: 'debug',
-      showOverlay: true,
-      showMetrics: true,
-      showComponentTree: true,
-      showEventLog: true,
-      showPerformanceMetrics: true,
-      maxLogEntries: 1000,
-      enableProfiling: false,
-      hotkeys: {
-        toggle: 'F12',
-        logs: '1',
-        metrics: '2',
-        components: '3',
-        events: '4',
-        performance: '5',
-        clear: 'c',
-        export: 'e',
-      },
-      ...config,
-    };
-
-    this.metrics = {
-      renderTime: 0,
-      componentCount: 0,
-      eventCount: 0,
-      memoryUsage: 0,
-      fps: 60,
-      lastUpdate: Date.now(),
-    };
-
-    this.setupEventCapture();
+    this.config = ConfigInitializer.createDefaultConfig(config);
+    this.metrics = ConfigInitializer.createDefaultMetrics();
+    ConfigInitializer.setupEventCapture(this.log.bind(this));
   }
 
-  private setupEventCapture(): void {
-    if (typeof process !== 'undefined') {
-      // Capture uncaught exceptions
-      process.on('uncaughtException', (error) => {
-        this.log('error', 'System', 'Uncaught exception', {
-          error: error.message,
-          stack: error.stack,
-        });
-      });
-
-      // Capture unhandled promise rejections
-      process.on('unhandledRejection', (reason, promise) => {
-        this.log('error', 'System', 'Unhandled promise rejection', {
-          reason,
-          promise,
-        });
-      });
-    }
-  }
 
   public enable(): void {
     this.config.enabled = true;
@@ -220,66 +175,58 @@ export class DebugManager {
   }
 
   public handleKeyPress(key: string): boolean {
-    if (!this.config.enabled) return false;
+    const context = {
+      isVisible: this.isVisible,
+      config: this.config,
+      selectedPanel: this.selectedPanel,
+      toggle: () => this.toggle(),
+      clearLogs: () => this.clearLogs(),
+      exportLogs: () => this.exportLogs(),
+      emit: (event: string, data: unknown) => this.emit(event, data)
+    };
 
-    switch (key) {
-      case this.config.hotkeys.toggle:
-        this.toggle();
-        return true;
+    const result = this.handleKeypressWithContext(key, context);
+    if (context.selectedPanel !== this.selectedPanel) {
+      this.selectedPanel = context.selectedPanel;
+    }
 
-      case this.config.hotkeys.logs:
-        if (this.isVisible) {
-          this.selectedPanel = 'logs';
-          this.emit('panelChanged', { panel: this.selectedPanel });
-          return true;
-        }
-        break;
+    return result;
+  }
 
-      case this.config.hotkeys.metrics:
-        if (this.isVisible) {
-          this.selectedPanel = 'metrics';
-          this.emit('panelChanged', { panel: this.selectedPanel });
-          return true;
-        }
-        break;
+  private handleKeypressWithContext(key: string, context: any): boolean {
+    if (!context.config.enabled) return false;
 
-      case this.config.hotkeys.components:
-        if (this.isVisible) {
-          this.selectedPanel = 'components';
-          this.emit('panelChanged', { panel: this.selectedPanel });
-          return true;
-        }
-        break;
+    const { hotkeys } = context.config;
 
-      case this.config.hotkeys.events:
-        if (this.isVisible) {
-          this.selectedPanel = 'events';
-          this.emit('panelChanged', { panel: this.selectedPanel });
-          return true;
-        }
-        break;
+    if (key === hotkeys.toggle) {
+      context.toggle();
+      return true;
+    }
 
-      case this.config.hotkeys.performance:
-        if (this.isVisible) {
-          this.selectedPanel = 'performance';
-          this.emit('panelChanged', { panel: this.selectedPanel });
-          return true;
-        }
-        break;
+    if (!context.isVisible) return false;
 
-      case this.config.hotkeys.clear:
-        if (this.isVisible) {
-          this.clearLogs();
-          return true;
-        }
-        break;
+    const panelMap: Record<string, string> = {
+      [hotkeys.logs]: 'logs',
+      [hotkeys.metrics]: 'metrics',
+      [hotkeys.components]: 'components',
+      [hotkeys.events]: 'events',
+      [hotkeys.performance]: 'performance'
+    };
 
-      case this.config.hotkeys.export:
-        if (this.isVisible) {
-          this.exportLogs();
-          return true;
-        }
-        break;
+    if (panelMap[key]) {
+      context.selectedPanel = panelMap[key];
+      context.emit('panelChanged', { panel: context.selectedPanel });
+      return true;
+    }
+
+    if (key === hotkeys.clear) {
+      context.clearLogs();
+      return true;
+    }
+
+    if (key === hotkeys.export) {
+      context.exportLogs();
+      return true;
     }
 
     return false;
@@ -308,51 +255,17 @@ export class DebugManager {
   }
 
   public renderDebugOverlay(width: number, height: number): string {
-    if (!this.config.enabled || !this.isVisible || !this.config.showOverlay) {
-      return '';
-    }
-
-    const lines: string[] = [];
-    const overlayWidth = Math.min(width - 4, 80);
-    const overlayHeight = Math.min(height - 4, 30);
-
-    // Header
-    lines.push(`┌${'─'.repeat(overlayWidth - 2)}┐`);
-    lines.push(
-      `│ Debug Panel - ${this.selectedPanel.toUpperCase()} ${' '.repeat(overlayWidth - 20)}│`
-    );
-    lines.push(`├${'─'.repeat(overlayWidth - 2)}┤`);
-
-    // Content based on selected panel
     const contentLines = this.renderPanelContent(
-      overlayWidth - 2,
-      overlayHeight - 4
+      Math.min(width - 6, 78),
+      Math.min(height - 8, 26)
     );
 
-    for (const line of contentLines) {
-      const paddedLine = line
-        .padEnd(overlayWidth - 2, ' ')
-        .slice(0, overlayWidth - 2);
-      lines.push(`│${paddedLine}│`);
-    }
-
-    // Fill remaining space
-    while (lines.length < overlayHeight - 1) {
-      lines.push(`│${' '.repeat(overlayWidth - 2)}│`);
-    }
-
-    // Footer with hotkeys
-    lines.push(`└${'─'.repeat(overlayWidth - 2)}┘`);
-
-    // Position overlay in bottom-right corner
-    const overlayContent = lines.join('\n');
-    const positionedLines = overlayContent.split('\n').map((line, index) => {
-      const x = width - overlayWidth;
-      const y = height - overlayHeight + index;
-      return `\x1b[${y + 1};${x + 1}H${line}`;
-    });
-
-    return positionedLines.join('');
+    return OverlayRenderer.render(
+      { enabled: this.config.enabled, showOverlay: this.config.showOverlay },
+      this.isVisible,
+      { selectedPanel: this.selectedPanel, contentLines },
+      { width, height }
+    );
   }
 
   private renderPanelContent(width: number, height: number): string[] {

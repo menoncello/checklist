@@ -1,60 +1,22 @@
 import type { Logger } from '../utils/logger';
+import { BottleneckDetector } from './performance/BottleneckDetector.js';
+import { MemoryAnalyzer } from './performance/MemoryAnalyzer.js';
+import { ReportGenerator } from './performance/ReportGenerator.js';
+import type {
+  MemorySnapshot,
+  CPUProfile,
+  ProfilingConfig,
+  ActiveOperation,
+  ProfilingReport,
+} from './performance/types.js';
 
-/**
- * Memory snapshot for profiling
- */
-export interface MemorySnapshot {
-  timestamp: number;
-  heapUsed: number;
-  heapTotal: number;
-  external: number;
-  arrayBuffers: number;
-  rss: number; // Resident Set Size
-}
-
-/**
- * CPU profiling data
- */
-export interface CPUProfile {
-  operation: string;
-  startTime: number;
-  endTime: number;
-  duration: number;
-  cpuUsage?: NodeJS.CpuUsage;
-}
-
-/**
- * Performance bottleneck identification
- */
-export interface PerformanceBottleneck {
-  operation: string;
-  type: 'cpu' | 'memory' | 'io' | 'async';
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  description: string;
-  recommendation: string;
-  metrics: {
-    duration?: number;
-    memoryDelta?: number;
-    cpuTime?: number;
-  };
-}
-
-/**
- * Profiling session configuration
- */
-export interface ProfilingConfig {
-  enabled: boolean;
-  memorySnapshots: boolean;
-  cpuProfiling: boolean;
-  autoDetectBottlenecks: boolean;
-  snapshotInterval: number;
-  maxSnapshots: number;
-  bottleneckThresholds: {
-    duration: number;
-    memoryGrowth: number;
-    cpuUsage: number;
-  };
-}
+// Re-export types for backward compatibility
+export type {
+  MemorySnapshot,
+  CPUProfile,
+  ProfilingConfig,
+  PerformanceBottleneck,
+} from './performance/types.js';
 
 /**
  * Advanced performance profiler for bottleneck identification
@@ -64,15 +26,11 @@ export class PerformanceProfiler {
   private logger: Logger;
   private memorySnapshots: MemorySnapshot[] = [];
   private cpuProfiles: CPUProfile[] = [];
-  private activeOperations: Map<
-    string,
-    {
-      startTime: number;
-      startCPU?: NodeJS.CpuUsage;
-      startMemory?: MemorySnapshot;
-    }
-  > = new Map();
+  private activeOperations: Map<string, ActiveOperation> = new Map();
   private snapshotTimer: NodeJS.Timeout | null = null;
+  private bottleneckDetector: BottleneckDetector;
+  private memoryAnalyzer: MemoryAnalyzer;
+  private reportGenerator: ReportGenerator;
 
   constructor(config: Partial<ProfilingConfig>, logger: Logger) {
     this.config = {
@@ -92,6 +50,11 @@ export class PerformanceProfiler {
     };
 
     this.logger = logger;
+
+    // Initialize helper classes
+    this.bottleneckDetector = new BottleneckDetector(this.config);
+    this.memoryAnalyzer = new MemoryAnalyzer();
+    this.reportGenerator = new ReportGenerator(this.bottleneckDetector);
   }
 
   /**
@@ -183,13 +146,28 @@ export class PerformanceProfiler {
 
     const activeOp = this.activeOperations.get(operation);
     if (!activeOp) {
-      this.logger.warn({
-        msg: 'No active profiling session for operation',
-        operation,
-      });
+      this.logWarningForMissingOperation(operation);
       return null;
     }
 
+    const profile = this.createProfileFromOperation(operation, activeOp);
+    this.cpuProfiles.push(profile);
+    this.activeOperations.delete(operation);
+
+    this.checkForBottlenecks(profile, activeOp.startMemory);
+    this.logOperationCompletion(operation, profile);
+
+    return profile;
+  }
+
+  private logWarningForMissingOperation(operation: string): void {
+    this.logger.warn({
+      msg: 'No active profiling session for operation',
+      operation,
+    });
+  }
+
+  private createProfileFromOperation(operation: string, activeOp: ActiveOperation): CPUProfile {
     const endTime = performance.now();
     const duration = endTime - activeOp.startTime;
 
@@ -198,40 +176,43 @@ export class PerformanceProfiler {
       cpuUsage = process.cpuUsage(activeOp.startCPU);
     }
 
-    const profile: CPUProfile = {
+    return {
       operation,
       startTime: activeOp.startTime,
       endTime,
       duration,
       cpuUsage,
     };
+  }
 
-    this.cpuProfiles.push(profile);
-    this.activeOperations.delete(operation);
+  private checkForBottlenecks(profile: CPUProfile, startMemory?: MemorySnapshot): void {
+    if (!this.config.autoDetectBottlenecks) return;
 
-    // Check for bottlenecks
-    if (this.config.autoDetectBottlenecks) {
-      const bottleneck = this.detectBottleneck(profile, activeOp.startMemory);
-      if (bottleneck) {
-        this.logger.warn({
-          msg: 'Performance bottleneck detected',
-          operation: bottleneck.operation,
-          type: bottleneck.type,
-          severity: bottleneck.severity,
-          description: bottleneck.description,
-        });
-      }
+    const bottleneck = this.bottleneckDetector.detectBottleneck(
+      profile,
+      startMemory,
+      this.memorySnapshots
+    );
+
+    if (bottleneck) {
+      this.logger.warn({
+        msg: 'Performance bottleneck detected',
+        operation: bottleneck.operation,
+        type: bottleneck.type,
+        severity: bottleneck.severity,
+        description: bottleneck.description,
+      });
     }
+  }
 
+  private logOperationCompletion(operation: string, profile: CPUProfile): void {
     this.logger.debug({
       msg: 'Completed profiling operation',
       operation,
-      duration,
-      cpuUser: cpuUsage?.user,
-      cpuSystem: cpuUsage?.system,
+      duration: profile.duration,
+      cpuUser: profile.cpuUsage?.user,
+      cpuSystem: profile.cpuUsage?.system,
     });
-
-    return profile;
   }
 
   /**
@@ -259,160 +240,6 @@ export class PerformanceProfiler {
     return snapshot;
   }
 
-  /**
-   * Detect performance bottlenecks
-   */
-  private detectBottleneck(
-    profile: CPUProfile,
-    startMemory?: MemorySnapshot
-  ): PerformanceBottleneck | null {
-    const bottlenecks: PerformanceBottleneck[] = [];
-
-    // Check duration bottleneck
-    if (profile.duration > this.config.bottleneckThresholds.duration) {
-      const severity = this.getDurationSeverity(profile.duration);
-      bottlenecks.push({
-        operation: profile.operation,
-        type: 'cpu',
-        severity,
-        description: `Operation took ${profile.duration.toFixed(2)}ms, exceeding threshold of ${this.config.bottleneckThresholds.duration}ms`,
-        recommendation: this.getDurationRecommendation(profile.duration),
-        metrics: { duration: profile.duration },
-      });
-    }
-
-    // Check memory growth bottleneck
-    if (startMemory && this.memorySnapshots.length > 0) {
-      const currentMemory =
-        this.memorySnapshots[this.memorySnapshots.length - 1];
-      const memoryDelta = currentMemory.heapUsed - startMemory.heapUsed;
-
-      if (memoryDelta > this.config.bottleneckThresholds.memoryGrowth) {
-        const severity = this.getMemorySeverity(memoryDelta);
-        bottlenecks.push({
-          operation: profile.operation,
-          type: 'memory',
-          severity,
-          description: `Operation increased memory usage by ${(memoryDelta / 1024 / 1024).toFixed(2)}MB`,
-          recommendation: this.getMemoryRecommendation(memoryDelta),
-          metrics: { memoryDelta },
-        });
-      }
-    }
-
-    // Check CPU usage bottleneck
-    if (profile.cpuUsage) {
-      const cpuTime = (profile.cpuUsage.user + profile.cpuUsage.system) / 1000; // Convert to ms
-      const cpuPercent = (cpuTime / profile.duration) * 100;
-
-      if (cpuPercent > this.config.bottleneckThresholds.cpuUsage) {
-        const severity = this.getCPUSeverity(cpuPercent);
-        bottlenecks.push({
-          operation: profile.operation,
-          type: 'cpu',
-          severity,
-          description: `Operation used ${cpuPercent.toFixed(1)}% CPU, exceeding threshold of ${this.config.bottleneckThresholds.cpuUsage}%`,
-          recommendation: this.getCPURecommendation(cpuPercent),
-          metrics: { cpuTime },
-        });
-      }
-    }
-
-    // Return most severe bottleneck
-    return (
-      bottlenecks.sort(
-        (a, b) =>
-          this.getSeverityWeight(b.severity) -
-          this.getSeverityWeight(a.severity)
-      )[0] ?? null
-    );
-  }
-
-  /**
-   * Determine severity based on duration
-   */
-  private getDurationSeverity(
-    duration: number
-  ): PerformanceBottleneck['severity'] {
-    if (duration > 1000) return 'critical'; // > 1s
-    if (duration > 500) return 'high'; // > 500ms
-    if (duration > 200) return 'medium'; // > 200ms
-    return 'low';
-  }
-
-  private getDurationRecommendation(duration: number): string {
-    if (duration > 1000) {
-      return 'Consider breaking this operation into smaller chunks or implementing caching/memoization.';
-    }
-    if (duration > 500) {
-      return 'Profile this operation to identify expensive computations or I/O operations.';
-    }
-    return 'Consider optimizing algorithms or reducing computational complexity.';
-  }
-
-  /**
-   * Determine severity based on memory growth
-   */
-  private getMemorySeverity(
-    memoryDelta: number
-  ): PerformanceBottleneck['severity'] {
-    const mb = memoryDelta / 1024 / 1024;
-    if (mb > 100) return 'critical'; // > 100MB
-    if (mb > 50) return 'high'; // > 50MB
-    if (mb > 20) return 'medium'; // > 20MB
-    return 'low';
-  }
-
-  private getMemoryRecommendation(memoryDelta: number): string {
-    const mb = memoryDelta / 1024 / 1024;
-    if (mb > 100) {
-      return 'URGENT: Investigate memory leaks. Consider streaming or batch processing for large datasets.';
-    }
-    if (mb > 50) {
-      return 'Review object creation patterns and implement object pooling if appropriate.';
-    }
-    return 'Consider using WeakMap/WeakSet for caches or implementing garbage collection hints.';
-  }
-
-  /**
-   * Determine severity based on CPU usage
-   */
-  private getCPUSeverity(
-    cpuPercent: number
-  ): PerformanceBottleneck['severity'] {
-    if (cpuPercent > 95) return 'critical';
-    if (cpuPercent > 90) return 'high';
-    if (cpuPercent > 85) return 'medium';
-    return 'low';
-  }
-
-  private getCPURecommendation(cpuPercent: number): string {
-    if (cpuPercent > 95) {
-      return 'URGENT: CPU-intensive operation blocking event loop. Consider Worker threads or async processing.';
-    }
-    if (cpuPercent > 90) {
-      return 'High CPU usage detected. Profile to identify hot code paths and optimize algorithms.';
-    }
-    return 'Consider optimizing loops, reducing object creation, or using more efficient data structures.';
-  }
-
-  /**
-   * Get numerical weight for severity comparison
-   */
-  private getSeverityWeight(
-    severity: PerformanceBottleneck['severity']
-  ): number {
-    switch (severity) {
-      case 'critical':
-        return 4;
-      case 'high':
-        return 3;
-      case 'medium':
-        return 2;
-      case 'low':
-        return 1;
-    }
-  }
 
   /**
    * Analyze memory usage patterns
@@ -424,195 +251,19 @@ export class PerformanceProfiler {
     averageUsage: number;
     volatility: number; // standard deviation
   } {
-    if (this.memorySnapshots.length < 2) {
-      return {
-        trend: 'stable',
-        growth: 0,
-        peakUsage: 0,
-        averageUsage: 0,
-        volatility: 0,
-      };
-    }
-
-    const snapshots = this.memorySnapshots;
-    const heapValues = snapshots.map((s) => s.heapUsed);
-
-    // Calculate trend
-    const first = snapshots[0];
-    const last = snapshots[snapshots.length - 1];
-    const timeDelta = (last.timestamp - first.timestamp) / 1000; // seconds
-    const growth =
-      timeDelta > 0 ? (last.heapUsed - first.heapUsed) / timeDelta : 0;
-
-    // Calculate statistics
-    const peakUsage = Math.max(...heapValues);
-    const averageUsage =
-      heapValues.reduce((sum, val) => sum + val, 0) / heapValues.length;
-
-    // Calculate volatility (standard deviation)
-    const variance =
-      heapValues.reduce(
-        (sum, val) => sum + Math.pow(val - averageUsage, 2),
-        0
-      ) / heapValues.length;
-    const volatility = Math.sqrt(variance);
-
-    // Determine trend
-    let trend: 'stable' | 'growing' | 'shrinking' | 'volatile';
-    const growthThreshold = 1024 * 1024; // 1MB per second
-    const volatilityThreshold = averageUsage * 0.1; // 10% of average
-
-    if (volatility > volatilityThreshold) {
-      trend = 'volatile';
-    } else if (growth > growthThreshold) {
-      trend = 'growing';
-    } else if (growth < -growthThreshold) {
-      trend = 'shrinking';
-    } else {
-      trend = 'stable';
-    }
-
-    return { trend, growth, peakUsage, averageUsage, volatility };
+    return this.memoryAnalyzer.analyzeMemoryPattern(this.memorySnapshots);
   }
 
   /**
    * Generate comprehensive profiling report
    */
-  generateProfilingReport(): {
-    summary: {
-      totalOperations: number;
-      totalDuration: number;
-      averageDuration: number;
-      memorySnapshots: number;
-      bottlenecksDetected: number;
-    };
-    memoryAnalysis: {
-      trend: 'stable' | 'growing' | 'shrinking' | 'volatile';
-      growth: number;
-      peakUsage: number;
-      averageUsage: number;
-      volatility: number;
-    };
-    topOperations: Array<{
-      operation: string;
-      duration: number;
-      cpuTime?: number;
-    }>;
-    bottlenecks: PerformanceBottleneck[];
-    recommendations: string[];
-  } {
-    const totalDuration = this.cpuProfiles.reduce(
-      (sum, p) => sum + p.duration,
-      0
-    );
-    const averageDuration =
-      this.cpuProfiles.length > 0 ? totalDuration / this.cpuProfiles.length : 0;
-
-    // Find bottlenecks
-    const bottlenecks: PerformanceBottleneck[] = [];
-    for (const profile of this.cpuProfiles) {
-      const bottleneck = this.detectBottleneck(profile);
-      if (bottleneck) {
-        bottlenecks.push(bottleneck);
-      }
-    }
-
-    // Top operations by duration
-    const topOperations = this.cpuProfiles
-      .sort((a, b) => b.duration - a.duration)
-      .slice(0, 10)
-      .map((p) => ({
-        operation: p.operation,
-        duration: p.duration,
-        cpuTime: p.cpuUsage
-          ? (p.cpuUsage.user + p.cpuUsage.system) / 1000
-          : undefined,
-      }));
-
+  generateProfilingReport(): ProfilingReport {
     const memoryAnalysis = this.analyzeMemoryPattern();
-
-    // Generate recommendations
-    const recommendations = this.generateRecommendations(
-      bottlenecks,
-      memoryAnalysis
-    );
-
-    return {
-      summary: {
-        totalOperations: this.cpuProfiles.length,
-        totalDuration,
-        averageDuration,
-        memorySnapshots: this.memorySnapshots.length,
-        bottlenecksDetected: bottlenecks.length,
-      },
+    return this.reportGenerator.generateProfilingReport(
+      this.cpuProfiles,
       memoryAnalysis,
-      topOperations,
-      bottlenecks,
-      recommendations,
-    };
-  }
-
-  /**
-   * Generate actionable recommendations
-   */
-  private generateRecommendations(
-    bottlenecks: PerformanceBottleneck[],
-    memoryAnalysis: ReturnType<typeof this.analyzeMemoryPattern>
-  ): string[] {
-    const recommendations: string[] = [];
-
-    // Critical bottlenecks first
-    const criticalBottlenecks = bottlenecks.filter(
-      (b) => b.severity === 'critical'
+      this.memorySnapshots.length
     );
-    if (criticalBottlenecks.length > 0) {
-      recommendations.push(
-        `🔴 CRITICAL: ${criticalBottlenecks.length} critical performance bottlenecks detected. Immediate action required.`
-      );
-    }
-
-    // Memory recommendations
-    if (memoryAnalysis.trend === 'growing') {
-      recommendations.push(
-        `🔍 Memory usage is growing at ${(memoryAnalysis.growth / 1024 / 1024).toFixed(2)}MB/sec. Investigate for memory leaks.`
-      );
-    }
-
-    if (memoryAnalysis.trend === 'volatile') {
-      recommendations.push(
-        `📊 Memory usage is volatile (σ=${(memoryAnalysis.volatility / 1024 / 1024).toFixed(2)}MB). Consider object pooling.`
-      );
-    }
-
-    // CPU recommendations
-    const cpuBottlenecks = bottlenecks.filter((b) => b.type === 'cpu');
-    if (cpuBottlenecks.length > 2) {
-      recommendations.push(
-        `⚡ ${cpuBottlenecks.length} CPU-intensive operations detected. Consider async processing or Worker threads.`
-      );
-    }
-
-    // Duration recommendations
-    const slowOperations = bottlenecks.filter(
-      (b) =>
-        b.metrics.duration !== null &&
-        b.metrics.duration !== undefined &&
-        b.metrics.duration > 500
-    );
-    if (slowOperations.length > 0) {
-      recommendations.push(
-        `🐌 ${slowOperations.length} slow operations (>500ms) detected. Profile and optimize these operations.`
-      );
-    }
-
-    // General recommendations
-    if (recommendations.length === 0) {
-      recommendations.push(
-        '✅ No major performance issues detected. Consider periodic profiling to maintain performance.'
-      );
-    }
-
-    return recommendations;
   }
 
   /**

@@ -35,19 +35,20 @@ export class LayoutManager {
     );
   }
 
-  renderLayout(
-    width: number,
-    height: number,
-    currentView?: View,
+  renderLayout(options: {
+    width: number;
+    height: number;
+    currentView?: View;
     navigation?: {
       canGoBack: boolean;
       breadcrumbs: string[];
-    },
+    };
     status?: {
       message: string;
       type: 'info' | 'warning' | 'error' | 'success';
-    }
-  ): LayoutRender {
+    };
+  }): LayoutRender {
+    const { width, height, currentView, navigation, status } = options;
     const context: LayoutContext = {
       width,
       height,

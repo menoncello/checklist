@@ -38,43 +38,59 @@ export class ConfigService extends BaseService implements IConfigService {
   async load(configPath?: string): Promise<AppConfig> {
     try {
       const pathToLoad = configPath ?? this.configPath;
-
-      if (await this.fileSystemService.exists(pathToLoad)) {
-        const content = await this.fileSystemService.readFile(pathToLoad, {
-          encoding: 'utf8',
-        });
-        this.appConfig = yamlLoad(content) as AppConfig;
-      } else {
-        // Create default config
-        this.appConfig = this.createDefaultConfig();
-        await this.save(this.appConfig, pathToLoad);
+      await this.loadConfigFromPath(pathToLoad);
+      this.validateLoadedConfig();
+      this.setupAutoReloadIfEnabled();
+      this.logConfigLoaded(pathToLoad);
+      if (!this.appConfig) {
+        throw new Error('Configuration not loaded');
       }
-
-      if (!this.validate(this.appConfig)) {
-        throw new Error('Config validation failed');
-      }
-
-      // Set up file watching if enabled
-      const serviceConfig = this.config as ConfigServiceConfig;
-      if (serviceConfig.autoReload === true) {
-        this.setupFileWatcher();
-      }
-
-      this.logger.info({
-        msg: 'Configuration loaded',
-        configPath: pathToLoad,
-        environment: this.appConfig.environment,
-      });
-
       return this.appConfig;
     } catch (error) {
-      this.logger.error({
-        msg: 'Failed to load configuration',
-        error: (error as Error).message,
-        configPath: configPath ?? this.configPath,
-      });
+      this.logConfigLoadError(error, configPath);
       throw error;
     }
+  }
+
+  private async loadConfigFromPath(pathToLoad: string): Promise<void> {
+    if (await this.fileSystemService.exists(pathToLoad)) {
+      const content = await this.fileSystemService.readFile(pathToLoad, {
+        encoding: 'utf8',
+      });
+      this.appConfig = yamlLoad(content) as AppConfig;
+    } else {
+      this.appConfig = this.createDefaultConfig();
+      await this.save(this.appConfig, pathToLoad);
+    }
+  }
+
+  private validateLoadedConfig(): void {
+    if (!this.appConfig || !this.validate(this.appConfig)) {
+      throw new Error('Config validation failed');
+    }
+  }
+
+  private setupAutoReloadIfEnabled(): void {
+    const serviceConfig = this.config as ConfigServiceConfig;
+    if (serviceConfig.autoReload === true) {
+      this.setupFileWatcher();
+    }
+  }
+
+  private logConfigLoaded(pathToLoad: string): void {
+    this.logger.info({
+      msg: 'Configuration loaded',
+      configPath: pathToLoad,
+      environment: this.appConfig?.environment ?? 'unknown',
+    });
+  }
+
+  private logConfigLoadError(error: unknown, configPath?: string): void {
+    this.logger.error({
+      msg: 'Failed to load configuration',
+      error: (error as Error).message,
+      configPath: configPath ?? this.configPath,
+    });
   }
 
   async save(config: AppConfig, configPath?: string): Promise<void> {
@@ -199,37 +215,42 @@ export class ConfigService extends BaseService implements IConfigService {
 
   validate(config: AppConfig): boolean {
     try {
-      // Required fields
-      if (!config.appName || typeof config.appName !== 'string') {
-        return false;
-      }
-
-      if (!config.version || typeof config.version !== 'string') {
-        return false;
-      }
-
-      const validEnvironments = ['development', 'test', 'production'];
-      if (!validEnvironments.includes(config.environment)) {
-        return false;
-      }
-
-      if (typeof config.debug !== 'boolean') {
-        return false;
-      }
-
-      // Optional fields validation
-      if (config.services && typeof config.services !== 'object') {
-        return false;
-      }
-
-      if (config.featureFlags && typeof config.featureFlags !== 'object') {
-        return false;
-      }
-
-      return true;
+      return (
+        this.validateRequiredFields(config) &&
+        this.validateOptionalFields(config)
+      );
     } catch {
       return false;
     }
+  }
+
+  private validateRequiredFields(config: AppConfig): boolean {
+    if (!config.appName || typeof config.appName !== 'string') {
+      return false;
+    }
+
+    if (!config.version || typeof config.version !== 'string') {
+      return false;
+    }
+
+    const validEnvironments = ['development', 'test', 'production'] as const;
+    if (!validEnvironments.includes(config.environment)) {
+      return false;
+    }
+
+    return typeof config.debug === 'boolean';
+  }
+
+  private validateOptionalFields(config: AppConfig): boolean {
+    if (config.services !== undefined && typeof config.services !== 'object') {
+      return false;
+    }
+
+    if (config.featureFlags !== undefined && typeof config.featureFlags !== 'object') {
+      return false;
+    }
+
+    return true;
   }
 
   getEnvironment(): 'development' | 'test' | 'production' {

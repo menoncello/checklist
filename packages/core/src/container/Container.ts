@@ -1,77 +1,18 @@
 import type { ILogger } from '../interfaces/ILogger';
+import { DependencyResolver } from './DependencyResolver';
+import {
+  Constructor,
+  ServiceResolver,
+  ServiceDefinition,
+  ServiceOptions,
+  LifecycleState,
+  DependencyGraph,
+  CircularDependencyError,
+  ServiceNotFoundError,
+} from './types';
 
-export type Constructor<T = unknown> = new (...args: unknown[]) => T;
-export type Factory<T = unknown> = (...args: unknown[]) => T | Promise<T>;
-export type ServiceResolver<T = unknown> = Constructor<T> | Factory<T>;
-
-export interface ServiceDefinition<T = unknown> {
-  resolver: ServiceResolver<T>;
-  singleton?: boolean;
-  dependencies?: Array<string | Constructor<unknown>>;
-  lifecycle?: ServiceLifecycle<T>;
-  metadata?: ServiceMetadata;
-}
-
-export interface ServiceLifecycle<T = unknown> {
-  beforeInit?: (service: T) => void | Promise<void>;
-  afterInit?: (service: T) => void | Promise<void>;
-  beforeDestroy?: (service: T) => void | Promise<void>;
-  afterDestroy?: (service: T) => void | Promise<void>;
-  onError?: (error: Error, service: T) => void | Promise<void>;
-  healthCheck?: (service: T) => boolean | Promise<boolean>;
-}
-
-export interface ServiceMetadata {
-  name?: string;
-  version?: string;
-  description?: string;
-  tags?: string[];
-  createdAt?: Date;
-  [key: string]: unknown;
-}
-
-export interface ServiceOptions<T = unknown> {
-  singleton?: boolean;
-  dependencies?: Array<string | Constructor<unknown>>;
-  lifecycle?: ServiceLifecycle<T>;
-  metadata?: ServiceMetadata;
-}
-
-export enum LifecycleState {
-  REGISTERED = 'registered',
-  INITIALIZING = 'initializing',
-  INITIALIZED = 'initialized',
-  DESTROYING = 'destroying',
-  DESTROYED = 'destroyed',
-  ERROR = 'error',
-}
-
-export interface DependencyGraph {
-  nodes: Map<string, DependencyNode>;
-  edges: Map<string, Set<string>>;
-}
-
-export interface DependencyNode {
-  id: string;
-  type: 'class' | 'factory' | 'value';
-  dependencies: string[];
-  dependents: string[];
-  metadata?: ServiceMetadata;
-}
-
-export class CircularDependencyError extends Error {
-  constructor(public readonly cycle: string[]) {
-    super(`Circular dependency detected: ${cycle.join(' -> ')}`);
-    this.name = 'CircularDependencyError';
-  }
-}
-
-export class ServiceNotFoundError extends Error {
-  constructor(public readonly serviceName: string) {
-    super(`Service not found: ${serviceName}`);
-    this.name = 'ServiceNotFoundError';
-  }
-}
+// Re-export for backward compatibility
+export * from './types';
 
 export class Container {
   private services: Map<string, ServiceDefinition> = new Map();
@@ -116,69 +57,108 @@ export class Container {
   async resolve<T>(identifier: string | Constructor<T>): Promise<T> {
     const name = this.getServiceName(identifier);
 
-    // Check for circular dependencies
+    this.checkCircularDependency(name);
+
+    const existing = this.getExistingInstance<T>(name);
+    if (existing != null) return existing;
+
+    const definition = this.getServiceDefinition(name);
+    return await this.createAndInitialize<T>(name, definition);
+  }
+
+  private checkCircularDependency(name: string): void {
     if (this.resolutionStack.has(name)) {
       const cycle = Array.from(this.resolutionStack);
       cycle.push(name);
       throw new CircularDependencyError(cycle);
     }
+  }
 
-    // Return existing instance if available
+  private getExistingInstance<T>(name: string): T | null {
     if (this.instances.has(name)) {
       return this.instances.get(name) as T;
     }
+    return null;
+  }
 
+  private getServiceDefinition(name: string): ServiceDefinition {
     const definition = this.services.get(name);
     if (!definition) {
       throw new ServiceNotFoundError(name);
     }
+    return definition;
+  }
 
+  private async createAndInitialize<T>(
+    name: string,
+    definition: ServiceDefinition
+  ): Promise<T> {
     this.resolutionStack.add(name);
     this.lifecycleStates.set(name, LifecycleState.INITIALIZING);
 
     try {
-      // Resolve dependencies
-      const deps = await this.resolveDependencies(
-        definition.dependencies ?? []
-      );
-
-      // Create instance
-      const instance = await this.createInstance(definition.resolver, deps);
-
-      // Run lifecycle hooks
-      if (definition.lifecycle?.beforeInit !== undefined) {
-        await definition.lifecycle.beforeInit(instance);
-      }
-
-      if (definition.lifecycle?.afterInit) {
-        await definition.lifecycle.afterInit(instance);
-      }
-
-      // Store instance if singleton
-      if (definition.singleton === true) {
-        this.instances.set(name, instance);
-      }
-
-      this.lifecycleStates.set(name, LifecycleState.INITIALIZED);
-
-      if (this.logger) {
-        this.logger.debug({ msg: 'Service resolved', service: name });
-      }
-
-      return instance as T;
+      const instance = await this.buildInstance<T>(definition);
+      await this.runLifecycleHooks(instance, definition.lifecycle);
+      this.storeIfSingleton(name, instance, definition.singleton);
+      this.markAsInitialized(name);
+      return instance;
     } catch (error) {
-      this.lifecycleStates.set(name, LifecycleState.ERROR);
-
-      if (definition.lifecycle?.onError) {
-        await definition.lifecycle.onError(
-          error as Error,
-          undefined as unknown as T
-        );
-      }
-
+      await this.handleError(name, definition, error as Error);
       throw error;
     } finally {
       this.resolutionStack.delete(name);
+    }
+  }
+
+  private async buildInstance<T>(
+    definition: ServiceDefinition
+  ): Promise<T> {
+    const deps = await this.resolveDependencies(
+      definition.dependencies ?? []
+    );
+    return await this.createInstance(definition.resolver, deps) as T;
+  }
+
+  private async runLifecycleHooks<T>(
+    instance: T,
+    lifecycle?: ServiceLifecycle<unknown>
+  ): Promise<void> {
+    if (lifecycle?.beforeInit !== undefined) {
+      await lifecycle.beforeInit(instance);
+    }
+    if (lifecycle?.afterInit !== undefined) {
+      await lifecycle.afterInit(instance);
+    }
+  }
+
+  private storeIfSingleton<T>(
+    name: string,
+    instance: T,
+    singleton?: boolean
+  ): void {
+    if (singleton === true) {
+      this.instances.set(name, instance);
+    }
+  }
+
+  private markAsInitialized(name: string): void {
+    this.lifecycleStates.set(name, LifecycleState.INITIALIZED);
+    if (this.logger) {
+      this.logger.debug({ msg: 'Service resolved', service: name });
+    }
+  }
+
+  private async handleError(
+    name: string,
+    definition: ServiceDefinition,
+    error: Error
+  ): Promise<void> {
+    this.lifecycleStates.set(name, LifecycleState.ERROR);
+    if (definition.lifecycle?.onError) {
+      await definition.lifecycle.onError(
+        error,
+        undefined as unknown as never
+      );
     }
   }
 
@@ -214,36 +194,8 @@ export class Container {
   }
 
   getDependencyGraph(): DependencyGraph {
-    const nodes = new Map<string, DependencyNode>();
-    const edges = new Map<string, Set<string>>();
-
-    for (const [name, definition] of this.services) {
-      const dependencies = (definition.dependencies ?? []).map((dep) =>
-        typeof dep === 'string' ? dep : this.getServiceName(dep)
-      );
-
-      nodes.set(name, {
-        id: name,
-        type: this.isConstructor(definition.resolver) ? 'class' : 'factory',
-        dependencies,
-        dependents: [],
-        metadata: definition.metadata,
-      });
-
-      edges.set(name, new Set(dependencies));
-    }
-
-    // Calculate dependents
-    for (const [name, deps] of edges) {
-      for (const dep of deps) {
-        const node = nodes.get(dep);
-        if (node) {
-          node.dependents.push(name);
-        }
-      }
-    }
-
-    return { nodes, edges };
+    const resolver = new DependencyResolver(this.services, this.logger);
+    return resolver.buildDependencyGraph();
   }
 
   getServiceMetadata(

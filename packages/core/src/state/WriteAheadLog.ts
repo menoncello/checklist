@@ -55,10 +55,23 @@ export class WriteAheadLog {
   async append(entry: Omit<WALEntry, 'timestamp'>): Promise<void> {
     const startTime = performance.now();
 
-    // Implement rate limiting
+    await this.enforceRateLimit();
+
+    const fullEntry: WALEntry = { ...entry, timestamp: Date.now() };
+    this.entries.push(fullEntry);
+
+    try {
+      await this.writeEntryToFile(fullEntry);
+      this.logAppendPerformance(startTime);
+    } catch (error) {
+      logger.error({ msg: 'WAL append failed', error });
+      throw new Error(`Failed to append to WAL: ${error}`);
+    }
+  }
+
+  private async enforceRateLimit(): Promise<void> {
     const now = Date.now();
     if (now - this.lastWriteTime > this.rateWindow) {
-      // New window, reset counter
       this.writeCount = 0;
       this.lastWriteTime = now;
     }
@@ -71,37 +84,30 @@ export class WriteAheadLog {
       this.writeCount = 1;
       this.lastWriteTime = Date.now();
     }
+  }
 
-    const fullEntry: WALEntry = { ...entry, timestamp: Date.now() };
-    this.entries.push(fullEntry);
+  private async writeEntryToFile(entry: WALEntry): Promise<void> {
+    const entryLine = JSON.stringify(entry) + '\n';
+    const file = Bun.file(this.walPath);
 
-    try {
-      const entryLine = JSON.stringify(fullEntry) + '\n';
+    if (await file.exists()) {
+      const currentContent = await file.text();
+      await Bun.write(this.walPath, currentContent + entryLine);
+    } else {
+      await Bun.write(this.walPath, entryLine);
+    }
+  }
 
-      // Check if file exists first
-      const file = Bun.file(this.walPath);
-      if (await file.exists()) {
-        // File exists, read current content and append
-        const currentContent = await file.text();
-        await Bun.write(this.walPath, currentContent + entryLine);
-      } else {
-        // File doesn't exist, create it
-        await Bun.write(this.walPath, entryLine);
-      }
+  private logAppendPerformance(startTime: number): void {
+    const duration = performance.now() - startTime;
+    logger.debug({ msg: 'WAL append completed', duration });
 
-      const duration = performance.now() - startTime;
-      logger.debug({ msg: 'WAL append completed', duration });
-
-      if (duration > 10) {
-        logger.warn({
-          msg: 'WAL append performance warning',
-          duration,
-          target: 10,
-        });
-      }
-    } catch (error) {
-      logger.error({ msg: 'WAL append failed', error });
-      throw new Error(`Failed to append to WAL: ${error}`);
+    if (duration > 10) {
+      logger.warn({
+        msg: 'WAL append performance warning',
+        duration,
+        target: 10,
+      });
     }
   }
 
@@ -115,107 +121,15 @@ export class WriteAheadLog {
     this.isReplaying = true;
 
     try {
-      const file = Bun.file(this.walPath);
-      if (!(await file.exists())) {
-        logger.debug({ msg: 'No WAL file found for replay' });
+      const walContent = await this.readWALContent();
+      if (walContent === null || walContent === undefined || walContent === '') {
         return [];
       }
 
-      const content = await file.text();
-      if (!content.trim()) {
-        logger.debug({ msg: 'WAL file is empty' });
-        return [];
-      }
+      const lines = walContent.split('\n').filter(Boolean);
+      const entries = await this.parseWALEntries(lines);
 
-      const lines = content.split('\n').filter(Boolean);
-      const entries: WALEntry[] = [];
-
-      // Optimize for large WALs with parallel parsing
-      const batchSize = lines.length > 50 ? 25 : 10; // Larger batches for big WALs
-      const batches: string[][] = [];
-
-      // Split into batches
-      for (let i = 0; i < lines.length; i += batchSize) {
-        batches.push(lines.slice(i, Math.min(i + batchSize, lines.length)));
-      }
-
-      // Process batches in parallel for large WALs
-      if (lines.length > 50) {
-        // Parallel processing for large WALs
-        const parsedBatches = await Promise.all(
-          batches.map(async (batch) => {
-            return batch
-              .map((line) => {
-                try {
-                  if (line.trim()) {
-                    return JSON.parse(line) as WALEntry;
-                  }
-                  return null;
-                } catch {
-                  if (line.trim()) {
-                    logger.warn({
-                      msg: 'WAL parse error for line',
-                      line: line.substring(0, 50),
-                    });
-                  }
-                  return null;
-                }
-              })
-              .filter((entry): entry is WALEntry => entry !== null);
-          })
-        );
-
-        // Flatten results
-        for (const batchEntries of parsedBatches) {
-          entries.push(...batchEntries);
-        }
-      } else {
-        // Sequential processing for small WALs (maintains order)
-        for (const batch of batches) {
-          const batchEntries = batch
-            .map((line) => {
-              try {
-                if (line.trim()) {
-                  return JSON.parse(line) as WALEntry;
-                }
-                return null;
-              } catch (parseError) {
-                if (line.trim()) {
-                  logger.warn({
-                    msg: 'Failed to parse WAL entry, skipping',
-                    line: line.substring(0, 50),
-                  });
-                  logger.error({ msg: 'WAL parse error', error: parseError });
-                }
-                return null;
-              }
-            })
-            .filter((entry): entry is WALEntry => entry !== null);
-
-          entries.push(...batchEntries);
-        }
-      }
-
-      const duration = performance.now() - startTime;
-      logger.info({
-        msg: 'WAL replay completed',
-        duration,
-        entryCount: entries.length,
-      });
-
-      // Adjust warning threshold based on number of entries
-      // More lenient for large WALs: 4ms per entry for 50+, max 200ms
-      const expectedTime =
-        entries.length > 50
-          ? Math.min(200, 4 * entries.length)
-          : Math.min(100, 2 * entries.length);
-
-      if (duration > expectedTime) {
-        logger.warn({
-          msg: `WAL replay took ${duration}ms for ${entries.length} entries`,
-        });
-      }
-
+      this.logReplayPerformance(startTime, entries.length);
       this.entries = entries;
       return entries;
     } catch (error) {
@@ -231,23 +145,137 @@ export class WriteAheadLog {
 
     try {
       this.entries = [];
-
-      const file = Bun.file(this.walPath);
-      if (await file.exists()) {
-        await unlink(this.walPath);
-      }
-
-      const duration = performance.now() - startTime;
-      logger.debug({ msg: 'WAL cleared', duration });
-
-      if (duration > 5) {
-        logger.warn({
-          msg: `WAL clear took ${duration}ms, exceeding 5ms target`,
-        });
-      }
+      await this.removeWALFile();
+      this.logClearPerformance(startTime);
     } catch (error) {
       logger.error({ msg: 'WAL clear failed', error });
       throw new Error(`Failed to clear WAL: ${error}`);
+    }
+  }
+
+  private async removeWALFile(): Promise<void> {
+    const file = Bun.file(this.walPath);
+    if (await file.exists()) {
+      await unlink(this.walPath);
+    }
+  }
+
+  private logClearPerformance(startTime: number): void {
+    const duration = performance.now() - startTime;
+    logger.debug({ msg: 'WAL cleared', duration });
+
+    if (duration > 5) {
+      logger.warn({
+        msg: `WAL clear took ${duration}ms, exceeding 5ms target`,
+      });
+    }
+  }
+
+  private async readWALContent(): Promise<string | null> {
+    const file = Bun.file(this.walPath);
+    if (!(await file.exists())) {
+      logger.debug({ msg: 'No WAL file found for replay' });
+      return null;
+    }
+
+    const content = await file.text();
+    if (!content.trim()) {
+      logger.debug({ msg: 'WAL file is empty' });
+      return null;
+    }
+
+    return content;
+  }
+
+  private async parseWALEntries(lines: string[]): Promise<WALEntry[]> {
+    const batches = this.createBatches(lines);
+
+    if (lines.length > 50) {
+      return this.parseEntriesInParallel(batches);
+    }
+
+    return this.parseEntriesSequentially(batches);
+  }
+
+  private createBatches(lines: string[]): string[][] {
+    const batchSize = lines.length > 50 ? 25 : 10;
+    const batches: string[][] = [];
+
+    for (let i = 0; i < lines.length; i += batchSize) {
+      batches.push(lines.slice(i, Math.min(i + batchSize, lines.length)));
+    }
+
+    return batches;
+  }
+
+  private async parseEntriesInParallel(batches: string[][]): Promise<WALEntry[]> {
+    const parsedBatches = await Promise.all(
+      batches.map(async (batch) => this.parseBatch(batch, false))
+    );
+
+    const entries: WALEntry[] = [];
+    for (const batchEntries of parsedBatches) {
+      entries.push(...batchEntries);
+    }
+
+    return entries;
+  }
+
+  private async parseEntriesSequentially(batches: string[][]): Promise<WALEntry[]> {
+    const entries: WALEntry[] = [];
+
+    for (const batch of batches) {
+      const batchEntries = this.parseBatch(batch, true);
+      entries.push(...batchEntries);
+    }
+
+    return entries;
+  }
+
+  private parseBatch(batch: string[], includeDetailedErrors: boolean): WALEntry[] {
+    return batch
+      .map((line) => this.parseLine(line, includeDetailedErrors))
+      .filter((entry): entry is WALEntry => entry !== null);
+  }
+
+  private parseLine(line: string, includeDetailedErrors: boolean): WALEntry | null {
+    try {
+      if (line.trim()) {
+        return JSON.parse(line) as WALEntry;
+      }
+      return null;
+    } catch (parseError) {
+      if (line.trim()) {
+        logger.warn({
+          msg: includeDetailedErrors ? 'Failed to parse WAL entry, skipping' : 'WAL parse error for line',
+          line: line.substring(0, 50),
+        });
+
+        if (includeDetailedErrors) {
+          logger.error({ msg: 'WAL parse error', error: parseError });
+        }
+      }
+      return null;
+    }
+  }
+
+  private logReplayPerformance(startTime: number, entryCount: number): void {
+    const duration = performance.now() - startTime;
+
+    logger.info({
+      msg: 'WAL replay completed',
+      duration,
+      entryCount,
+    });
+
+    const expectedTime = entryCount > 50
+      ? Math.min(200, 4 * entryCount)
+      : Math.min(100, 2 * entryCount);
+
+    if (duration > expectedTime) {
+      logger.warn({
+        msg: `WAL replay took ${duration}ms for ${entryCount} entries`,
+      });
     }
   }
 
@@ -273,20 +301,28 @@ export class WriteAheadLog {
   }
 
   async createBackup(): Promise<string> {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = this.walPath.replace('.log', `-${timestamp}.backup`);
+    const backupPath = this.generateBackupPath();
 
     try {
-      const file = Bun.file(this.walPath);
-      if (await file.exists()) {
-        const content = await file.text();
-        await Bun.write(backupPath, content);
-        logger.debug({ msg: 'WAL backup created', backupPath });
-      }
+      await this.copyWALToBackup(backupPath);
       return backupPath;
     } catch (error) {
       logger.error({ msg: 'WAL backup failed', error });
       throw new Error(`Failed to create WAL backup: ${error}`);
+    }
+  }
+
+  private generateBackupPath(): string {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return this.walPath.replace('.log', `-${timestamp}.backup`);
+  }
+
+  private async copyWALToBackup(backupPath: string): Promise<void> {
+    const file = Bun.file(this.walPath);
+    if (await file.exists()) {
+      const content = await file.text();
+      await Bun.write(backupPath, content);
+      logger.debug({ msg: 'WAL backup created', backupPath });
     }
   }
 
@@ -306,10 +342,18 @@ export class WriteAheadLog {
   async rotate(maxSize: number = 10 * 1024 * 1024): Promise<void> {
     const currentSize = await this.size();
 
-    if (currentSize > maxSize) {
-      await this.createBackup();
-      await this.clear();
-      logger.debug({ msg: 'WAL rotated', size: currentSize });
+    if (this.shouldRotate(currentSize, maxSize)) {
+      await this.performRotation(currentSize);
     }
+  }
+
+  private shouldRotate(currentSize: number, maxSize: number): boolean {
+    return currentSize > maxSize;
+  }
+
+  private async performRotation(currentSize: number): Promise<void> {
+    await this.createBackup();
+    await this.clear();
+    logger.debug({ msg: 'WAL rotated', size: currentSize });
   }
 }

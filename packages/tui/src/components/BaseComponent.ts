@@ -1,4 +1,6 @@
 import { Component } from '../framework/UIFramework.js';
+import { TableRenderer, type TableOptions } from './helpers/TableRenderer.js';
+import { TextFormatter, type TextFormatOptions, type AnsiStyle } from './helpers/TextFormatter.js';
 
 // Base component types
 export type ComponentState = Record<string, unknown>;
@@ -229,88 +231,11 @@ export abstract class BaseComponent implements Component {
   }
 
   protected formatText(text: string, options: TextFormatOptions = {}): string {
-    let result = text;
-
-    // Apply text transformations
-    if (options.uppercase === true) result = result.toUpperCase();
-    if (options.lowercase === true) result = result.toLowerCase();
-    if (options.capitalize === true)
-      result = result.charAt(0).toUpperCase() + result.slice(1).toLowerCase();
-
-    // Apply text truncation
-    if (
-      options.maxLength != null &&
-      options.maxLength > 0 &&
-      result.length > options.maxLength
-    ) {
-      const ellipsis = options.ellipsis ?? '...';
-      result =
-        result.substring(0, options.maxLength - ellipsis.length) + ellipsis;
-    }
-
-    // Apply padding
-    if (options.padLeft != null && options.padLeft > 0)
-      result = result.padStart(options.padLeft);
-    if (options.padRight != null && options.padRight > 0)
-      result = result.padEnd(options.padRight);
-
-    // Apply ANSI styling
-    if (options.style) {
-      result = this.applyAnsiStyle(result, options.style);
-    }
-
-    return result;
+    return TextFormatter.formatText(text, options);
   }
 
   protected applyAnsiStyle(text: string, style: AnsiStyle): string {
-    const codes: string[] = [];
-
-    // Colors
-    if (style.color) {
-      const colorCodes: Record<string, string> = {
-        black: '30',
-        red: '31',
-        green: '32',
-        yellow: '33',
-        blue: '34',
-        magenta: '35',
-        cyan: '36',
-        white: '37',
-      };
-      if (colorCodes[style.color]) {
-        codes.push(colorCodes[style.color]);
-      }
-    }
-
-    // Background colors
-    if (style.backgroundColor) {
-      const bgColorCodes: Record<string, string> = {
-        black: '40',
-        red: '41',
-        green: '42',
-        yellow: '43',
-        blue: '44',
-        magenta: '45',
-        cyan: '46',
-        white: '47',
-      };
-      if (bgColorCodes[style.backgroundColor]) {
-        codes.push(bgColorCodes[style.backgroundColor]);
-      }
-    }
-
-    // Text styles
-    if (style.bold === true) codes.push('1');
-    if (style.dim === true) codes.push('2');
-    if (style.italic === true) codes.push('3');
-    if (style.underline === true) codes.push('4');
-    if (style.blink === true) codes.push('5');
-    if (style.reverse === true) codes.push('7');
-    if (style.strikethrough === true) codes.push('9');
-
-    if (codes.length === 0) return text;
-
-    return `\x1b[${codes.join(';')}m${text}\x1b[0m`;
+    return TextFormatter.applyAnsiStyle(text, style);
   }
 
   protected createTable(
@@ -318,92 +243,7 @@ export abstract class BaseComponent implements Component {
     headers?: string[],
     options: TableOptions = {}
   ): string {
-    if (data.length === 0) return '';
-
-    const rows: string[][] = [];
-
-    // Add headers if provided
-    if (headers) {
-      rows.push(headers);
-    }
-
-    // Add data rows
-    data.forEach((item) => {
-      if (Array.isArray(item)) {
-        rows.push(item.map(String));
-      } else if (typeof item === 'object') {
-        const row =
-          headers != null
-            ? headers.map((header) =>
-                String((item as Record<string, unknown>)[header] ?? '')
-              )
-            : Object.values(item as Record<string, unknown>).map(String);
-        rows.push(row);
-      } else {
-        rows.push([String(item)]);
-      }
-    });
-
-    // Calculate column widths
-    const columnWidths = this.calculateColumnWidths(
-      rows,
-      options.maxColumnWidth
-    );
-
-    // Generate table
-    return this.generateTableString(rows, columnWidths, options);
-  }
-
-  private calculateColumnWidths(rows: string[][], maxWidth?: number): number[] {
-    const widths: number[] = [];
-
-    rows.forEach((row) => {
-      row.forEach((cell, colIndex) => {
-        const cellWidth = cell.length;
-        widths[colIndex] = Math.max(widths[colIndex] ?? 0, cellWidth);
-      });
-    });
-
-    if (maxWidth != null && maxWidth > 0) {
-      return widths.map((width) => Math.min(width, maxWidth));
-    }
-
-    return widths;
-  }
-
-  private generateTableString(
-    rows: string[][],
-    columnWidths: number[],
-    options: TableOptions
-  ): string {
-    const lines: string[] = [];
-
-    rows.forEach((row, rowIndex) => {
-      const cells = row.map((cell, colIndex) => {
-        const width = columnWidths[colIndex] ?? 0;
-        return cell.padEnd(width).substring(0, width);
-      });
-
-      const line =
-        options.separator != null && options.separator.length > 0
-          ? cells.join(options.separator)
-          : cells.join(' ');
-      lines.push(line);
-
-      // Add separator line after headers
-      if (
-        options.headerSeparator === true &&
-        rowIndex === 0 &&
-        rows.length > 1
-      ) {
-        const separatorLine = columnWidths
-          .map((width) => '-'.repeat(width))
-          .join(options.separator ?? ' ');
-        lines.push(separatorLine);
-      }
-    });
-
-    return lines.join('\n');
+    return TableRenderer.createTable(data, headers, options);
   }
 
   public getMetrics() {
@@ -451,47 +291,6 @@ export abstract class BaseComponent implements Component {
   }
 }
 
-export interface TextFormatOptions {
-  maxLength?: number;
-  ellipsis?: string;
-  uppercase?: boolean;
-  lowercase?: boolean;
-  capitalize?: boolean;
-  padLeft?: number;
-  padRight?: number;
-  style?: AnsiStyle;
-}
-
-export interface AnsiStyle {
-  color?:
-    | 'black'
-    | 'red'
-    | 'green'
-    | 'yellow'
-    | 'blue'
-    | 'magenta'
-    | 'cyan'
-    | 'white';
-  backgroundColor?:
-    | 'black'
-    | 'red'
-    | 'green'
-    | 'yellow'
-    | 'blue'
-    | 'magenta'
-    | 'cyan'
-    | 'white';
-  bold?: boolean;
-  dim?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  blink?: boolean;
-  reverse?: boolean;
-  strikethrough?: boolean;
-}
-
-export interface TableOptions {
-  separator?: string;
-  headerSeparator?: boolean;
-  maxColumnWidth?: number;
-}
+// Re-export helper types for backward compatibility
+export { type TextFormatOptions, type AnsiStyle } from './helpers/TextFormatter.js';
+export { type TableOptions } from './helpers/TableRenderer.js';

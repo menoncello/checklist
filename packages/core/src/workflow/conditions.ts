@@ -27,6 +27,23 @@ export function safeEval(
 function evaluateExpression(expr: string): boolean {
   expr = expr.trim();
 
+  // Handle logical operators
+  const logicalResult = evaluateLogicalOperators(expr);
+  if (logicalResult !== null) return logicalResult;
+
+  // Handle unary operators
+  const unaryResult = evaluateUnaryOperators(expr);
+  if (unaryResult !== null) return unaryResult;
+
+  // Handle comparison operators
+  const comparisonResult = evaluateComparisonOperators(expr);
+  if (comparisonResult !== null) return comparisonResult;
+
+  // Handle boolean values and variables
+  return evaluateValue(expr);
+}
+
+function evaluateLogicalOperators(expr: string): boolean | null {
   // Handle logical OR (||)
   const orParts = splitByOperator(expr, '||');
   if (orParts.length > 1) {
@@ -39,6 +56,10 @@ function evaluateExpression(expr: string): boolean {
     return andParts.every((part) => evaluateExpression(part));
   }
 
+  return null;
+}
+
+function evaluateUnaryOperators(expr: string): boolean | null {
   // Handle NOT (!)
   if (expr.startsWith('!')) {
     return !evaluateExpression(expr.substring(1));
@@ -49,57 +70,67 @@ function evaluateExpression(expr: string): boolean {
     return evaluateExpression(expr.slice(1, -1));
   }
 
-  // Handle comparison operators
+  return null;
+}
+
+function evaluateComparisonOperators(expr: string): boolean | null {
   const comparisonRegex = /^(.+?)\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/;
   const match = expr.match(comparisonRegex);
 
-  if (match) {
-    const [, left, operator, right] = match;
-    const leftValue = parseValue(left.trim());
-    const rightValue = parseValue(right.trim());
+  if (!match) return null;
 
-    switch (operator) {
-      case '===':
-      case '==':
-        return leftValue === rightValue;
-      case '!==':
-      case '!=':
-        return leftValue !== rightValue;
-      case '>':
-        return Number(leftValue) > Number(rightValue);
-      case '>=':
-        return Number(leftValue) >= Number(rightValue);
-      case '<':
-        return Number(leftValue) < Number(rightValue);
-      case '<=':
-        return Number(leftValue) <= Number(rightValue);
-      default:
-        return false;
-    }
+  const [, left, operator, right] = match;
+  const leftValue = parseValue(left.trim());
+  const rightValue = parseValue(right.trim());
+
+  return executeComparison(leftValue, operator, rightValue);
+}
+
+function executeComparison(leftValue: unknown, operator: string, rightValue: unknown): boolean {
+  switch (operator) {
+    case '===':
+    case '==':
+      return leftValue === rightValue;
+    case '!==':
+    case '!=':
+      return leftValue !== rightValue;
+    case '>':
+      return Number(leftValue) > Number(rightValue);
+    case '>=':
+      return Number(leftValue) >= Number(rightValue);
+    case '<':
+      return Number(leftValue) < Number(rightValue);
+    case '<=':
+      return Number(leftValue) <= Number(rightValue);
+    default:
+      return false;
   }
+}
 
-  // Handle boolean values and variables
+function evaluateValue(expr: string): boolean {
   const value = parseValue(expr);
 
-  // Check if this looks like a valid parsed value (not random text)
-  // Valid values: JSON strings, numbers, booleans, null, undefined
-  const jsonStringRegex = /^".*"$/;
-  const numberRegex = /^-?\d+(\.\d+)?$/;
-  const booleanRegex = /^(true|false)$/;
-  const nullishRegex = /^(null|undefined)$/;
-
-  if (
-    jsonStringRegex.test(expr) ||
-    numberRegex.test(expr) ||
-    booleanRegex.test(expr) ||
-    nullishRegex.test(expr)
-  ) {
+  if (isValidValue(expr)) {
     // Apply JavaScript truthiness rules to parsed values
     return Boolean(value);
   }
 
   // Unknown/unparseable expressions default to false for safety
   return false;
+}
+
+function isValidValue(expr: string): boolean {
+  const jsonStringRegex = /^".*"$/;
+  const numberRegex = /^-?\d+(\.\d+)?$/;
+  const booleanRegex = /^(true|false)$/;
+  const nullishRegex = /^(null|undefined)$/;
+
+  return (
+    jsonStringRegex.test(expr) ||
+    numberRegex.test(expr) ||
+    booleanRegex.test(expr) ||
+    nullishRegex.test(expr)
+  );
 }
 
 // Split expression by operator, respecting parentheses
@@ -136,30 +167,46 @@ function splitByOperator(expr: string, operator: string): string[] {
   return parts.length > 0 ? parts : [expr];
 }
 
+// Helper functions to reduce complexity
+function isStringLiteral(str: string): boolean {
+  return (str.startsWith('"') && str.endsWith('"')) ||
+         (str.startsWith("'") && str.endsWith("'"));
+}
+
+function parseStringLiteral(str: string): string {
+  return str.slice(1, -1);
+}
+
+function parsePrimitives(str: string): unknown {
+  if (str === 'true') return true;
+  if (str === 'false') return false;
+  if (str === 'null') return null;
+  if (str === 'undefined') return undefined;
+  return undefined; // Not a primitive
+}
+
+function parseNumber(str: string): number | undefined {
+  const num = Number(str);
+  return (!isNaN(num) && str !== '') ? num : undefined;
+}
+
 // Parse a value from string representation
 function parseValue(str: string): unknown {
   str = str.trim();
 
-  // Handle string literals
-  if (
-    (str.startsWith('"') && str.endsWith('"')) ||
-    (str.startsWith("'") && str.endsWith("'"))
-  ) {
-    return str.slice(1, -1);
+  if (isStringLiteral(str)) {
+    return parseStringLiteral(str);
   }
 
-  // Handle boolean literals
-  if (str === 'true') return true;
-  if (str === 'false') return false;
+  const primitive = parsePrimitives(str);
+  if (primitive !== undefined) {
+    return primitive;
+  }
 
-  // Handle null and undefined
-  if (str === 'null') return null;
-  if (str === 'undefined') return undefined;
+  const number = parseNumber(str);
+  if (number !== undefined) {
+    return number;
+  }
 
-  // Handle numbers
-  const num = Number(str);
-  if (!isNaN(num) && str !== '') return num;
-
-  // Default to string
   return str;
 }

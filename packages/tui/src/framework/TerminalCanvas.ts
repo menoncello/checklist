@@ -124,13 +124,14 @@ export class TerminalCanvas {
     this.buffer[y] = truncated.padEnd(this.width);
   }
 
-  public drawBox(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    style?: BoxStyle
-  ): void {
+  public drawBox(options: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    style?: BoxStyle;
+  }): void {
+    const { x, y, width, height, style } = options;
     const boxChars = style?.chars ?? {
       topLeft: '┌',
       topRight: '┐',

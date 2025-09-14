@@ -226,7 +226,30 @@ export class ComponentRegistry {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check for components with duplicate IDs
+    this.validateDuplicateIds(errors);
+    this.validateRenderMethods(errors);
+    this.validateOrphanedInstances(warnings);
+    this.validateInstanceCounts(warnings);
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  private validateDuplicateIds(errors: string[]): void {
+    const componentIds = this.buildComponentIdMap();
+    componentIds.forEach((names, id) => {
+      if (names.length > 1) {
+        errors.push(
+          `Duplicate component ID '${id}' found in components: ${names.join(', ')}`
+        );
+      }
+    });
+  }
+
+  private buildComponentIdMap(): Map<string, string[]> {
     const componentIds = new Map<string, string[]>();
     this.components.forEach((registration, name) => {
       const id = registration.component.id;
@@ -238,23 +261,18 @@ export class ComponentRegistry {
         names.push(name);
       }
     });
+    return componentIds;
+  }
 
-    componentIds.forEach((names, id) => {
-      if (names.length > 1) {
-        errors.push(
-          `Duplicate component ID '${id}' found in components: ${names.join(', ')}`
-        );
-      }
-    });
-
-    // Check for components without render methods
+  private validateRenderMethods(errors: string[]): void {
     this.components.forEach((registration, name) => {
       if (registration.component.render == null) {
         errors.push(`Component '${name}' missing render method`);
       }
     });
+  }
 
-    // Check for orphaned instances
+  private validateOrphanedInstances(warnings: string[]): void {
     const orphanedInstances = Array.from(this.instances.values()).filter(
       (instance) => {
         const componentName = instance.component.id.split('-')[0];
@@ -265,6 +283,9 @@ export class ComponentRegistry {
     if (orphanedInstances.length > 0) {
       warnings.push(`${orphanedInstances.length} orphaned instance(s) found`);
     }
+  }
+
+  private validateInstanceCounts(warnings: string[]): void {
 
     // Check for high instance count
     if (this.instances.size > 100) {

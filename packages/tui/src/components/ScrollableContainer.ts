@@ -1,5 +1,8 @@
 import { RenderContext } from '../framework/UIFramework';
 import { BaseComponent } from './BaseComponent';
+import { ScrollCalculator } from './ScrollCalculator';
+import { ScrollContentRenderer } from './ScrollContentRenderer';
+import { ScrollbarRenderer } from './ScrollbarRenderer';
 
 export interface ScrollableContainerConfig {
   enableHorizontalScroll: boolean;
@@ -131,61 +134,27 @@ export class ScrollableContainer extends BaseComponent {
     this.scrollTo(this.state.maxScrollX, this.state.scrollY, animated);
   }
 
-  public scrollIntoView(
-    targetX: number,
-    targetY: number,
-    targetWidth: number = 1,
-    targetHeight: number = 1,
-    animated: boolean = false
-  ): void {
-    let newScrollX = this.state.scrollX;
-    let newScrollY = this.state.scrollY;
+  public scrollIntoView(options: {
+    targetX: number;
+    targetY: number;
+    targetWidth?: number;
+    targetHeight?: number;
+    animated?: boolean;
+  }): void {
+    const { targetX, targetY, targetWidth = 1, targetHeight = 1, animated = false } = options;
 
-    // Horizontal scrolling
-    if (this.config.enableHorizontalScroll) {
-      if (targetX < this.state.scrollX + this.config.autoScrollMargin) {
-        newScrollX = Math.max(0, targetX - this.config.autoScrollMargin);
-      } else if (
-        targetX + targetWidth >
-        this.state.scrollX +
-          this.state.viewportWidth -
-          this.config.autoScrollMargin
-      ) {
-        newScrollX = Math.min(
-          this.state.maxScrollX,
-          targetX +
-            targetWidth -
-            this.state.viewportWidth +
-            this.config.autoScrollMargin
-        );
+    const newPosition = ScrollCalculator.calculateScrollIntoView(
+      { x: targetX, y: targetY, width: targetWidth, height: targetHeight },
+      {
+        bounds: this.state,
+        margin: this.config.autoScrollMargin,
+        enableHorizontal: this.config.enableHorizontalScroll,
+        enableVertical: this.config.enableVerticalScroll
       }
-    }
+    );
 
-    // Vertical scrolling
-    if (this.config.enableVerticalScroll) {
-      if (targetY < this.state.scrollY + this.config.autoScrollMargin) {
-        newScrollY = Math.max(0, targetY - this.config.autoScrollMargin);
-      } else if (
-        targetY + targetHeight >
-        this.state.scrollY +
-          this.state.viewportHeight -
-          this.config.autoScrollMargin
-      ) {
-        newScrollY = Math.min(
-          this.state.maxScrollY,
-          targetY +
-            targetHeight -
-            this.state.viewportHeight +
-            this.config.autoScrollMargin
-        );
-      }
-    }
-
-    if (
-      newScrollX !== this.state.scrollX ||
-      newScrollY !== this.state.scrollY
-    ) {
-      this.scrollTo(newScrollX, newScrollY, animated);
+    if (newPosition.x !== this.state.scrollX || newPosition.y !== this.state.scrollY) {
+      this.scrollTo(newPosition.x, newPosition.y, animated);
     }
   }
 
@@ -225,37 +194,29 @@ export class ScrollableContainer extends BaseComponent {
   }
 
   public handleKeyScroll(key: string): boolean {
-    let deltaX = 0;
-    let deltaY = 0;
+    const scrollAction = ScrollCalculator.getScrollActionForKey(
+      key,
+      this.state.viewportHeight
+    );
+    if (!scrollAction) return false;
 
-    switch (key) {
-      case 'ArrowUp':
-        deltaY = -1;
-        break;
-      case 'ArrowDown':
-        deltaY = 1;
-        break;
-      case 'ArrowLeft':
-        deltaX = -1;
-        break;
-      case 'ArrowRight':
-        deltaX = 1;
-        break;
-      case 'PageUp':
-        deltaY = -Math.floor(this.state.viewportHeight * 0.8);
-        break;
-      case 'PageDown':
-        deltaY = Math.floor(this.state.viewportHeight * 0.8);
-        break;
-      case 'Home':
-        return (this.scrollToTop(this.config.smoothScrolling), true);
-      case 'End':
-        return (this.scrollToBottom(this.config.smoothScrolling), true);
-      default:
-        return false;
+    if (scrollAction.type === 'absolute') {
+      this.handleAbsoluteScroll(scrollAction.action);
+      return true;
     }
 
-    return this.handleScroll(deltaX, deltaY);
+    return this.handleScroll(scrollAction.deltaX, scrollAction.deltaY);
+  }
+
+  private handleAbsoluteScroll(action: string): void {
+    switch (action) {
+      case 'scrollToTop':
+        this.scrollToTop(this.config.smoothScrolling);
+        break;
+      case 'scrollToBottom':
+        this.scrollToBottom(this.config.smoothScrolling);
+        break;
+    }
   }
 
   private startScrollAnimation(
@@ -316,27 +277,21 @@ export class ScrollableContainer extends BaseComponent {
   }
 
   private clampScrollX(x: number): number {
-    if (this.config.elasticBounds) {
-      // Allow some over-scroll for elastic effect
-      const overscroll = this.state.viewportWidth * 0.1;
-      return Math.max(
-        -overscroll,
-        Math.min(this.state.maxScrollX + overscroll, x)
-      );
-    }
-    return Math.max(0, Math.min(this.state.maxScrollX, x));
+    return ScrollCalculator.clampPosition(
+      x,
+      this.state.maxScrollX,
+      this.config.elasticBounds,
+      this.state.viewportWidth
+    );
   }
 
   private clampScrollY(y: number): number {
-    if (this.config.elasticBounds) {
-      // Allow some over-scroll for elastic effect
-      const overscroll = this.state.viewportHeight * 0.1;
-      return Math.max(
-        -overscroll,
-        Math.min(this.state.maxScrollY + overscroll, y)
-      );
-    }
-    return Math.max(0, Math.min(this.state.maxScrollY, y));
+    return ScrollCalculator.clampPosition(
+      y,
+      this.state.maxScrollY,
+      this.config.elasticBounds,
+      this.state.viewportHeight
+    );
   }
 
   private updateContentDimensions(): void {
@@ -355,13 +310,13 @@ export class ScrollableContainer extends BaseComponent {
   }
 
   private updateScrollLimits(): void {
-    this.state.maxScrollX = Math.max(
-      0,
-      this.state.contentWidth - this.state.viewportWidth
+    this.state.maxScrollX = ScrollCalculator.calculateMaxScroll(
+      this.state.contentWidth,
+      this.state.viewportWidth
     );
-    this.state.maxScrollY = Math.max(
-      0,
-      this.state.contentHeight - this.state.viewportHeight
+    this.state.maxScrollY = ScrollCalculator.calculateMaxScroll(
+      this.state.contentHeight,
+      this.state.viewportHeight
     );
 
     // Clamp current scroll position
@@ -380,103 +335,51 @@ export class ScrollableContainer extends BaseComponent {
     const trackSize = isHorizontal
       ? this.state.viewportWidth
       : this.state.viewportHeight;
-    const thumbSize = Math.max(
-      1,
-      Math.floor((viewportSize / (viewportSize + maxPosition)) * trackSize)
-    );
-    const thumbPosition = Math.floor(
-      (position / maxPosition) * (trackSize - thumbSize)
-    );
 
-    switch (this.config.scrollbarStyle) {
-      case 'styled':
-        return this.renderStyledScrollbar(
-          thumbPosition,
-          thumbSize,
-          trackSize,
-          isHorizontal
-        );
-      case 'minimal':
-        return this.renderMinimalScrollbar(
-          thumbPosition,
-          thumbSize,
-          trackSize,
-          isHorizontal
-        );
-      default:
-        return this.renderSimpleScrollbar(
-          thumbPosition,
-          thumbSize,
-          trackSize,
-          isHorizontal
-        );
-    }
-  }
-
-  private renderSimpleScrollbar(
-    thumbPosition: number,
-    thumbSize: number,
-    trackSize: number,
-    isHorizontal: boolean
-  ): string {
-    const track = new Array(trackSize).fill(isHorizontal ? '─' : '│');
-
-    for (
-      let i = thumbPosition;
-      i < thumbPosition + thumbSize && i < trackSize;
-      i++
-    ) {
-      track[i] = isHorizontal ? '█' : '█';
-    }
-
-    return track.join('');
-  }
-
-  private renderStyledScrollbar(
-    thumbPosition: number,
-    thumbSize: number,
-    trackSize: number,
-    isHorizontal: boolean
-  ): string {
-    const track = new Array(trackSize).fill(isHorizontal ? '░' : '░');
-
-    for (
-      let i = thumbPosition;
-      i < thumbPosition + thumbSize && i < trackSize;
-      i++
-    ) {
-      track[i] = isHorizontal ? '▓' : '▓';
-    }
-
-    return track.join('');
-  }
-
-  private renderMinimalScrollbar(
-    thumbPosition: number,
-    thumbSize: number,
-    trackSize: number,
-    isHorizontal: boolean
-  ): string {
-    const track = new Array(trackSize).fill(' ');
-
-    for (
-      let i = thumbPosition;
-      i < thumbPosition + thumbSize && i < trackSize;
-      i++
-    ) {
-      track[i] = isHorizontal ? '■' : '■';
-    }
-
-    return track.join('');
+    return ScrollbarRenderer.render({
+      position,
+      maxPosition,
+      viewportSize,
+      trackSize,
+      style: this.config.scrollbarStyle,
+      isHorizontal
+    });
   }
 
   public render(context: RenderContext): string {
-    // Update animation if active
+    this.updateRenderState(context);
+
+    const visibleLines = ScrollContentRenderer.renderContent(
+      this.content,
+      context,
+      {
+        scrollX: this.state.scrollX,
+        scrollY: this.state.scrollY,
+        viewportWidth: this.state.viewportWidth,
+        viewportHeight: this.state.viewportHeight,
+        showScrollbars: this.config.showScrollbars,
+        enableHorizontal: this.config.enableHorizontalScroll,
+        enableVertical: this.config.enableVerticalScroll
+      }
+    );
+
+    const vScrollbar = this.getVerticalScrollbar();
+    const hScrollbar = this.getHorizontalScrollbar();
+
+    const finalLines = ScrollContentRenderer.addScrollbars(
+      visibleLines,
+      { vertical: vScrollbar, horizontal: hScrollbar },
+      { width: context.width, height: context.height }
+    );
+
+    return finalLines.join('\n');
+  }
+
+  private updateRenderState(context: RenderContext): void {
     if (this.scrollAnimation?.active === true) {
       this.updateScrollAnimation();
     }
 
-    // Update viewport dimensions
     const scrollbarSpace = this.config.showScrollbars ? 1 : 0;
     this.state.viewportWidth =
       context.width - (this.config.enableVerticalScroll ? scrollbarSpace : 0);
@@ -485,82 +388,36 @@ export class ScrollableContainer extends BaseComponent {
       (this.config.enableHorizontalScroll ? scrollbarSpace : 0);
 
     this.updateContentDimensions();
+  }
 
-    if (!this.content) {
-      return ' '.repeat(context.width * context.height);
+  private getVerticalScrollbar(): string {
+    if (!this.config.showScrollbars ||
+        !this.config.enableVerticalScroll ||
+        this.state.maxScrollY <= 0) {
+      return '';
     }
 
-    // Create content render context with scroll offset
-    const contentContext: RenderContext = {
-      ...context,
-      width: this.state.viewportWidth,
-      height: this.state.viewportHeight,
-      scrollX: this.state.scrollX,
-      scrollY: this.state.scrollY,
-    };
+    return this.renderScrollbar(
+      this.state.scrollY,
+      this.state.maxScrollY,
+      this.state.viewportHeight,
+      false
+    );
+  }
 
-    // Render content
-    const contentOutput = this.content.render(contentContext);
-    const contentLines = contentOutput.split('\n');
-
-    // Apply scroll offset and clipping
-    const visibleLines: string[] = [];
-
-    for (let y = 0; y < this.state.viewportHeight; y++) {
-      const sourceY = y + Math.floor(this.state.scrollY);
-      let line = '';
-
-      if (sourceY < contentLines.length) {
-        const sourceLine = contentLines[sourceY] ?? '';
-        const startX = Math.floor(this.state.scrollX);
-        line = sourceLine.slice(startX, startX + this.state.viewportWidth);
-      }
-
-      // Pad line to viewport width
-      line = line.padEnd(this.state.viewportWidth, ' ');
-      visibleLines.push(line);
+  private getHorizontalScrollbar(): string {
+    if (!this.config.showScrollbars ||
+        !this.config.enableHorizontalScroll ||
+        this.state.maxScrollX <= 0) {
+      return '';
     }
 
-    // Add scrollbars if needed
-    if (this.config.showScrollbars) {
-      // Vertical scrollbar
-      if (this.config.enableVerticalScroll && this.state.maxScrollY > 0) {
-        const vScrollbar = this.renderScrollbar(
-          this.state.scrollY,
-          this.state.maxScrollY,
-          this.state.viewportHeight,
-          false
-        );
-
-        const scrollbarChars = vScrollbar.split('');
-        for (
-          let i = 0;
-          i < Math.min(visibleLines.length, scrollbarChars.length);
-          i++
-        ) {
-          visibleLines[i] += scrollbarChars[i];
-        }
-      }
-
-      // Horizontal scrollbar
-      if (this.config.enableHorizontalScroll && this.state.maxScrollX > 0) {
-        const hScrollbar = this.renderScrollbar(
-          this.state.scrollX,
-          this.state.maxScrollX,
-          this.state.viewportWidth,
-          true
-        );
-
-        visibleLines.push(hScrollbar);
-      }
-    }
-
-    // Ensure we fill the context height
-    while (visibleLines.length < context.height) {
-      visibleLines.push(' '.repeat(context.width));
-    }
-
-    return visibleLines.join('\n');
+    return this.renderScrollbar(
+      this.state.scrollX,
+      this.state.maxScrollX,
+      this.state.viewportWidth,
+      true
+    );
   }
 
   // Public API
@@ -570,14 +427,14 @@ export class ScrollableContainer extends BaseComponent {
 
   public getScrollPercentage(): { x: number; y: number } {
     return {
-      x:
-        this.state.maxScrollX > 0
-          ? (this.state.scrollX / this.state.maxScrollX) * 100
-          : 0,
-      y:
-        this.state.maxScrollY > 0
-          ? (this.state.scrollY / this.state.maxScrollY) * 100
-          : 0,
+      x: ScrollCalculator.calculateScrollPercentage(
+        this.state.scrollX,
+        this.state.maxScrollX
+      ),
+      y: ScrollCalculator.calculateScrollPercentage(
+        this.state.scrollY,
+        this.state.maxScrollY
+      ),
     };
   }
 

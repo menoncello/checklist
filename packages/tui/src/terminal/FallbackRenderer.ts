@@ -98,7 +98,14 @@ export class FallbackRenderer {
   }
 
   private setupDefaultFallbacks(): void {
-    // No color support fallback
+    this.addColorFallback();
+    this.addUnicodeFallback();
+    this.addSizeFallback();
+    this.addAnsiFallback();
+    this.addLayoutFallback();
+  }
+
+  private addColorFallback(): void {
     this.addFallback({
       name: 'stripColors',
       condition: (caps) => {
@@ -108,8 +115,9 @@ export class FallbackRenderer {
       transform: (content) => this.stripAnsiColors(content),
       priority: 90,
     });
+  }
 
-    // No Unicode support fallback
+  private addUnicodeFallback(): void {
     this.addFallback({
       name: 'asciiOnly',
       condition: (caps) => {
@@ -119,16 +127,18 @@ export class FallbackRenderer {
       transform: (content) => this.convertToAscii(content),
       priority: 80,
     });
+  }
 
-    // Limited size fallback
+  private addSizeFallback(): void {
     this.addFallback({
       name: 'limitSize',
       condition: () => true, // Always apply if dimensions exceed limits
       transform: (content) => this.limitDimensions(content),
       priority: 70,
     });
+  }
 
-    // No ANSI escape sequences fallback
+  private addAnsiFallback(): void {
     this.addFallback({
       name: 'stripAnsi',
       condition: (caps) => {
@@ -138,8 +148,9 @@ export class FallbackRenderer {
       transform: (content) => this.stripAllAnsiEscapes(content),
       priority: 60,
     });
+  }
 
-    // Simplify complex layouts for minimal terminals
+  private addLayoutFallback(): void {
     this.addFallback({
       name: 'simplifyLayout',
       condition: (caps) => {
@@ -217,49 +228,65 @@ export class FallbackRenderer {
 
   private limitDimensions(content: string): string {
     const lines = content.split('\n');
+    const limitedLines = this.limitHeight(lines);
+    const processedLines = this.limitWidth(limitedLines);
+    return processedLines.join('\n');
+  }
 
-    // Limit height
-    let limitedLines = lines;
-    if (lines.length > this.options.maxHeight) {
-      limitedLines = lines.slice(0, this.options.maxHeight - 1);
-      limitedLines.push('... (content truncated)');
+  private limitHeight(lines: string[]): string[] {
+    if (lines.length <= this.options.maxHeight) {
+      return lines;
     }
 
-    // Limit width
+    const truncatedLines = lines.slice(0, this.options.maxHeight - 1);
+    truncatedLines.push('... (content truncated)');
+    return truncatedLines;
+  }
+
+  private limitWidth(lines: string[]): string[] {
+    return lines.map((line) => this.truncateLineToWidth(line));
+  }
+
+  private truncateLineToWidth(line: string): string {
+    const plainLine = line.replace(this.ansiEscapeRegex, '');
     const maxWidth = this.options.maxWidth;
-    const processedLines = limitedLines.map((line) => {
-      // Strip ANSI codes for accurate length measurement
-      const plainLine = line.replace(this.ansiEscapeRegex, '');
 
-      if (plainLine.length <= maxWidth) {
-        return line;
-      }
+    if (plainLine.length <= maxWidth) {
+      return line;
+    }
 
-      // Truncate while preserving ANSI codes
-      let result = '';
-      let plainLength = 0;
-      let i = 0;
+    return this.truncateLineWithAnsiPreservation(line, maxWidth);
+  }
 
-      while (i < line.length && plainLength < maxWidth - 3) {
-        if (line[i] === '\x1b') {
-          // Find end of ANSI sequence
-          const end = line.indexOf('m', i);
-          if (end !== -1) {
-            result += line.slice(i, end + 1);
-            i = end + 1;
-            continue;
-          }
+  private truncateLineWithAnsiPreservation(line: string, maxWidth: number): string {
+    let result = '';
+    let plainLength = 0;
+    let i = 0;
+
+    while (i < line.length && plainLength < maxWidth - 3) {
+      if (line[i] === '\x1b') {
+        const ansiSequence = this.extractAnsiSequence(line, i);
+        if (ansiSequence !== null && ansiSequence !== undefined && ansiSequence !== '') {
+          result += ansiSequence;
+          i += ansiSequence.length;
+          continue;
         }
-
-        result += line[i];
-        plainLength++;
-        i++;
       }
 
-      return result + '...';
-    });
+      result += line[i];
+      plainLength++;
+      i++;
+    }
 
-    return processedLines.join('\n');
+    return result + '...';
+  }
+
+  private extractAnsiSequence(line: string, startIndex: number): string | null {
+    const end = line.indexOf('m', startIndex);
+    if (end !== -1) {
+      return line.slice(startIndex, end + 1);
+    }
+    return null;
   }
 
   private simplifyLayout(content: string): string {
@@ -299,9 +326,21 @@ export class FallbackRenderer {
 
     const allRows = headers ? [headers, ...data] : data;
     const colCount = Math.max(...allRows.map((row) => row.length));
+    const colWidths = this.calculateColumnWidths(allRows, colCount);
+    const chars = this.getTableChars(capabilities);
 
-    // Calculate column widths
+    const lines: string[] = [];
+
+    lines.push(this.createTopBorder(colWidths, chars));
+    this.addDataRows({ allRows, colWidths, chars, lines, hasHeaders: !!headers });
+    lines.push(this.createBottomBorder(colWidths, chars));
+
+    return lines.join('\n');
+  }
+
+  private calculateColumnWidths(allRows: string[][], colCount: number): number[] {
     const colWidths: number[] = [];
+
     for (let col = 0; col < colCount; col++) {
       let maxWidth = 0;
       for (const row of allRows) {
@@ -315,12 +354,14 @@ export class FallbackRenderer {
       );
     }
 
-    // Build table
-    const lines: string[] = [];
+    return colWidths;
+  }
+
+  private getTableChars(capabilities?: unknown): Record<string, string> {
     const capsObj = capabilities as Record<string, unknown> | null | undefined;
     const useUnicode = capsObj?.unicode === true && !this.options.useAsciiOnly;
 
-    const chars = useUnicode
+    return useUnicode
       ? {
           horizontal: '─',
           vertical: '│',
@@ -347,57 +388,92 @@ export class FallbackRenderer {
           teeLeft: '+',
           teeRight: '+',
         };
+  }
 
-    // Top border
-    let topBorder = chars.topLeft;
+  private createTopBorder(colWidths: number[], chars: Record<string, string>): string {
+    let border = chars.topLeft;
+    const colCount = colWidths.length;
+
     for (let col = 0; col < colCount; col++) {
-      topBorder += chars.horizontal.repeat(colWidths[col] + 2);
-      if (col < colCount - 1) topBorder += chars.teeTop;
+      border += chars.horizontal.repeat(colWidths[col] + 2);
+      if (col < colCount - 1) border += chars.teeTop;
     }
-    topBorder += chars.topRight;
-    lines.push(topBorder);
+    border += chars.topRight;
 
-    // Data rows
+    return border;
+  }
+
+  private createBottomBorder(colWidths: number[], chars: Record<string, string>): string {
+    let border = chars.bottomLeft;
+    const colCount = colWidths.length;
+
+    for (let col = 0; col < colCount; col++) {
+      border += chars.horizontal.repeat(colWidths[col] + 2);
+      if (col < colCount - 1) border += chars.teeBottom;
+    }
+    border += chars.bottomRight;
+
+    return border;
+  }
+
+  private addDataRows(params: {
+    allRows: string[][];
+    colWidths: number[];
+    chars: Record<string, string>;
+    lines: string[];
+    hasHeaders: boolean;
+  }): void {
+    const { allRows, colWidths, chars, lines, hasHeaders } = params;
+    const colCount = colWidths.length;
+
     allRows.forEach((row, rowIndex) => {
-      let line = chars.vertical;
-
-      for (let col = 0; col < colCount; col++) {
-        const cellContent = (row[col] ?? '').toString();
-        const plainContent = this.stripAllAnsiEscapes(cellContent);
-        const truncated =
-          plainContent.length > colWidths[col]
-            ? plainContent.substring(0, colWidths[col] - 3) + '...'
-            : plainContent;
-
-        line += ' ' + truncated.padEnd(colWidths[col]) + ' ';
-        if (col < colCount - 1) line += chars.vertical;
-      }
-
-      line += chars.vertical;
+      const line = this.createTableRow(row, colWidths, chars, colCount);
       lines.push(line);
 
-      // Header separator
-      if (rowIndex === 0 && headers) {
-        let separator = chars.teeLeft;
-        for (let col = 0; col < colCount; col++) {
-          separator += chars.horizontal.repeat(colWidths[col] + 2);
-          if (col < colCount - 1) separator += chars.cross;
-        }
-        separator += chars.teeRight;
-        lines.push(separator);
+      if (rowIndex === 0 && hasHeaders) {
+        lines.push(this.createHeaderSeparator(colWidths, chars));
       }
     });
+  }
 
-    // Bottom border
-    let bottomBorder = chars.bottomLeft;
+  private createTableRow(
+    row: string[],
+    colWidths: number[],
+    chars: Record<string, string>,
+    colCount: number
+  ): string {
+    let line = chars.vertical;
+
     for (let col = 0; col < colCount; col++) {
-      bottomBorder += chars.horizontal.repeat(colWidths[col] + 2);
-      if (col < colCount - 1) bottomBorder += chars.teeBottom;
+      const cellContent = this.formatTableCell(row[col] ?? '', colWidths[col]);
+      line += ' ' + cellContent + ' ';
+      if (col < colCount - 1) line += chars.vertical;
     }
-    bottomBorder += chars.bottomRight;
-    lines.push(bottomBorder);
 
-    return lines.join('\n');
+    line += chars.vertical;
+    return line;
+  }
+
+  private formatTableCell(cellContent: string, maxWidth: number): string {
+    const plainContent = this.stripAllAnsiEscapes(cellContent.toString());
+    const truncated = plainContent.length > maxWidth
+      ? plainContent.substring(0, maxWidth - 3) + '...'
+      : plainContent;
+
+    return truncated.padEnd(maxWidth);
+  }
+
+  private createHeaderSeparator(colWidths: number[], chars: Record<string, string>): string {
+    let separator = chars.teeLeft;
+    const colCount = colWidths.length;
+
+    for (let col = 0; col < colCount; col++) {
+      separator += chars.horizontal.repeat(colWidths[col] + 2);
+      if (col < colCount - 1) separator += chars.cross;
+    }
+    separator += chars.teeRight;
+
+    return separator;
   }
 
   public createProgressBar(

@@ -141,24 +141,7 @@ export class InputValidator {
       );
 
       for (const rule of sortedRules) {
-        const ruleResult = this.applyRule(rule, result.sanitized);
-
-        if (!ruleResult.isValid) {
-          result.isValid = false;
-          if (rule.errorMessage != null && rule.errorMessage.length > 0) {
-            result.errors.push(rule.errorMessage);
-          }
-        }
-
-        if (ruleResult.sanitized !== result.sanitized) {
-          result.sanitized = ruleResult.sanitized;
-          this.validationMetrics.sanitizedInputs++;
-        }
-
-        // Add any rule-specific warnings
-        if (ruleResult.warnings) {
-          result.warnings.push(...ruleResult.warnings);
-        }
+        this.processValidationRule(rule, result);
       }
 
       // Apply blocked patterns
@@ -228,6 +211,27 @@ export class InputValidator {
     }
 
     return { isValid, sanitized, warnings };
+  }
+
+  private processValidationRule(rule: ValidationRule, result: InputValidationResult): void {
+    const ruleResult = this.applyRule(rule, result.sanitized);
+
+    if (!ruleResult.isValid) {
+      result.isValid = false;
+      if (rule.errorMessage) {
+        result.errors.push(rule.errorMessage);
+      }
+    }
+
+    if (ruleResult.sanitized !== result.sanitized) {
+      result.sanitized = ruleResult.sanitized;
+      this.validationMetrics.sanitizedInputs++;
+    }
+
+    // Add any rule-specific warnings
+    if (ruleResult.warnings) {
+      result.warnings.push(...ruleResult.warnings);
+    }
   }
 
   private validateAnsiSequences(input: string): boolean {

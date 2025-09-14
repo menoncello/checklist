@@ -2,64 +2,17 @@
 
 import { MigrateCommand, MigrateOptions } from './commands/migrate';
 
+export const version = '1.0.0';
+
 const args = Bun.argv.slice(2);
 const command = args[0];
 
-async function main() {
-  switch (command) {
-    case 'migrate': {
-      const options: MigrateOptions = {};
+function showVersion(): void {
+  console.log(`checklist version ${version}`);
+}
 
-      for (let i = 1; i < args.length; i++) {
-        const arg = args[i];
-
-        switch (arg) {
-          case '--check':
-            options.check = true;
-            break;
-          case '--dry-run':
-            options.dryRun = true;
-            break;
-          case '--backup-only':
-            options.backupOnly = true;
-            break;
-          case '--list-backups':
-            options.listBackups = true;
-            break;
-          case '--restore':
-            if (i + 1 < args.length) {
-              options.restore = args[++i];
-            } else {
-              console.error('--restore requires a backup path');
-              process.exit(1);
-            }
-            break;
-          case '--verbose':
-          case '-v':
-            options.verbose = true;
-            break;
-          default:
-            if (arg.startsWith('--restore=')) {
-              options.restore = arg.substring('--restore='.length);
-            }
-            break;
-        }
-      }
-
-      const migrateCommand = new MigrateCommand();
-      await migrateCommand.execute(options);
-      break;
-    }
-
-    case '--version':
-    case '-v':
-      console.log('checklist version 1.0.0');
-      break;
-
-    case '--help':
-    case '-h':
-    default:
-      console.log(`
+function showHelp(): void {
+  console.log(`
 Checklist CLI - Manage your checklists and workflows
 
 Usage: checklist [command] [options]
@@ -79,17 +32,67 @@ Commands:
 Examples:
   checklist migrate --check
   checklist migrate --dry-run
-  checklist migrate
-  checklist migrate --list-backups
-  checklist migrate --restore backup-v0.1.0-2024-01-15.yaml
+  checklist migrate --backup-only
+  checklist migrate --restore ~/.checklist/backups/backup-20240101.yaml
 `);
-      break;
+}
+
+function handleRestoreOption(args: string[], index: number): string | null {
+  if (index + 1 < args.length) {
+    return args[index + 1];
+  }
+  console.error('--restore requires a backup path');
+  process.exit(1);
+}
+
+function parseMigrateOptions(args: string[]): MigrateOptions {
+  const options: MigrateOptions = {};
+  const optionMap: Record<string, keyof MigrateOptions> = {
+    '--check': 'check',
+    '--dry-run': 'dryRun',
+    '--backup-only': 'backupOnly',
+    '--list-backups': 'listBackups',
+    '--verbose': 'verbose',
+    '-v': 'verbose'
+  };
+
+  for (let i = 1; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === '--restore') {
+      const value = handleRestoreOption(args, i);
+      if (value != null && value !== '') {
+        options.restore = value;
+        i++; // Skip next arg since it's the value
+      }
+    } else if (arg.startsWith('--restore=')) {
+      options.restore = arg.substring('--restore='.length);
+    } else if (optionMap[arg]) {
+      const key = optionMap[arg];
+      options[key] = true as never;
+    }
+  }
+
+  return options;
+}
+
+async function handleMigrateCommand(): Promise<void> {
+  const options = parseMigrateOptions(args);
+  const migrateCommand = new MigrateCommand();
+  await migrateCommand.execute(options);
+}
+
+async function main() {
+  if (command === 'migrate') {
+    await handleMigrateCommand();
+  } else if (command === '--version' || command === '-v') {
+    showVersion();
+  } else {
+    showHelp();
   }
 }
 
-void main().catch((error) => {
+main().catch((error) => {
   console.error('Error:', error);
   process.exit(1);
 });
-
-export const version = '0.0.1';

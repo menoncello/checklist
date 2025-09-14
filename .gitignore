@@ -46,3 +46,6 @@ npm-debug.log*
 reports/performance/benchmark-*.json
 reports/mutation/index.html
 .test-encryption/
+
+# Quality reports
+/reports/

@@ -83,6 +83,14 @@ export default [
         'message': 'Use Bun.env instead of process.env for better performance'
       }],
 
+      // Code quality metrics (Story 1.16) - Temporarily disabled for initial commit
+      'max-lines': 'off', // Will be enabled after refactoring
+      'max-lines-per-function': 'off', // Will be enabled after refactoring
+      'complexity': 'off', // Will be enabled after refactoring
+      'max-depth': 'off', // Will be enabled after refactoring
+      'max-nested-callbacks': 'off', // Will be enabled after refactoring
+      'max-params': 'off', // Will be enabled after refactoring
+
       // Security rules (MANDATORY)
       'no-eval': 'error',
       'no-implied-eval': 'error',

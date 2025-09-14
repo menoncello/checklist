@@ -99,53 +99,89 @@ export class PathSanitizer {
    */
   sanitize(inputPath: string, basePath?: string): string | null {
     try {
-      // Remove null bytes and other dangerous characters
-      let sanitized = inputPath.replace(/\0/g, '');
+      let sanitized = this.cleanPath(inputPath);
+      sanitized = this.resolvePath(sanitized, basePath);
 
-      // Normalize the path to remove .. and . segments
-      sanitized = normalize(sanitized);
-
-      // If not absolute, resolve against base path
-      if (!isAbsolute(sanitized) && basePath !== undefined) {
-        sanitized = resolve(basePath, sanitized);
-      } else if (!isAbsolute(sanitized)) {
-        sanitized = resolve(process.cwd(), sanitized);
+      if (!this.isPathAllowed(sanitized)) {
+        return null;
       }
 
-      // Check if path is within allowed base paths
-      if (this.allowedBasePaths.length > 0) {
-        const isAllowed = this.allowedBasePaths.some((allowed) =>
-          sanitized.startsWith(allowed)
-        );
-
-        if (!isAllowed) {
-          return null; // Path traversal attempt detected
-        }
-      }
-
-      // Verify the path doesn't contain suspicious patterns
-      const suspicious = [
-        '../',
-        '..\\',
-        '%2e%2e',
-        '..%2f',
-        '%2e%2e%2f',
-        '..%5c',
-        '%2e%2e%5c',
-      ];
-
-      const lowerPath = sanitized.toLowerCase();
-      for (const pattern of suspicious) {
-        if (lowerPath.includes(pattern)) {
-          return null;
-        }
+      if (this.containsSuspiciousPatterns(sanitized)) {
+        return null;
       }
 
       return sanitized;
-    } catch (_error) {
-      // Invalid path
+    } catch {
       return null;
     }
+  }
+
+  private cleanPath(inputPath: string): string {
+    // Remove null bytes and other dangerous characters
+    const cleaned = inputPath.replace(/\0/g, '');
+    // Normalize the path to remove .. and . segments
+    return normalize(cleaned);
+  }
+
+  private resolvePath(path: string, basePath?: string): string {
+    if (isAbsolute(path)) {
+      return path;
+    }
+    return basePath !== undefined
+      ? resolve(basePath, path)
+      : resolve(process.cwd(), path);
+  }
+
+  private isPathAllowed(path: string): boolean {
+    if (this.allowedBasePaths.length === 0) {
+      return true;
+    }
+    return this.allowedBasePaths.some((allowed) => path.startsWith(allowed));
+  }
+
+  private containsSuspiciousPatterns(path: string): boolean {
+    const suspicious = [
+      '../',
+      '..\\',
+      '%2e%2e',
+      '..%2f',
+      '%2e%2e%2f',
+      '..%5c',
+      '%2e%2e%5c',
+    ];
+
+    const lowerPath = path.toLowerCase();
+    return suspicious.some((pattern) => lowerPath.includes(pattern));
+  }
+
+  private cleanAndNormalizePath(inputPath: string, basePath?: string): string {
+    // Remove null bytes and dangerous characters
+    let sanitized = inputPath.replace(/\0/g, '');
+
+    // Normalize to remove .. and . segments
+    sanitized = normalize(sanitized);
+
+    // Resolve to absolute path
+    if (!isAbsolute(sanitized)) {
+      sanitized = basePath !== undefined
+        ? resolve(basePath, sanitized)
+        : resolve(process.cwd(), sanitized);
+    }
+
+    return sanitized;
+  }
+
+  private isPathAllowed(path: string): boolean {
+    if (this.allowedBasePaths.length === 0) {
+      return true;
+    }
+    return this.allowedBasePaths.some(allowed => path.startsWith(allowed));
+  }
+
+  private containsSuspiciousPatterns(path: string): boolean {
+    const patterns = ['../', '..\\', '%2e%2e', '..%2f', '%2e%2e%2f', '..%5c', '%2e%2e%5c'];
+    const lowerPath = path.toLowerCase();
+    return patterns.some(pattern => lowerPath.includes(pattern));
   }
 
   /**

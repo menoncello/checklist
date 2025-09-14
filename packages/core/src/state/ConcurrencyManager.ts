@@ -70,44 +70,67 @@ export class ConcurrencyManager {
     lockId: string
   ): Promise<boolean> {
     try {
-      const lockFile: LockFile = {
-        version: '1.0.0',
-        lockId,
-        metadata: {
-          pid: this.pid,
-          ppid: this.ppid,
-          hostname: hostname(),
-          user: userInfo().username,
-        },
-        timing: {
-          acquiredAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + LOCK_EXPIRY_TIME).toISOString(),
-        },
-        operation: {
-          type: 'write',
-          stackTrace: new Error().stack,
-        },
-        concurrency: {
-          waitingProcesses: [],
-        },
-      };
-
-      const lockContent = yaml.dump(lockFile);
-
-      const file = Bun.file(lockPath);
-      if (await file.exists()) {
+      if (await this.lockFileExists(lockPath)) {
         return false;
       }
 
-      await Bun.write(lockPath, lockContent, { createPath: false });
-
-      const writtenContent = await Bun.file(lockPath).text();
-      const writtenLock = yaml.load(writtenContent) as LockFile;
-
-      return writtenLock.lockId === lockId;
+      const lockFile = this.createLockFileData(lockId);
+      return await this.writeLockFileAtomically(lockPath, lockFile, lockId);
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Check if lock file exists
+   */
+  private async lockFileExists(lockPath: string): Promise<boolean> {
+    const file = Bun.file(lockPath);
+    return await file.exists();
+  }
+
+  /**
+   * Create lock file data structure
+   */
+  private createLockFileData(lockId: string): LockFile {
+    return {
+      version: '1.0.0',
+      lockId,
+      metadata: {
+        pid: this.pid,
+        ppid: this.ppid,
+        hostname: hostname(),
+        user: userInfo().username,
+      },
+      timing: {
+        acquiredAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + LOCK_EXPIRY_TIME).toISOString(),
+      },
+      operation: {
+        type: 'write',
+        stackTrace: new Error().stack,
+      },
+      concurrency: {
+        waitingProcesses: [],
+      },
+    };
+  }
+
+  /**
+   * Write lock file atomically and verify
+   */
+  private async writeLockFileAtomically(
+    lockPath: string,
+    lockFile: LockFile,
+    lockId: string
+  ): Promise<boolean> {
+    const lockContent = yaml.dump(lockFile);
+    await Bun.write(lockPath, lockContent, { createPath: false });
+
+    const writtenContent = await Bun.file(lockPath).text();
+    const writtenLock = yaml.load(writtenContent) as LockFile;
+
+    return writtenLock.lockId === lockId;
   }
 
   private startHeartbeat(lockPath: string, lockId: string): void {
