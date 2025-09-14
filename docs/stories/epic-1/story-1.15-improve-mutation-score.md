@@ -1,7 +1,7 @@
 # Story 1.15: Improve Mutation Testing Score
 
 ## Status
-In Progress
+Done
 
 ## Story
 **As a** quality engineer,  
