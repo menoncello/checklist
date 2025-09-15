@@ -50,7 +50,7 @@
     ]
   },
   "devDependencies": {
-    "@stryker-mutator/core": "9.1.0",
+    "@stryker-mutator/core": "9.1.1",
     "@stryker-mutator/typescript-checker": "^9.1.1",
     "@types/bun": "^1.2.21",
     "@types/debug": "^4.1.12",
