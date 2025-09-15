@@ -6,6 +6,9 @@
 process.env.NODE_ENV = 'test';
 process.env.LOG_LEVEL = 'silent';
 
+// Suppress all pino logging
+process.env.PINO_LOG_LEVEL = 'silent';
+
 // Store original methods
 const originalConsole = {
   log: console.log,
@@ -29,14 +32,27 @@ console.debug = () => {};
 process.stdout.write = function(chunk: any, encoding?: any, callback?: any): boolean {
   // Only allow test runner output
   const str = chunk?.toString() || '';
-  if (str.includes('pass') || 
-      str.includes('fail') || 
+
+  // Block JSON logs (pino logs)
+  if (str.startsWith('{"level":') ||
+      str.includes('"module":') ||
+      str.includes('"traceId":') ||
+      str.includes('[35mmodule[39m') ||
+      str.includes('[35mtraceId[39m')) {
+    return true;
+  }
+
+  // Allow test runner output
+  if (str.includes('pass') ||
+      str.includes('fail') ||
       str.includes('error') ||
       str.includes('expect') ||
       str.includes('Ran') ||
       str.includes('✓') ||
       str.includes('✗') ||
-      str.includes('#')) {
+      str.includes('#') ||
+      str.includes('test') ||
+      str.includes('▶')) {
     return originalWrite.call(process.stdout, chunk, encoding, callback);
   }
   return true;
@@ -44,10 +60,22 @@ process.stdout.write = function(chunk: any, encoding?: any, callback?: any): boo
 
 process.stderr.write = function(chunk: any, encoding?: any, callback?: any): boolean {
   const str = chunk?.toString() || '';
+
+  // Block JSON logs on stderr too
+  if (str.startsWith('{"level":') ||
+      str.includes('"module":') ||
+      str.includes('"traceId":') ||
+      str.includes('[35mmodule[39m') ||
+      str.includes('[35mtraceId[39m')) {
+    return true;
+  }
+
   // Allow error stack traces and test failures
-  if (str.includes('at ') || 
+  if (str.includes('at ') ||
       str.includes('error:') ||
-      str.includes('Error:')) {
+      str.includes('Error:') ||
+      str.includes('fail') ||
+      str.includes('✗')) {
     return originalErrWrite.call(process.stderr, chunk, encoding, callback);
   }
   return true;

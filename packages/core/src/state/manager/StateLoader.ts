@@ -44,19 +44,13 @@ export class StateLoader {
     // First handle migration if needed (old versions might not have all required fields)
     const migrated = await this.handleVersionMigration(parsed, statePath);
 
-    // Log the migrated state for debugging
-    this.logger.debug({
-      msg: 'State after migration',
-      state: migrated,
-    });
-
     // Then validate the migrated state
     this.validateStateStructure(migrated);
 
     return migrated;
   }
 
-  private parseYamlContent(content: string): any {
+  private parseYamlContent(content: string): unknown {
     try {
       return yaml.load(content);
     } catch (error) {
@@ -78,12 +72,13 @@ export class StateLoader {
   }
 
   private async handleVersionMigration(
-    state: any,
+    state: unknown,
     _statePath: string
   ): Promise<ChecklistState> {
     // Check if state needs migration based on version field
     // Old states might use 'version' instead of 'schemaVersion'
-    const currentVersion = state.schemaVersion ?? state.version ?? '0.0.0';
+    const stateObj = state as Record<string, unknown>;
+    const currentVersion = (stateObj.schemaVersion as string | undefined) ?? (stateObj.version as string | undefined) ?? '0.0.0';
 
     if (currentVersion !== SCHEMA_VERSION) {
       this.logger.info({
@@ -98,7 +93,7 @@ export class StateLoader {
       );
       return migrated as unknown as ChecklistState;
     }
-    return state as ChecklistState;
+    return stateObj as ChecklistState;
   }
 
   private async attemptRecovery(
@@ -165,11 +160,12 @@ export class StateLoader {
     this.validateStateStructure(parsed);
 
     // Ensure imported state has correct version
-    parsed.version = SCHEMA_VERSION;
-    if (parsed.metadata) {
-      parsed.metadata.modified = new Date().toISOString();
+    const parsedState = parsed as ChecklistState;
+    parsedState.version = SCHEMA_VERSION;
+    if (parsedState.metadata != null) {
+      parsedState.metadata.modified = new Date().toISOString();
     }
 
-    return parsed;
+    return parsedState;
   }
 }
