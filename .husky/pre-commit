@@ -5,8 +5,9 @@ echo "🔍 Running pre-commit checks..."
 
 # Security: Scanning for potential secrets
 echo "🔒 Scanning for potential secrets..."
-if grep -rn --exclude-dir=node_modules --exclude-dir=.git \
-  -E "(api[_-]?key|secret.*token.*password|AKIA[0-9A-Z]{16})" . ; then
+# Skip certain known false positives: XML files, Stryker temp files, dist files, and test patterns
+if grep -rn --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.stryker-tmp --exclude-dir=dist --exclude="*.xml" --exclude="*.gitleaksignore" \
+  -E "(api[_-]?key.*=.*['\"][^'\"]{20,}|secret.*=.*['\"][^'\"]{20,}|token.*=.*['\"][^'\"]{20,}|password.*=.*['\"][^'\"]{8,}|AKIA[0-9A-Z]{16})" . ; then
   echo "❌ Potential secrets detected! Please review and remove before committing."
   exit 1
 fi
