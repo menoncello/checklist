@@ -208,21 +208,11 @@ export class MigrationRegistry extends EventEmitter {
     migrations: Migration[];
     totalSteps: number;
   } {
-    const migrations: Migration[] = [];
-    let currentVersion = fromVersion;
-
-    while (currentVersion !== toVersion) {
-      const migration = this.getMigration(currentVersion, toVersion);
-      if (!migration) {
-        break;
-      }
-      migrations.push(migration);
-      currentVersion = migration.toVersion;
-    }
-
+    // Use findPath to get the correct migration path
+    const path = this.findPath(fromVersion, toVersion);
     return {
-      migrations,
-      totalSteps: migrations.length,
+      migrations: path.migrations,
+      totalSteps: path.totalSteps,
     };
   }
 }

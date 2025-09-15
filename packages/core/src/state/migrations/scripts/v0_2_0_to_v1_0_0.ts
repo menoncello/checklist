@@ -2,12 +2,21 @@ import { Migration } from '../types';
 
 // Helper functions for up migration
 function createBaseState(s: Record<string, unknown>, now: string): Record<string, unknown> {
+  // Generate a placeholder checksum (in real scenario, this would be calculated from the state)
+  const placeholderChecksum = 'sha256:' + '0'.repeat(64);
+
   return {
     ...s,
     version: '1.0.0',
     schemaVersion: '1.0.0',
-    recovery: s.recovery ?? null,
-    conflicts: (s.conflicts as unknown[] | undefined) ?? [],
+    checksum: (s.checksum as string | undefined) ?? placeholderChecksum,
+    completedSteps: (s.completedSteps as unknown[] | undefined) ?? [],
+    recovery: s.recovery ?? {
+      dataLoss: false,
+    },
+    conflicts: (s.conflicts as unknown | undefined) ?? {
+      resolutions: [],
+    },
     lastModified: now,
   };
 }

@@ -40,13 +40,25 @@ export class StateLoader {
   ): Promise<ChecklistState> {
     const content = await this.directoryManager.readFile(statePath);
     const parsed = this.parseYamlContent(content);
-    this.validateStateStructure(parsed);
-    return await this.handleVersionMigration(parsed, statePath);
+
+    // First handle migration if needed (old versions might not have all required fields)
+    const migrated = await this.handleVersionMigration(parsed, statePath);
+
+    // Log the migrated state for debugging
+    this.logger.debug({
+      msg: 'State after migration',
+      state: migrated,
+    });
+
+    // Then validate the migrated state
+    this.validateStateStructure(migrated);
+
+    return migrated;
   }
 
-  private parseYamlContent(content: string): ChecklistState {
+  private parseYamlContent(content: string): any {
     try {
-      return yaml.load(content) as ChecklistState;
+      return yaml.load(content);
     } catch (error) {
       throw new StateCorruptedError(
         `Failed to parse YAML: ${(error as Error).message}`,
@@ -66,23 +78,27 @@ export class StateLoader {
   }
 
   private async handleVersionMigration(
-    state: ChecklistState,
+    state: any,
     _statePath: string
   ): Promise<ChecklistState> {
-    if (state.version !== SCHEMA_VERSION) {
+    // Check if state needs migration based on version field
+    // Old states might use 'version' instead of 'schemaVersion'
+    const currentVersion = state.schemaVersion ?? state.version ?? '0.0.0';
+
+    if (currentVersion !== SCHEMA_VERSION) {
       this.logger.info({
         msg: 'State migration required',
-        currentVersion: state.version,
+        currentVersion,
         targetVersion: SCHEMA_VERSION,
       });
       const migrated = await this.migrationRunner.migrateState(
         state as unknown as StateSchema,
-        state.version ?? '1.0.0',
+        currentVersion,
         SCHEMA_VERSION
       );
       return migrated as unknown as ChecklistState;
     }
-    return state;
+    return state as ChecklistState;
   }
 
   private async attemptRecovery(

@@ -122,6 +122,11 @@ export class DirectoryManager {
   }
 
   async listFiles(dirPath: string): Promise<string[]> {
+    // Check if directory exists before trying to list files
+    if (!existsSync(dirPath)) {
+      return [];
+    }
+
     const glob = new Bun.Glob('*');
     const files: string[] = [];
     for await (const file of glob.scan({ cwd: dirPath, onlyFiles: true })) {

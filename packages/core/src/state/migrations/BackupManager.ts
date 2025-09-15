@@ -181,9 +181,11 @@ export class BackupManager {
 
   private async ensureBackupDir(): Promise<void> {
     try {
+      const { mkdir } = await import('fs/promises');
+      await mkdir(this.backupDir, { recursive: true });
       await Bun.write(path.join(this.backupDir, '.gitkeep'), '');
     } catch (_error) {
-      // Directory creation handled by Bun.write
+      // Directory creation handled
     }
   }
 
