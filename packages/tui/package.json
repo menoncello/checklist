@@ -20,7 +20,7 @@
     "supports-color": "^9.4.0"
   },
   "devDependencies": {
-    "pixelmatch": "^5.3.0"
+    "pixelmatch": "^7.1.0"
   },
   "optionalDependencies": {
     "node-pty": "^1.0.0"
