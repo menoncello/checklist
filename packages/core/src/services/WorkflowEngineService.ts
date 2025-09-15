@@ -99,7 +99,10 @@ export class WorkflowEngineService
   }
 
   getCurrentStep(): WorkflowStep | null {
-    return WorkflowValidator.findCurrentStep(this.currentInstance, this.currentWorkflow);
+    return WorkflowValidator.findCurrentStep(
+      this.currentInstance,
+      this.currentWorkflow
+    );
   }
 
   async advance(): Promise<void> {
@@ -111,7 +114,10 @@ export class WorkflowEngineService
         this.currentWorkflow
       );
 
-      const nextStepId = this.stepManager.findNextStep(currentStep, this.currentWorkflow);
+      const nextStepId = this.stepManager.findNextStep(
+        currentStep,
+        this.currentWorkflow
+      );
       await this.handleStepTransition(nextStepId);
 
       await this.stateHelper.saveWorkflowState(this.currentInstance);
@@ -125,7 +131,9 @@ export class WorkflowEngineService
     }
   }
 
-  private async handleStepTransition(nextStepId: string | null | undefined): Promise<void> {
+  private async handleStepTransition(
+    nextStepId: string | null | undefined
+  ): Promise<void> {
     if (nextStepId !== null && nextStepId !== undefined && nextStepId !== '') {
       await this.stepManager.moveToNextStep(
         nextStepId,
@@ -295,7 +303,10 @@ export class WorkflowEngineService
     }
   }
 
-  private createWorkflowInstance(workflowId: string, workflow: WorkflowDefinition): WorkflowInstance {
+  private createWorkflowInstance(
+    workflowId: string,
+    workflow: WorkflowDefinition
+  ): WorkflowInstance {
     return {
       id: randomUUID(),
       workflowId,
@@ -307,13 +318,19 @@ export class WorkflowEngineService
     };
   }
 
-  private setActiveWorkflow(instance: WorkflowInstance, workflow: WorkflowDefinition): void {
+  private setActiveWorkflow(
+    instance: WorkflowInstance,
+    workflow: WorkflowDefinition
+  ): void {
     this.currentInstance = instance;
     this.currentWorkflow = workflow;
     this.status = 'running';
   }
 
-  private async emitWorkflowStarted(workflowId: string, instanceId: string): Promise<void> {
+  private async emitWorkflowStarted(
+    workflowId: string,
+    instanceId: string
+  ): Promise<void> {
     await this.eventManager.emit({
       type: 'workflow-started',
       workflowId,
@@ -331,7 +348,10 @@ export class WorkflowEngineService
   }
 
   private validateActiveWorkflow(): { currentStep: WorkflowStep } {
-    WorkflowValidator.validateActiveWorkflow(this.currentInstance, this.currentWorkflow);
+    WorkflowValidator.validateActiveWorkflow(
+      this.currentInstance,
+      this.currentWorkflow
+    );
 
     const currentStep = this.getCurrentStep();
     if (!currentStep) {

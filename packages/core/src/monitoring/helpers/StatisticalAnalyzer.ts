@@ -22,7 +22,8 @@ export class StatisticalAnalyzer {
     const currentValue = current.p95 ?? current.average;
     const baselineValue = baseline.p95 ?? baseline.average;
 
-    const changePercent = ((currentValue - baselineValue) / baselineValue) * 100;
+    const changePercent =
+      ((currentValue - baselineValue) / baselineValue) * 100;
     const hasRegression = changePercent > this.regressionThreshold;
 
     return { changePercent, hasRegression };
@@ -34,7 +35,12 @@ export class StatisticalAnalyzer {
   ): number {
     const currentCV = this.calculateCV(current);
     const baselineCV = this.calculateCV(baseline);
-    return this.calculateConfidence(currentCV, baselineCV, current.count, baseline.count);
+    return this.calculateConfidence(
+      currentCV,
+      baselineCV,
+      current.count,
+      baseline.count
+    );
   }
 
   private calculateCV(metric: PerformanceMetric): number {

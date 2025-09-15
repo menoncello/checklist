@@ -12,6 +12,8 @@ function createBaseState(s: Record<string, unknown>, now: string): Record<string
     checksum: (s.checksum as string | undefined) ?? placeholderChecksum,
     completedSteps: (s.completedSteps as unknown[] | undefined) ?? [],
     recovery: s.recovery ?? {
+      enabled: false,
+      checkpoints: [],
       dataLoss: false,
     },
     conflicts: (s.conflicts as unknown | undefined) ?? {
@@ -136,7 +138,10 @@ function validateRecoveryField(s: Record<string, unknown>): boolean {
 }
 
 function validateConflictsField(s: Record<string, unknown>): boolean {
-  return Array.isArray(s.conflicts);
+  if (s.conflicts === null || s.conflicts === undefined) return false;
+  if (typeof s.conflicts !== 'object') return false;
+  const conflicts = s.conflicts as Record<string, unknown>;
+  return Array.isArray(conflicts.resolutions);
 }
 
 function validateVersionFields(s: Record<string, unknown>): boolean {

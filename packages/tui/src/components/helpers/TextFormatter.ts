@@ -36,7 +36,10 @@ export class TextFormatter {
     return result;
   }
 
-  private static applyTransformations(text: string, options: TextFormatOptions): string {
+  private static applyTransformations(
+    text: string,
+    options: TextFormatOptions
+  ): string {
     if (options.uppercase === true) return text.toUpperCase();
     if (options.lowercase === true) return text.toLowerCase();
     if (options.capitalize === true) {
@@ -45,7 +48,10 @@ export class TextFormatter {
     return text;
   }
 
-  private static applyTruncation(text: string, options: TextFormatOptions): string {
+  private static applyTruncation(
+    text: string,
+    options: TextFormatOptions
+  ): string {
     if (
       options.maxLength != null &&
       options.maxLength > 0 &&
@@ -57,7 +63,10 @@ export class TextFormatter {
     return text;
   }
 
-  private static applyPadding(text: string, options: TextFormatOptions): string {
+  private static applyPadding(
+    text: string,
+    options: TextFormatOptions
+  ): string {
     let result = text;
     if (options.padLeft != null && options.padLeft > 0) {
       result = result.padStart(options.padLeft);
@@ -100,7 +109,10 @@ export class TextFormatter {
     }
   }
 
-  private static addBackgroundColorCodes(style: AnsiStyle, codes: string[]): void {
+  private static addBackgroundColorCodes(
+    style: AnsiStyle,
+    codes: string[]
+  ): void {
     if (style.backgroundColor == null || style.backgroundColor === '') return;
 
     const bgColorCodes: Record<string, string> = {
@@ -114,7 +126,10 @@ export class TextFormatter {
       white: '47',
     };
 
-    if (style.backgroundColor != null && bgColorCodes[style.backgroundColor] != null) {
+    if (
+      style.backgroundColor != null &&
+      bgColorCodes[style.backgroundColor] != null
+    ) {
       codes.push(bgColorCodes[style.backgroundColor]);
     }
   }

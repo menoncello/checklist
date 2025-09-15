@@ -53,7 +53,11 @@ function hasRecoveryOrConflicts(s: Record<string, unknown>): boolean {
 }
 
 function hasMetadataWithTimestamps(s: Record<string, unknown>): boolean {
-  if (s.metadata === null || s.metadata === undefined || typeof s.metadata !== 'object') {
+  if (
+    s.metadata === null ||
+    s.metadata === undefined ||
+    typeof s.metadata !== 'object'
+  ) {
     return false;
   }
   const metadata = s.metadata as Record<string, unknown>;
@@ -64,7 +68,11 @@ function hasMetadataWithTimestamps(s: Record<string, unknown>): boolean {
 }
 
 function hasChecklistsArray(s: Record<string, unknown>): boolean {
-  return s.checklists !== null && s.checklists !== undefined && Array.isArray(s.checklists);
+  return (
+    s.checklists !== null &&
+    s.checklists !== undefined &&
+    Array.isArray(s.checklists)
+  );
 }
 
 function hasWorkflowFields(s: Record<string, unknown>): boolean {
@@ -240,7 +248,11 @@ function determineStateVersion(structure: {
   hasConflicts: boolean;
   hasMigrations: boolean;
 }): string {
-  if (structure.hasMigrations && structure.hasRecovery && structure.hasConflicts) {
+  if (
+    structure.hasMigrations &&
+    structure.hasRecovery &&
+    structure.hasConflicts
+  ) {
     return '1.0.0';
   }
   if (structure.hasTemplates && structure.hasVariables) {
@@ -300,7 +312,10 @@ function validateVersionFields(
   }
 }
 
-function validateArrayFields(s: Record<string, unknown>, errors: string[]): void {
+function validateArrayFields(
+  s: Record<string, unknown>,
+  errors: string[]
+): void {
   const arrayFields = [
     { name: 'migrations', value: s.migrations },
     { name: 'checklists', value: s.checklists },
@@ -315,7 +330,10 @@ function validateArrayFields(s: Record<string, unknown>, errors: string[]): void
   });
 }
 
-function validateObjectFields(s: Record<string, unknown>, errors: string[]): void {
+function validateObjectFields(
+  s: Record<string, unknown>,
+  errors: string[]
+): void {
   if (
     s.variables !== undefined &&
     (typeof s.variables !== 'object' || Array.isArray(s.variables))
@@ -337,10 +355,16 @@ function validateMetadata(
   }
 
   const metadata = s.metadata as Record<string, unknown>;
-  if (metadata.created !== undefined && !isValidDate(metadata.created as string)) {
+  if (
+    metadata.created !== undefined &&
+    !isValidDate(metadata.created as string)
+  ) {
     warnings.push('Invalid metadata.created timestamp');
   }
-  if (metadata.modified !== undefined && !isValidDate(metadata.modified as string)) {
+  if (
+    metadata.modified !== undefined &&
+    !isValidDate(metadata.modified as string)
+  ) {
     warnings.push('Invalid metadata.modified timestamp');
   }
 }

@@ -141,7 +141,13 @@ export class ScrollableContainer extends BaseComponent {
     targetHeight?: number;
     animated?: boolean;
   }): void {
-    const { targetX, targetY, targetWidth = 1, targetHeight = 1, animated = false } = options;
+    const {
+      targetX,
+      targetY,
+      targetWidth = 1,
+      targetHeight = 1,
+      animated = false,
+    } = options;
 
     const newPosition = ScrollCalculator.calculateScrollIntoView(
       { x: targetX, y: targetY, width: targetWidth, height: targetHeight },
@@ -149,11 +155,14 @@ export class ScrollableContainer extends BaseComponent {
         bounds: this.state,
         margin: this.config.autoScrollMargin,
         enableHorizontal: this.config.enableHorizontalScroll,
-        enableVertical: this.config.enableVerticalScroll
+        enableVertical: this.config.enableVerticalScroll,
       }
     );
 
-    if (newPosition.x !== this.state.scrollX || newPosition.y !== this.state.scrollY) {
+    if (
+      newPosition.x !== this.state.scrollX ||
+      newPosition.y !== this.state.scrollY
+    ) {
       this.scrollTo(newPosition.x, newPosition.y, animated);
     }
   }
@@ -342,7 +351,7 @@ export class ScrollableContainer extends BaseComponent {
       viewportSize,
       trackSize,
       style: this.config.scrollbarStyle,
-      isHorizontal
+      isHorizontal,
     });
   }
 
@@ -359,7 +368,7 @@ export class ScrollableContainer extends BaseComponent {
         viewportHeight: this.state.viewportHeight,
         showScrollbars: this.config.showScrollbars,
         enableHorizontal: this.config.enableHorizontalScroll,
-        enableVertical: this.config.enableVerticalScroll
+        enableVertical: this.config.enableVerticalScroll,
       }
     );
 
@@ -391,9 +400,11 @@ export class ScrollableContainer extends BaseComponent {
   }
 
   private getVerticalScrollbar(): string {
-    if (!this.config.showScrollbars ||
-        !this.config.enableVerticalScroll ||
-        this.state.maxScrollY <= 0) {
+    if (
+      !this.config.showScrollbars ||
+      !this.config.enableVerticalScroll ||
+      this.state.maxScrollY <= 0
+    ) {
       return '';
     }
 
@@ -406,9 +417,11 @@ export class ScrollableContainer extends BaseComponent {
   }
 
   private getHorizontalScrollbar(): string {
-    if (!this.config.showScrollbars ||
-        !this.config.enableHorizontalScroll ||
-        this.state.maxScrollX <= 0) {
+    if (
+      !this.config.showScrollbars ||
+      !this.config.enableHorizontalScroll ||
+      this.state.maxScrollX <= 0
+    ) {
       return '';
     }
 

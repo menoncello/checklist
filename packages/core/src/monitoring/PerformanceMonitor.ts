@@ -60,7 +60,10 @@ export class PerformanceMonitorService
         bufferSize: this.bufferSize,
       });
     } else {
-      this.logger.info({ msg: 'Performance monitoring disabled' });
+      // Only log in non-test environments to prevent noise
+      if (Bun.env.NODE_ENV !== 'test') {
+        this.logger.info({ msg: 'Performance monitoring disabled' });
+      }
     }
   }
 
@@ -136,7 +139,11 @@ export class PerformanceMonitorService
     return rawEntries;
   }
 
-  private updateAggregatedMetrics(operation: string, duration: number, rawEntries: MetricEntry[]): void {
+  private updateAggregatedMetrics(
+    operation: string,
+    duration: number,
+    rawEntries: MetricEntry[]
+  ): void {
     const metric = this.metrics.get(operation) ?? {
       count: 0,
       total: 0,
@@ -155,7 +162,10 @@ export class PerformanceMonitorService
     this.metrics.set(operation, metric);
   }
 
-  private calculatePercentiles(metric: PerformanceMetric, rawEntries: MetricEntry[]): void {
+  private calculatePercentiles(
+    metric: PerformanceMetric,
+    rawEntries: MetricEntry[]
+  ): void {
     if (rawEntries.length < 10) {
       return;
     }

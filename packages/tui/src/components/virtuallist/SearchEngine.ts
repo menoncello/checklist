@@ -63,7 +63,7 @@ export class SearchEngine<T> {
 
   private intersectArrays(arr1: number[], arr2: number[]): number[] {
     const set2 = new Set(arr2);
-    return arr1.filter(item => set2.has(item));
+    return arr1.filter((item) => set2.has(item));
   }
 
   private tokenizeText(text: string): string[] {
@@ -71,7 +71,7 @@ export class SearchEngine<T> {
       .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
-      .filter(word => word.length > 0);
+      .filter((word) => word.length > 0);
   }
 
   private getSearchableText(item: VirtualListItem<T>): string {
@@ -139,7 +139,7 @@ export class SearchEngine<T> {
     if (!this.hasActiveSearch()) return null;
 
     const matches = this.state.filteredIndices;
-    const nextMatch = matches.find(index => index > currentIndex);
+    const nextMatch = matches.find((index) => index > currentIndex);
     return nextMatch ?? matches[0] ?? null;
   }
 
@@ -148,7 +148,7 @@ export class SearchEngine<T> {
 
     const matches = this.state.filteredIndices;
     const reversedMatches = [...matches].reverse();
-    const prevMatch = reversedMatches.find(index => index < currentIndex);
+    const prevMatch = reversedMatches.find((index) => index < currentIndex);
     return prevMatch ?? matches[matches.length - 1] ?? null;
   }
 }

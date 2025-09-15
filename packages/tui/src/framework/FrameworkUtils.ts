@@ -10,7 +10,9 @@ export interface TUIFrameworkState {
 }
 
 export class FrameworkUtils {
-  static createDefaultConfig(config: Partial<TUIFrameworkConfig> = {}): TUIFrameworkConfig {
+  static createDefaultConfig(
+    config: Partial<TUIFrameworkConfig> = {}
+  ): TUIFrameworkConfig {
     return {
       // Framework settings
       enableFramework: true,

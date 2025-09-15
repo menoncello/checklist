@@ -36,7 +36,8 @@ export class SelectionManager {
   }
 
   selectRange(startIndex: number, endIndex: number): void {
-    if (!this.config.enableSelection || !this.config.enableMultiSelection) return;
+    if (!this.config.enableSelection || !this.config.enableMultiSelection)
+      return;
 
     const start = Math.min(startIndex, endIndex);
     const end = Math.max(startIndex, endIndex);
@@ -49,7 +50,8 @@ export class SelectionManager {
   }
 
   selectAll(itemCount: number): void {
-    if (!this.config.enableSelection || !this.config.enableMultiSelection) return;
+    if (!this.config.enableSelection || !this.config.enableMultiSelection)
+      return;
 
     this.state.selectedIndices.clear();
     for (let i = 0; i < itemCount; i++) {
@@ -125,7 +127,10 @@ export class SelectionManager {
     this.state.selectedIndices = newSelection;
   }
 
-  private emitSelectionChange(action: SelectionEvent['action'], lastSelected: number): void {
+  private emitSelectionChange(
+    action: SelectionEvent['action'],
+    lastSelected: number
+  ): void {
     if (this.onSelectionChange) {
       this.onSelectionChange({
         selectedIndices: new Set(this.state.selectedIndices),

@@ -218,17 +218,22 @@ export class BackupManager {
     return deletedCount;
   }
 
-  private shouldDeleteBackup(backup: BackupManifestEntry, cutoffTime: number): boolean {
+  private shouldDeleteBackup(
+    backup: BackupManifestEntry,
+    cutoffTime: number
+  ): boolean {
     const backupTime = new Date(backup.createdAt).getTime();
     return backupTime < cutoffTime;
   }
 
-  private async deleteBackupFile(backup: BackupManifestEntry): Promise<boolean> {
+  private async deleteBackupFile(
+    backup: BackupManifestEntry
+  ): Promise<boolean> {
     const backupPath = join(this.backupDir, backup.filename);
 
     try {
       const file = Bun.file(backupPath);
-      if (!await file.exists()) {
+      if (!(await file.exists())) {
         return false;
       }
 

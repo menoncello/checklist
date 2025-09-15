@@ -31,16 +31,22 @@ export class OverlayRenderer {
     return this.positionOverlay(lines, dimensions, overlayDims);
   }
 
-  private static calculateDimensions(dimensions: { width: number; height: number }): OverlayDimensions {
+  private static calculateDimensions(dimensions: {
+    width: number;
+    height: number;
+  }): OverlayDimensions {
     return {
       width: dimensions.width,
       height: dimensions.height,
       overlayWidth: Math.min(dimensions.width - 4, 80),
-      overlayHeight: Math.min(dimensions.height - 4, 30)
+      overlayHeight: Math.min(dimensions.height - 4, 30),
     };
   }
 
-  private static buildOverlayLines(content: OverlayContent, dims: OverlayDimensions): string[] {
+  private static buildOverlayLines(
+    content: OverlayContent,
+    dims: OverlayDimensions
+  ): string[] {
     const lines: string[] = [];
 
     // Header

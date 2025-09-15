@@ -107,19 +107,27 @@ export class ColorSupport {
     const term = Bun.env.TERM ?? '';
     const termProgram = Bun.env.TERM_PROGRAM?.toLowerCase() ?? '';
 
-    return this.checkByTermType(term, colors) ??
-           this.checkByTermProgram(termProgram, colors) ??
-           null;
+    return (
+      this.checkByTermType(term, colors) ??
+      this.checkByTermProgram(termProgram, colors) ??
+      null
+    );
   }
 
   private checkByTermType(term: string, colors: number): boolean | null {
     const colorCapabilities = this.getTerminalCapabilities();
-    const capability = colorCapabilities[term as keyof typeof colorCapabilities];
+    const capability =
+      colorCapabilities[term as keyof typeof colorCapabilities];
 
-    return capability !== undefined ? this.getColorSupport(capability, colors) : null;
+    return capability !== undefined
+      ? this.getColorSupport(capability, colors)
+      : null;
   }
 
-  private checkByTermProgram(termProgram: string, colors: number): boolean | null {
+  private checkByTermProgram(
+    termProgram: string,
+    colors: number
+  ): boolean | null {
     const programCapabilities = this.getProgramCapabilities();
 
     for (const [program, caps] of Object.entries(programCapabilities)) {
@@ -131,7 +139,10 @@ export class ColorSupport {
     return null;
   }
 
-  private getTerminalCapabilities(): Record<string, { basic: boolean; '256': boolean; truecolor: boolean }> {
+  private getTerminalCapabilities(): Record<
+    string,
+    { basic: boolean; '256': boolean; truecolor: boolean }
+  > {
     return {
       xterm: { basic: true, '256': true, truecolor: false },
       'xterm-256color': { basic: true, '256': true, truecolor: false },
@@ -145,7 +156,10 @@ export class ColorSupport {
     };
   }
 
-  private getProgramCapabilities(): Record<string, { basic: boolean; '256': boolean; truecolor: boolean }> {
+  private getProgramCapabilities(): Record<
+    string,
+    { basic: boolean; '256': boolean; truecolor: boolean }
+  > {
     return {
       iterm: { basic: true, '256': true, truecolor: true },
       alacritty: { basic: true, '256': true, truecolor: true },
@@ -181,8 +195,10 @@ export class ColorSupport {
    * Check if cached detection result is still valid
    */
   private isCacheValid(): boolean {
-    return this.detectionCache !== null &&
-           Date.now() - this.cacheTimestamp < this.cacheTTL;
+    return (
+      this.detectionCache !== null &&
+      Date.now() - this.cacheTimestamp < this.cacheTTL
+    );
   }
 
   /**
@@ -225,10 +241,16 @@ export class ColorSupport {
   /**
    * Check if any environment color information is available
    */
-  private hasEnvironmentColorInfo(envResults: { basic: boolean | null; color256: boolean | null; trueColor: boolean | null }): boolean {
-    return envResults.basic !== null ||
-           envResults.color256 !== null ||
-           envResults.trueColor !== null;
+  private hasEnvironmentColorInfo(envResults: {
+    basic: boolean | null;
+    color256: boolean | null;
+    trueColor: boolean | null;
+  }): boolean {
+    return (
+      envResults.basic !== null ||
+      envResults.color256 !== null ||
+      envResults.trueColor !== null
+    );
   }
 
   /**
@@ -236,7 +258,11 @@ export class ColorSupport {
    */
   private applyEnvironmentResults(
     info: ColorSupportInfo,
-    envResults: { basic: boolean | null; color256: boolean | null; trueColor: boolean | null }
+    envResults: {
+      basic: boolean | null;
+      color256: boolean | null;
+      trueColor: boolean | null;
+    }
   ): void {
     info.basic = envResults.basic ?? false;
     info.color256 = envResults.color256 ?? false;
@@ -426,7 +452,12 @@ export class ColorSupport {
     ];
   }
 
-  private findClosestColor(r: number, g: number, b: number, colors: number[][]): number {
+  private findClosestColor(
+    r: number,
+    g: number,
+    b: number,
+    colors: number[][]
+  ): number {
     let bestMatch = 0;
     let bestDistance = Infinity;
 
@@ -442,7 +473,12 @@ export class ColorSupport {
     return bestMatch;
   }
 
-  private calculateColorDistance(r: number, g: number, b: number, targetColor: number[]): number {
+  private calculateColorDistance(
+    r: number,
+    g: number,
+    b: number,
+    targetColor: number[]
+  ): number {
     const [cr, cg, cb] = targetColor;
     return Math.sqrt(
       Math.pow(r - cr, 2) + Math.pow(g - cg, 2) + Math.pow(b - cb, 2)

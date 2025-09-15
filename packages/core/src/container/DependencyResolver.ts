@@ -56,7 +56,10 @@ export class DependencyResolver {
     if (visited.has(serviceName)) {
       const cycleStart = path.indexOf(serviceName);
       if (cycleStart !== -1) {
-        throw new CircularDependencyError([...path.slice(cycleStart), serviceName]);
+        throw new CircularDependencyError([
+          ...path.slice(cycleStart),
+          serviceName,
+        ]);
       }
       return;
     }
@@ -67,7 +70,8 @@ export class DependencyResolver {
     const service = this.services.get(serviceName);
     if (service?.dependencies) {
       for (const dep of service.dependencies) {
-        const depName = typeof dep === 'string' ? dep : this.getServiceName(dep);
+        const depName =
+          typeof dep === 'string' ? dep : this.getServiceName(dep);
         this.checkCircularDependencies(depName, visited, path);
       }
     }

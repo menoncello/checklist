@@ -1,5 +1,8 @@
 import { EventEmitter } from 'events';
-import type { WorkflowEvent, WorkflowEventHandler } from '../interfaces/IWorkflowEngine';
+import type {
+  WorkflowEvent,
+  WorkflowEventHandler,
+} from '../interfaces/IWorkflowEngine';
 import type { Logger } from '../utils/logger';
 
 export class WorkflowEventManager {

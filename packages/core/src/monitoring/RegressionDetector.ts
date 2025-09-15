@@ -99,7 +99,9 @@ export class PerformanceRegressionDetector {
         continue;
       }
 
-      if (!this.hasSufficientSamples(operation, currentMetric, baselineMetric)) {
+      if (
+        !this.hasSufficientSamples(operation, currentMetric, baselineMetric)
+      ) {
         continue;
       }
 
@@ -121,10 +123,21 @@ export class PerformanceRegressionDetector {
     current: PerformanceMetric,
     baseline: PerformanceMetric
   ): RegressionResult {
-    const { changePercent, hasRegression } = this.statisticalAnalyzer.calculatePerformanceChange(current, baseline);
-    const confidence = this.statisticalAnalyzer.calculateRegressionConfidence(current, baseline);
-    const severity = this.classifier.determineSeverity(changePercent, confidence);
-    const recommendation = this.classifier.generateRecommendation(severity, changePercent, operation);
+    const { changePercent, hasRegression } =
+      this.statisticalAnalyzer.calculatePerformanceChange(current, baseline);
+    const confidence = this.statisticalAnalyzer.calculateRegressionConfidence(
+      current,
+      baseline
+    );
+    const severity = this.classifier.determineSeverity(
+      changePercent,
+      confidence
+    );
+    const recommendation = this.classifier.generateRecommendation(
+      severity,
+      changePercent,
+      operation
+    );
 
     return {
       operation,
@@ -141,7 +154,10 @@ export class PerformanceRegressionDetector {
   /**
    * Check if baseline data is available for the operation
    */
-  private hasValidBaseline(operation: string, baselineMetric: PerformanceMetric | undefined): boolean {
+  private hasValidBaseline(
+    operation: string,
+    baselineMetric: PerformanceMetric | undefined
+  ): boolean {
     if (baselineMetric === undefined) {
       this.logger.debug({
         msg: 'No baseline data for operation',
@@ -191,10 +207,11 @@ export class PerformanceRegressionDetector {
     }
   }
 
-  private sortRegressionResults(results: RegressionResult[]): RegressionResult[] {
+  private sortRegressionResults(
+    results: RegressionResult[]
+  ): RegressionResult[] {
     return this.classifier.sortRegressionResults(results);
   }
-
 
   /**
    * Add historical data point for trend analysis

@@ -86,7 +86,11 @@ function evaluateComparisonOperators(expr: string): boolean | null {
   return executeComparison(leftValue, operator, rightValue);
 }
 
-function executeComparison(leftValue: unknown, operator: string, rightValue: unknown): boolean {
+function executeComparison(
+  leftValue: unknown,
+  operator: string,
+  rightValue: unknown
+): boolean {
   switch (operator) {
     case '===':
     case '==':
@@ -169,8 +173,10 @@ function splitByOperator(expr: string, operator: string): string[] {
 
 // Helper functions to reduce complexity
 function isStringLiteral(str: string): boolean {
-  return (str.startsWith('"') && str.endsWith('"')) ||
-         (str.startsWith("'") && str.endsWith("'"));
+  return (
+    (str.startsWith('"') && str.endsWith('"')) ||
+    (str.startsWith("'") && str.endsWith("'"))
+  );
 }
 
 function parseStringLiteral(str: string): string {
@@ -187,7 +193,7 @@ function parsePrimitives(str: string): unknown {
 
 function parseNumber(str: string): number | undefined {
   const num = Number(str);
-  return (!isNaN(num) && str !== '') ? num : undefined;
+  return !isNaN(num) && str !== '' ? num : undefined;
 }
 
 // Parse a value from string representation

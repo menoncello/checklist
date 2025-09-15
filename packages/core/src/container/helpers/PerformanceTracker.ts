@@ -35,7 +35,9 @@ export class PerformanceTracker {
     return { result, metrics };
   }
 
-  getPerformanceMetrics(serviceName?: string): PerformanceMetrics[] | Map<string, PerformanceMetrics[]> {
+  getPerformanceMetrics(
+    serviceName?: string
+  ): PerformanceMetrics[] | Map<string, PerformanceMetrics[]> {
     if (serviceName !== undefined) {
       return this.performanceMetrics.get(serviceName) ?? [];
     }
@@ -64,10 +66,10 @@ export class PerformanceTracker {
     service: string,
     metrics: PerformanceMetrics[]
   ): void {
-    const avgTime = metrics.reduce((sum, m) => sum + m.resolutionTime, 0) /
-                    metrics.length;
-    const avgMemory = metrics.reduce((sum, m) => sum + m.memoryUsage, 0) /
-                      metrics.length;
+    const avgTime =
+      metrics.reduce((sum, m) => sum + m.resolutionTime, 0) / metrics.length;
+    const avgMemory =
+      metrics.reduce((sum, m) => sum + m.memoryUsage, 0) / metrics.length;
     lines.push(`  - ${service}:`);
     lines.push(`    Average Resolution Time: ${avgTime.toFixed(2)}ms`);
     lines.push(`    Average Memory Usage: ${(avgMemory / 1024).toFixed(2)}KB`);

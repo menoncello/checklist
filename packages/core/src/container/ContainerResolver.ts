@@ -3,7 +3,7 @@ import type {
   Constructor,
   ServiceDefinition,
   ServiceLifecycle,
-  ServiceResolver
+  ServiceResolver,
 } from './types';
 import { LifecycleState } from './types';
 
@@ -75,13 +75,9 @@ export class ContainerResolver {
     }
   }
 
-  private async buildInstance<T>(
-    definition: ServiceDefinition
-  ): Promise<T> {
-    const deps = await this.resolveDependencies(
-      definition.dependencies ?? []
-    );
-    return await this.createInstance(definition.resolver, deps) as T;
+  private async buildInstance<T>(definition: ServiceDefinition): Promise<T> {
+    const deps = await this.resolveDependencies(definition.dependencies ?? []);
+    return (await this.createInstance(definition.resolver, deps)) as T;
   }
 
   private async resolveDependencies(
@@ -89,13 +85,18 @@ export class ContainerResolver {
   ): Promise<unknown[]> {
     const resolved: unknown[] = [];
     for (const dep of dependencies) {
-      const depInstance = await this.resolve(dep, this.getServiceNameHelper.bind(this));
+      const depInstance = await this.resolve(
+        dep,
+        this.getServiceNameHelper.bind(this)
+      );
       resolved.push(depInstance);
     }
     return resolved;
   }
 
-  private getServiceNameHelper(identifier: string | Constructor<unknown>): string {
+  private getServiceNameHelper(
+    identifier: string | Constructor<unknown>
+  ): string {
     if (typeof identifier === 'string') {
       return identifier;
     }
@@ -115,10 +116,7 @@ export class ContainerResolver {
   private isConstructor(
     resolver: ServiceResolver<unknown>
   ): resolver is Constructor<unknown> {
-    return (
-      typeof resolver === 'function' &&
-      resolver.prototype !== undefined
-    );
+    return typeof resolver === 'function' && resolver.prototype !== undefined;
   }
 
   private async runLifecycleHooks<T>(

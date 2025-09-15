@@ -31,7 +31,10 @@ export class TrendAnalyzer {
   }
 
   analyzeTrends(
-    historicalData: Map<string, Array<{ timestamp: number; metric: PerformanceMetric }>>
+    historicalData: Map<
+      string,
+      Array<{ timestamp: number; metric: PerformanceMetric }>
+    >
   ): TrendResult[] {
     const results: TrendResult[] = [];
 
@@ -55,7 +58,8 @@ export class TrendAnalyzer {
       value: h.metric.p95 ?? h.metric.average,
     }));
 
-    const { slope, confidence } = this.statisticalAnalyzer.calculateLinearRegression(dataPoints);
+    const { slope, confidence } =
+      this.statisticalAnalyzer.calculateLinearRegression(dataPoints);
 
     const trendDirection = this.determineTrendDirection(slope, confidence);
     const changeRate = slope;

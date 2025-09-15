@@ -1,10 +1,16 @@
-import type { ServiceBinding, ServiceConfiguration } from '../ServiceConfiguration';
+import type {
+  ServiceBinding,
+  ServiceConfiguration,
+} from '../ServiceConfiguration';
 import { getEnvironmentConfig } from './environmentConfig';
 
 /**
  * Generate YAML config for a service binding
  */
-function generateBindingYaml(binding: ServiceBinding, environment: string): string {
+function generateBindingYaml(
+  binding: ServiceBinding,
+  environment: string
+): string {
   return `      - service: ${binding.service}
         environments: [${binding.environments?.join(', ') ?? environment}]
         singleton: ${binding.options?.singleton ?? true}`;
@@ -26,7 +32,9 @@ ${service.bindings
 /**
  * Generate feature flags section
  */
-function generateFeatureFlagsYaml(flags: Record<string, unknown> | undefined): string {
+function generateFeatureFlagsYaml(
+  flags: Record<string, unknown> | undefined
+): string {
   const getFlagValue = (key: string, defaultValue: unknown): unknown => {
     return flags?.[key] ?? defaultValue;
   };

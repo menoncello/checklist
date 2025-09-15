@@ -51,7 +51,10 @@ export class HealthMonitor {
   }
 
   private registerDefaultChecks(): void {
-    this.registerCheck('logger-performance', this.createLoggerPerformanceCheck());
+    this.registerCheck(
+      'logger-performance',
+      this.createLoggerPerformanceCheck()
+    );
     this.registerCheck('log-rotation', this.createLogRotationCheck());
     this.registerCheck('error-rate', this.createErrorRateCheck());
   }
@@ -233,7 +236,10 @@ export class HealthMonitor {
     );
   }
 
-  private getRotationStatus(): { rotationStatus: 'active' | 'inactive' | 'error'; logFileSize: number | undefined } {
+  private getRotationStatus(): {
+    rotationStatus: 'active' | 'inactive' | 'error';
+    logFileSize: number | undefined;
+  } {
     const logDir = '.logs';
     let rotationStatus: 'active' | 'inactive' | 'error' = 'inactive';
     let logFileSize: number | undefined;
@@ -319,7 +325,9 @@ export class HealthMonitor {
     return results;
   }
 
-  private determineOverallStatus(results: HealthCheckResult[]): 'healthy' | 'degraded' | 'unhealthy' {
+  private determineOverallStatus(
+    results: HealthCheckResult[]
+  ): 'healthy' | 'degraded' | 'unhealthy' {
     const hasUnhealthy = results.some((r) => r.status === 'unhealthy');
     const hasDegraded = results.some((r) => r.status === 'degraded');
 

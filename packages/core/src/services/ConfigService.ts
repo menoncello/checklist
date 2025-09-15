@@ -246,7 +246,10 @@ export class ConfigService extends BaseService implements IConfigService {
       return false;
     }
 
-    if (config.featureFlags !== undefined && typeof config.featureFlags !== 'object') {
+    if (
+      config.featureFlags !== undefined &&
+      typeof config.featureFlags !== 'object'
+    ) {
       return false;
     }
 

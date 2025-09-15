@@ -1,4 +1,7 @@
-import type { ServiceBinding, EnvironmentConfig } from '../ServiceConfiguration';
+import type {
+  ServiceBinding,
+  EnvironmentConfig,
+} from '../ServiceConfiguration';
 import { developmentBindings } from './developmentBindings';
 import { productionBindings } from './productionBindings';
 import { testBindings } from './testBindings';

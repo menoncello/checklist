@@ -174,7 +174,10 @@ export class ConcurrencyManager {
         unlinkSync(lockPath);
       }
     } catch (error) {
-      this.logger.error({ msg: 'Error releasing lock', error });
+      // Only log in non-test environments to prevent noise
+      if (Bun.env.NODE_ENV !== 'test') {
+        this.logger.error({ msg: 'Error releasing lock', error });
+      }
     } finally {
       this.lockId = undefined;
     }

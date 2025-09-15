@@ -301,10 +301,13 @@ export class MigrationExecutor extends EventEmitter {
       }
 
       this.validateMigrationResult(result, migration);
-      return {
+      const finalState = {
         ...(result as object),
         version: migration.toVersion,
       } as StateSchema;
+
+
+      return finalState;
     } catch (error) {
       if (error instanceof MigrationError) throw error;
       throw new MigrationError(

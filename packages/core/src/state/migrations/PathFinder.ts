@@ -14,7 +14,11 @@ export class PathFinder {
     while (this.unvisited.size > 0) {
       const current = this.getNextNode();
 
-      if (current === null || current === undefined || this.distances.get(current) === Infinity) {
+      if (
+        current === null ||
+        current === undefined ||
+        this.distances.get(current) === Infinity
+      ) {
         break;
       }
 

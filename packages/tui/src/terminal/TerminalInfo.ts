@@ -1,4 +1,7 @@
-import { EnvironmentDetector, EnvironmentInfo } from './helpers/EnvironmentDetector';
+import {
+  EnvironmentDetector,
+  EnvironmentInfo,
+} from './helpers/EnvironmentDetector';
 import { TTYInfoProvider, TTYInfo } from './helpers/TTYInfoProvider';
 import { TerminalCapabilitiesDetector } from './helpers/TerminalCapabilitiesDetector';
 import { TerminalVersionDetector } from './helpers/TerminalVersionDetector';
@@ -61,7 +64,9 @@ export class TerminalInfo {
   }
 
   public supportsMouseReporting(): boolean {
-    return TerminalCapabilitiesDetector.supportsMouseReporting(this.environmentInfo);
+    return TerminalCapabilitiesDetector.supportsMouseReporting(
+      this.environmentInfo
+    );
   }
 
   public getColorDepth(): number | undefined {
@@ -69,7 +74,9 @@ export class TerminalInfo {
   }
 
   public getColorDepthLevel(): 'monochrome' | 'basic' | '256' | 'truecolor' {
-    return TerminalCapabilitiesDetector.getColorDepthLevel(this.ttyInfo.colorDepth);
+    return TerminalCapabilitiesDetector.getColorDepthLevel(
+      this.ttyInfo.colorDepth
+    );
   }
 
   public isRemoteSession(): boolean {

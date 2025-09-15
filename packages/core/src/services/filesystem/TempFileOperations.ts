@@ -41,8 +41,15 @@ export class TempFileOperations {
 
       return tempPath;
     } catch (error) {
-      this.logger.error({ msg: 'Failed to create temporary file', prefix, extension, error });
-      throw new Error(`Failed to create temporary file: ${(error as Error).message}`);
+      this.logger.error({
+        msg: 'Failed to create temporary file',
+        prefix,
+        extension,
+        error,
+      });
+      throw new Error(
+        `Failed to create temporary file: ${(error as Error).message}`
+      );
     }
   }
 
@@ -57,8 +64,14 @@ export class TempFileOperations {
 
       return tempPath;
     } catch (error) {
-      this.logger.error({ msg: 'Failed to create temporary directory', prefix, error });
-      throw new Error(`Failed to create temporary directory: ${(error as Error).message}`);
+      this.logger.error({
+        msg: 'Failed to create temporary directory',
+        prefix,
+        error,
+      });
+      throw new Error(
+        `Failed to create temporary directory: ${(error as Error).message}`
+      );
     }
   }
 }

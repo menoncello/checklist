@@ -4,7 +4,7 @@ import { BackupManager } from '../BackupManager';
 import { DirectoryManager } from '../DirectoryManager';
 import { SCHEMA_VERSION } from '../constants';
 import { MigrationRunner } from '../migrations/MigrationRunner';
-import { BackupInfo } from '../migrations/types';
+import { BackupInfo, StateSchema } from '../migrations/types';
 import { detectVersion } from '../migrations/versionDetection';
 import { ChecklistState } from '../types';
 
@@ -58,7 +58,8 @@ export class MigrationManager {
   private async getCurrentVersion(statePath: string): Promise<string> {
     try {
       const content = await this.directoryManager.readFile(statePath);
-      return detectVersion(content);
+      const parsed = yaml.load(content) as unknown;
+      return detectVersion(parsed);
     } catch (error) {
       this.logger.error({ msg: 'Failed to detect current version', error });
       return 'unknown';
@@ -129,15 +130,30 @@ export class MigrationManager {
     const migrationStatus = await this.checkMigrationStatus();
     if (migrationStatus.needsMigration) {
       this.logger.info({ msg: 'Restored state requires migration' });
-      const state = JSON.parse(await this.directoryManager.readFile(statePath));
+      const stateContent = await this.directoryManager.readFile(statePath);
+      const state = yaml.load(stateContent) as ChecklistState;
+      const now = new Date().toISOString();
+      const { conflicts, recovery, activeInstance, ...restState } = state;
+      const stateSchema: StateSchema = {
+        ...restState,
+        version: state.version ?? migrationStatus.currentVersion,
+        lastModified: state.metadata?.modified ?? now,
+        metadata: {
+          created: state.metadata?.created ?? now,
+          modified: state.metadata?.modified ?? now,
+        },
+        activeInstance: activeInstance as unknown,
+        recovery: recovery as unknown,
+        conflicts: conflicts !== undefined ? [conflicts] : undefined,
+      };
       const migratedState = await this.migrationRunner.migrateState(
-        state,
+        stateSchema,
         migrationStatus.currentVersion,
         migrationStatus.targetVersion
       );
       await this.directoryManager.writeFile(
         statePath,
-        JSON.stringify(migratedState, null, 2)
+        yaml.dump(migratedState)
       );
     }
   }
@@ -161,15 +177,27 @@ export class MigrationManager {
       to: status.latestVersion,
     });
 
-    const state = JSON.parse(await this.directoryManager.readFile(statePath));
+    const stateContent = await this.directoryManager.readFile(statePath);
+    const state = yaml.load(stateContent) as ChecklistState;
+    const now = new Date().toISOString();
+    const { conflicts, recovery, activeInstance, ...restState } = state;
+    const stateSchema: StateSchema = {
+      ...restState,
+      version: state.version ?? status.currentVersion,
+      lastModified: state.metadata?.modified ?? now,
+      metadata: {
+        created: state.metadata?.created ?? now,
+        modified: state.metadata?.modified ?? now,
+      },
+      activeInstance: activeInstance as unknown,
+      recovery: recovery as unknown,
+      conflicts: conflicts !== undefined ? [conflicts] : undefined,
+    };
     const migratedState = await this.migrationRunner.migrateState(
-      state,
+      stateSchema,
       status.currentVersion,
-      status.latestVersion || status.targetVersion
+      status.latestVersion ?? status.targetVersion
     );
-    await this.directoryManager.writeFile(
-      statePath,
-      JSON.stringify(migratedState, null, 2)
-    );
+    await this.directoryManager.writeFile(statePath, yaml.dump(migratedState));
   }
 }

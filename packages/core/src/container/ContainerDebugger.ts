@@ -1,8 +1,17 @@
 import type { ILogger } from '../interfaces/ILogger';
 import type { Container, Constructor } from './Container';
-import { DependencyAnalyzer, CircularDependencyInfo } from './helpers/DependencyAnalyzer';
-import { PerformanceTracker, PerformanceMetrics } from './helpers/PerformanceTracker';
-import { ServiceInspector, ServiceInspection } from './helpers/ServiceInspector';
+import {
+  DependencyAnalyzer,
+  CircularDependencyInfo,
+} from './helpers/DependencyAnalyzer';
+import {
+  PerformanceTracker,
+  PerformanceMetrics,
+} from './helpers/PerformanceTracker';
+import {
+  ServiceInspector,
+  ServiceInspection,
+} from './helpers/ServiceInspector';
 
 export { ServiceInspection, PerformanceMetrics, CircularDependencyInfo };
 
@@ -43,9 +52,7 @@ export class ContainerDebugger {
     return this.serviceInspector.listRegisteredServices();
   }
 
-  getServiceLifecycleState(
-    identifier: string | Constructor<unknown>
-  ) {
+  getServiceLifecycleState(identifier: string | Constructor<unknown>) {
     return this.serviceInspector.getServiceLifecycleState(identifier);
   }
 
@@ -81,7 +88,11 @@ export class ContainerDebugger {
   }
 
   generateDebugReport(): string {
-    const lines: string[] = ['Container Debug Report', '====================', ''];
+    const lines: string[] = [
+      'Container Debug Report',
+      '====================',
+      '',
+    ];
 
     this.serviceInspector.addRegisteredServices(lines);
     lines.push('');

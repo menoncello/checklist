@@ -104,7 +104,12 @@ export class EventHandlerSetup {
   private handleKeyPress(data: unknown): void {
     if (!this.isValidKeyPressData(data)) return;
 
-    const keyData = data as { key: string; shift: boolean; ctrl: boolean; meta: boolean };
+    const keyData = data as {
+      key: string;
+      shift: boolean;
+      ctrl: boolean;
+      meta: boolean;
+    };
 
     const currentScreen = this.context.screenManager?.getCurrentScreen();
     if (!this.canHandleKeyPress(currentScreen)) return;

@@ -6,7 +6,10 @@ export class StateManager {
   private backupInterval: number;
   private enableStateBackups: boolean;
 
-  constructor(backupInterval: number = 30000, enableStateBackups: boolean = true) {
+  constructor(
+    backupInterval: number = 30000,
+    enableStateBackups: boolean = true
+  ) {
     this.backupInterval = backupInterval;
     this.enableStateBackups = enableStateBackups;
 
@@ -80,10 +83,14 @@ export class StateManager {
     const maxBackups = 10;
     if (this.stateBackups.size <= maxBackups) return;
 
-    const sortedBackups = Array.from(this.stateBackups.entries())
-      .sort(([, a], [, b]) => a.timestamp - b.timestamp);
+    const sortedBackups = Array.from(this.stateBackups.entries()).sort(
+      ([, a], [, b]) => a.timestamp - b.timestamp
+    );
 
-    const toDelete = sortedBackups.slice(0, this.stateBackups.size - maxBackups);
+    const toDelete = sortedBackups.slice(
+      0,
+      this.stateBackups.size - maxBackups
+    );
     for (const [key] of toDelete) {
       this.stateBackups.delete(key);
     }
@@ -135,8 +142,10 @@ export class StateManager {
   }
 
   public getTotalBackupSize(): number {
-    return Array.from(this.stateBackups.values())
-      .reduce((total, backup) => total + backup.size, 0);
+    return Array.from(this.stateBackups.values()).reduce(
+      (total, backup) => total + backup.size,
+      0
+    );
   }
 
   public cleanup(): void {
@@ -147,7 +156,10 @@ export class StateManager {
     this.clearAllBackups();
   }
 
-  public updateConfig(backupInterval?: number, enableStateBackups?: boolean): void {
+  public updateConfig(
+    backupInterval?: number,
+    enableStateBackups?: boolean
+  ): void {
     if (backupInterval !== undefined) {
       this.backupInterval = backupInterval;
     }

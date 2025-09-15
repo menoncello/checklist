@@ -22,7 +22,9 @@ export class DirectoryOperations {
       this.logger.debug({ msg: 'Directory created', dirPath, recursive, mode });
     } catch (error) {
       this.logger.error({ msg: 'Failed to create directory', dirPath, error });
-      throw new Error(`Failed to create directory: ${dirPath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to create directory: ${dirPath} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -36,10 +38,17 @@ export class DirectoryOperations {
 
       await fs.rmdir(dirPath, { recursive });
 
-      this.logger.debug({ msg: 'Directory removed', dirPath, recursive, force });
+      this.logger.debug({
+        msg: 'Directory removed',
+        dirPath,
+        recursive,
+        force,
+      });
     } catch (error) {
       this.logger.error({ msg: 'Failed to remove directory', dirPath, error });
-      throw new Error(`Failed to remove directory: ${dirPath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to remove directory: ${dirPath} - ${(error as Error).message}`
+      );
     }
   }
 
@@ -56,7 +65,9 @@ export class DirectoryOperations {
       return entries;
     } catch (error) {
       this.logger.error({ msg: 'Failed to read directory', dirPath, error });
-      throw new Error(`Failed to read directory: ${dirPath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to read directory: ${dirPath} - ${(error as Error).message}`
+      );
     }
   }
 

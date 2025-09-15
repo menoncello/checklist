@@ -18,7 +18,10 @@ export class ScrollContentRenderer {
     options: ScrollRenderOptions
   ): string[] {
     if (!content) {
-      return this.createEmptyLines(options.viewportWidth, options.viewportHeight);
+      return this.createEmptyLines(
+        options.viewportWidth,
+        options.viewportHeight
+      );
     }
 
     const contentContext: RenderContext = {
@@ -32,15 +35,12 @@ export class ScrollContentRenderer {
     const contentOutput = content.render(contentContext);
     const contentLines = contentOutput.split('\n');
 
-    return this.extractVisibleLines(
-      contentLines,
-      {
-        scrollX: options.scrollX,
-        scrollY: options.scrollY,
-        viewportWidth: options.viewportWidth,
-        viewportHeight: options.viewportHeight
-      }
-    );
+    return this.extractVisibleLines(contentLines, {
+      scrollX: options.scrollX,
+      scrollY: options.scrollY,
+      viewportWidth: options.viewportWidth,
+      viewportHeight: options.viewportHeight,
+    });
   }
 
   private static extractVisibleLines(
@@ -83,7 +83,8 @@ export class ScrollContentRenderer {
       height: number;
     }
   ): string[] {
-    const { vertical: verticalScrollbar, horizontal: horizontalScrollbar } = scrollbars;
+    const { vertical: verticalScrollbar, horizontal: horizontalScrollbar } =
+      scrollbars;
     const { width: contextWidth, height: contextHeight } = context;
     const result = [...visibleLines];
 
@@ -105,10 +106,7 @@ export class ScrollContentRenderer {
     return result;
   }
 
-  private static createEmptyLines(
-    width: number,
-    height: number
-  ): string[] {
+  private static createEmptyLines(width: number, height: number): string[] {
     return new Array(height).fill(' '.repeat(width));
   }
 }

@@ -4,7 +4,7 @@ import type {
   PerformanceBottleneck,
   ProfilingReport,
   TopOperation,
-  MemoryAnalysis
+  MemoryAnalysis,
 } from './types.js';
 
 /**
@@ -21,10 +21,14 @@ export class ReportGenerator {
     memoryAnalysis: MemoryAnalysis,
     memorySnapshotsCount: number
   ): ProfilingReport {
-    const { totalDuration, averageDuration } = this.calculateDurationStats(cpuProfiles);
+    const { totalDuration, averageDuration } =
+      this.calculateDurationStats(cpuProfiles);
     const bottlenecks = this.findAllBottlenecks(cpuProfiles);
     const topOperations = this.getTopOperations(cpuProfiles);
-    const recommendations = this.generateRecommendations(bottlenecks, memoryAnalysis);
+    const recommendations = this.generateRecommendations(
+      bottlenecks,
+      memoryAnalysis
+    );
 
     return {
       summary: {
@@ -64,11 +68,14 @@ export class ReportGenerator {
     averageDuration: number;
   } {
     const totalDuration = cpuProfiles.reduce((sum, p) => sum + p.duration, 0);
-    const averageDuration = cpuProfiles.length > 0 ? totalDuration / cpuProfiles.length : 0;
+    const averageDuration =
+      cpuProfiles.length > 0 ? totalDuration / cpuProfiles.length : 0;
     return { totalDuration, averageDuration };
   }
 
-  private findAllBottlenecks(cpuProfiles: CPUProfile[]): PerformanceBottleneck[] {
+  private findAllBottlenecks(
+    cpuProfiles: CPUProfile[]
+  ): PerformanceBottleneck[] {
     const bottlenecks: PerformanceBottleneck[] = [];
     for (const profile of cpuProfiles) {
       const bottleneck = this.bottleneckDetector.detectBottleneck(profile);
@@ -76,7 +83,12 @@ export class ReportGenerator {
         bottlenecks.push(bottleneck);
       }
     }
-    return bottlenecks;
+    // Sort bottlenecks by severity (most severe first)
+    const severityWeights = { critical: 4, high: 3, medium: 2, low: 1 };
+    return bottlenecks.sort(
+      (a, b) =>
+        (severityWeights[b.severity] || 0) - (severityWeights[a.severity] || 0)
+    );
   }
 
   private getTopOperations(cpuProfiles: CPUProfile[]): TopOperation[] {
@@ -86,7 +98,9 @@ export class ReportGenerator {
       .map((p) => ({
         operation: p.operation,
         duration: p.duration,
-        cpuTime: p.cpuUsage ? (p.cpuUsage.user + p.cpuUsage.system) / 1000 : undefined,
+        cpuTime: p.cpuUsage
+          ? (p.cpuUsage.user + p.cpuUsage.system) / 1000
+          : undefined,
       }));
   }
 
@@ -94,7 +108,9 @@ export class ReportGenerator {
     bottlenecks: PerformanceBottleneck[],
     recommendations: string[]
   ): void {
-    const criticalBottlenecks = bottlenecks.filter((b) => b.severity === 'critical');
+    const criticalBottlenecks = bottlenecks.filter(
+      (b) => b.severity === 'critical'
+    );
     if (criticalBottlenecks.length > 0) {
       recommendations.push(
         `🔴 CRITICAL: ${criticalBottlenecks.length} critical performance bottlenecks detected. Immediate action required.`

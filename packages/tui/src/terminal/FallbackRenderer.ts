@@ -258,7 +258,10 @@ export class FallbackRenderer {
     return this.truncateLineWithAnsiPreservation(line, maxWidth);
   }
 
-  private truncateLineWithAnsiPreservation(line: string, maxWidth: number): string {
+  private truncateLineWithAnsiPreservation(
+    line: string,
+    maxWidth: number
+  ): string {
     let result = '';
     let plainLength = 0;
     let i = 0;
@@ -266,7 +269,11 @@ export class FallbackRenderer {
     while (i < line.length && plainLength < maxWidth - 3) {
       if (line[i] === '\x1b') {
         const ansiSequence = this.extractAnsiSequence(line, i);
-        if (ansiSequence !== null && ansiSequence !== undefined && ansiSequence !== '') {
+        if (
+          ansiSequence !== null &&
+          ansiSequence !== undefined &&
+          ansiSequence !== ''
+        ) {
           result += ansiSequence;
           i += ansiSequence.length;
           continue;
@@ -332,13 +339,22 @@ export class FallbackRenderer {
     const lines: string[] = [];
 
     lines.push(this.createTopBorder(colWidths, chars));
-    this.addDataRows({ allRows, colWidths, chars, lines, hasHeaders: !!headers });
+    this.addDataRows({
+      allRows,
+      colWidths,
+      chars,
+      lines,
+      hasHeaders: !!headers,
+    });
     lines.push(this.createBottomBorder(colWidths, chars));
 
     return lines.join('\n');
   }
 
-  private calculateColumnWidths(allRows: string[][], colCount: number): number[] {
+  private calculateColumnWidths(
+    allRows: string[][],
+    colCount: number
+  ): number[] {
     const colWidths: number[] = [];
 
     for (let col = 0; col < colCount; col++) {
@@ -390,7 +406,10 @@ export class FallbackRenderer {
         };
   }
 
-  private createTopBorder(colWidths: number[], chars: Record<string, string>): string {
+  private createTopBorder(
+    colWidths: number[],
+    chars: Record<string, string>
+  ): string {
     let border = chars.topLeft;
     const colCount = colWidths.length;
 
@@ -403,7 +422,10 @@ export class FallbackRenderer {
     return border;
   }
 
-  private createBottomBorder(colWidths: number[], chars: Record<string, string>): string {
+  private createBottomBorder(
+    colWidths: number[],
+    chars: Record<string, string>
+  ): string {
     let border = chars.bottomLeft;
     const colCount = colWidths.length;
 
@@ -456,14 +478,18 @@ export class FallbackRenderer {
 
   private formatTableCell(cellContent: string, maxWidth: number): string {
     const plainContent = this.stripAllAnsiEscapes(cellContent.toString());
-    const truncated = plainContent.length > maxWidth
-      ? plainContent.substring(0, maxWidth - 3) + '...'
-      : plainContent;
+    const truncated =
+      plainContent.length > maxWidth
+        ? plainContent.substring(0, maxWidth - 3) + '...'
+        : plainContent;
 
     return truncated.padEnd(maxWidth);
   }
 
-  private createHeaderSeparator(colWidths: number[], chars: Record<string, string>): string {
+  private createHeaderSeparator(
+    colWidths: number[],
+    chars: Record<string, string>
+  ): string {
     let separator = chars.teeLeft;
     const colCount = colWidths.length;
 

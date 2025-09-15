@@ -1,5 +1,9 @@
 import type { WorkflowInstance } from '../interfaces/IStateManager';
-import type { WorkflowDefinition, WorkflowStep, WorkflowEvent } from '../interfaces/IWorkflowEngine';
+import type {
+  WorkflowDefinition,
+  WorkflowStep,
+  WorkflowEvent,
+} from '../interfaces/IWorkflowEngine';
 import type { Logger } from '../utils/logger';
 import { WorkflowStateHelper } from './WorkflowStateHelper';
 import { WorkflowValidator } from './WorkflowValidator';
@@ -111,7 +115,11 @@ export class WorkflowStepManager {
     }
     currentInstance.currentStepId = previousStep.id;
     currentInstance.updatedAt = new Date();
-    this.stateHelper.updateStepState(currentInstance, previousStep.id, 'pending');
+    this.stateHelper.updateStepState(
+      currentInstance,
+      previousStep.id,
+      'pending'
+    );
   }
 
   async markStepAsSkipped(

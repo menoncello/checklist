@@ -1,5 +1,8 @@
 import type { WorkflowInstance } from '../interfaces/IStateManager';
-import type { WorkflowDefinition, WorkflowStep } from '../interfaces/IWorkflowEngine';
+import type {
+  WorkflowDefinition,
+  WorkflowStep,
+} from '../interfaces/IWorkflowEngine';
 
 export class WorkflowValidator {
   static validateWorkflowDefinition(definition: WorkflowDefinition): void {
@@ -60,7 +63,10 @@ export class WorkflowValidator {
     );
   }
 
-  static findStepById(workflow: WorkflowDefinition, stepId: string): WorkflowStep | null {
+  static findStepById(
+    workflow: WorkflowDefinition,
+    stepId: string
+  ): WorkflowStep | null {
     return workflow.steps.find((step) => step.id === stepId) ?? null;
   }
 
@@ -98,10 +104,7 @@ export class WorkflowValidator {
     const currentIndex = currentWorkflow.steps.findIndex(
       (s) => s.id === currentStep.id
     );
-    if (
-      currentIndex >= 0 &&
-      currentIndex < currentWorkflow.steps.length - 1
-    ) {
+    if (currentIndex >= 0 && currentIndex < currentWorkflow.steps.length - 1) {
       return currentWorkflow.steps[currentIndex + 1].id;
     }
 

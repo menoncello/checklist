@@ -1,4 +1,9 @@
-import type { CPUProfile, MemorySnapshot, PerformanceBottleneck, ProfilingConfig } from './types.js';
+import type {
+  CPUProfile,
+  MemorySnapshot,
+  PerformanceBottleneck,
+  ProfilingConfig,
+} from './types.js';
 
 /**
  * Bottleneck detection and analysis
@@ -17,13 +22,21 @@ export class BottleneckDetector {
     const bottlenecks: PerformanceBottleneck[] = [];
 
     this.checkDurationBottleneck(profile, bottlenecks);
-    this.checkMemoryBottleneck(profile, startMemory, bottlenecks, currentMemorySnapshots);
+    this.checkMemoryBottleneck(
+      profile,
+      startMemory,
+      bottlenecks,
+      currentMemorySnapshots
+    );
     this.checkCPUBottleneck(profile, bottlenecks);
 
     return this.getMostSevereBottleneck(bottlenecks);
   }
 
-  private checkDurationBottleneck(profile: CPUProfile, bottlenecks: PerformanceBottleneck[]): void {
+  private checkDurationBottleneck(
+    profile: CPUProfile,
+    bottlenecks: PerformanceBottleneck[]
+  ): void {
     if (profile.duration <= this.config.bottleneckThresholds.duration) {
       return;
     }
@@ -49,7 +62,8 @@ export class BottleneckDetector {
       return;
     }
 
-    const currentMemory = currentMemorySnapshots[currentMemorySnapshots.length - 1];
+    const currentMemory =
+      currentMemorySnapshots[currentMemorySnapshots.length - 1];
     const memoryDelta = currentMemory.heapUsed - startMemory.heapUsed;
 
     if (memoryDelta <= this.config.bottleneckThresholds.memoryGrowth) {
@@ -67,7 +81,10 @@ export class BottleneckDetector {
     });
   }
 
-  private checkCPUBottleneck(profile: CPUProfile, bottlenecks: PerformanceBottleneck[]): void {
+  private checkCPUBottleneck(
+    profile: CPUProfile,
+    bottlenecks: PerformanceBottleneck[]
+  ): void {
     if (!profile.cpuUsage) {
       return;
     }
@@ -90,15 +107,21 @@ export class BottleneckDetector {
     });
   }
 
-  private getMostSevereBottleneck(bottlenecks: PerformanceBottleneck[]): PerformanceBottleneck | null {
+  private getMostSevereBottleneck(
+    bottlenecks: PerformanceBottleneck[]
+  ): PerformanceBottleneck | null {
     return (
       bottlenecks.sort(
-        (a, b) => this.getSeverityWeight(b.severity) - this.getSeverityWeight(a.severity)
+        (a, b) =>
+          this.getSeverityWeight(b.severity) -
+          this.getSeverityWeight(a.severity)
       )[0] ?? null
     );
   }
 
-  private getDurationSeverity(duration: number): PerformanceBottleneck['severity'] {
+  private getDurationSeverity(
+    duration: number
+  ): PerformanceBottleneck['severity'] {
     if (duration > 1000) return 'critical'; // > 1s
     if (duration > 500) return 'high'; // > 500ms
     if (duration > 200) return 'medium'; // > 200ms
@@ -115,7 +138,9 @@ export class BottleneckDetector {
     return 'Consider optimizing algorithms or reducing computational complexity.';
   }
 
-  private getMemorySeverity(memoryDelta: number): PerformanceBottleneck['severity'] {
+  private getMemorySeverity(
+    memoryDelta: number
+  ): PerformanceBottleneck['severity'] {
     const mb = memoryDelta / 1024 / 1024;
     if (mb > 100) return 'critical'; // > 100MB
     if (mb > 50) return 'high'; // > 50MB
@@ -134,7 +159,9 @@ export class BottleneckDetector {
     return 'Consider using WeakMap/WeakSet for caches or implementing garbage collection hints.';
   }
 
-  private getCPUSeverity(cpuPercent: number): PerformanceBottleneck['severity'] {
+  private getCPUSeverity(
+    cpuPercent: number
+  ): PerformanceBottleneck['severity'] {
     if (cpuPercent > 95) return 'critical';
     if (cpuPercent > 90) return 'high';
     if (cpuPercent > 85) return 'medium';
@@ -151,7 +178,9 @@ export class BottleneckDetector {
     return 'Consider optimizing loops, reducing object creation, or using more efficient data structures.';
   }
 
-  private getSeverityWeight(severity: PerformanceBottleneck['severity']): number {
+  private getSeverityWeight(
+    severity: PerformanceBottleneck['severity']
+  ): number {
     switch (severity) {
       case 'critical':
         return 4;

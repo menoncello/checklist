@@ -20,7 +20,14 @@ export class ScrollbarRenderer {
   };
 
   static render(options: ScrollbarRenderOptions): string {
-    const { position, maxPosition, viewportSize, trackSize, style, isHorizontal } = options;
+    const {
+      position,
+      maxPosition,
+      viewportSize,
+      trackSize,
+      style,
+      isHorizontal,
+    } = options;
 
     if (maxPosition <= 0) return '';
 
@@ -33,11 +40,19 @@ export class ScrollbarRenderer {
     );
 
     const styleConfig = this.STYLES[style];
-    const trackChar = isHorizontal ? styleConfig.track : (style === 'simple' ? '│' : styleConfig.track);
+    const trackChar = isHorizontal
+      ? styleConfig.track
+      : style === 'simple'
+        ? '│'
+        : styleConfig.track;
     const thumbChar = styleConfig.thumb;
 
     const track = new Array(trackSize).fill(trackChar);
-    for (let i = thumbPosition; i < thumbPosition + thumbSize && i < trackSize; i++) {
+    for (
+      let i = thumbPosition;
+      i < thumbPosition + thumbSize && i < trackSize;
+      i++
+    ) {
       track[i] = thumbChar;
     }
 

@@ -104,14 +104,16 @@ export class StateValidator {
     try {
       // Basic schema validation
       if (this.validateSchema(state) !== true) {
-        const errors = this.validateSchema.errors
-          ?.map((e) => `${e.instancePath} ${e.message}`)
-          .filter(Boolean) ?? [];
+        const errors =
+          this.validateSchema.errors
+            ?.map((e) => `${e.instancePath} ${e.message}`)
+            .filter(Boolean) ?? [];
         return { isValid: false, errors };
       }
       return { isValid: true, errors: [] };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown validation error';
+      const message =
+        error instanceof Error ? error.message : 'Unknown validation error';
       return { isValid: false, errors: [message] };
     }
   }

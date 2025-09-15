@@ -135,7 +135,9 @@ export class VirtualizationEngine<T> {
   }
 
   isItemVisible(index: number): boolean {
-    return index >= this.state.visibleStartIndex &&
-           index < this.state.visibleEndIndex;
+    return (
+      index >= this.state.visibleStartIndex &&
+      index < this.state.visibleEndIndex
+    );
   }
 }

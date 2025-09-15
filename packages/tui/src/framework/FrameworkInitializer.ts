@@ -77,7 +77,9 @@ export class FrameworkInitializer {
     }
   }
 
-  private async initializePerformanceMonitoring(context: InitializationContext): Promise<void> {
+  private async initializePerformanceMonitoring(
+    context: InitializationContext
+  ): Promise<void> {
     if (!this.config.enablePerformanceMonitoring) return;
 
     context.performanceManager = new PerformanceManager({
@@ -92,7 +94,9 @@ export class FrameworkInitializer {
     });
   }
 
-  private async initializeDebugIntegration(context: InitializationContext): Promise<void> {
+  private async initializeDebugIntegration(
+    context: InitializationContext
+  ): Promise<void> {
     if (!this.config.enableDebugMode) return;
 
     context.debugIntegration = new DebugIntegration({
@@ -101,7 +105,9 @@ export class FrameworkInitializer {
     });
 
     if (context.performanceManager) {
-      context.debugIntegration.setPerformanceManager(context.performanceManager);
+      context.debugIntegration.setPerformanceManager(
+        context.performanceManager
+      );
     }
 
     context.debugIntegration.log(
@@ -111,7 +117,9 @@ export class FrameworkInitializer {
     );
   }
 
-  private async initializeTerminalCapabilities(context: InitializationContext): Promise<void> {
+  private async initializeTerminalCapabilities(
+    context: InitializationContext
+  ): Promise<void> {
     if (!this.config.enableTerminalDetection) return;
 
     context.capabilityDetector = new CapabilityDetector();
@@ -124,11 +132,15 @@ export class FrameworkInitializer {
     );
   }
 
-  private async initializeCanvas(context: InitializationContext): Promise<void> {
+  private async initializeCanvas(
+    context: InitializationContext
+  ): Promise<void> {
     context.canvas = new TerminalCanvas();
   }
 
-  private async initializeErrorBoundary(context: InitializationContext): Promise<void> {
+  private async initializeErrorBoundary(
+    context: InitializationContext
+  ): Promise<void> {
     if (!this.config.enableErrorBoundaries) return;
 
     context.errorBoundary = new ErrorBoundary({
@@ -149,7 +161,9 @@ export class FrameworkInitializer {
     });
   }
 
-  private async initializeCoreComponents(context: InitializationContext): Promise<void> {
+  private async initializeCoreComponents(
+    context: InitializationContext
+  ): Promise<void> {
     // Initialize component registry
     context.componentRegistry = new ComponentRegistry();
 

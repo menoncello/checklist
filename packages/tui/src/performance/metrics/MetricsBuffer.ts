@@ -80,8 +80,10 @@ export class MetricsBuffer {
   }
 
   public getBufferSize(): number {
-    return Array.from(this.buffer.values())
-      .reduce((total, points) => total + points.length, 0);
+    return Array.from(this.buffer.values()).reduce(
+      (total, points) => total + points.length,
+      0
+    );
   }
 
   public cleanup(): void {
@@ -89,7 +91,7 @@ export class MetricsBuffer {
     const cutoff = now - this.retentionPeriod;
 
     for (const [name, points] of this.buffer) {
-      const filtered = points.filter(p => p.timestamp > cutoff);
+      const filtered = points.filter((p) => p.timestamp > cutoff);
       if (filtered.length === 0) {
         this.buffer.delete(name);
         this.series.delete(name);

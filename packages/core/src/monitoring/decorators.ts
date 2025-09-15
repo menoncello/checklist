@@ -63,7 +63,8 @@ function extractMethodInfo(
   propertyKey: string | symbol,
   options: TimedOptions
 ): { operationName: string } {
-  const className = (target as { constructor: { name: string } }).constructor.name;
+  const className = (target as { constructor: { name: string } }).constructor
+    .name;
 
   const operationName =
     options.operationName ??
@@ -112,9 +113,7 @@ function setupPerformanceMonitoring(
 
 function handleMethodResult<T>(result: T, timer: () => void): T {
   if (isPromise(result)) {
-    return (result as unknown as Promise<unknown>).finally(() =>
-      timer()
-    ) as T;
+    return (result as unknown as Promise<unknown>).finally(() => timer()) as T;
   }
 
   timer();

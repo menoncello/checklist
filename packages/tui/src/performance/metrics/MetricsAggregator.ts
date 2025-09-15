@@ -1,12 +1,14 @@
 import { MetricPoint, MetricSeries, MetricQuery } from './types';
 
 export class MetricsAggregator {
-  public calculateAggregations(points: MetricPoint[]): MetricSeries['aggregations'] {
+  public calculateAggregations(
+    points: MetricPoint[]
+  ): MetricSeries['aggregations'] {
     if (points.length === 0) {
       return this.getEmptyAggregations();
     }
 
-    const values = points.map(p => p.value).sort((a, b) => a - b);
+    const values = points.map((p) => p.value).sort((a, b) => a - b);
     const sum = values.reduce((acc, val) => acc + val, 0);
 
     return {
@@ -36,7 +38,10 @@ export class MetricsAggregator {
     };
   }
 
-  private calculatePercentile(sortedValues: number[], percentile: number): number {
+  private calculatePercentile(
+    sortedValues: number[],
+    percentile: number
+  ): number {
     if (sortedValues.length === 0) return 0;
     if (sortedValues.length === 1) return sortedValues[0];
 
@@ -67,7 +72,9 @@ export class MetricsAggregator {
   }
 
   private filterByName(series: MetricSeries[], name?: string): MetricSeries[] {
-    return (name != null && name !== '') ? series.filter(s => s.name.includes(name)) : series;
+    return name != null && name !== ''
+      ? series.filter((s) => s.name.includes(name))
+      : series;
   }
 
   private filterByTags(
@@ -76,8 +83,10 @@ export class MetricsAggregator {
   ): MetricSeries[] {
     if (!tags) return series;
 
-    return series.filter(s => {
-      return Object.entries(tags).every(([key, value]) => s.tags[key] === value);
+    return series.filter((s) => {
+      return Object.entries(tags).every(
+        ([key, value]) => s.tags[key] === value
+      );
     });
   }
 
@@ -87,16 +96,16 @@ export class MetricsAggregator {
   ): MetricSeries[] {
     if (!timeRange) return series;
 
-    return series.map(s => ({
+    return series.map((s) => ({
       ...s,
       points: s.points.filter(
-        p => p.timestamp >= timeRange.start && p.timestamp <= timeRange.end
+        (p) => p.timestamp >= timeRange.start && p.timestamp <= timeRange.end
       ),
     }));
   }
 
   private applyLimit(series: MetricSeries[], limit?: number): MetricSeries[] {
-    return (limit != null && limit > 0) ? series.slice(0, limit) : series;
+    return limit != null && limit > 0 ? series.slice(0, limit) : series;
   }
 
   public aggregateByTime(
@@ -120,9 +129,10 @@ export class MetricsAggregator {
 
     return Array.from(buckets.entries()).map(([timestamp, bucketPoints]) => ({
       timestamp,
-      value: bucketPoints.reduce((sum, p) => sum + p.value, 0) / bucketPoints.length,
+      value:
+        bucketPoints.reduce((sum, p) => sum + p.value, 0) / bucketPoints.length,
       tags: bucketPoints[0]?.tags ?? {},
-      metadata: { aggregated: true, count: bucketPoints.length }
+      metadata: { aggregated: true, count: bucketPoints.length },
     }));
   }
 

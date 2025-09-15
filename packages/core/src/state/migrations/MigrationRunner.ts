@@ -357,7 +357,7 @@ export class MigrationRunner extends EventEmitter {
     let currentState = state;
     for (const migration of migrationPath.migrations) {
       // Use the 'up' function to migrate forward
-      if (!migration.up) {
+      if (migration.up == null) {
         throw new Error(`Migration function 'up' not found for ${migration.fromVersion} -> ${migration.toVersion}`);
       }
       currentState = migration.up(currentState) as StateSchema;

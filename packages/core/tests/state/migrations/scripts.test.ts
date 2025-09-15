@@ -153,7 +153,7 @@ describe('Migration Scripts', () => {
       expect(newState.recovery).toBeDefined();
       expect((newState as any).recovery.enabled).toBe(false);
       expect((newState as any).recovery.checkpoints).toEqual([]);
-      expect(newState.conflicts).toEqual([]);
+      expect(newState.conflicts).toEqual({ resolutions: [] });
     });
 
     it('should handle existing recovery data', () => {
@@ -197,7 +197,7 @@ describe('Migration Scripts', () => {
           enabled: false,
           checkpoints: []
         },
-        conflicts: []
+        conflicts: { resolutions: [] }
       };
 
       expect(migration.validate!(state)).toBe(true);
@@ -214,7 +214,7 @@ describe('Migration Scripts', () => {
           created: '2024-01-01T00:00:00Z',
           modified: '2024-01-01T00:00:00Z'
         },
-        conflicts: []
+        conflicts: { resolutions: [] }
       };
 
       expect(migration.validate!(state)).toBe(false);
@@ -235,7 +235,7 @@ describe('Migration Scripts', () => {
           enabled: false,
           checkpoints: []
         },
-        conflicts: []
+        conflicts: { resolutions: [] }
       };
 
       const rolledBack = migration.down!(state);

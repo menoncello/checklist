@@ -37,7 +37,9 @@ export class TTYInfoProvider {
 
   private static getColorDepth(): number | undefined {
     try {
-      const stdout = process.stdout as unknown as { getColorDepth?: () => number };
+      const stdout = process.stdout as unknown as {
+        getColorDepth?: () => number;
+      };
       return stdout.getColorDepth?.();
     } catch {
       return undefined;

@@ -101,7 +101,10 @@ export class WorkflowEngineService
     }
   }
 
-  private createWorkflowInstance(workflowId: string, workflow: WorkflowDefinition): WorkflowInstance {
+  private createWorkflowInstance(
+    workflowId: string,
+    workflow: WorkflowDefinition
+  ): WorkflowInstance {
     return {
       id: randomUUID(),
       workflowId,
@@ -113,21 +116,32 @@ export class WorkflowEngineService
     };
   }
 
-  private initializeStepStates(instance: WorkflowInstance, workflow: WorkflowDefinition): void {
+  private initializeStepStates(
+    instance: WorkflowInstance,
+    workflow: WorkflowDefinition
+  ): void {
     this.stateHelper.initializeStepStates(instance, workflow.steps);
   }
 
-  private setActiveWorkflow(instance: WorkflowInstance, workflow: WorkflowDefinition): void {
+  private setActiveWorkflow(
+    instance: WorkflowInstance,
+    workflow: WorkflowDefinition
+  ): void {
     this.currentInstance = instance;
     this.currentWorkflow = workflow;
     this.status = 'running';
   }
 
-  private async persistWorkflowStart(instance: WorkflowInstance): Promise<void> {
+  private async persistWorkflowStart(
+    instance: WorkflowInstance
+  ): Promise<void> {
     await this.stateHelper.persistWorkflowStart(instance);
   }
 
-  private async emitWorkflowStarted(workflowId: string, instanceId: string): Promise<void> {
+  private async emitWorkflowStarted(
+    workflowId: string,
+    instanceId: string
+  ): Promise<void> {
     await this.emit({
       type: 'workflow-started',
       workflowId,
@@ -145,7 +159,10 @@ export class WorkflowEngineService
   }
 
   getCurrentStep(): WorkflowStep | null {
-    return WorkflowValidator.findCurrentStep(this.currentInstance, this.currentWorkflow);
+    return WorkflowValidator.findCurrentStep(
+      this.currentInstance,
+      this.currentWorkflow
+    );
   }
 
   async advance(): Promise<void> {
@@ -155,7 +172,11 @@ export class WorkflowEngineService
       await this.completeCurrentStep(currentStep);
       const nextStepId = this.findNextStep(currentStep);
 
-      if (nextStepId !== null && nextStepId !== undefined && nextStepId !== '') {
+      if (
+        nextStepId !== null &&
+        nextStepId !== undefined &&
+        nextStepId !== ''
+      ) {
         await this.moveToNextStep(nextStepId);
       } else {
         await this.completeWorkflow();
@@ -206,7 +227,11 @@ export class WorkflowEngineService
     }
     this.currentInstance.currentStepId = previousStep.id;
     this.currentInstance.updatedAt = new Date();
-    this.stateHelper.updateStepState(this.currentInstance, previousStep.id, 'pending');
+    this.stateHelper.updateStepState(
+      this.currentInstance,
+      previousStep.id,
+      'pending'
+    );
   }
 
   private logGoBack(): void {
@@ -398,9 +423,11 @@ export class WorkflowEngineService
     this.eventEmitter.removeAllListeners();
   }
 
-
   private validateActiveWorkflow(): { currentStep: WorkflowStep } {
-    WorkflowValidator.validateActiveWorkflow(this.currentInstance, this.currentWorkflow);
+    WorkflowValidator.validateActiveWorkflow(
+      this.currentInstance,
+      this.currentWorkflow
+    );
 
     const currentStep = this.getCurrentStep();
     if (!currentStep) {
@@ -430,7 +457,6 @@ export class WorkflowEngineService
       timestamp: new Date(),
     });
   }
-
 
   private async moveToNextStep(nextStepId: string): Promise<void> {
     if (!this.currentInstance || !this.currentWorkflow) {

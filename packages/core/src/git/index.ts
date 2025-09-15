@@ -86,11 +86,15 @@ export class GitIntegration {
       staged,
       modified,
       untracked,
-      isClean: staged.length === 0 && modified.length === 0 && untracked.length === 0,
+      isClean:
+        staged.length === 0 && modified.length === 0 && untracked.length === 0,
     };
   }
 
-  private async getAheadBehindCounts(): Promise<{ ahead: number; behind: number }> {
+  private async getAheadBehindCounts(): Promise<{
+    ahead: number;
+    behind: number;
+  }> {
     try {
       const counts = await this.exec([
         'rev-list',
@@ -132,7 +136,7 @@ export class GitIntegration {
       this.categorizeFileByStatus({
         status,
         file,
-        categories: { staged, modified, untracked }
+        categories: { staged, modified, untracked },
       });
     }
 

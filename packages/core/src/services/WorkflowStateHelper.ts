@@ -1,4 +1,7 @@
-import type { IStateManager, WorkflowInstance } from '../interfaces/IStateManager';
+import type {
+  IStateManager,
+  WorkflowInstance,
+} from '../interfaces/IStateManager';
 import type { WorkflowStep } from '../interfaces/IWorkflowEngine';
 import type { Logger } from '../utils/logger';
 
@@ -15,7 +18,9 @@ export class WorkflowStateHelper {
     await this.stateManager.save(state);
   }
 
-  async saveWorkflowState(currentInstance: WorkflowInstance | null): Promise<void> {
+  async saveWorkflowState(
+    currentInstance: WorkflowInstance | null
+  ): Promise<void> {
     const state = await this.stateManager.load();
     state.activeInstance = currentInstance ?? undefined;
 
@@ -80,7 +85,10 @@ export class WorkflowStateHelper {
     };
   }
 
-  initializeStepStates(instance: WorkflowInstance, steps: WorkflowStep[]): void {
+  initializeStepStates(
+    instance: WorkflowInstance,
+    steps: WorkflowStep[]
+  ): void {
     for (const step of steps) {
       instance.stepStates[step.id] = {
         stepId: step.id,

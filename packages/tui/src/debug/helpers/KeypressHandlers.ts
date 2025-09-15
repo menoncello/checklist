@@ -1,4 +1,9 @@
-export type DebugPanel = 'logs' | 'metrics' | 'components' | 'events' | 'performance';
+export type DebugPanel =
+  | 'logs'
+  | 'metrics'
+  | 'components'
+  | 'events'
+  | 'performance';
 
 export interface KeypressHandlerContext {
   isVisible: boolean;
@@ -55,7 +60,10 @@ export class KeypressHandlers {
     return false;
   }
 
-  private static switchToPanel(panel: DebugPanel, context: KeypressHandlerContext): boolean {
+  private static switchToPanel(
+    panel: DebugPanel,
+    context: KeypressHandlerContext
+  ): boolean {
     context.selectedPanel = panel;
     context.emit('panelChanged', { panel });
     return true;

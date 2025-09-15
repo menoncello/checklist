@@ -14,8 +14,12 @@ export interface LoggerConfig {
 
 export class LoggerConfigFactory {
   static createOptions(config: LoggerConfig): LoggerOptions {
+    // Temporarily allow error logs during tests for debugging migration issues
     if (Bun.env.NODE_ENV === 'test' && config.enableFileLogging !== true) {
-      return this.createSilentOptions();
+      return {
+        level: 'error',
+        base: null,
+      };
     }
 
     return {
@@ -56,7 +60,9 @@ export class LoggerConfigFactory {
     }
   }
 
-  static createTransports(config: LoggerConfig): TransportTargetOptions<Record<string, unknown>>[] {
+  static createTransports(
+    config: LoggerConfig
+  ): TransportTargetOptions<Record<string, unknown>>[] {
     const transports: TransportTargetOptions<Record<string, unknown>>[] = [];
 
     if (this.shouldUsePrettyPrint(config)) {
@@ -75,7 +81,9 @@ export class LoggerConfigFactory {
     return config.prettyPrint === true && Bun.env.NODE_ENV === 'development';
   }
 
-  private static createPrettyTransport(): TransportTargetOptions<Record<string, unknown>> {
+  private static createPrettyTransport(): TransportTargetOptions<
+    Record<string, unknown>
+  > {
     return {
       target: 'pino-pretty',
       options: {

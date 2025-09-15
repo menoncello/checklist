@@ -33,8 +33,9 @@ function detectCI(): boolean {
 }
 
 function detectDevelopmentMode(): boolean {
-  return process.env.NODE_ENV === 'development' ||
-         process.env.NODE_ENV === undefined;
+  return (
+    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined
+  );
 }
 
 export function detectEnvironment(): Environment {

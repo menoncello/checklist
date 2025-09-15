@@ -1,0 +1,38 @@
+# Code Owners for BMAD Checklist Manager
+# This file defines individuals or teams that are responsible for code in a repository.
+
+# Global fallback for any code that doesn't have a more specific owner
+* @maintainers
+
+# Core business logic
+/packages/core/ @maintainers @core-team
+
+# CLI application
+/packages/cli/ @maintainers @cli-team
+
+# Terminal UI components
+/packages/tui/ @maintainers @ui-team
+
+# Shared utilities
+/packages/shared/ @maintainers
+
+# Documentation
+/docs/ @maintainers @docs-team
+*.md @maintainers @docs-team
+
+# Configuration files
+/.github/ @maintainers
+/package.json @maintainers
+/tsconfig*.json @maintainers
+/.eslintrc* @maintainers
+/.prettierrc* @maintainers
+/stryker.conf.js @maintainers
+
+# Security-sensitive files
+/packages/core/src/state/SecurityAudit.ts @maintainers @security-team
+/packages/core/src/state/SecretsDetector.ts @maintainers @security-team
+/packages/core/src/state/FieldEncryption.ts @maintainers @security-team
+
+# Build and CI/CD
+/.github/workflows/ @maintainers @devops-team
+/scripts/ @maintainers @devops-team

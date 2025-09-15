@@ -42,7 +42,8 @@ export class MetricsCollector {
 
     // Calculate frame drops
     if (this.frameTimestamps.length > 1) {
-      const timeDiff = timestamp - this.frameTimestamps[this.frameTimestamps.length - 2];
+      const timeDiff =
+        timestamp - this.frameTimestamps[this.frameTimestamps.length - 2];
       const expectedFrameTime = 1000 / 60; // 60 FPS
 
       if (timeDiff > expectedFrameTime * 1.5) {
@@ -81,25 +82,33 @@ export class MetricsCollector {
       scrollPerformance: {
         averageFPS: this.calculateAverageFPS(),
         frameDrops: this.frameDropCount,
-        smoothnessScore: this.calculateSmoothnessScore()
-      }
+        smoothnessScore: this.calculateSmoothnessScore(),
+      },
     };
   }
 
   private calculateAverageLoadTime(): number {
     if (this.loadTimes.length === 0) return 0;
-    return this.loadTimes.reduce((sum, time) => sum + time, 0) / this.loadTimes.length;
+    return (
+      this.loadTimes.reduce((sum, time) => sum + time, 0) /
+      this.loadTimes.length
+    );
   }
 
   private calculateAverageRenderTime(): number {
     if (this.renderTimes.length === 0) return 0;
-    return this.renderTimes.reduce((sum, time) => sum + time, 0) / this.renderTimes.length;
+    return (
+      this.renderTimes.reduce((sum, time) => sum + time, 0) /
+      this.renderTimes.length
+    );
   }
 
   private calculateAverageFPS(): number {
     if (this.frameTimestamps.length < 2) return 0;
 
-    const totalTime = this.frameTimestamps[this.frameTimestamps.length - 1] - this.frameTimestamps[0];
+    const totalTime =
+      this.frameTimestamps[this.frameTimestamps.length - 1] -
+      this.frameTimestamps[0];
     const frameCount = this.frameTimestamps.length - 1;
 
     if (totalTime <= 0) return 0;
@@ -114,8 +123,9 @@ export class MetricsCollector {
     const targetFPS = 60;
     const fpsScore = Math.min(100, (fps / targetFPS) * 100);
 
-    const dropRatio = this.frameDropCount / Math.max(1, this.frameTimestamps.length);
-    const dropScore = Math.max(0, 100 - (dropRatio * 200)); // Heavy penalty for drops
+    const dropRatio =
+      this.frameDropCount / Math.max(1, this.frameTimestamps.length);
+    const dropScore = Math.max(0, 100 - dropRatio * 200); // Heavy penalty for drops
 
     return (fpsScore + dropScore) / 2;
   }
@@ -140,7 +150,7 @@ export class MetricsCollector {
       renderTimes: [...this.renderTimes],
       frameDrops: this.frameDropCount,
       activeLoaders: this.activeLoadersCount,
-      dataPoints: Math.max(this.loadTimes.length, this.renderTimes.length)
+      dataPoints: Math.max(this.loadTimes.length, this.renderTimes.length),
     };
   }
 }

@@ -62,7 +62,10 @@ export class PerformanceProfiler {
    */
   startProfiling(): void {
     if (!this.config.enabled) {
-      this.logger.debug({ msg: 'Performance profiling disabled' });
+      // Only log in non-test environments to prevent noise
+      if (Bun.env.NODE_ENV !== 'test') {
+        this.logger.debug({ msg: 'Performance profiling disabled' });
+      }
       return;
     }
 
@@ -167,7 +170,10 @@ export class PerformanceProfiler {
     });
   }
 
-  private createProfileFromOperation(operation: string, activeOp: ActiveOperation): CPUProfile {
+  private createProfileFromOperation(
+    operation: string,
+    activeOp: ActiveOperation
+  ): CPUProfile {
     const endTime = performance.now();
     const duration = endTime - activeOp.startTime;
 
@@ -185,7 +191,10 @@ export class PerformanceProfiler {
     };
   }
 
-  private checkForBottlenecks(profile: CPUProfile, startMemory?: MemorySnapshot): void {
+  private checkForBottlenecks(
+    profile: CPUProfile,
+    startMemory?: MemorySnapshot
+  ): void {
     if (!this.config.autoDetectBottlenecks) return;
 
     const bottleneck = this.bottleneckDetector.detectBottleneck(
@@ -240,7 +249,6 @@ export class PerformanceProfiler {
     return snapshot;
   }
 
-
   /**
    * Analyze memory usage patterns
    */
@@ -273,7 +281,10 @@ export class PerformanceProfiler {
     this.memorySnapshots.length = 0;
     this.cpuProfiles.length = 0;
     this.activeOperations.clear();
-    this.logger.debug({ msg: 'Performance profiler data cleared' });
+    // Only log in non-test environments to prevent noise
+    if (Bun.env.NODE_ENV !== 'test') {
+      this.logger.debug({ msg: 'Performance profiler data cleared' });
+    }
   }
 
   /**

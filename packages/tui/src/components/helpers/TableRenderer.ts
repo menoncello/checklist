@@ -23,7 +23,10 @@ export class TableRenderer {
     return this.generateTableString(rows, columnWidths, options);
   }
 
-  private static buildTableRows(data: unknown[], headers?: string[]): string[][] {
+  private static buildTableRows(
+    data: unknown[],
+    headers?: string[]
+  ): string[][] {
     const rows: string[][] = [];
 
     if (headers) {
@@ -53,7 +56,10 @@ export class TableRenderer {
     return [String(item)];
   }
 
-  private static calculateColumnWidths(rows: string[][], maxWidth?: number): number[] {
+  private static calculateColumnWidths(
+    rows: string[][],
+    maxWidth?: number
+  ): number[] {
     const widths: number[] = [];
 
     rows.forEach((row) => {
@@ -90,7 +96,10 @@ export class TableRenderer {
 
       lines.push(line);
 
-      if (rowIndex === 0 && (options.headerDivider === true || options.headerSeparator === true)) {
+      if (
+        rowIndex === 0 &&
+        (options.headerDivider === true || options.headerSeparator === true)
+      ) {
         lines.push(this.createDivider(columnWidths, options.separator));
       }
     });

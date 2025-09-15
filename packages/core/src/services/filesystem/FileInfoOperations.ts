@@ -25,12 +25,18 @@ export class FileInfoOperations {
         permissions: (stats.mode & parseInt('777', 8)).toString(8),
       };
 
-      this.logger.debug({ msg: 'File info retrieved', filePath, size: stats.size });
+      this.logger.debug({
+        msg: 'File info retrieved',
+        filePath,
+        size: stats.size,
+      });
 
       return fileInfo;
     } catch (error) {
       this.logger.error({ msg: 'Failed to get file info', filePath, error });
-      throw new Error(`Failed to get file info: ${filePath} - ${(error as Error).message}`);
+      throw new Error(
+        `Failed to get file info: ${filePath} - ${(error as Error).message}`
+      );
     }
   }
 

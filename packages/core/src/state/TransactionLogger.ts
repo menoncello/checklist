@@ -49,7 +49,10 @@ export class TransactionLogger {
     }
   }
 
-  async logOperation(operation: Operation, transactionId: string): Promise<void> {
+  async logOperation(
+    operation: Operation,
+    transactionId: string
+  ): Promise<void> {
     const logEntry = {
       timestamp: new Date().toISOString(),
       action: 'OPERATION',
@@ -83,16 +86,21 @@ export class TransactionLogger {
   async readLog(): Promise<unknown[]> {
     try {
       const content = await readFile(this.logPath, 'utf-8');
-      const lines = content.trim().split('\n').filter(line => line.length > 0);
+      const lines = content
+        .trim()
+        .split('\n')
+        .filter((line) => line.length > 0);
 
-      return lines.map(line => {
-        try {
-          return JSON.parse(line);
-        } catch (_parseError) {
-          logger.warn({ msg: 'Failed to parse log line', line });
-          return null;
-        }
-      }).filter(entry => entry !== null);
+      return lines
+        .map((line) => {
+          try {
+            return JSON.parse(line);
+          } catch (_parseError) {
+            logger.warn({ msg: 'Failed to parse log line', line });
+            return null;
+          }
+        })
+        .filter((entry) => entry !== null);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         // Log file doesn't exist yet, return empty array
@@ -113,11 +121,14 @@ export class TransactionLogger {
 
   private setupLogRotation(): void {
     // Rotate log every hour
-    this.rotationTimer = setInterval(() => {
-      this.rotateLogIfNeeded().catch(error => {
-        logger.error({ msg: 'Log rotation failed', error });
-      });
-    }, 60 * 60 * 1000);
+    this.rotationTimer = setInterval(
+      () => {
+        this.rotateLogIfNeeded().catch((error) => {
+          logger.error({ msg: 'Log rotation failed', error });
+        });
+      },
+      60 * 60 * 1000
+    );
   }
 
   private async rotateLogIfNeeded(): Promise<void> {

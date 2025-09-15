@@ -24,11 +24,9 @@ export class ScrollManager<T> {
   }
 
   scrollBy(items: VirtualListItem<T>[], delta: number): void {
-    const newScrollTop = Math.max(0,
-      Math.min(
-        this.state.scrollTop + delta,
-        this.getMaxScrollTop()
-      )
+    const newScrollTop = Math.max(
+      0,
+      Math.min(this.state.scrollTop + delta, this.getMaxScrollTop())
     );
 
     this.setScrollTop(newScrollTop);
@@ -45,7 +43,10 @@ export class ScrollManager<T> {
   }
 
   setScrollTop(scrollTop: number): void {
-    const clampedScrollTop = Math.max(0, Math.min(scrollTop, this.getMaxScrollTop()));
+    const clampedScrollTop = Math.max(
+      0,
+      Math.min(scrollTop, this.getMaxScrollTop())
+    );
     const previousScrollTop = this.lastScrollTop;
 
     this.state.scrollTop = clampedScrollTop;
@@ -54,7 +55,10 @@ export class ScrollManager<T> {
     this.emitScrollEvent(previousScrollTop, clampedScrollTop);
   }
 
-  private emitScrollEvent(previousScrollTop: number, newScrollTop: number): void {
+  private emitScrollEvent(
+    previousScrollTop: number,
+    newScrollTop: number
+  ): void {
     if (this.onScroll) {
       const delta = newScrollTop - previousScrollTop;
       const direction = delta > 0 ? 'down' : 'up';
@@ -148,9 +152,12 @@ export class ScrollManager<T> {
   ): number {
     const { viewportHeight } = this.state;
     switch (position) {
-      case 'top': return bounds.top;
-      case 'bottom': return bounds.bottom - viewportHeight;
-      default: return bounds.top - (viewportHeight - bounds.height) / 2;
+      case 'top':
+        return bounds.top;
+      case 'bottom':
+        return bounds.bottom - viewportHeight;
+      default:
+        return bounds.top - (viewportHeight - bounds.height) / 2;
     }
   }
 }

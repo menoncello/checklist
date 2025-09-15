@@ -57,3 +57,5 @@ templates/
 *.yml
 *.xml
 *.sh
+coverage-analysis.csv
+*.csv

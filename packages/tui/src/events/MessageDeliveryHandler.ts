@@ -21,9 +21,7 @@ export class MessageDeliveryHandler {
 
     for (const subscriber of subscribers) {
       if (subscriber.options?.async === true) {
-        deliveryPromises.push(
-          this.deliverAsync(message, subscriber, emit)
-        );
+        deliveryPromises.push(this.deliverAsync(message, subscriber, emit));
       } else {
         await this.deliverSync(message, subscriber, emit);
       }
@@ -56,10 +54,7 @@ export class MessageDeliveryHandler {
   ): Promise<void> {
     try {
       const timeout = subscriber.options?.timeout ?? 5000;
-      await this.withTimeout(
-        subscriber.handler(message),
-        timeout
-      );
+      await this.withTimeout(subscriber.handler(message), timeout);
     } catch (error) {
       this.handleDeliveryError(error as Error, subscriber, emit);
     }
