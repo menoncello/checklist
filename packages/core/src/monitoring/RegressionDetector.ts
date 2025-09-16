@@ -123,32 +123,40 @@ export class PerformanceRegressionDetector {
     current: PerformanceMetric,
     baseline: PerformanceMetric
   ): RegressionResult {
+    const analysisResults = this.calculateRegressionMetrics(current, baseline);
+    const severity = this.classifier.determineSeverity(
+      analysisResults.changePercent,
+      analysisResults.confidence
+    );
+    const recommendation = this.classifier.generateRecommendation(
+      severity,
+      analysisResults.changePercent,
+      operation
+    );
+
+    return {
+      operation,
+      hasRegression: analysisResults.hasRegression,
+      severity,
+      currentMetric: current,
+      baselineMetric: baseline,
+      changePercent: analysisResults.changePercent,
+      confidence: analysisResults.confidence,
+      recommendation,
+    };
+  }
+
+  private calculateRegressionMetrics(
+    current: PerformanceMetric,
+    baseline: PerformanceMetric
+  ): { changePercent: number; hasRegression: boolean; confidence: number } {
     const { changePercent, hasRegression } =
       this.statisticalAnalyzer.calculatePerformanceChange(current, baseline);
     const confidence = this.statisticalAnalyzer.calculateRegressionConfidence(
       current,
       baseline
     );
-    const severity = this.classifier.determineSeverity(
-      changePercent,
-      confidence
-    );
-    const recommendation = this.classifier.generateRecommendation(
-      severity,
-      changePercent,
-      operation
-    );
-
-    return {
-      operation,
-      hasRegression,
-      severity,
-      currentMetric: current,
-      baselineMetric: baseline,
-      changePercent,
-      confidence,
-      recommendation,
-    };
+    return { changePercent, hasRegression, confidence };
   }
 
   /**

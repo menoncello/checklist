@@ -92,10 +92,10 @@ export class DependencyAnalyzer {
   private checkCycle(
     node: string,
     graph: DependencyGraph,
-    visited: Set<string>,
-    stack: Set<string>,
-    path: string[]
+    analysis: { visited: Set<string>; stack: Set<string>; path: string[] }
   ): string[] | null {
+    const { visited, stack, path } = analysis;
+
     if (stack.has(node)) {
       const cycleStart = path.indexOf(node);
       return path.slice(cycleStart);
@@ -108,10 +108,11 @@ export class DependencyAnalyzer {
 
     const dependencies = graph.edges.get(node) ?? new Set();
     for (const dep of dependencies) {
-      const cycle = this.checkCycle(dep, graph, visited, stack, [
-        ...path,
-        node,
-      ]);
+      const cycle = this.checkCycle(dep, graph, {
+        visited,
+        stack,
+        path: [...path, node],
+      });
       if (cycle !== null) return cycle;
     }
 

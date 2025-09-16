@@ -78,7 +78,10 @@ export class StateLoader {
     // Check if state needs migration based on version field
     // Old states might use 'version' instead of 'schemaVersion'
     const stateObj = state as Record<string, unknown>;
-    const currentVersion = (stateObj.schemaVersion as string | undefined) ?? (stateObj.version as string | undefined) ?? '0.0.0';
+    const currentVersion =
+      (stateObj.schemaVersion as string | undefined) ??
+      (stateObj.version as string | undefined) ??
+      '0.0.0';
 
     if (currentVersion !== SCHEMA_VERSION) {
       this.logger.info({
@@ -93,7 +96,7 @@ export class StateLoader {
       );
       return migrated as unknown as ChecklistState;
     }
-    return stateObj as ChecklistState;
+    return stateObj as unknown as ChecklistState;
   }
 
   private async attemptRecovery(
@@ -157,7 +160,7 @@ export class StateLoader {
 
   async importState(yamlContent: string): Promise<ChecklistState> {
     const parsed = this.parseYamlContent(yamlContent);
-    this.validateStateStructure(parsed);
+    this.validateStateStructure(parsed as ChecklistState);
 
     // Ensure imported state has correct version
     const parsedState = parsed as ChecklistState;

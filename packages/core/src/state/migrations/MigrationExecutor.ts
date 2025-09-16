@@ -306,7 +306,6 @@ export class MigrationExecutor extends EventEmitter {
         version: migration.toVersion,
       } as StateSchema;
 
-
       return finalState;
     } catch (error) {
       if (error instanceof MigrationError) throw error;

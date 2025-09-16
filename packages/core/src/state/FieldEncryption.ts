@@ -412,33 +412,31 @@ export class FieldEncryption {
     }
 
     const result = JSON.parse(JSON.stringify(data));
-    const sensitiveFields = [
-      'password',
-      'secret',
-      'token',
-      'apiKey',
-      'privateKey',
-    ];
-
-    const encryptObject = async (
-      obj: Record<string, unknown>
-    ): Promise<void> => {
-      for (const key in obj) {
-        if (
-          sensitiveFields.some((field) =>
-            key.toLowerCase().includes(field.toLowerCase())
-          )
-        ) {
-          if (typeof obj[key] === 'string') {
-            obj[key] = await FieldEncryption.encrypt(obj[key]);
-          }
-        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-          await encryptObject(obj[key] as Record<string, unknown>);
-        }
-      }
-    };
-
-    await encryptObject(result);
+    await this.encryptObjectFields(result);
     return result;
+  }
+
+  private async encryptObjectFields(obj: Record<string, unknown>): Promise<void> {
+    const sensitiveFields = this.getSensitiveFieldNames();
+
+    for (const key in obj) {
+      if (this.isSensitiveField(key, sensitiveFields)) {
+        if (typeof obj[key] === 'string') {
+          obj[key] = await FieldEncryption.encrypt(obj[key]);
+        }
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        await this.encryptObjectFields(obj[key] as Record<string, unknown>);
+      }
+    }
+  }
+
+  private getSensitiveFieldNames(): string[] {
+    return ['password', 'secret', 'token', 'apiKey', 'privateKey'];
+  }
+
+  private isSensitiveField(key: string, sensitiveFields: string[]): boolean {
+    return sensitiveFields.some((field) =>
+      key.toLowerCase().includes(field.toLowerCase())
+    );
   }
 }

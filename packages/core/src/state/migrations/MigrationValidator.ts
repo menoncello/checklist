@@ -110,7 +110,6 @@ export class MigrationValidator {
   private checkVersionMatch(migration: Migration, state: StateSchema): void {
     const currentVersion = state.version || '0.0.0';
 
-
     if (currentVersion !== migration.fromVersion) {
       throw new MigrationError(
         `State version mismatch. Expected: ${migration.fromVersion}, Found: ${currentVersion}`,

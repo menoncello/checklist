@@ -24,6 +24,7 @@ reports/
 .gitleaksignore
 .husky/
 .github/CODEOWNERS
+**/CODEOWNERS
 .gitkeep
 
 # Environment

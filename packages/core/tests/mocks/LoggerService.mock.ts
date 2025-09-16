@@ -94,9 +94,20 @@ export class MockLoggerService implements ILogger {
   hasLoggedError(error: string | Error): boolean {
     const errorMessage = error instanceof Error ? error.message : error;
     return this.logs.some(
-      (log) =>
-        log.level === 'error' &&
-        (log.context.error === errorMessage || log.context.msg === errorMessage)
+      (log) => {
+        if (log.level !== 'error') return false;
+
+        // Check if the message matches
+        if (log.context.msg === errorMessage) return true;
+
+        // Check if the error field matches
+        if (log.context.error === errorMessage) return true;
+
+        // Check if the error field is an Error object and messages match
+        if (log.context.error instanceof Error && log.context.error.message === errorMessage) return true;
+
+        return false;
+      }
     );
   }
 

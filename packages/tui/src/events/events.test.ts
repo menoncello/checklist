@@ -20,11 +20,25 @@ describe('Event Handling (AC5, AC8)', () => {
     });
 
     it('should bind and track key handlers', () => {
+      // Verify initial state - should have default bindings
+      const initialBindings = keyboardHandler.getAllBindings();
+      expect(initialBindings.length).toBeGreaterThanOrEqual(3); // Default bindings: ctrl+c, ctrl+d, ctrl+z
+
+      // Add new binding
       const handlerId = keyboardHandler.bind('Enter', () => {});
       expect(handlerId).toBeDefined();
+      expect(typeof handlerId).toBe('string');
+      expect(handlerId).toMatch(/^binding-\d+$/);
 
+      // Verify binding was added
       const bindings = keyboardHandler.getAllBindings();
-      expect(bindings.length).toBeGreaterThan(0);
+      expect(bindings.length).toBe(initialBindings.length + 1);
+      expect(bindings.length).toBeGreaterThan(3);
+
+      // Verify the new binding exists
+      const enterBinding = bindings.find((b) => b.keys === 'Enter');
+      expect(enterBinding).toBeDefined();
+      expect(enterBinding?.id).toBe(handlerId);
     });
 
     it('should handle key sequences', () => {

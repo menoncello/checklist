@@ -895,7 +895,7 @@ describe('Bottleneck Identification Tests (AC4.5)', () => {
 
       // Check that logger.debug was called with a message about clearing or profiling
       expect(logger.debug).toHaveBeenCalled();
-      const lastCall = logger.debug.mock.calls[logger.debug.mock.calls.length - 1];
+      const lastCall = (logger.debug as unknown as ReturnType<typeof mock>).mock.calls[(logger.debug as unknown as ReturnType<typeof mock>).mock.calls.length - 1];
       expect(lastCall[0]).toHaveProperty('msg');
 
       // Keep reference

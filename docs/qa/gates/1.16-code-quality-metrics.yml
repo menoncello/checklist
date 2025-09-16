@@ -11,23 +11,70 @@ trace:
     requirements: 9
     full: 5
     partial: 3
-    none: 1
+    none: 0
   coverage_percentage: 56
   planning_ref: 'docs/qa/assessments/1.16-test-design-20250111.md'
-  uncovered:
+  partially_covered:
     - ac: 'AC6'
       requirement: 'CI/CD pipeline fails when quality thresholds exceeded'
-      reason: 'No automated test validates actual pipeline failure behavior'
+      coverage: 'partial'
+      reason: 'ESLint failure simulation tested, but no actual CI pipeline failure validation'
+      test_mappings:
+        - 'tests/quality/ci-validation.test.ts::ESLint should fail build when quality rules are violated'
+      gap: 'No test validates GitHub Actions pipeline failure behavior'
       severity: 'medium'
     - ac: 'AC7'
       requirement: 'Detailed quality reports generated'
-      reason: 'No validation of report content quality or completeness'
+      coverage: 'partial'
+      reason: 'HTML report generation working, but content completeness not validated'
+      test_mappings:
+        - 'tests/quality/ci-validation.test.ts::Quality report generation should produce valid HTML output'
+        - 'tests/quality/report-validation.test.ts::HTML report should contain proper structure and styling'
+        - 'tests/quality/report-validation.test.ts::Report should handle zero violations gracefully'
+      gap: 'No validation of report content accuracy or completeness for different violation types'
       severity: 'low'
     - ac: 'AC8'
       requirement: 'Existing code refactored to meet standards'
-      reason: 'Only 1 of 4 packages fully refactored, 40+ files still exceed limits'
+      coverage: 'partial'
+      reason: 'Core package ServiceBindings.ts refactored (346→15 lines), but 40+ files across TUI/CLI/Shared packages remain'
+      test_mappings:
+        - 'Manual validation: ServiceBindings.ts refactoring with test suite verification'
+      gap: 'Major refactoring backlog prevents quality rules activation'
       severity: 'high'
-  notes: 'See docs/qa/assessments/1.16-trace-20250113.md'
+  fully_covered:
+    - ac: 'AC1'
+      requirement: 'File size limits enforced (max 300 lines per file)'
+      test_mappings:
+        - 'tests/quality/ci-validation.test.ts::ESLint should fail build when quality rules are violated'
+        - 'eslint.config.js configuration with max-lines rule'
+    - ac: 'AC2'
+      requirement: 'Method/function size limits enforced (max 30 lines per function)'
+      test_mappings:
+        - 'tests/quality/ci-validation.test.ts::ESLint should fail build when quality rules are violated'
+        - 'eslint.config.js configuration with max-lines-per-function rule'
+    - ac: 'AC3'
+      requirement: 'Cyclomatic complexity limits enforced (max complexity of 10)'
+      test_mappings:
+        - 'tests/quality/ci-validation.test.ts::ESLint should fail build when quality rules are violated'
+        - 'tests/quality/report-validation.test.ts::complexMethod with nested conditionals'
+    - ac: 'AC4'
+      requirement: 'Maximum indentation depth enforced (max 3 levels)'
+      test_mappings:
+        - 'tests/quality/ci-validation.test.ts::ESLint should fail build when quality rules are violated'
+        - 'eslint.config.js configuration with max-depth rule'
+    - ac: 'AC5'
+      requirement: 'Quality metrics integrated into existing ESLint configuration'
+      test_mappings:
+        - 'tests/quality/report-validation.test.ts::Quality report integration with existing scripts'
+        - 'eslint.config.js integration with existing rule structure'
+    - ac: 'AC9'
+      requirement: 'Pre-commit hooks validate quality metrics locally'
+      test_mappings:
+        - 'tests/quality/ci-validation.test.ts::Pre-commit hook should block commits with quality violations'
+        - 'Husky pre-commit configuration verification'
+  coverage_percentage: 56
+  planning_ref: 'docs/qa/assessments/1.16-test-design-20250111.md'
+  notes: 'Updated comprehensive trace analysis - see docs/qa/assessments/1.16-trace-20250916.md'
 
 gate_status: 'CONCERNS'
 gate_rationale: |

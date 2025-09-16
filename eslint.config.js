@@ -35,7 +35,10 @@ export default [
       sourceType: 'module',
       parser,
       parserOptions: {
-        project: './tsconfig.json'
+        project: [
+          './tsconfig.json',
+          './packages/*/tsconfig.json'
+        ]
       }
     },
     plugins: {
@@ -83,13 +86,13 @@ export default [
         'message': 'Use Bun.env instead of process.env for better performance'
       }],
 
-      // Code quality metrics (Story 1.16) - Temporarily disabled for initial commit
-      'max-lines': 'off', // Will be enabled after refactoring
-      'max-lines-per-function': 'off', // Will be enabled after refactoring
-      'complexity': 'off', // Will be enabled after refactoring
-      'max-depth': 'off', // Will be enabled after refactoring
-      'max-nested-callbacks': 'off', // Will be enabled after refactoring
-      'max-params': 'off', // Will be enabled after refactoring
+      // Code quality metrics (Story 1.16)
+      'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['error', { max: 30, skipBlankLines: true, skipComments: true }],
+      'complexity': ['error', { max: 10 }],
+      'max-depth': ['error', { max: 3 }],
+      'max-nested-callbacks': ['error', { max: 3 }],
+      'max-params': ['error', { max: 4 }],
 
       // Security rules (MANDATORY)
       'no-eval': 'error',

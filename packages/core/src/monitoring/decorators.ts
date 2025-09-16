@@ -36,12 +36,12 @@ export interface TimedOptions {
  * ```
  */
 export function Timed(options: TimedOptions = {}) {
-  return function <T extends (...args: unknown[]) => unknown>(
+  return function (
     target: unknown,
     propertyKey: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
-  ): TypedPropertyDescriptor<T> | void {
-    if (!descriptor?.value) {
+    descriptor: PropertyDescriptor
+  ): PropertyDescriptor | void {
+    if (descriptor?.value === undefined || descriptor?.value === null) {
       return;
     }
 
@@ -52,7 +52,7 @@ export function Timed(options: TimedOptions = {}) {
       originalMethod,
       methodInfo.operationName,
       options
-    ) as T;
+    );
 
     return descriptor;
   };
@@ -141,7 +141,7 @@ function isPromise(value: unknown): boolean {
  * ```
  */
 export function TimedClass(defaultOptions: TimedOptions = {}) {
-  return function <T extends new (...args: unknown[]) => object>(
+  return function <T extends new (...args: unknown[]) => unknown>(
     constructor: T
   ): T {
     const prototype = constructor.prototype;
