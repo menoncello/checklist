@@ -84,14 +84,13 @@ export class FrameworkInitializer {
 
     context.performanceManager = new PerformanceManager({
       enableMonitoring: true,
-      enableStartupProfiling: true,
+      startupProfiling: true,
       enableMemoryTracking: true,
       enableMetricsCollection: true,
     });
 
-    context.performanceManager.startStartupPhase('framework_init', {
-      description: 'TUI Framework initialization',
-    });
+    // Start performance monitoring for framework initialization
+    context.performanceManager.start();
   }
 
   private async initializeDebugIntegration(
@@ -191,11 +190,7 @@ export class FrameworkInitializer {
     const initializationTime = performance.now() - this.startTime;
 
     if (context.performanceManager) {
-      context.performanceManager.endStartupPhase('framework_init');
-      context.performanceManager.addStartupMilestone(
-        'framework_initialized',
-        'Framework initialization completed'
-      );
+      context.performanceManager.markStartupPhaseComplete('framework_init');
     }
 
     context.debugIntegration?.log(

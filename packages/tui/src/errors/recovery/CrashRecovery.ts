@@ -11,16 +11,26 @@ import {
 export class CrashRecovery {
   private config: CrashRecoveryConfig;
   private crashState: CrashState;
-  private stateManager: StateManager;
-  private processHandlers: ProcessHandlers;
-  private strategyManager: StrategyManager;
+  private stateManager!: StateManager;
+  private processHandlers!: ProcessHandlers;
+  private strategyManager!: StrategyManager;
   private eventHandlers = new Map<string, Set<Function>>();
   private recoveryTimer: Timer | null = null;
   private criticalSections = new Set<string>();
   private startTime = Date.now();
 
   constructor(config: Partial<CrashRecoveryConfig> = {}) {
-    this.config = {
+    this.config = this.mergeConfig(config);
+    this.crashState = this.createInitialState();
+    this.initializeManagers();
+    this.setupCallbacks();
+    this.setupEventHandling();
+  }
+
+  private mergeConfig(
+    config: Partial<CrashRecoveryConfig>
+  ): CrashRecoveryConfig {
+    return {
       maxRecoveryAttempts: 3,
       recoveryDelay: 2000,
       enableAutoRecovery: true,
@@ -30,10 +40,9 @@ export class CrashRecovery {
       disableProcessHandlers: false,
       ...config,
     };
+  }
 
-    this.crashState = this.createInitialState();
-
-    // Initialize managers
+  private initializeManagers(): void {
     this.stateManager = new StateManager(
       this.config.stateBackupInterval,
       this.config.enableStateBackups
@@ -46,22 +55,19 @@ export class CrashRecovery {
       this
     );
 
-    // Set signal handler callback
+    this.strategyManager = new StrategyManager();
+  }
+
+  private setupCallbacks(): void {
     this.processHandlers.setOnSignalHandler(this.handleSignal.bind(this));
 
-    // Set warning handler callback
     this.processHandlers.setOnWarningHandler((warning: Error) => {
       this.emit('memoryWarning', { warning });
     });
 
-    this.strategyManager = new StrategyManager();
-
-    // Set state restored callback
     this.strategyManager.setOnStateRestored(() => {
       this.emit('stateRestored', {});
     });
-
-    this.setupEventHandling();
   }
 
   private createInitialState(): CrashState {

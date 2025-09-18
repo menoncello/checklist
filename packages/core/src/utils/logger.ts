@@ -190,42 +190,65 @@ export class LoggerService {
   ): void {
     if (this.config.enableFileLogging !== true) return;
 
-    const logDirectory = this.config.logDirectory ?? '.logs';
-    const fileOptions = {
+    const fileOptions = this.createFileOptions();
+    this.addInfoTransport(transports, fileOptions);
+    this.addErrorTransport(transports, fileOptions);
+    this.addDebugTransport(transports, fileOptions);
+  }
+
+  private createFileOptions(): Record<string, unknown> {
+    return {
       size: this.config.maxFileSize,
       limit: { count: this.config.maxFiles },
       frequency: 'daily',
     };
+  }
 
-    transports.push(
-      {
-        target: 'pino-roll',
-        options: {
-          file: join(logDirectory, 'info', 'app.log'),
-          ...fileOptions,
-        },
-        level: 'info',
+  private addInfoTransport(
+    transports: TransportTargetOptions<Record<string, unknown>>[],
+    fileOptions: Record<string, unknown>
+  ): void {
+    const logDirectory = this.config.logDirectory ?? '.logs';
+    transports.push({
+      target: 'pino-roll',
+      options: {
+        file: join(logDirectory, 'info', 'app.log'),
+        ...fileOptions,
       },
-      {
-        target: 'pino-roll',
-        options: {
-          file: join(logDirectory, 'error', 'error.log'),
-          ...fileOptions,
-        },
-        level: 'error',
-      }
-    );
+      level: 'info',
+    });
+  }
 
-    if (Bun.env.NODE_ENV === 'development') {
-      transports.push({
-        target: 'pino-roll',
-        options: {
-          file: join(logDirectory, 'debug', 'debug.log'),
-          ...fileOptions,
-        },
-        level: 'debug',
-      });
-    }
+  private addErrorTransport(
+    transports: TransportTargetOptions<Record<string, unknown>>[],
+    fileOptions: Record<string, unknown>
+  ): void {
+    const logDirectory = this.config.logDirectory ?? '.logs';
+    transports.push({
+      target: 'pino-roll',
+      options: {
+        file: join(logDirectory, 'error', 'error.log'),
+        ...fileOptions,
+      },
+      level: 'error',
+    });
+  }
+
+  private addDebugTransport(
+    transports: TransportTargetOptions<Record<string, unknown>>[],
+    fileOptions: Record<string, unknown>
+  ): void {
+    if (Bun.env.NODE_ENV !== 'development') return;
+
+    const logDirectory = this.config.logDirectory ?? '.logs';
+    transports.push({
+      target: 'pino-roll',
+      options: {
+        file: join(logDirectory, 'debug', 'debug.log'),
+        ...fileOptions,
+      },
+      level: 'debug',
+    });
   }
 
   private addExternalTransports(

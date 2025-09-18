@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { createLogger } from '../../utils/logger';
 import { BackupManager } from './BackupManager';
+import { MigrationHelpers } from './MigrationHelpers';
 import { MigrationRecordKeeper } from './MigrationRecordKeeper';
 import { MigrationValidator } from './MigrationValidator';
 import {
@@ -67,39 +68,57 @@ export class MigrationExecutor extends EventEmitter {
     totalSteps: number;
     options: { createBackup: boolean; backupPath?: string; verbose: boolean };
   }): Promise<StateSchema> {
-    const {
-      migration,
-      migratedState,
-      appliedMigrations,
-      statePath,
-      stepIndex,
-      totalSteps,
-      options,
-    } = params;
-    this.reportProgress(migration, stepIndex, totalSteps, options.verbose);
+    this.reportProgress(
+      params.migration,
+      params.stepIndex,
+      params.totalSteps,
+      params.options.verbose
+    );
 
     try {
-      const result = await this.executeAndRecordMigration(
-        migration,
-        migratedState,
-        statePath,
-        options.verbose
-      );
-      appliedMigrations.push(
-        migration.id ?? `${migration.fromVersion}->${migration.toVersion}`
-      );
-      return result;
+      return await this.runMigration(params);
     } catch (error) {
-      await this.handleMigrationError({
-        error: error as Error,
-        migration,
-        state: migratedState,
-        statePath,
-        startTime: Date.now(),
-        endTime: Date.now(),
-      });
+      await this.handleMigrationError(error as Error, params);
       throw error;
     }
+  }
+
+  private async runMigration(params: {
+    migration: Migration;
+    migratedState: StateSchema;
+    appliedMigrations: string[];
+    statePath: string;
+    options: { verbose: boolean };
+  }): Promise<StateSchema> {
+    const result = await this.executeAndRecordMigration(
+      params.migration,
+      params.migratedState,
+      params.statePath,
+      params.options.verbose
+    );
+    MigrationHelpers.recordMigrationId(
+      params.migration,
+      params.appliedMigrations
+    );
+    return result;
+  }
+
+  private async handleMigrationError(
+    error: Error,
+    params: {
+      migration: Migration;
+      migratedState: StateSchema;
+      statePath: string;
+    }
+  ): Promise<void> {
+    await this.handleMigrationFailure({
+      error,
+      migration: params.migration,
+      state: params.migratedState,
+      statePath: params.statePath,
+      startTime: Date.now(),
+      endTime: Date.now(),
+    });
   }
 
   private async executeAndRecordMigration(
@@ -137,9 +156,9 @@ export class MigrationExecutor extends EventEmitter {
     if (verbose) {
       logger.info({
         msg: 'Migration applied successfully',
-        migrationId: migration.id,
-        fromVersion: migration.fromVersion,
-        toVersion: migration.toVersion,
+        migrationId: migration?.id ?? 'unknown',
+        fromVersion: migration?.fromVersion ?? 'unknown',
+        toVersion: migration?.toVersion ?? 'unknown',
         duration,
       });
     }
@@ -154,7 +173,7 @@ export class MigrationExecutor extends EventEmitter {
     const progress: MigrationProgress = {
       currentStep: stepIndex + 1,
       totalSteps,
-      currentMigration: `${migration.fromVersion}->${migration.toVersion}`,
+      currentMigration: `${migration?.fromVersion || 'unknown'}->${migration?.toVersion || 'unknown'}`,
       percentage: Math.round(((stepIndex + 1) / totalSteps) * 100),
     };
 
@@ -177,106 +196,104 @@ export class MigrationExecutor extends EventEmitter {
   ): Promise<StateSchema> {
     try {
       const migratedState = await this.applyMigration(migration, state);
-
-      if (migration.validate) {
-        const isValid = await migration.validate(migratedState);
-        if (!isValid) {
-          throw new MigrationError(
-            `Migration validation failed for ${migration.id}`,
-            migration.fromVersion,
-            migration.toVersion
-          );
-        }
-      }
-
+      await this.validateMigrationResult(migration, migratedState);
       await this.validator.validateStateIntegrity(migratedState);
       return migratedState;
     } catch (error) {
-      logger.error({
-        msg: 'Migration application failed',
-        error,
-        migrationId: migration.id,
-        fromVersion: migration.fromVersion,
-        toVersion: migration.toVersion,
-      });
+      this.logMigrationApplicationError(migration, error as Error);
       throw error;
     }
   }
 
-  private async handleMigrationError(params: {
-    error: Error;
-    migration: Migration;
-    state: StateSchema;
-    statePath: string;
-    startTime: number;
-    endTime: number;
-  }): Promise<void> {
-    const { error, migration, state, statePath, startTime, endTime } = params;
-
-    try {
-      await this.recordMigrationFailure({
-        migration,
-        state,
-        statePath,
-        startTime,
-        endTime,
-        error,
-      });
-      this.logMigrationError(error, migration);
-      this.emitErrorEvent(migration, error);
-    } catch (recordError) {
-      this.logRecordingError(error, recordError as Error, migration);
+  private async validateMigrationResult(
+    migration: Migration,
+    migratedState: StateSchema
+  ): Promise<void> {
+    if (
+      migration?.validate != null &&
+      !(await migration.validate(migratedState))
+    ) {
+      throw new MigrationError(
+        `Migration validation failed for ${migration.id ?? 'unknown'}`,
+        migration?.fromVersion ?? 'unknown',
+        migration?.toVersion ?? 'unknown'
+      );
     }
   }
 
-  private async recordMigrationFailure(params: {
+  private logMigrationApplicationError(
+    migration: Migration,
+    error: Error
+  ): void {
+    logger.error({
+      msg: 'Migration application failed',
+      error,
+      migrationId: migration?.id ?? 'unknown',
+      fromVersion: migration?.fromVersion ?? 'unknown',
+      toVersion: migration?.toVersion ?? 'unknown',
+    });
+  }
+
+  private async handleMigrationFailure(params: {
+    error: Error;
     migration: Migration;
     state: StateSchema;
     statePath: string;
     startTime: number;
     endTime: number;
-    error: Error;
   }): Promise<void> {
-    const { migration, state, statePath, startTime, endTime, error } = params;
+    try {
+      await this.recordFailure(params);
+      this.logFailure(params.error, params.migration);
+      this.emit('error', {
+        migration: params.migration,
+        error: params.error,
+        phase: 'execution',
+      });
+    } catch (recordError) {
+      this.logRecordError(params.error, recordError as Error, params.migration);
+    }
+  }
+
+  private async recordFailure(params: {
+    error: Error;
+    migration: Migration;
+    state: StateSchema;
+    statePath: string;
+    startTime: number;
+    endTime: number;
+  }): Promise<void> {
     await this.recordKeeper.recordMigration({
-      migration,
-      state,
-      statePath,
-      startTime,
-      endTime,
+      migration: params.migration,
+      state: params.state,
+      statePath: params.statePath,
+      startTime: params.startTime,
+      endTime: params.endTime,
       success: false,
-      error,
+      error: params.error,
     });
   }
 
-  private logMigrationError(error: Error, migration: Migration): void {
+  private logFailure(error: Error, migration: Migration): void {
     logger.error({
       msg: 'Migration failed and recorded',
-      migrationId: migration.id,
+      migrationId: migration?.id ?? 'unknown',
       error: error.message,
-      fromVersion: migration.fromVersion,
-      toVersion: migration.toVersion,
+      fromVersion: migration?.fromVersion ?? 'unknown',
+      toVersion: migration?.toVersion ?? 'unknown',
     });
   }
 
-  private emitErrorEvent(migration: Migration, error: Error): void {
-    this.emit('error', {
-      migration,
-      error,
-      phase: 'execution',
-    });
-  }
-
-  private logRecordingError(
+  private logRecordError(
     originalError: Error,
     recordError: Error,
     migration: Migration
   ): void {
     logger.error({
       msg: 'Failed to record migration error',
-      originalError: originalError.message,
-      recordError: recordError.message,
-      migrationId: migration.id,
+      originalError: originalError?.message ?? 'Unknown error',
+      recordError: recordError?.message ?? 'Unknown error',
+      migrationId: migration?.id ?? 'unknown',
     });
   }
 
@@ -285,54 +302,18 @@ export class MigrationExecutor extends EventEmitter {
     state: StateSchema
   ): Promise<StateSchema> {
     try {
-      this.logMigrationStart(migration);
-
-      let result: unknown;
-      if (migration.migrate) {
-        result = await migration.migrate(state);
-      } else if (migration.up !== undefined) {
-        result = migration.up(state);
-      } else {
-        throw new MigrationError(
-          'No migration function found (migrate or up)',
-          migration.fromVersion,
-          migration.toVersion
-        );
-      }
-
-      this.validateMigrationResult(result, migration);
-      const finalState = {
-        ...(result as object),
-        version: migration.toVersion,
-      } as StateSchema;
-
-      return finalState;
+      MigrationHelpers.logMigrationStart(migration);
+      const result = await MigrationHelpers.executeMigrationFunction(
+        migration,
+        state
+      );
+      MigrationHelpers.validateMigrationResult(result, migration);
+      return MigrationHelpers.buildFinalState(result, migration);
     } catch (error) {
       if (error instanceof MigrationError) throw error;
-      throw new MigrationError(
-        `Migration execution failed: ${(error as Error).message}`,
-        migration.fromVersion,
-        migration.toVersion,
-        error as Error
-      );
-    }
-  }
-
-  private logMigrationStart(migration: Migration): void {
-    logger.debug({
-      msg: 'Applying migration',
-      migrationId: migration.id,
-      fromVersion: migration.fromVersion,
-      toVersion: migration.toVersion,
-    });
-  }
-
-  private validateMigrationResult(result: unknown, migration: Migration): void {
-    if (result === null || result === undefined || typeof result !== 'object') {
-      throw new MigrationError(
-        'Migration must return a valid state object',
-        migration.fromVersion,
-        migration.toVersion
+      throw MigrationHelpers.createMigrationExecutionError(
+        error as Error,
+        migration
       );
     }
   }

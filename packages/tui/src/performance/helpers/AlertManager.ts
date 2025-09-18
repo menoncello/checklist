@@ -26,7 +26,14 @@ export class AlertManager {
   }
 
   private setupDefaultThresholds(): void {
-    const defaults: PerformanceThreshold[] = [
+    const defaults = this.createDefaultThresholds();
+    defaults.forEach((threshold) => {
+      this.thresholds.set(threshold.metric, threshold);
+    });
+  }
+
+  private createDefaultThresholds(): PerformanceThreshold[] {
+    return [
       {
         metric: 'memory.heapUsed',
         warningValue: 100 * 1024 * 1024, // 100MB
@@ -52,10 +59,6 @@ export class AlertManager {
         direction: 'above',
       },
     ];
-
-    defaults.forEach((threshold) => {
-      this.thresholds.set(threshold.metric, threshold);
-    });
   }
 
   public addThreshold(threshold: PerformanceThreshold): void {

@@ -42,11 +42,41 @@ export class StorageManager {
     states: Map<string, PreservedState>,
     estimateSize: (state: PreservedState) => number
   ): { cleaned: number; freed: number } {
+    const { toDelete, freedSize } = this.identifyStatesToDelete(
+      states,
+      estimateSize
+    );
+    this.deleteStates(states, toDelete);
+    this.currentStorageSize -= freedSize;
+    return { cleaned: toDelete.length, freed: freedSize };
+  }
+
+  private identifyStatesToDelete(
+    states: Map<string, PreservedState>,
+    estimateSize: (state: PreservedState) => number
+  ): { toDelete: string[]; freedSize: number } {
     const now = Date.now();
     const toDelete: string[] = [];
     let freedSize = 0;
 
-    // First pass: Remove expired states
+    freedSize += this.removeExpiredStates(states, now, toDelete, estimateSize);
+    freedSize += this.removeOldestStatesIfNeeded(
+      states,
+      toDelete,
+      freedSize,
+      estimateSize
+    );
+
+    return { toDelete, freedSize };
+  }
+
+  private removeExpiredStates(
+    states: Map<string, PreservedState>,
+    now: number,
+    toDelete: string[],
+    estimateSize: (state: PreservedState) => number
+  ): number {
+    let freedSize = 0;
     for (const [key, state] of states.entries()) {
       if (state.expiresAt != null && now > state.expiresAt) {
         toDelete.push(key);
@@ -54,34 +84,52 @@ export class StorageManager {
         this.onStateExpired?.(key, state);
       }
     }
+    return freedSize;
+  }
 
-    // Second pass: If still over limit, remove oldest states
-    if (this.currentStorageSize - freedSize > this.maxStorageSize) {
-      const sortedStates = Array.from(states.entries())
-        .filter(([key]) => !toDelete.includes(key))
-        .sort(([, a], [, b]) => a.timestamp - b.timestamp);
-
-      for (const [key, state] of sortedStates) {
-        if (this.currentStorageSize - freedSize <= this.maxStorageSize) {
-          break;
-        }
-
-        toDelete.push(key);
-        freedSize += estimateSize(state);
-      }
+  private removeOldestStatesIfNeeded(
+    states: Map<string, PreservedState>,
+    toDelete: string[],
+    currentFreedSize: number,
+    estimateSize: (state: PreservedState) => number
+  ): number {
+    if (this.currentStorageSize - currentFreedSize <= this.maxStorageSize) {
+      return 0;
     }
 
-    // Actually delete the states
+    const sortedStates = this.getSortedNonDeletedStates(states, toDelete);
+    let additionalFreed = 0;
+
+    for (const [key, state] of sortedStates) {
+      if (
+        this.currentStorageSize - currentFreedSize - additionalFreed <=
+        this.maxStorageSize
+      ) {
+        break;
+      }
+      toDelete.push(key);
+      additionalFreed += estimateSize(state);
+    }
+
+    return additionalFreed;
+  }
+
+  private getSortedNonDeletedStates(
+    states: Map<string, PreservedState>,
+    toDelete: string[]
+  ): Array<[string, PreservedState]> {
+    return Array.from(states.entries())
+      .filter(([key]) => !toDelete.includes(key))
+      .sort(([, a], [, b]) => a.timestamp - b.timestamp);
+  }
+
+  private deleteStates(
+    states: Map<string, PreservedState>,
+    toDelete: string[]
+  ): void {
     for (const key of toDelete) {
       states.delete(key);
     }
-
-    this.currentStorageSize -= freedSize;
-
-    return {
-      cleaned: toDelete.length,
-      freed: freedSize,
-    };
   }
 
   public startCleanupTimer(
@@ -167,30 +215,30 @@ export class StorageManager {
     const stateArray = Array.from(states.values());
 
     if (stateArray.length === 0) {
-      return {
-        totalStates: 0,
-        totalSize: 0,
-        oldestState: 0,
-        newestState: 0,
-        expiredStates: 0,
-        compressionRatio: 1,
-      };
+      return this.createEmptyMetrics();
     }
 
+    return this.calculateMetrics(stateArray);
+  }
+
+  private createEmptyMetrics(): StatePreservationMetrics {
+    return {
+      totalStates: 0,
+      totalSize: 0,
+      oldestState: 0,
+      newestState: 0,
+      expiredStates: 0,
+      compressionRatio: 1,
+    };
+  }
+
+  private calculateMetrics(
+    stateArray: PreservedState[]
+  ): StatePreservationMetrics {
     const now = Date.now();
     const timestamps = stateArray.map((s) => s.timestamp);
-    const expiredCount = stateArray.filter(
-      (s) => s.expiresAt != null && now > s.expiresAt
-    ).length;
-
-    // Calculate compression ratio (simplified)
-    const compressedStates = stateArray.filter(
-      (s) => typeof s.data === 'string' && s.data.startsWith('COMPRESSED:')
-    ).length;
-    const compressionRatio =
-      stateArray.length > 0
-        ? 1 - (compressedStates / stateArray.length) * 0.3 // Assume 30% compression
-        : 1;
+    const expiredCount = this.countExpiredStates(stateArray, now);
+    const compressionRatio = this.calculateCompressionRatio(stateArray);
 
     return {
       totalStates: stateArray.length,
@@ -200,6 +248,24 @@ export class StorageManager {
       expiredStates: expiredCount,
       compressionRatio,
     };
+  }
+
+  private countExpiredStates(
+    stateArray: PreservedState[],
+    now: number
+  ): number {
+    return stateArray.filter((s) => s.expiresAt != null && now > s.expiresAt)
+      .length;
+  }
+
+  private calculateCompressionRatio(stateArray: PreservedState[]): number {
+    const compressedStates = stateArray.filter(
+      (s) => typeof s.data === 'string' && s.data.startsWith('COMPRESSED:')
+    ).length;
+
+    return stateArray.length > 0
+      ? 1 - (compressedStates / stateArray.length) * 0.3
+      : 1;
   }
 
   public updateConfig(maxStorageSize: number, persistPath?: string): void {

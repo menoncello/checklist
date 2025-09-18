@@ -15,50 +15,60 @@ import { StateLoader } from './StateLoader';
 import { StateSaver } from './StateSaver';
 
 export class StateManager {
-  private initializer: StateInitializer;
-  private loader: StateLoader;
-  private saver: StateSaver;
-  private migrationManager: MigrationManager;
+  private initializer!: StateInitializer;
+  private loader!: StateLoader;
+  private saver!: StateSaver;
+  private migrationManager!: MigrationManager;
   private currentState?: ChecklistState;
   private logger = createLogger('checklist:state:manager');
   private isRecovering = false;
 
   constructor(baseDir: string = '.checklist') {
-    // Initialize core dependencies
+    const deps = this.initializeDependencies(baseDir);
+    this.initializeManagers(deps);
+  }
+
+  private initializeDependencies(baseDir: string) {
     const directoryManager = new DirectoryManager(baseDir);
-    const concurrencyManager = new ConcurrencyManager(
-      directoryManager.getLockPath()
-    );
-    const transactionCoordinator = new TransactionCoordinator(
-      directoryManager.getLogPath()
-    );
     const validator = new StateValidator();
     const backupManager = new BackupManager(directoryManager.getBackupPath());
-
-    // Initialize migration system
     const migrationRunner = this.createMigrationRunner(
       directoryManager,
       backupManager
     );
 
-    // Initialize specialized managers
-    this.initializer = new StateInitializer(
+    return {
       directoryManager,
-      validator,
-      migrationRunner
-    );
-    this.loader = new StateLoader(directoryManager, validator, migrationRunner);
-    this.saver = new StateSaver({
-      directoryManager,
-      concurrencyManager,
-      transactionCoordinator,
+      concurrencyManager: new ConcurrencyManager(
+        directoryManager.getLockPath()
+      ),
+      transactionCoordinator: new TransactionCoordinator(
+        directoryManager.getLogPath()
+      ),
       validator,
       backupManager,
-    });
-    this.migrationManager = new MigrationManager(
-      directoryManager,
       migrationRunner,
-      backupManager
+    };
+  }
+
+  private initializeManagers(
+    deps: ReturnType<typeof this.initializeDependencies>
+  ): void {
+    this.initializer = new StateInitializer(
+      deps.directoryManager,
+      deps.validator,
+      deps.migrationRunner
+    );
+    this.loader = new StateLoader(
+      deps.directoryManager,
+      deps.validator,
+      deps.migrationRunner
+    );
+    this.saver = new StateSaver(deps);
+    this.migrationManager = new MigrationManager(
+      deps.directoryManager,
+      deps.migrationRunner,
+      deps.backupManager
     );
   }
 

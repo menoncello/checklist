@@ -5,6 +5,7 @@ import { BackupManager } from './BackupManager';
 import { MigrationExecutor } from './MigrationExecutor';
 import { MigrationRecordKeeper } from './MigrationRecordKeeper';
 import { MigrationRegistry } from './MigrationRegistry';
+import { MigrationRunnerHelpers } from './MigrationRunnerHelpers';
 import { MigrationUtils } from './MigrationUtils';
 import { MigrationValidator } from './MigrationValidator';
 import {
@@ -53,7 +54,6 @@ export class MigrationRunner extends EventEmitter {
       this.backupManager
     );
 
-    // Forward events from executor
     this.executor.on('progress', (progress) => {
       this.emit('progress', progress);
       this.emit('migration:progress', progress);
@@ -86,22 +86,10 @@ export class MigrationRunner extends EventEmitter {
     }
   }
 
-  // Public API methods - delegate to specialized services
-  async createBackup(statePath: string, version: string): Promise<string> {
-    return this.backupManager.createBackup(statePath, version);
-  }
+  async createBackup(statePath: string, version: string): Promise<string> { return this.backupManager.createBackup(statePath, version); }
+  async listBackups(): Promise<BackupInfo[]> { return this.backupManager.listBackups(); }
+  async rollback(statePath: string, backupPath: string): Promise<void> { this.emit('rollback:start'); await this.backupManager.rollback(statePath, backupPath); this.emit('rollback:complete'); }
 
-  async listBackups(): Promise<BackupInfo[]> {
-    return this.backupManager.listBackups();
-  }
-
-  async rollback(statePath: string, backupPath: string): Promise<void> {
-    this.emit('rollback:start');
-    await this.backupManager.rollback(statePath, backupPath);
-    this.emit('rollback:complete');
-  }
-
-  // Private implementation methods
   private async prepareMigrationContext(
     statePath: string,
     options: MigrationOptions,
@@ -110,21 +98,15 @@ export class MigrationRunner extends EventEmitter {
     const { dryRun = false, verbose = false } = options;
     const state = await this.loadState(statePath);
     const { fromVersion, toVersion } = this.getVersions(state, targetVersion);
-
-    const earlyResult = this.checkForEarlyReturn(
+    const earlyResult = MigrationRunnerHelpers.checkForEarlyReturn(
       fromVersion,
-      toVersion,
-      verbose
+      toVersion
     );
-    if (earlyResult) {
-      return { earlyReturn: earlyResult };
-    }
-
+    if (earlyResult) return { earlyReturn: earlyResult };
     const migrationPath = await this.validator.validateMigrationPath(
       fromVersion,
       toVersion
     );
-
     return this.buildFinalContext({
       migrationPath,
       fromVersion,
@@ -140,88 +122,104 @@ export class MigrationRunner extends EventEmitter {
     context: MigrationContext,
     options: MigrationOptions
   ): Promise<MigrationResult> {
-    const { createBackup = true, verbose = false } = options;
-
+    const { createBackup = true } = options;
     this.validateContext(context);
+    const backupPath = await MigrationRunnerHelpers.createBackupIfNeeded(
+      createBackup,
+      context.statePath as string,
+      context.fromVersion as string,
+      this.backupManager
+    );
+    return await this.runMigrations(context, options, backupPath);
+  }
 
-    const { state, fromVersion, toVersion, migrationPath, statePath } = context;
-
-    // Context is validated, so these are guaranteed to be defined
-    // Only create backup if state file exists
-    let backupPath: string | undefined;
-    if (createBackup) {
-      const file = Bun.file(statePath as string);
-      if (await file.exists()) {
-        backupPath = await this.backupManager.createBackup(
-          statePath as string,
-          fromVersion as string
-        );
-      }
-    }
-
+  private async runMigrations(
+    context: MigrationContext,
+    options: MigrationOptions,
+    backupPath?: string
+  ): Promise<MigrationResult> {
     try {
-      const appliedMigrations = await this.executor.executeMigrations(
-        migrationPath as { migrations: Migration[]; totalSteps: number },
-        state as StateSchema,
-        statePath as string,
-        { createBackup, backupPath, verbose }
-      );
-
-      MigrationUtils.logSuccess(
-        appliedMigrations.length,
-        toVersion as string,
-        verbose
-      );
-
-      return {
-        success: true,
-        fromVersion: fromVersion as string,
-        toVersion: toVersion as string,
-        appliedMigrations,
-        backupPath,
-      };
+      return await this.executeSuccess(context, options, backupPath);
     } catch (error) {
-      // Emit migration error event
-      this.emit('migration:error', {
-        error: error as Error,
-        fromVersion: fromVersion as string,
-        toVersion: toVersion as string,
-      });
-
-      // Rollback on failure
-      if (backupPath !== null && backupPath !== undefined) {
-        try {
-          this.emit('rollback:start');
-          await this.backupManager.rollback(statePath as string, backupPath);
-          this.emit('rollback:complete');
-        } catch (rollbackError) {
-          logger.error({
-            msg: 'Rollback failed during migration failure',
-            error: rollbackError,
-          });
-        }
-      }
-
-      return {
-        success: false,
-        fromVersion: fromVersion as string,
-        toVersion: toVersion as string,
-        appliedMigrations: [],
-        error: error as Error,
-        backupPath,
-      };
+      return await this.executeFailure(context, error as Error, backupPath);
     }
   }
 
-  private checkForEarlyReturn(
-    fromVersion: string,
-    toVersion: string,
-    verbose: boolean
-  ): MigrationResult | null {
-    if (fromVersion === toVersion) {
-      return MigrationUtils.noMigrationsResult(fromVersion, toVersion, verbose);
+  private async executeSuccess(
+    context: MigrationContext,
+    options: MigrationOptions,
+    backupPath?: string
+  ): Promise<MigrationResult> {
+    const migrations = await this.executeValidatedMigrations(
+      context.migrationPath,
+      context.state,
+      context.statePath,
+      {
+        createBackup: options.createBackup ?? false,
+        backupPath,
+        verbose: options.verbose ?? false
+      }
+    );
+    MigrationUtils.logSuccess(
+      migrations.length,
+      context.toVersion as string,
+      options.verbose ?? false
+    );
+    return MigrationRunnerHelpers.buildSuccessResult(
+      context.fromVersion,
+      context.toVersion,
+      migrations,
+      backupPath
+    );
+  }
+
+  private async executeFailure(
+    context: MigrationContext,
+    error: Error,
+    backupPath?: string
+  ): Promise<MigrationResult> {
+    this.emit('migration:error', {
+      error,
+      fromVersion: context.fromVersion as string,
+      toVersion: context.toVersion as string,
+    });
+    if (backupPath != null)
+      await this.performRollback(context.statePath as string, backupPath);
+    return MigrationRunnerHelpers.buildFailureResult(
+      context.fromVersion,
+      context.toVersion,
+      error,
+      backupPath
+    );
+  }
+
+  private async performRollback(
+    statePath: string,
+    backupPath: string
+  ): Promise<void> {
+    try {
+      this.emit('rollback:start');
+      await this.backupManager.rollback(statePath, backupPath);
+      this.emit('rollback:complete');
+    } catch (rollbackError) {
+      logger.error({
+        msg: 'Rollback failed during migration failure',
+        error: rollbackError,
+      });
     }
-    return null;
+  }
+  private async executeValidatedMigrations(
+    migrationPath: unknown,
+    state: unknown,
+    statePath: unknown,
+    options: { createBackup: boolean; backupPath?: string; verbose: boolean }
+  ): Promise<string[]> {
+    return await this.executor.executeMigrations(
+      migrationPath as { migrations: Migration[]; totalSteps: number },
+      state as StateSchema,
+      statePath as string,
+      options
+    );
   }
 
   private buildFinalContext(params: {
@@ -233,138 +231,73 @@ export class MigrationRunner extends EventEmitter {
     state: StateSchema;
     statePath: string;
   }): MigrationContext {
-    const {
-      migrationPath,
-      fromVersion,
-      toVersion,
-      dryRun,
-      verbose,
-      state,
-      statePath,
-    } = params;
-
-    if (migrationPath.migrations.length === 0) {
-      return {
-        earlyReturn: MigrationUtils.noMigrationsResult(
-          fromVersion,
-          toVersion,
-          verbose
-        ),
-      };
-    }
+    const noMigrationsResult = this.checkForNoMigrations(params);
+    if (noMigrationsResult) return { earlyReturn: noMigrationsResult };
 
     MigrationUtils.logMigrationPlan(
-      migrationPath,
-      fromVersion,
-      toVersion,
-      verbose
+      params.migrationPath,
+      params.fromVersion,
+      params.toVersion,
+      params.verbose
     );
 
-    if (dryRun) {
-      return {
-        earlyReturn: MigrationUtils.dryRunResult(
-          migrationPath,
-          fromVersion,
-          toVersion
-        ),
-      };
-    }
+    const dryRunResult = this.checkForDryRun(params);
+    if (dryRunResult) return { earlyReturn: dryRunResult };
 
-    return { state, fromVersion, toVersion, migrationPath, statePath };
+    return this.buildExecutionContext(params);
   }
 
-  private validateContext(context: MigrationContext): void {
-    const { state, fromVersion, toVersion, migrationPath, statePath } = context;
-
-    if (
-      state === undefined ||
-      fromVersion === undefined ||
-      toVersion === undefined ||
-      migrationPath === undefined ||
-      statePath === undefined
-    ) {
-      throw new Error('Invalid migration context');
-    }
+  private checkForNoMigrations(params: {
+    migrationPath: { migrations: Migration[]; totalSteps: number };
+    fromVersion: string;
+    toVersion: string;
+    verbose: boolean;
+  }) {
+    return params.migrationPath.migrations.length === 0
+      ? MigrationUtils.noMigrationsResult(
+          params.fromVersion,
+          params.toVersion,
+          params.verbose
+        )
+      : null;
   }
-
-  private getVersions(
-    state: StateSchema,
-    targetVersion?: string
-  ): { fromVersion: string; toVersion: string } {
-    const fromVersion = (state.version as string) ?? '0.0.0';
-    const toVersion = targetVersion ?? this.currentVersion;
-    return { fromVersion, toVersion };
+  private checkForDryRun(params: {
+    migrationPath: { migrations: Migration[]; totalSteps: number };
+    fromVersion: string;
+    toVersion: string;
+    dryRun: boolean;
+  }) {
+    return params.dryRun
+      ? MigrationUtils.dryRunResult(
+          params.migrationPath,
+          params.fromVersion,
+          params.toVersion
+        )
+      : null;
   }
-
-  private async loadState(statePath: string): Promise<StateSchema> {
-    try {
-      const file = Bun.file(statePath);
-      if (!(await file.exists())) {
-        // Create initial state when file doesn't exist
-        logger.info({
-          msg: 'State file not found, creating initial state',
-          path: statePath,
-        });
-        return this.createInitialState();
-      }
-
-      const content = await file.text();
-      const state = yaml.load(content) as StateSchema;
-
-      if (state === null || state === undefined || typeof state !== 'object') {
-        throw new Error('Invalid state file format');
-      }
-
-      return state;
-    } catch (error) {
-      logger.error({ msg: 'Failed to load state', error, path: statePath });
-      throw error;
-    }
-  }
-
-  private createInitialState(): StateSchema {
+  private buildExecutionContext(params: {
+    state: StateSchema;
+    fromVersion: string;
+    toVersion: string;
+    migrationPath: { migrations: Migration[]; totalSteps: number };
+    statePath: string;
+  }): MigrationContext {
     return {
-      version: '0.0.0',
-      schemaVersion: '0.0.0',
-      checklists: [],
-      lastModified: new Date().toISOString(),
+      state: params.state,
+      fromVersion: params.fromVersion,
+      toVersion: params.toVersion,
+      migrationPath: params.migrationPath,
+      statePath: params.statePath,
     };
   }
 
-  // Additional methods required by tests
-  setMaxBackups(maxBackups: number): void {
-    this.backupManager.setMaxBackups(maxBackups);
-  }
+  private validateContext(context: MigrationContext): void { const { state, fromVersion, toVersion, migrationPath, statePath } = context; if (state === undefined || fromVersion === undefined || toVersion === undefined || migrationPath === undefined || statePath === undefined) throw new Error('Invalid migration context'); }
+  private getVersions(state: StateSchema, targetVersion?: string): { fromVersion: string; toVersion: string } { return { fromVersion: (state.version as string) ?? '0.0.0', toVersion: targetVersion ?? this.currentVersion }; }
 
-  async restoreFromBackup(backupPath: string): Promise<StateSchema> {
-    return await this.backupManager.restoreBackup(backupPath);
-  }
+  private async loadState(statePath: string): Promise<StateSchema> { try { const file = Bun.file(statePath); if (!(await file.exists())) { logger.info({ msg: 'State file not found, creating initial state', path: statePath }); return { version: '0.0.0', schemaVersion: '0.0.0', checklists: [], lastModified: new Date().toISOString() }; } const content = await file.text(); const state = yaml.load(content) as StateSchema; if (state == null || typeof state !== 'object') throw new Error('Invalid state file format'); return state; } catch (error) { logger.error({ msg: 'Failed to load state', error, path: statePath }); throw error; } }
 
-  async migrateState(
-    state: StateSchema,
-    fromVersion: string,
-    toVersion: string
-  ): Promise<StateSchema> {
-    const migrationPath = this.registry.getMigrationPath(
-      fromVersion,
-      toVersion
-    );
+  setMaxBackups(maxBackups: number): void { this.backupManager.setMaxBackups(maxBackups); }
+  async restoreFromBackup(backupPath: string): Promise<StateSchema> { return await this.backupManager.restoreBackup(backupPath); }
 
-    if (migrationPath.migrations.length === 0) {
-      return state;
-    }
-
-    let currentState = state;
-    for (const migration of migrationPath.migrations) {
-      // Use the 'up' function to migrate forward
-      if (migration.up == null) {
-        throw new Error(
-          `Migration function 'up' not found for ${migration.fromVersion} -> ${migration.toVersion}`
-        );
-      }
-      currentState = migration.up(currentState) as unknown as StateSchema;
-    }
-
-    return currentState;
-  }
+  async migrateState(state: StateSchema, fromVersion: string, toVersion: string): Promise<StateSchema> { const path = this.registry.getMigrationPath(fromVersion, toVersion); if (path.migrations.length === 0) return state; let currentState = state; for (const m of path.migrations) { if (m.up == null) throw new Error(`Missing 'up' function: ${m.fromVersion} -> ${m.toVersion}`); currentState = m.up(currentState) as unknown as StateSchema; } return currentState; }
 }

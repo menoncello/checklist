@@ -116,6 +116,34 @@ export class EscapeSequenceParser {
   }
 
   private static mapCSISequence(finalChar: string, params?: string): string {
+    if (finalChar === '~' && params != null && params !== '') {
+      return this.mapSpecialKey(params);
+    }
+    return this.mapDirectionalKey(finalChar);
+  }
+
+  private static mapSpecialKey(params: string): string {
+    const num = parseInt(params.split(';')[0]);
+    const specialKeys: Record<number, string> = {
+      1: 'home',
+      2: 'insert',
+      3: 'delete',
+      4: 'end',
+      5: 'pageup',
+      6: 'pagedown',
+      15: 'f5',
+      17: 'f6',
+      18: 'f7',
+      19: 'f8',
+      20: 'f9',
+      21: 'f10',
+      23: 'f11',
+      24: 'f12',
+    };
+    return specialKeys[num] || 'unknown';
+  }
+
+  private static mapDirectionalKey(finalChar: string): string {
     const keyMap: Record<string, string> = {
       A: 'up',
       B: 'down',
@@ -125,28 +153,6 @@ export class EscapeSequenceParser {
       F: 'end',
       '~': 'special',
     };
-
-    if (finalChar === '~' && params != null && params !== '') {
-      const num = parseInt(params.split(';')[0]);
-      const specialKeys: Record<number, string> = {
-        1: 'home',
-        2: 'insert',
-        3: 'delete',
-        4: 'end',
-        5: 'pageup',
-        6: 'pagedown',
-        15: 'f5',
-        17: 'f6',
-        18: 'f7',
-        19: 'f8',
-        20: 'f9',
-        21: 'f10',
-        23: 'f11',
-        24: 'f12',
-      };
-      return specialKeys[num] || 'unknown';
-    }
-
     return keyMap[finalChar] || finalChar;
   }
 

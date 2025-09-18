@@ -8,68 +8,69 @@ export class MessageMatcher {
   ): boolean {
     if (filter == null) return true;
 
-    // Type matching
-    if (filter.type != null) {
-      if (Array.isArray(filter.type)) {
-        if (!filter.type.includes(message.type)) return false;
-      } else {
-        if (filter.type !== message.type) return false;
-      }
-    }
+    return (
+      this.matchesType(message, filter.type) &&
+      this.matchesSource(message, filter.source) &&
+      this.matchesTargets(message, filter.target) &&
+      this.matchesPriority(message, filter.priority) &&
+      this.matchesMetadata(message, filter.metadata)
+    );
+  }
 
-    // Source matching
-    if (filter.source != null) {
-      if (Array.isArray(filter.source)) {
-        if (!filter.source.includes(message.source)) return false;
-      } else {
-        if (filter.source !== message.source) return false;
-      }
-    }
+  private static matchesType(
+    message: BusMessage,
+    type?: string | string[]
+  ): boolean {
+    if (type == null) return true;
+    return Array.isArray(type)
+      ? type.includes(message.type)
+      : type === message.type;
+  }
 
-    // Target matching
-    if (filter.target != null) {
-      if (message.target == null) return false;
+  private static matchesSource(
+    message: BusMessage,
+    source?: string | string[]
+  ): boolean {
+    if (source == null) return true;
+    return Array.isArray(source)
+      ? source.includes(message.source)
+      : source === message.source;
+  }
 
-      const messageTargets = Array.isArray(message.target)
-        ? message.target
-        : [message.target];
-      const filterTargets = Array.isArray(filter.target)
-        ? filter.target
-        : [filter.target];
+  private static matchesTargets(
+    message: BusMessage,
+    target?: string | string[]
+  ): boolean {
+    if (target == null) return true;
+    if (message.target == null) return false;
 
-      const hasMatch = filterTargets.some((filterTarget) =>
-        messageTargets.includes(filterTarget)
-      );
+    const messageTargets = Array.isArray(message.target)
+      ? message.target
+      : [message.target];
+    const filterTargets = Array.isArray(target) ? target : [target];
 
-      if (!hasMatch) return false;
-    }
+    return filterTargets.some((ft) => messageTargets.includes(ft));
+  }
 
-    // Priority matching
-    if (filter.priority != null) {
-      if (
-        filter.priority.min != null &&
-        message.priority < filter.priority.min
-      ) {
-        return false;
-      }
-      if (
-        filter.priority.max != null &&
-        message.priority > filter.priority.max
-      ) {
-        return false;
-      }
-    }
+  private static matchesPriority(
+    message: BusMessage,
+    priority?: { min?: number; max?: number }
+  ): boolean {
+    if (priority == null) return true;
+    const min = priority.min ?? -Infinity;
+    const max = priority.max ?? Infinity;
+    return message.priority >= min && message.priority <= max;
+  }
 
-    // Metadata matching
-    if (filter.metadata != null && message.metadata != null) {
-      for (const [key, value] of Object.entries(filter.metadata)) {
-        if (message.metadata[key] !== value) {
-          return false;
-        }
-      }
-    }
-
-    return true;
+  private static matchesMetadata(
+    message: BusMessage,
+    metadata?: Record<string, unknown>
+  ): boolean {
+    if (metadata == null || message.metadata == null) return true;
+    const msgMetadata = message.metadata;
+    return Object.entries(metadata).every(
+      ([key, value]) => msgMetadata[key] === value
+    );
   }
 
   public static matchesTarget(
@@ -118,50 +119,77 @@ export class MessageMatcher {
       limit?: number;
     }
   ): BusMessage[] {
-    let filtered = messages;
+    const filtered = this.applyFilters(messages, filter);
+    return filter.limit != null ? filtered.slice(-filter.limit) : filtered;
+  }
 
-    if (filter.type != null) {
-      filtered = filtered.filter((msg) => msg.type === filter.type);
+  private static applyFilters(
+    messages: BusMessage[],
+    filter: {
+      type?: string;
+      source?: string;
+      target?: string;
+      priority?: { min?: number; max?: number };
+      timeRange?: { start: number; end: number };
     }
+  ): BusMessage[] {
+    return messages.filter((msg) => this.passesAllFilters(msg, filter));
+  }
 
-    if (filter.source != null) {
-      filtered = filtered.filter((msg) => msg.source === filter.source);
+  private static passesAllFilters(
+    msg: BusMessage,
+    filter: {
+      type?: string;
+      source?: string;
+      target?: string;
+      priority?: { min?: number; max?: number };
+      timeRange?: { start: number; end: number };
     }
+  ): boolean {
+    return (
+      this.passesTypeFilter(msg, filter.type) &&
+      this.passesSourceFilter(msg, filter.source) &&
+      this.passesTargetFilter(msg, filter.target) &&
+      this.passesPriorityFilter(msg, filter.priority) &&
+      this.passesTimeRangeFilter(msg, filter.timeRange)
+    );
+  }
 
-    if (filter.target != null) {
-      const targetValue = filter.target;
-      filtered = filtered.filter((msg) => {
-        if (msg.target == null) return false;
-        const targets = Array.isArray(msg.target) ? msg.target : [msg.target];
-        return targets.includes(targetValue);
-      });
-    }
+  private static passesTypeFilter(msg: BusMessage, type?: string): boolean {
+    return type == null || msg.type === type;
+  }
 
-    if (filter.priority != null) {
-      const priorityFilter = filter.priority;
-      if (priorityFilter.min != null) {
-        const minValue = priorityFilter.min;
-        filtered = filtered.filter((msg) => msg.priority >= minValue);
-      }
-      if (priorityFilter.max != null) {
-        const maxValue = priorityFilter.max;
-        filtered = filtered.filter((msg) => msg.priority <= maxValue);
-      }
-    }
+  private static passesSourceFilter(msg: BusMessage, source?: string): boolean {
+    return source == null || msg.source === source;
+  }
 
-    if (filter.timeRange != null) {
-      const timeRange = filter.timeRange;
-      filtered = filtered.filter(
-        (msg) =>
-          msg.timestamp >= timeRange.start && msg.timestamp <= timeRange.end
-      );
-    }
+  private static passesTargetFilter(msg: BusMessage, target?: string): boolean {
+    return target == null || this.hasTarget(msg, target);
+  }
 
-    if (filter.limit != null) {
-      filtered = filtered.slice(-filter.limit);
-    }
+  private static passesPriorityFilter(
+    msg: BusMessage,
+    priority?: { min?: number; max?: number }
+  ): boolean {
+    if (priority == null) return true;
+    if (priority.min != null && msg.priority < priority.min) return false;
+    if (priority.max != null && msg.priority > priority.max) return false;
+    return true;
+  }
 
-    return filtered;
+  private static passesTimeRangeFilter(
+    msg: BusMessage,
+    timeRange?: { start: number; end: number }
+  ): boolean {
+    if (timeRange == null) return true;
+    const { start, end } = timeRange;
+    return msg.timestamp >= start && msg.timestamp <= end;
+  }
+
+  private static hasTarget(msg: BusMessage, target: string): boolean {
+    if (msg.target == null) return false;
+    const targets = Array.isArray(msg.target) ? msg.target : [msg.target];
+    return targets.includes(target);
   }
 
   public static validateMessage(message: BusMessage): {
@@ -170,50 +198,60 @@ export class MessageMatcher {
   } {
     const errors: string[] = [];
 
-    if (!message.id || typeof message.id !== 'string') {
+    if (!this.isValidId(message.id))
       errors.push('Message ID is required and must be a string');
-    }
-
-    if (!message.type || typeof message.type !== 'string') {
+    if (!this.isValidType(message.type))
       errors.push('Message type is required and must be a string');
-    }
-
-    if (!message.source || typeof message.source !== 'string') {
+    if (!this.isValidSource(message.source))
       errors.push('Message source is required and must be a string');
-    }
-
-    if (typeof message.timestamp !== 'number' || message.timestamp <= 0) {
+    if (!this.isValidTimestamp(message.timestamp))
       errors.push('Message timestamp must be a positive number');
-    }
-
-    if (typeof message.priority !== 'number') {
+    if (!this.isValidPriority(message.priority))
       errors.push('Message priority must be a number');
-    }
-
-    if (message.target != null) {
+    if (!this.isValidTarget(message.target)) {
       if (
-        typeof message.target !== 'string' &&
-        !Array.isArray(message.target)
+        Array.isArray(message.target) &&
+        !message.target.every((t) => typeof t === 'string')
       ) {
+        errors.push('All message targets must be strings');
+      } else {
         errors.push('Message target must be a string or array of strings');
-      } else if (Array.isArray(message.target)) {
-        if (!message.target.every((t) => typeof t === 'string')) {
-          errors.push('All message targets must be strings');
-        }
       }
     }
-
-    if (
-      message.ttl != null &&
-      (typeof message.ttl !== 'number' || message.ttl <= 0)
-    ) {
+    if (!this.isValidTtl(message.ttl))
       errors.push('Message TTL must be a positive number');
-    }
 
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
+    return { isValid: errors.length === 0, errors };
+  }
+
+  private static isValidId(id: unknown): boolean {
+    return typeof id === 'string' && id.length > 0;
+  }
+
+  private static isValidType(type: unknown): boolean {
+    return typeof type === 'string' && type.length > 0;
+  }
+
+  private static isValidSource(source: unknown): boolean {
+    return typeof source === 'string' && source.length > 0;
+  }
+
+  private static isValidTimestamp(timestamp: unknown): boolean {
+    return typeof timestamp === 'number' && timestamp > 0;
+  }
+
+  private static isValidPriority(priority: unknown): boolean {
+    return typeof priority === 'number';
+  }
+
+  private static isValidTarget(target: unknown): boolean {
+    if (target == null) return true;
+    if (typeof target === 'string') return true;
+    return Array.isArray(target) && target.every((t) => typeof t === 'string');
+  }
+
+  private static isValidTtl(ttl: unknown): boolean {
+    return ttl == null || (typeof ttl === 'number' && ttl > 0);
   }
 
   public static createMessageQuery(query: {
@@ -224,62 +262,87 @@ export class MessageMatcher {
     timeRange?: { start?: number; end?: number };
     hasMetadata?: string[];
   }): (message: BusMessage) => boolean {
-    return (message: BusMessage) => {
-      if (query.types != null && !query.types.includes(message.type)) {
-        return false;
-      }
+    return (message: BusMessage) => this.messageMatchesQuery(message, query);
+  }
 
-      if (query.sources != null && !query.sources.includes(message.source)) {
-        return false;
-      }
+  private static messageMatchesQuery(
+    message: BusMessage,
+    query: {
+      types?: string[];
+      sources?: string[];
+      targets?: string[];
+      priorityRange?: { min?: number; max?: number };
+      timeRange?: { start?: number; end?: number };
+      hasMetadata?: string[];
+    }
+  ): boolean {
+    return (
+      this.checkTypes(message, query.types) &&
+      this.checkSources(message, query.sources) &&
+      this.checkTargets(message, query.targets) &&
+      this.checkPriority(message, query.priorityRange) &&
+      this.checkTimeRange(message, query.timeRange) &&
+      this.checkMetadata(message, query.hasMetadata)
+    );
+  }
 
-      if (query.targets != null && message.target != null) {
-        const messageTargets = Array.isArray(message.target)
-          ? message.target
-          : [message.target];
-        if (!query.targets.some((target) => messageTargets.includes(target))) {
-          return false;
-        }
-      }
+  private static checkTypes(message: BusMessage, types?: string[]): boolean {
+    return !types || types.includes(message.type);
+  }
 
-      if (query.priorityRange != null) {
-        if (
-          query.priorityRange.min != null &&
-          message.priority < query.priorityRange.min
-        ) {
-          return false;
-        }
-        if (
-          query.priorityRange.max != null &&
-          message.priority > query.priorityRange.max
-        ) {
-          return false;
-        }
-      }
+  private static checkSources(
+    message: BusMessage,
+    sources?: string[]
+  ): boolean {
+    return !sources || sources.includes(message.source);
+  }
 
-      if (query.timeRange != null) {
-        if (
-          query.timeRange.start != null &&
-          message.timestamp < query.timeRange.start
-        ) {
-          return false;
-        }
-        if (
-          query.timeRange.end != null &&
-          message.timestamp > query.timeRange.end
-        ) {
-          return false;
-        }
-      }
+  private static checkTargets(
+    message: BusMessage,
+    targets?: string[]
+  ): boolean {
+    return !targets || this.matchesAnyTarget(message, targets);
+  }
 
-      if (query.hasMetadata != null && message.metadata != null) {
-        const metadata = message.metadata;
-        if (!query.hasMetadata.every((key) => key in metadata)) {
-          return false;
-        }
-      }
+  private static checkPriority(
+    message: BusMessage,
+    range?: { min?: number; max?: number }
+  ): boolean {
+    if (!range) return true;
+    const { min = -Infinity, max = Infinity } = range;
+    return message.priority >= min && message.priority <= max;
+  }
 
-      return true;
-    };
+  private static checkTimeRange(
+    message: BusMessage,
+    range?: { start?: number; end?: number }
+  ): boolean {
+    if (!range) return true;
+    const { start = 0, end = Infinity } = range;
+    return message.timestamp >= start && message.timestamp <= end;
+  }
+
+  private static checkMetadata(
+    message: BusMessage,
+    hasMetadata?: string[]
+  ): boolean {
+    if (!hasMetadata) return true;
+    // Messages with null/undefined metadata pass through (not filtered out)
+    if (message.metadata == null) return true;
+    return hasMetadata.every(
+      (key) => message.metadata != null && key in message.metadata
+    );
+  }
+
+  private static matchesAnyTarget(
+    message: BusMessage,
+    targets: string[]
+  ): boolean {
+    // Messages with null target pass through (not filtered out)
+    if (message.target == null) return true;
+    const msgTargets = Array.isArray(message.target)
+      ? message.target
+      : [message.target];
+    return targets.some((t) => msgTargets.includes(t));
   }
 }

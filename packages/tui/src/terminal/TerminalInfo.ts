@@ -108,7 +108,18 @@ export class TerminalInfo {
   }
 
   public generateReport(): string {
-    const lines = [
+    const sections = [
+      this.generateHeaderSection(),
+      this.generateTTYSection(),
+      this.generateCapabilitiesSection(),
+      this.generateAdvancedFeaturesSection(),
+    ];
+
+    return sections.join('');
+  }
+
+  private generateHeaderSection(): string {
+    return [
       'Terminal Information Report',
       '============================',
       '',
@@ -118,12 +129,22 @@ export class TerminalInfo {
       `Version: ${this.getVersion() ?? 'Unknown'}`,
       `Session Type: ${this.getSessionType()}`,
       '',
+    ].join('\n');
+  }
+
+  private generateTTYSection(): string {
+    return [
       'TTY Information:',
       `  Is TTY: ${this.isTTY()}`,
       `  Size: ${this.getSize().width}x${this.getSize().height}`,
       `  Color Depth: ${this.getColorDepth() ?? 'Unknown'}`,
       `  Color Level: ${this.getColorDepthLevel()}`,
       '',
+    ].join('\n');
+  }
+
+  private generateCapabilitiesSection(): string {
+    return [
       'Capabilities:',
       `  Color Support: ${this.supportsColor()}`,
       `  256 Colors: ${this.supports256Colors()}`,
@@ -131,14 +152,16 @@ export class TerminalInfo {
       `  Unicode: ${this.supportsUnicode()}`,
       `  Mouse Reporting: ${this.supportsMouseReporting()}`,
       '',
-      'Advanced Features:',
-    ];
+    ].join('\n');
+  }
 
+  private generateAdvancedFeaturesSection(): string {
     const features = this.getTerminalFeatures();
-    lines.push(`  Images: ${features.supportsImages}`);
-    lines.push(`  Hyperlinks: ${features.supportsHyperlinks}`);
-    lines.push(`  Notifications: ${features.supportsNotifications}`);
-
-    return lines.join('\n');
+    return [
+      'Advanced Features:',
+      `  Images: ${features.supportsImages}`,
+      `  Hyperlinks: ${features.supportsHyperlinks}`,
+      `  Notifications: ${features.supportsNotifications}`,
+    ].join('\n');
   }
 }

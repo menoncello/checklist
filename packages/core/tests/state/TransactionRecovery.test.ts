@@ -156,7 +156,8 @@ describe('TransactionRecovery', () => {
 
       await transactionRecovery.rotateWAL(maxSize);
 
-      expect(mockWAL.rotate).toHaveBeenCalledWith(maxSize);
+      expect(mockWAL.createBackup).toHaveBeenCalled();
+      expect(mockWAL.clear).toHaveBeenCalled();
     });
 
     it('should not rotate WAL when size is within limit', async () => {
@@ -166,7 +167,8 @@ describe('TransactionRecovery', () => {
 
       await transactionRecovery.rotateWAL(maxSize);
 
-      expect(mockWAL.rotate).not.toHaveBeenCalled();
+      expect(mockWAL.createBackup).not.toHaveBeenCalled();
+      expect(mockWAL.clear).not.toHaveBeenCalled();
     });
 
     it('should use default max size when not specified', async () => {
@@ -175,7 +177,8 @@ describe('TransactionRecovery', () => {
 
       await transactionRecovery.rotateWAL();
 
-      expect(mockWAL.rotate).toHaveBeenCalledWith(10 * 1024 * 1024);
+      expect(mockWAL.createBackup).toHaveBeenCalled();
+      expect(mockWAL.clear).toHaveBeenCalled();
     });
   });
 

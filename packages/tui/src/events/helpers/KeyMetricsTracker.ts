@@ -146,26 +146,12 @@ export class KeyMetricsTracker {
   } {
     const totalKeys = this.keyHistory.length;
     const uniqueKeys = this.keyMetrics.size;
-
-    let sessionDuration = 0;
-    let mostUsedKey: string | null = null;
-    let maxCount = 0;
-
-    if (this.keyHistory.length > 1) {
-      sessionDuration =
-        this.keyHistory[this.keyHistory.length - 1].timestamp -
-        this.keyHistory[0].timestamp;
-    }
-
-    for (const [key, metrics] of this.keyMetrics.entries()) {
-      if (metrics.count > maxCount) {
-        maxCount = metrics.count;
-        mostUsedKey = key;
-      }
-    }
-
-    const averageKeysPerMinute =
-      sessionDuration > 0 ? totalKeys / (sessionDuration / 1000 / 60) : 0;
+    const sessionDuration = this.calculateSessionDuration();
+    const mostUsedKey = this.findMostUsedKey();
+    const averageKeysPerMinute = this.calculateKeysPerMinute(
+      totalKeys,
+      sessionDuration
+    );
 
     return {
       totalKeys,
@@ -174,6 +160,35 @@ export class KeyMetricsTracker {
       averageKeysPerMinute,
       mostUsedKey,
     };
+  }
+
+  private calculateSessionDuration(): number {
+    if (this.keyHistory.length <= 1) return 0;
+    return (
+      this.keyHistory[this.keyHistory.length - 1].timestamp -
+      this.keyHistory[0].timestamp
+    );
+  }
+
+  private findMostUsedKey(): string | null {
+    let mostUsedKey: string | null = null;
+    let maxCount = 0;
+
+    for (const [key, metrics] of this.keyMetrics.entries()) {
+      if (metrics.count > maxCount) {
+        maxCount = metrics.count;
+        mostUsedKey = key;
+      }
+    }
+
+    return mostUsedKey;
+  }
+
+  private calculateKeysPerMinute(
+    totalKeys: number,
+    sessionDuration: number
+  ): number {
+    return sessionDuration > 0 ? totalKeys / (sessionDuration / 1000 / 60) : 0;
   }
 
   public clear(): void {

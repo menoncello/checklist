@@ -114,54 +114,66 @@ export class MigrationManager {
   }
 
   private async performBackupRestore(backupPath: string): Promise<void> {
-    // Create a backup of current state before restoring
     const statePath = this.directoryManager.getStatePath();
-    if ((await this.directoryManager.fileExists(statePath)) === true) {
-      const stateContent = await this.directoryManager.readFile(statePath);
-      const currentState = yaml.load(stateContent) as ChecklistState;
-      await this.backupManager.createBackup(currentState);
-    }
+    await this.backupCurrentState(statePath);
+    await this.directoryManager.writeFile(
+      statePath,
+      await this.directoryManager.readFile(backupPath)
+    );
+    await this.migrateIfNeeded(statePath);
+  }
 
-    // Copy backup content to current state file
-    const backupContent = await this.directoryManager.readFile(backupPath);
-    await this.directoryManager.writeFile(statePath, backupContent);
-
-    // Check if the restored state needs migration
-    const migrationStatus = await this.checkMigrationStatus();
-    if (migrationStatus.needsMigration) {
-      this.logger.info({ msg: 'Restored state requires migration' });
-      const stateContent = await this.directoryManager.readFile(statePath);
-      const state = yaml.load(stateContent) as ChecklistState;
-      const now = new Date().toISOString();
-      const { conflicts, recovery, activeInstance, ...restState } = state;
-      const stateSchema: StateSchema = {
-        ...restState,
-        version: state.version ?? migrationStatus.currentVersion,
-        lastModified: state.metadata?.modified ?? now,
-        metadata: {
-          created: state.metadata?.created ?? now,
-          modified: state.metadata?.modified ?? now,
-        },
-        activeInstance: activeInstance as unknown,
-        recovery: recovery as unknown,
-        conflicts: conflicts !== undefined ? [conflicts] : undefined,
-      };
-      const migratedState = await this.migrationRunner.migrateState(
-        stateSchema,
-        migrationStatus.currentVersion,
-        migrationStatus.targetVersion
-      );
-      await this.directoryManager.writeFile(
-        statePath,
-        yaml.dump(migratedState)
+  private async backupCurrentState(statePath: string): Promise<void> {
+    if (await this.directoryManager.fileExists(statePath)) {
+      const content = await this.directoryManager.readFile(statePath);
+      await this.backupManager.createBackup(
+        yaml.load(content) as ChecklistState
       );
     }
   }
 
+  private async migrateIfNeeded(statePath: string): Promise<void> {
+    const status = await this.checkMigrationStatus();
+    if (!status.needsMigration) return;
+
+    this.logger.info({ msg: 'Restored state requires migration' });
+    const state = await this.loadAndPrepareState(
+      statePath,
+      status.currentVersion
+    );
+    const migrated = await this.migrationRunner.migrateState(
+      state,
+      status.currentVersion,
+      status.targetVersion
+    );
+    await this.directoryManager.writeFile(statePath, yaml.dump(migrated));
+  }
+
+  private async loadAndPrepareState(
+    statePath: string,
+    currentVersion: string
+  ): Promise<StateSchema> {
+    const content = await this.directoryManager.readFile(statePath);
+    const state = yaml.load(content) as ChecklistState;
+    const now = new Date().toISOString();
+    const { conflicts, recovery, activeInstance, ...rest } = state;
+    return {
+      ...rest,
+      version: state.version ?? currentVersion,
+      lastModified: state.metadata?.modified ?? now,
+      metadata: {
+        created: state.metadata?.created ?? now,
+        modified: state.metadata?.modified ?? now,
+      },
+      activeInstance: activeInstance as unknown,
+      recovery: recovery as unknown,
+      conflicts: conflicts !== undefined ? [conflicts] : undefined,
+    };
+  }
+
   async runMigration(): Promise<void> {
     const statePath = this.directoryManager.getStatePath();
-
-    if ((await this.directoryManager.fileExists(statePath)) !== true) {
+    if (!(await this.directoryManager.fileExists(statePath))) {
       throw new Error('No state file found to migrate');
     }
 
@@ -177,27 +189,15 @@ export class MigrationManager {
       to: status.latestVersion,
     });
 
-    const stateContent = await this.directoryManager.readFile(statePath);
-    const state = yaml.load(stateContent) as ChecklistState;
-    const now = new Date().toISOString();
-    const { conflicts, recovery, activeInstance, ...restState } = state;
-    const stateSchema: StateSchema = {
-      ...restState,
-      version: state.version ?? status.currentVersion,
-      lastModified: state.metadata?.modified ?? now,
-      metadata: {
-        created: state.metadata?.created ?? now,
-        modified: state.metadata?.modified ?? now,
-      },
-      activeInstance: activeInstance as unknown,
-      recovery: recovery as unknown,
-      conflicts: conflicts !== undefined ? [conflicts] : undefined,
-    };
-    const migratedState = await this.migrationRunner.migrateState(
-      stateSchema,
+    const state = await this.loadAndPrepareState(
+      statePath,
+      status.currentVersion
+    );
+    const migrated = await this.migrationRunner.migrateState(
+      state,
       status.currentVersion,
       status.latestVersion ?? status.targetVersion
     );
-    await this.directoryManager.writeFile(statePath, yaml.dump(migratedState));
+    await this.directoryManager.writeFile(statePath, yaml.dump(migrated));
   }
 }

@@ -110,49 +110,59 @@ export class ApplicationLoop {
   }
 
   private parseInput(input: string): InputEvent {
-    // Basic ANSI escape sequence parsing
     if (input.startsWith('\x1b[')) {
-      const seq = input.slice(2);
-
-      // Arrow keys
-      if (seq === 'A') return { type: 'key', key: 'up', raw: input };
-      if (seq === 'B') return { type: 'key', key: 'down', raw: input };
-      if (seq === 'C') return { type: 'key', key: 'right', raw: input };
-      if (seq === 'D') return { type: 'key', key: 'left', raw: input };
-
-      // Function keys
-      if (seq.match(/^\d+~$/)) {
-        const code = parseInt(seq.slice(0, -1));
-        return { type: 'key', key: `f${code}`, raw: input };
-      }
-
-      // Mouse events (if enabled)
-      if (seq.startsWith('M')) {
-        return { type: 'mouse', raw: input };
-      }
-
-      return { type: 'escape', sequence: seq, raw: input };
+      return this.parseEscapeSequence(input);
     }
 
-    // Control characters
     if (input.charCodeAt(0) < 32) {
-      const controlMap: Record<number, string> = {
-        8: 'backspace',
-        9: 'tab',
-        10: 'enter',
-        13: 'enter',
-        27: 'escape',
-        127: 'delete',
-      };
-
-      const key =
-        controlMap[input.charCodeAt(0)] ??
-        `ctrl+${String.fromCharCode(input.charCodeAt(0) + 96)}`;
-      return { type: 'key', key, raw: input };
+      return this.parseControlCharacter(input);
     }
 
-    // Regular characters
     return { type: 'key', key: input, raw: input };
+  }
+
+  private parseEscapeSequence(input: string): InputEvent {
+    const seq = input.slice(2);
+    const arrowKey = this.parseArrowKey(seq, input);
+    if (arrowKey) return arrowKey;
+
+    if (seq.match(/^\d+~$/)) {
+      const code = parseInt(seq.slice(0, -1));
+      return { type: 'key', key: `f${code}`, raw: input };
+    }
+
+    if (seq.startsWith('M')) {
+      return { type: 'mouse', raw: input };
+    }
+
+    return { type: 'escape', sequence: seq, raw: input };
+  }
+
+  private parseArrowKey(seq: string, input: string): InputEvent | null {
+    const arrowKeys: Record<string, string> = {
+      A: 'up',
+      B: 'down',
+      C: 'right',
+      D: 'left',
+    };
+    const key = arrowKeys[seq];
+    return key ? { type: 'key', key, raw: input } : null;
+  }
+
+  private parseControlCharacter(input: string): InputEvent {
+    const controlMap: Record<number, string> = {
+      8: 'backspace',
+      9: 'tab',
+      10: 'enter',
+      13: 'enter',
+      27: 'escape',
+      127: 'delete',
+    };
+
+    const key =
+      controlMap[input.charCodeAt(0)] ??
+      `ctrl+${String.fromCharCode(input.charCodeAt(0) + 96)}`;
+    return { type: 'key', key, raw: input };
   }
 
   private handleError(error: Error): void {

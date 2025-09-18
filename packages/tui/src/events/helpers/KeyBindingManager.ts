@@ -165,11 +165,14 @@ export class KeyBindingManager {
     eventMods: KeyModifiers,
     bindingMods: KeyModifiers
   ): boolean {
-    return (
-      (eventMods.ctrl ?? false) === (bindingMods.ctrl ?? false) &&
-      (eventMods.alt ?? false) === (bindingMods.alt ?? false) &&
-      (eventMods.shift ?? false) === (bindingMods.shift ?? false) &&
-      (eventMods.meta ?? false) === (bindingMods.meta ?? false)
+    const modifierKeys: Array<keyof KeyModifiers> = [
+      'ctrl',
+      'alt',
+      'shift',
+      'meta',
+    ];
+    return modifierKeys.every(
+      (key) => (eventMods[key] ?? false) === (bindingMods[key] ?? false)
     );
   }
 

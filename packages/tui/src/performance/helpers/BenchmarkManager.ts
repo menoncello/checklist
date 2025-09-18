@@ -116,39 +116,46 @@ export class BenchmarkManager {
   }
 
   public getBenchmarks(filter?: BenchmarkFilter): PerformanceBenchmark[] {
-    let result = this.benchmarks;
+    if (filter == null) {
+      return this.benchmarks;
+    }
 
-    if (filter != null) {
-      if (filter.name != null) {
-        result = result.filter((b) => b.name === filter.name);
-      }
+    return this.applyFilters(this.benchmarks, filter);
+  }
 
-      if (filter.category != null) {
-        result = result.filter((b) => b.category === filter.category);
-      }
+  private applyFilters(
+    benchmarks: PerformanceBenchmark[],
+    filter: BenchmarkFilter
+  ): PerformanceBenchmark[] {
+    let result = benchmarks;
 
-      if (filter.completed != null) {
-        result = result.filter((b) => {
-          const isCompleted = b.endTime != null;
-          return filter.completed === isCompleted;
-        });
-      }
+    if (filter.name != null) {
+      result = result.filter((b) => b.name === filter.name);
+    }
 
-      if (filter.startTime != null) {
-        const startTime = filter.startTime;
-        result = result.filter((b) => b.startTime >= startTime);
-      }
+    if (filter.category != null) {
+      result = result.filter((b) => b.category === filter.category);
+    }
 
-      if (filter.endTime != null) {
-        const endTime = filter.endTime;
-        result = result.filter(
-          (b) => b.endTime != null && b.endTime <= endTime
-        );
-      }
+    if (filter.completed != null) {
+      result = result.filter((b) => {
+        const isCompleted = b.endTime != null;
+        return filter.completed === isCompleted;
+      });
+    }
 
-      if (filter.limit != null) {
-        result = result.slice(-filter.limit);
-      }
+    if (filter.startTime != null) {
+      const startTime = filter.startTime;
+      result = result.filter((b) => b.startTime >= startTime);
+    }
+
+    if (filter.endTime != null) {
+      const endTime = filter.endTime;
+      result = result.filter((b) => b.endTime != null && b.endTime <= endTime);
+    }
+
+    if (filter.limit != null) {
+      result = result.slice(-filter.limit);
     }
 
     return result;

@@ -12,7 +12,6 @@ export {
 } from './decorators';
 export {
   PerformanceDashboard,
-  createDevelopmentDashboard,
   type DashboardConfig,
 } from './PerformanceDashboard';
 export {

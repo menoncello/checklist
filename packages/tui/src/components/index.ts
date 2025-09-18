@@ -22,7 +22,7 @@ export type {
   ComponentInstanceState,
   ComponentInstanceConfig,
   ComponentInstanceMetrics,
-} from './ComponentInstance';
+} from './ComponentInstanceTypes';
 
 export type {
   LifecycleState,

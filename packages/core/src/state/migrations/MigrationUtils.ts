@@ -66,7 +66,7 @@ export class MigrationUtils {
       migrationPath.migrations.forEach((migration, index) => {
         logger.info({
           msg: `Migration ${index + 1}/${migrationPath.migrations.length}`,
-          id: migration.id,
+          id: migration.id ?? 'unknown',
           from: migration.fromVersion,
           to: migration.toVersion,
           description: migration.description,

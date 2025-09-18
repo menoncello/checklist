@@ -234,8 +234,8 @@ describe('MetricsCollector', () => {
       collector.collect('critical-metric', 1);
       collector.collect('warning-metric', 1);
 
-      const criticalAlerts = collector.getAlerts('critical');
-      const warningAlerts = collector.getAlerts('warning');
+      const criticalAlerts = collector.getAlertsBySeverity('critical');
+      const warningAlerts = collector.getAlertsBySeverity('warning');
       const allAlerts = collector.getAlerts();
 
       expect(criticalAlerts.some((a) => a.severity === 'critical')).toBe(true);

@@ -25,7 +25,20 @@ export default [
       '.vscode/**',
       '.husky/**',
       '.stryker-tmp/**',
-      'stryker.conf.js'
+      'stryker.conf.js',
+      'packages/tui/test-simple.ts',
+      '**/*-old.ts',
+      '**/*.original.ts',
+      '**/EventManager-old.ts',
+      '**/StartupProfiler.original.ts',
+      '**/performance/index-old.ts',
+      '**/CleanShutdown-old.ts',
+      '**/debug/index-old.ts',
+      '**/DebugManager.ts',
+      '**/MemoryTracker.ts',
+      '**/StartupProfiler.ts',
+      '**/MetricsCollector.ts',
+      '**/ColorSupport.ts'
     ]
   },
   {

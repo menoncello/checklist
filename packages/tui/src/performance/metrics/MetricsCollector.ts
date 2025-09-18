@@ -1,6 +1,10 @@
 import { AlertManager } from './AlertManager';
 import { MetricsAggregator } from './MetricsAggregator';
 import { MetricsBuffer } from './MetricsBuffer';
+import { MetricsQueryEngine } from './MetricsQueryEngine';
+import { MetricsRecorder } from './MetricsRecorder';
+import { MetricsReportGenerator } from './MetricsReportGenerator';
+import { MetricsSeriesManager } from './MetricsSeriesManager';
 import {
   MetricPoint,
   MetricSeries,
@@ -8,25 +12,42 @@ import {
   MetricsReport,
   MetricsCollectorConfig,
   CollectorMetrics,
+  AlertRule,
 } from './types';
 
 export class MetricsCollector {
   private config: MetricsCollectorConfig;
-  private buffer: MetricsBuffer;
-  private alertManager: AlertManager;
-  private aggregator: MetricsAggregator;
+  private buffer!: MetricsBuffer;
+  private alertManager!: AlertManager;
+  private aggregator!: MetricsAggregator;
+  private recorder!: MetricsRecorder;
+  private seriesManager!: MetricsSeriesManager;
+  private queryEngine!: MetricsQueryEngine;
+  private reportGenerator!: MetricsReportGenerator;
+
   private eventHandlers = new Map<string, Set<(...args: unknown[]) => void>>();
   private flushTimer: Timer | null = null;
   private aggregationTimer: Timer | null = null;
   private collectionStartTime = Date.now();
-  private totalPointsCollected = 0;
   private isRunning = false;
-  private series = new Map<string, MetricSeries>();
   private alertRules: import('./types').AlertRule[] = [];
   private alerts: import('./types').MetricAlert[] = [];
 
-  constructor(config: Partial<MetricsCollectorConfig> = {}) {
-    this.config = {
+  constructor(
+    config: Partial<MetricsCollectorConfig & { alertRules?: AlertRule[] }> = {}
+  ) {
+    this.config = this.initializeConfig(config);
+    this.initializeComponents();
+    this.initializeDefaultAlertRules();
+    if (config.alertRules !== undefined) {
+      this.alertRules = config.alertRules;
+    }
+  }
+
+  private initializeConfig(
+    config: Partial<MetricsCollectorConfig>
+  ): MetricsCollectorConfig {
+    return {
       bufferSize: 10000,
       flushInterval: 30000,
       aggregationInterval: 30000,
@@ -43,44 +64,66 @@ export class MetricsCollector {
       persistMetrics: false,
       ...config,
     };
+  }
 
+  private initializeComponents(): void {
     this.buffer = new MetricsBuffer(
       this.config.bufferSize,
       this.config.retentionPeriod
     );
     this.alertManager = new AlertManager(this.config.maxAlerts);
     this.aggregator = new MetricsAggregator();
-
-    // Set up default alert rules
-    this.setupDefaultAlertRules();
+    this.recorder = new MetricsRecorder(this.buffer, this.config.sampleRate);
+    this.seriesManager = new MetricsSeriesManager();
+    this.queryEngine = new MetricsQueryEngine();
+    this.reportGenerator = new MetricsReportGenerator(
+      this.collectionStartTime,
+      0
+    );
   }
 
-  private setupDefaultAlertRules(): void {
-    this.alertRules.push({
+  private initializeDefaultAlertRules(): void {
+    this.alertRules = [
+      this.createMemoryAlertRule(),
+      this.createCpuAlertRule(),
+      this.createResponseTimeAlertRule(),
+    ];
+  }
+
+  private createMemoryAlertRule(): AlertRule {
+    return {
       id: 'high-memory',
       metric: 'memory_heap_used',
-      condition: 'value > 0.8',
-      severity: 'warning',
+      threshold: 100 * 1024 * 1024,
+      operator: '>',
+      severity: 'high',
       message: 'High memory usage detected',
-    });
+    };
   }
 
-  public start(): void {
-    if (this.isRunning) return;
-    this.isRunning = true;
-    this.startCollection();
+  private createCpuAlertRule(): AlertRule {
+    return {
+      id: 'high-cpu',
+      metric: 'cpu_usage',
+      threshold: 80,
+      operator: '>',
+      severity: 'high',
+      message: 'High CPU usage detected',
+    };
   }
 
-  public recordMetric(
-    name: string,
-    value: number,
-    metadata?: Record<string, unknown>
-  ): void {
-    const tags = metadata as Record<string, string> | undefined;
-    this.record(name, value, tags);
+  private createResponseTimeAlertRule(): AlertRule {
+    return {
+      id: 'slow-response',
+      metric: 'response_time',
+      threshold: 1000,
+      operator: '>',
+      severity: 'medium',
+      message: 'Slow response time detected',
+    };
   }
 
-  public record(
+  record(
     nameOrObj:
       | string
       | {
@@ -93,165 +136,74 @@ export class MetricsCollector {
     tags?: Record<string, string>,
     metadata?: Record<string, unknown>
   ): void {
-    let name: string;
-    let actualValue: number;
-    let actualTags: Record<string, string> | undefined;
-    let actualMetadata: Record<string, unknown> | undefined;
+    if (!this.recorder.shouldRecord(this.config.enableCollection ?? true))
+      return;
 
-    if (typeof nameOrObj === 'object') {
-      name = nameOrObj.name;
-      actualValue = nameOrObj.value;
-      actualTags = nameOrObj.tags;
-      actualMetadata = nameOrObj.metadata;
-    } else {
-      name = nameOrObj;
-      actualValue = value ?? 0;
-      actualTags = tags;
-      actualMetadata = metadata;
-    }
+    const params = this.recorder.parseRecordParams(
+      nameOrObj,
+      value,
+      tags,
+      metadata
+    );
+    const point = this.recorder.createMetricPoint(params);
 
-    if (this.config.enableCollection !== true) return;
-    if (!this.shouldSample()) return;
+    this.recorder.recordPoint(params.name, point, (name, pt) => {
+      this.seriesManager.addPointToSeries(name, pt, params.tags);
+      this.processAlerts(name, pt.value, params.tags);
+      this.emit('metricCollected', { name, point: pt });
+    });
 
-    const point: MetricPoint = {
-      timestamp: Date.now(),
-      value: actualValue,
-      tags: actualTags ?? {},
-      metadata: { ...actualMetadata, metric: name },
-    };
+    this.reportGenerator.setTotalPointsCollected(
+      this.recorder.getTotalPointsCollected()
+    );
+  }
 
-    this.buffer.addPoint(name, point);
-    this.totalPointsCollected++;
-
-    // Update or create series
-    let series = this.series.get(name);
-    if (!series) {
-      series = {
-        name,
-        points: [],
-        aggregations: {
-          count: 0,
-          sum: 0,
-          avg: 0,
-          min: Infinity,
-          max: -Infinity,
-          p50: 0,
-          p95: 0,
-          p99: 0,
-          latest: 0,
-        },
-        tags: actualTags ?? {},
-      };
-      this.series.set(name, series);
-    }
-
-    series.points.push(point);
-    // Update aggregations immediately
-    this.updateSeriesAggregations(series);
-
+  private processAlerts(
+    name: string,
+    value: number,
+    tags?: Record<string, string>
+  ): void {
     if (
       this.config.enableAlerts === true ||
       this.config.enableAlerting === true
     ) {
-      this.checkAlerts(name, actualValue, actualTags);
+      this.checkAlerts(name, value, tags);
     }
-
-    this.emit('metricCollected', { name, point });
   }
 
-  private updateSeriesAggregations(series: MetricSeries): void {
-    const values = series.points.map((p) => p.value);
-    const sorted = [...values].sort((a, b) => a - b);
-
-    series.aggregations = {
-      count: values.length,
-      sum: values.reduce((a, b) => a + b, 0),
-      avg: values.reduce((a, b) => a + b, 0) / values.length,
-      min: Math.min(...values),
-      max: Math.max(...values),
-      latest: values[values.length - 1],
-      p50: this.getPercentile(sorted, 0.5),
-      p95: this.getPercentile(sorted, 0.95),
-      p99: this.getPercentile(sorted, 0.99),
-    };
+  on(event: string, handler: (...args: unknown[]) => void): void {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, new Set());
+    }
+    this.eventHandlers.get(event)?.add(handler);
   }
 
-  private getPercentile(sorted: number[], percentile: number): number {
-    if (sorted.length === 0) return 0;
-    if (sorted.length === 1) return sorted[0];
-    const index = Math.ceil(sorted.length * percentile) - 1;
-    return sorted[Math.max(0, Math.min(index, sorted.length - 1))];
+  off(event: string, handler: (...args: unknown[]) => void): void {
+    this.eventHandlers.get(event)?.delete(handler);
   }
 
-  private checkAlerts(
-    metric: string,
-    value: number,
-    tags?: Record<string, string>
-  ): void {
-    for (const rule of this.alertRules) {
-      if (
-        rule.metric === metric &&
-        typeof rule.condition === 'string' &&
-        rule.condition !== '' &&
-        this.evaluateCondition(rule.condition, value)
-      ) {
-        const alert: import('./types').MetricAlert = {
-          id: `${rule.id}-${Date.now()}`,
-          ruleId: rule.id,
-          timestamp: Date.now(),
-          severity: rule.severity,
-          metric,
-          value,
-          condition: rule.condition,
-          message: rule.message,
-          tags: tags ?? {},
-        };
-
-        this.alerts.push(alert);
-        if (this.alerts.length > 1000) {
-          this.alerts = this.alerts.slice(-1000);
+  private emit(event: string, data?: unknown): void {
+    const handlers = this.eventHandlers.get(event);
+    if (handlers) {
+      handlers.forEach((handler) => {
+        try {
+          handler(data);
+        } catch (_error) {
+          // Don't let handler errors propagate but log them if needed
+          if (event !== 'error' && event !== 'collectionError') {
+            // Could log error here if we had a logger
+          }
         }
-
-        this.emit('alertTriggered', { alert });
-      }
+      });
     }
   }
 
-  private evaluateCondition(condition: string, value: number): boolean {
-    try {
-      // Safe evaluation of simple conditions
-      const match = condition.match(/value\s*([><=!]+)\s*([\d.]+)/);
-      if (!match) return false;
+  start(): void {
+    if (this.isRunning) return;
 
-      const [, operator, threshold] = match;
-      const thresholdValue = parseFloat(threshold);
+    this.isRunning = true;
+    this.collectionStartTime = Date.now();
 
-      switch (operator) {
-        case '>':
-          return value > thresholdValue;
-        case '<':
-          return value < thresholdValue;
-        case '>=':
-          return value >= thresholdValue;
-        case '<=':
-          return value <= thresholdValue;
-        case '==':
-          return value === thresholdValue;
-        case '!=':
-          return value !== thresholdValue;
-        default:
-          return false;
-      }
-    } catch {
-      return false;
-    }
-  }
-
-  private shouldSample(): boolean {
-    return Math.random() < this.config.sampleRate;
-  }
-
-  private startCollection(): void {
     this.flushTimer = setInterval(() => {
       this.flushBuffer();
     }, this.config.flushInterval);
@@ -263,7 +215,61 @@ export class MetricsCollector {
     this.emit('collectionStarted');
   }
 
-  public collect(
+  stop(): void {
+    if (!this.isRunning) return;
+
+    this.isRunning = false;
+
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
+
+    if (this.aggregationTimer) {
+      clearInterval(this.aggregationTimer);
+      this.aggregationTimer = null;
+    }
+
+    this.emit('collectionStopped');
+  }
+
+  private flushBuffer(): void {
+    const flushed = this.buffer.flush();
+    for (const [name, points] of flushed) {
+      this.processFlushedPoints(name, points);
+    }
+    this.emit('bufferFlushed', { pointsCount: flushed.size });
+  }
+
+  private processFlushedPoints(name: string, points: MetricPoint[]): void {
+    if (points.length === 0) return;
+
+    const aggregations = this.aggregator.calculateAggregations(points);
+    const series: MetricSeries = {
+      name,
+      points,
+      aggregations,
+      tags: this.queryEngine.extractCommonTags(points),
+    };
+
+    this.buffer.updateSeries(name, series);
+  }
+
+  private performAggregation(): void {
+    const allSeries = this.buffer.getAllSeries();
+    for (const [name, series] of allSeries) {
+      const updatedAggregations = this.aggregator.calculateAggregations(
+        series.points
+      );
+      this.buffer.updateSeries(name, {
+        ...series,
+        aggregations: updatedAggregations,
+      });
+    }
+    this.emit('aggregationPerformed', { seriesCount: allSeries.size });
+  }
+
+  collect(
     name: string,
     valueOrCollector: number | (() => number | Promise<number>),
     tags?: Record<string, string>
@@ -283,284 +289,329 @@ export class MetricsCollector {
     }
   }
 
-  private flushBuffer(): void {
-    const flushed = this.buffer.flush();
-    for (const [name, points] of flushed) {
-      this.processFlushedPoints(name, points);
-    }
-    this.emit('bufferFlushed', { pointsCount: flushed.size });
+  query(query: MetricQuery): MetricSeries[] {
+    return this.queryEngine.query(this.seriesManager.getSeries(), query);
   }
 
-  private processFlushedPoints(name: string, points: MetricPoint[]): void {
-    if (points.length === 0) return;
-
-    const aggregations = this.aggregator.calculateAggregations(points);
-    const series: MetricSeries = {
-      name,
-      points,
-      aggregations,
-      tags: this.extractCommonTags(points),
-    };
-
-    this.buffer.updateSeries(name, series);
+  generateReport(timeRange?: { start: number; end: number }): MetricsReport {
+    return this.reportGenerator.generateReport(
+      this.seriesManager.getSeries(),
+      this.alerts,
+      timeRange
+    );
   }
 
-  private extractCommonTags(points: MetricPoint[]): Record<string, string> {
-    if (points.length === 0) return {};
-
-    const firstTags = points[0].tags ?? {};
-    const commonTags: Record<string, string> = {};
-
-    for (const [key, value] of Object.entries(firstTags)) {
-      if (points.every((p) => p.tags?.[key] === value)) {
-        commonTags[key] = value;
+  private checkAlerts(
+    name: string,
+    value: number,
+    tags?: Record<string, string>
+  ): void {
+    for (const rule of this.alertRules) {
+      if (this.matchesRule(rule, name, tags)) {
+        const alert = this.createAlertFromRule(rule, name, value, tags);
+        if (alert !== null && alert !== undefined) {
+          this.alerts.push(alert);
+          this.trimAlerts();
+          this.emit('alertTriggered', { alert });
+        }
       }
     }
-
-    return commonTags;
   }
 
-  private performAggregation(): void {
-    const allSeries = this.buffer.getAllSeries();
-    for (const [name, series] of allSeries) {
-      const updatedAggregations = this.aggregator.calculateAggregations(
-        series.points
+  private createAlertFromRule(
+    rule: import('./types').AlertRule,
+    name: string,
+    value: number,
+    tags?: Record<string, string>
+  ): import('./types').MetricAlert | null {
+    // Check if alert should trigger based on condition or operator
+    let shouldTrigger = false;
+
+    if (rule.condition !== undefined) {
+      try {
+        // Simple evaluation for test conditions
+        shouldTrigger = this.evaluateCondition(rule.condition, value);
+      } catch {
+        return null;
+      }
+    } else if (rule.operator !== undefined && rule.threshold !== undefined) {
+      shouldTrigger = this.evaluateOperator(
+        value,
+        rule.operator,
+        rule.threshold
       );
-      this.buffer.updateSeries(name, {
-        ...series,
-        aggregations: updatedAggregations,
-      });
-    }
-    this.emit('aggregationPerformed', { seriesCount: allSeries.size });
-  }
-
-  public query(query: MetricQuery): MetricSeries[] {
-    let results = Array.from(this.series.values());
-
-    // Filter by name
-    if (typeof query.name === 'string' && query.name !== '') {
-      const name = query.name;
-      results = results.filter((s) => s.name.includes(name));
     }
 
-    // Filter by tags
-    if (query.tags) {
-      const tags = query.tags;
-      results = results.filter((s) => {
-        for (const [key, value] of Object.entries(tags)) {
-          if (s.tags[key] !== value) return false;
-        }
-        return true;
-      });
-    }
-
-    // Filter by time range
-    if (query.timeRange) {
-      const timeRange = query.timeRange;
-      results = results
-        .map((s) => ({
-          ...s,
-          points: s.points.filter(
-            (p) =>
-              p.timestamp >= timeRange.start && p.timestamp <= timeRange.end
-          ),
-        }))
-        .filter((s) => s.points.length > 0);
-    }
-
-    // Apply limit to points
-    if (typeof query.limit === 'number' && query.limit > 0) {
-      const limit = query.limit;
-      results = results.map((s) => ({
-        ...s,
-        points: s.points.slice(-limit),
-      }));
-    }
-
-    return results;
-  }
-
-  public generateReport(timeRange?: {
-    start: number;
-    end: number;
-  }): MetricsReport {
-    const now = Date.now();
-    const range = timeRange ?? {
-      start: this.collectionStartTime,
-      end: now,
-    };
+    if (!shouldTrigger) return null;
 
     return {
-      generatedAt: now,
-      timeRange: range,
-      summary: this.createSummary(this.series),
-      series: Array.from(this.series.values()),
-      alerts: this.alerts,
-      recommendations: this.generateRecommendations(),
-      performance: this.getCollectorMetrics(),
+      id: `alert-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ruleId: rule.id,
+      timestamp: Date.now(),
+      severity: rule.severity,
+      metric: name,
+      value,
+      threshold: rule.threshold,
+      condition: rule.condition,
+      message: rule.message,
+      tags: { ...rule.tags, ...tags },
     };
   }
 
-  private generateRecommendations(): string[] {
-    const recommendations: string[] = [];
+  private evaluateCondition(condition: string, value: number): boolean {
+    // Simple evaluation for common patterns
+    if (condition.includes('value >')) {
+      const threshold = parseFloat(condition.split('>')[1].trim());
+      return value > threshold;
+    }
+    if (condition.includes('value <')) {
+      const threshold = parseFloat(condition.split('<')[1].trim());
+      return value < threshold;
+    }
+    if (condition.includes('value >=')) {
+      const threshold = parseFloat(condition.split('>=')[1].trim());
+      return value >= threshold;
+    }
+    if (condition.includes('value <=')) {
+      const threshold = parseFloat(condition.split('<=')[1].trim());
+      return value <= threshold;
+    }
+    if (condition.includes('value ==')) {
+      const threshold = parseFloat(condition.split('==')[1].trim());
+      return value === threshold;
+    }
+    return false;
+  }
 
-    // Check for high variance metrics
-    for (const series of this.series.values()) {
-      if (series.aggregations.count > 5) {
-        const variance = series.aggregations.max - series.aggregations.min;
-        const avgRange = series.aggregations.avg * 0.5;
-        if (variance > avgRange) {
-          recommendations.push(`High variance detected in ${series.name}`);
-        }
+  private evaluateOperator(
+    value: number,
+    operator: '>' | '<' | '>=' | '<=' | '==' | '!=',
+    threshold: number
+  ): boolean {
+    switch (operator) {
+      case '>':
+        return value > threshold;
+      case '<':
+        return value < threshold;
+      case '>=':
+        return value >= threshold;
+      case '<=':
+        return value <= threshold;
+      case '==':
+        return value === threshold;
+      case '!=':
+        return value !== threshold;
+      default:
+        return false;
+    }
+  }
+
+  private trimAlerts(): void {
+    if (this.alerts.length > this.config.maxAlerts) {
+      this.alerts = this.alerts.slice(-this.config.maxAlerts);
+    }
+  }
+
+  private matchesRule(
+    rule: import('./types').AlertRule,
+    name: string,
+    tags?: Record<string, string>
+  ): boolean {
+    if (rule.metric !== name) return false;
+
+    if (rule.tags !== undefined) {
+      for (const [key, value] of Object.entries(rule.tags)) {
+        if (tags?.[key] !== value) return false;
       }
     }
 
-    return recommendations;
+    return true;
   }
 
-  private createSummary(allSeries: Map<string, MetricSeries>) {
-    const totalPoints = Array.from(allSeries.values()).reduce(
-      (sum, series) => sum + series.points.length,
-      0
-    );
+  getCollectorMetrics(): CollectorMetrics {
+    const now = Date.now();
+    const metrics = this.getMetrics();
+    const totalPointsCollected = this.recorder.getTotalPointsCollected();
+    const uptime = now - this.collectionStartTime;
 
     return {
-      totalMetrics: this.totalPointsCollected,
-      totalPoints,
-      uniqueSeries: allSeries.size,
-      sampleRate: this.config.sampleRate,
-    };
-  }
-
-  public getCollectorMetrics(): CollectorMetrics {
-    const uptime = Date.now() - this.collectionStartTime;
-    const processedPerSecond =
-      uptime > 0 ? (this.totalPointsCollected / uptime) * 1000 : 0;
-    const allPoints = Array.from(this.series.values()).reduce(
-      (sum, s) => sum + s.points.length,
-      0
-    );
-
-    return {
-      totalCollected: this.totalPointsCollected,
-      totalPointsCollected: this.totalPointsCollected,
-      totalSeries: this.series.size,
-      totalPoints: allPoints,
-      bufferSize: this.buffer.getBufferSize(),
+      totalCollected: totalPointsCollected,
+      totalPointsCollected,
+      totalSeries: metrics.totalSeries,
+      totalPoints: metrics.totalPoints,
+      bufferSize: metrics.bufferSize,
       memoryUsage: process.memoryUsage().heapUsed,
-      processedPerSecond,
-      collectionRate: processedPerSecond,
+      processedPerSecond: totalPointsCollected / (uptime / 1000),
+      collectionRate: totalPointsCollected / (uptime / 1000),
       errorsCount: 0,
       uptime,
     };
   }
 
-  public stop(): void {
-    this.isRunning = false;
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer);
-      this.flushTimer = null;
+  exportMetrics(): string {
+    const report = this.generateReport();
+
+    switch (this.config.exportFormat) {
+      case 'json':
+        return JSON.stringify(report, null, 2);
+      case 'prometheus':
+        return this.exportAsPrometheus(report);
+      case 'csv':
+        return this.exportAsCSV(report);
+      default:
+        return JSON.stringify(report);
     }
-    if (this.aggregationTimer) {
-      clearInterval(this.aggregationTimer);
-      this.aggregationTimer = null;
-    }
-    this.emit('collectionStopped');
   }
 
-  public reset(): void {
-    this.stop();
+  private exportAsPrometheus(report: MetricsReport): string {
+    const lines: string[] = [];
+
+    for (const series of report.series) {
+      const metricName = series.name.replace(/[^a-zA-Z0-9_]/g, '_');
+      const tags = Object.entries(series.tags)
+        .map(([k, v]) => `${k}="${v}"`)
+        .join(',');
+      const tagString = tags ? `{${tags}}` : '';
+
+      if (series.points.length > 0) {
+        const latest = series.points[series.points.length - 1];
+        lines.push(
+          `${metricName}${tagString} ${latest.value} ${latest.timestamp}`
+        );
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  private exportAsCSV(report: MetricsReport): string {
+    const headers = ['metric', 'timestamp', 'value', 'tags'];
+    const rows: string[] = [headers.join(',')];
+
+    for (const series of report.series) {
+      for (const point of series.points) {
+        const tagString = JSON.stringify(point.tags ?? {});
+        rows.push(
+          [
+            series.name,
+            point.timestamp.toString(),
+            point.value.toString(),
+            tagString,
+          ].join(',')
+        );
+      }
+    }
+
+    return rows.join('\n');
+  }
+
+  clear(): void {
     this.buffer.clear();
-    this.series.clear();
+    this.seriesManager.clear();
     this.alerts = [];
-    this.totalPointsCollected = 0;
-    this.collectionStartTime = Date.now();
-    this.emit('reset');
+    this.emit('cleared');
   }
 
-  public on(event: string, handler: (...args: unknown[]) => void): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.add(handler);
-    }
+  clearBuffer(): void {
+    this.buffer.clear();
   }
 
-  public off(event: string, handler: (...args: unknown[]) => void): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.delete(handler);
-    }
+  clearSeries(): void {
+    this.seriesManager.clear();
   }
 
-  private emit(event: string, data?: unknown): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.forEach((handler) => {
-        try {
-          handler(data);
-        } catch (error) {
-          console.error(`Error in metrics collector event handler:`, error);
-        }
-      });
-    }
+  clearAll(): void {
+    this.clear();
+    this.recorder.reset();
+    // Don't reset alert rules when clearing all data
   }
 
-  // Legacy API compatibility methods
-  public getConfig(): MetricsCollectorConfig {
+  destroy(): void {
+    this.stop();
+    this.clear();
+    this.eventHandlers.clear();
+  }
+
+  // Compatibility methods for tests
+  getConfig(): MetricsCollectorConfig {
     return { ...this.config };
   }
 
-  public updateConfig(newConfig: Partial<MetricsCollectorConfig>): void {
-    this.config = { ...this.config, ...newConfig };
+  updateConfig(config: Partial<MetricsCollectorConfig>): void {
+    this.config = { ...this.config, ...config };
+    // Re-initialize components if buffer size or retention changed
+    if (
+      config.bufferSize !== undefined ||
+      config.retentionPeriod !== undefined
+    ) {
+      this.initializeComponents();
+    }
   }
 
-  public destroy(): void {
-    this.stop();
-    this.reset();
-  }
-
-  public getMetrics(): CollectorMetrics & {
+  getMetrics(): {
     totalSeries: number;
     totalPoints: number;
+    bufferSize: number;
     totalPointsCollected: number;
-    collectionRate: number;
+    uptime?: number;
+    collectionRate?: number;
   } {
-    return this.getCollectorMetrics() as CollectorMetrics & {
-      totalSeries: number;
-      totalPoints: number;
-      totalPointsCollected: number;
-      collectionRate: number;
+    const seriesMap = this.seriesManager.getSeries();
+    let totalPoints = 0;
+    for (const s of seriesMap.values()) {
+      if (s.points != null) {
+        totalPoints += s.points.length;
+      }
+    }
+    const now = Date.now();
+    const uptime = now - this.collectionStartTime;
+    const totalPointsCollected = this.recorder.getTotalPointsCollected();
+
+    return {
+      totalSeries: seriesMap.size,
+      totalPoints,
+      bufferSize: this.buffer.getCurrentSize(),
+      totalPointsCollected,
+      uptime,
+      collectionRate: totalPointsCollected / (uptime / 1000),
     };
   }
 
-  public getSeries(name?: string): MetricSeries[] {
-    if (typeof name === 'string' && name !== '') {
-      const series = this.series.get(name);
-      return series ? [series] : [];
-    }
-    return Array.from(this.series.values());
+  recordMetric(
+    name: string,
+    value: number,
+    metadata?: Record<string, unknown>
+  ): void {
+    this.record(name, value, undefined, metadata);
   }
 
-  public getAlerts(severity?: string): import('./types').MetricAlert[] {
-    if (typeof severity === 'string' && severity !== '') {
-      return this.alerts.filter((a) => a.severity === severity);
-    }
+  getAlerts(): import('./types').MetricAlert[] {
     return [...this.alerts];
   }
 
-  public addAlertRule(rule: import('./types').AlertRule): void {
+  clearAlerts(): void {
+    this.alerts = [];
+  }
+
+  getSeries(name?: string): MetricSeries[] {
+    const seriesMap = this.seriesManager.getSeries();
+    const seriesArray = Array.from(seriesMap.values());
+    if (name !== undefined) {
+      return seriesArray.filter((s) => s.name === name);
+    }
+    return seriesArray;
+  }
+
+  addAlertRule(rule: import('./types').AlertRule): void {
     this.alertRules.push(rule);
   }
 
-  public getAlertRules(): import('./types').AlertRule[] {
+  getAlertRules(): import('./types').AlertRule[] {
     return [...this.alertRules];
   }
 
-  public removeAlertRule(id: string): boolean {
-    const index = this.alertRules.findIndex((r) => r.id === id);
+  removeAlertRule(ruleId: string): boolean {
+    const index = this.alertRules.findIndex((r) => r.id === ruleId);
     if (index >= 0) {
       this.alertRules.splice(index, 1);
       return true;
@@ -568,19 +619,7 @@ export class MetricsCollector {
     return false;
   }
 
-  public clearAlerts(): void {
-    this.alerts = [];
-  }
-
-  public clearBuffer(): void {
-    this.buffer.clear();
-  }
-
-  public clearSeries(): void {
-    this.series.clear();
-  }
-
-  public clearAll(): void {
-    this.reset();
+  getAlertsBySeverity(severity: string): import('./types').MetricAlert[] {
+    return this.alerts.filter((a) => a.severity === severity);
   }
 }

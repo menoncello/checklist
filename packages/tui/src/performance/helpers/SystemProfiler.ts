@@ -136,29 +136,38 @@ export class SystemProfiler {
       return process.memoryUsage();
     }
 
-    // Fallback for browser environments
-    if (
-      typeof performance !== 'undefined' &&
-      (
-        performance as unknown as {
-          memory?: { usedJSHeapSize?: number; totalJSHeapSize?: number };
-        }
-      ).memory != null
-    ) {
-      const memory = (
-        performance as unknown as {
-          memory: { usedJSHeapSize?: number; totalJSHeapSize?: number };
-        }
-      ).memory;
-      return {
-        heapUsed: memory.usedJSHeapSize ?? 0,
-        heapTotal: memory.totalJSHeapSize ?? 0,
-        external: 0,
-        arrayBuffers: 0,
-      };
+    const browserMemory = this.getBrowserMemoryUsage();
+    if (browserMemory != null) {
+      return browserMemory;
     }
 
     return { heapUsed: 0, heapTotal: 0, external: 0, arrayBuffers: 0 };
+  }
+
+  private getBrowserMemoryUsage(): {
+    heapUsed: number;
+    heapTotal: number;
+    external?: number;
+    arrayBuffers?: number;
+  } | null {
+    if (typeof performance === 'undefined') {
+      return null;
+    }
+
+    const perfWithMemory = performance as unknown as {
+      memory?: { usedJSHeapSize?: number; totalJSHeapSize?: number };
+    };
+
+    if (perfWithMemory.memory == null) {
+      return null;
+    }
+
+    return {
+      heapUsed: perfWithMemory.memory.usedJSHeapSize ?? 0,
+      heapTotal: perfWithMemory.memory.totalJSHeapSize ?? 0,
+      external: 0,
+      arrayBuffers: 0,
+    };
   }
 
   private getCPUUsage(): number {

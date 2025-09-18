@@ -53,7 +53,15 @@ export class TransactionLogger {
     operation: Operation,
     transactionId: string
   ): Promise<void> {
-    const logEntry = {
+    const logEntry = this.createOperationLogEntry(operation, transactionId);
+    await this.writeLogEntry(logEntry, operation.id, transactionId);
+  }
+
+  private createOperationLogEntry(
+    operation: Operation,
+    transactionId: string
+  ): unknown {
+    return {
       timestamp: new Date().toISOString(),
       action: 'OPERATION',
       transactionId,
@@ -64,19 +72,20 @@ export class TransactionLogger {
         hasData: operation.data !== undefined,
       },
     };
+  }
 
+  private async writeLogEntry(
+    logEntry: unknown,
+    operationId: string,
+    transactionId: string
+  ): Promise<void> {
     try {
       await appendFile(this.logPath, `${JSON.stringify(logEntry)}\n`);
-      logger.debug({
-        msg: 'Operation logged',
-        operationId: operation.id,
-        type: operation.type,
-        transactionId,
-      });
+      logger.debug({ msg: 'Operation logged', operationId, transactionId });
     } catch (error) {
       logger.error({
         msg: 'Failed to log operation',
-        operationId: operation.id,
+        operationId,
         transactionId,
         error,
       });

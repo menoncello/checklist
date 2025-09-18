@@ -38,27 +38,55 @@ export class ScrollCalculator {
   ): { x: number; y: number } {
     const { bounds, margin } = options;
     return {
-      x: options.enableHorizontal
-        ? this.calculateAxisScroll({
-            targetPos: target.x,
-            targetSize: target.width,
-            currentScroll: bounds.scrollX,
-            viewportSize: bounds.viewportWidth,
-            maxScroll: bounds.maxScrollX,
-            margin,
-          })
-        : bounds.scrollX,
-      y: options.enableVertical
-        ? this.calculateAxisScroll({
-            targetPos: target.y,
-            targetSize: target.height,
-            currentScroll: bounds.scrollY,
-            viewportSize: bounds.viewportHeight,
-            maxScroll: bounds.maxScrollY,
-            margin,
-          })
-        : bounds.scrollY,
+      x: this.calculateHorizontalScroll(
+        target,
+        bounds,
+        margin,
+        options.enableHorizontal
+      ),
+      y: this.calculateVerticalScroll(
+        target,
+        bounds,
+        margin,
+        options.enableVertical
+      ),
     };
+  }
+
+  private static calculateHorizontalScroll(
+    target: { x: number; width: number },
+    bounds: ScrollBounds,
+    margin: number,
+    enabled: boolean
+  ): number {
+    return enabled
+      ? this.calculateAxisScroll({
+          targetPos: target.x,
+          targetSize: target.width,
+          currentScroll: bounds.scrollX,
+          viewportSize: bounds.viewportWidth,
+          maxScroll: bounds.maxScrollX,
+          margin,
+        })
+      : bounds.scrollX;
+  }
+
+  private static calculateVerticalScroll(
+    target: { y: number; height: number },
+    bounds: ScrollBounds,
+    margin: number,
+    enabled: boolean
+  ): number {
+    return enabled
+      ? this.calculateAxisScroll({
+          targetPos: target.y,
+          targetSize: target.height,
+          currentScroll: bounds.scrollY,
+          viewportSize: bounds.viewportHeight,
+          maxScroll: bounds.maxScrollY,
+          margin,
+        })
+      : bounds.scrollY;
   }
 
   private static calculateAxisScroll(params: {
@@ -102,29 +130,27 @@ export class ScrollCalculator {
     | { type: 'delta'; deltaX: number; deltaY: number }
     | { type: 'absolute'; action: string }
     | null {
-    const actions: Record<
-      string,
-      | { type: 'delta'; deltaX: number; deltaY: number }
-      | { type: 'absolute'; action: string }
-    > = {
+    const actions = this.buildScrollActions(viewportHeight);
+    return actions[key] ?? null;
+  }
+
+  private static buildScrollActions(
+    viewportHeight: number
+  ): Record<
+    string,
+    | { type: 'delta'; deltaX: number; deltaY: number }
+    | { type: 'absolute'; action: string }
+  > {
+    const pageScroll = Math.floor(viewportHeight * 0.8);
+    return {
       ArrowUp: { type: 'delta', deltaX: 0, deltaY: -1 },
       ArrowDown: { type: 'delta', deltaX: 0, deltaY: 1 },
       ArrowLeft: { type: 'delta', deltaX: -1, deltaY: 0 },
       ArrowRight: { type: 'delta', deltaX: 1, deltaY: 0 },
-      PageUp: {
-        type: 'delta',
-        deltaX: 0,
-        deltaY: -Math.floor(viewportHeight * 0.8),
-      },
-      PageDown: {
-        type: 'delta',
-        deltaX: 0,
-        deltaY: Math.floor(viewportHeight * 0.8),
-      },
+      PageUp: { type: 'delta', deltaX: 0, deltaY: -pageScroll },
+      PageDown: { type: 'delta', deltaX: 0, deltaY: pageScroll },
       Home: { type: 'absolute', action: 'scrollToTop' },
       End: { type: 'absolute', action: 'scrollToBottom' },
     };
-
-    return actions[key] ?? null;
   }
 }

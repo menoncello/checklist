@@ -82,23 +82,24 @@ export class EventHandlerSetup {
   private setupPerformanceHandlers(): void {
     if (!this.context.performanceManager) return;
 
-    this.context.performanceManager.on('memoryWarning', (data: unknown) => {
-      this.context.debugIntegration?.log(
-        'warn',
-        'Performance',
-        'Memory warning detected',
-        data
-      );
-    });
+    // TODO: PerformanceManager no longer has 'on' method for event handling
+    // this.context.performanceManager.on('memoryWarning', (data: unknown) => {
+    //   this.context.debugIntegration?.log(
+    //     'warn',
+    //     'Performance',
+    //     'Memory warning detected',
+    //     data
+    //   );
+    // });
 
-    this.context.performanceManager.on('performanceIssue', (data: unknown) => {
-      this.context.debugIntegration?.log(
-        'warn',
-        'Performance',
-        'Performance issue detected',
-        data
-      );
-    });
+    // this.context.performanceManager.on('performanceIssue', (data: unknown) => {
+    //   this.context.debugIntegration?.log(
+    //     'warn',
+    //     'Performance',
+    //     'Performance issue detected',
+    //     data
+    //   );
+    // });
   }
 
   private handleKeyPress(data: unknown): void {

@@ -41,6 +41,7 @@ export interface ComponentDebugInfo {
   metrics?: Record<string, number>;
 }
 
+import { DebugKeyHandler } from './DebugKeyHandler';
 import { ConfigInitializer } from './helpers/ConfigInitializer';
 import { OverlayRenderer } from './rendering/OverlayRenderer';
 
@@ -206,41 +207,24 @@ export class DebugManager {
     const { hotkeys } = config;
 
     if (key === hotkeys.toggle) {
-      const toggle = context.toggle as () => void;
-      toggle();
-      return true;
+      return DebugKeyHandler.handleToggleKey(context);
     }
 
     if (context.isVisible !== true) return false;
 
-    const panelMap: Record<string, string> = {
-      [hotkeys.logs]: 'logs',
-      [hotkeys.metrics]: 'metrics',
-      [hotkeys.components]: 'components',
-      [hotkeys.events]: 'events',
-      [hotkeys.performance]: 'performance',
-    };
-
-    if (panelMap[key]) {
-      context.selectedPanel = panelMap[key];
-      const emit = context.emit as (event: string, data: unknown) => void;
-      emit('panelChanged', { panel: context.selectedPanel });
-      return true;
-    }
-
-    if (key === hotkeys.clear) {
-      const clearLogs = context.clearLogs as () => void;
-      clearLogs();
-      return true;
-    }
-
-    if (key === hotkeys.export) {
-      const exportLogs = context.exportLogs as () => void;
-      exportLogs();
-      return true;
-    }
-
-    return false;
+    return DebugKeyHandler.handleVisiblePanelKeys(
+      key,
+      hotkeys as {
+        clear: string;
+        export: string;
+        logs: string;
+        metrics: string;
+        components: string;
+        events: string;
+        performance: string;
+      },
+      context
+    );
   }
 
   public clearLogs(): void {

@@ -1,41 +1,18 @@
 import { Component, ComponentInstance } from '../framework/UIFramework';
 import { ComponentInstanceImpl } from './ComponentInstance';
+import {
+  ComponentRegistration,
+  ComponentFactory,
+  RegistryConfig,
+  ComponentQuery,
+  RegistryMetrics,
+  ValidationResult,
+  ComponentExport,
+} from './ComponentRegistryTypes';
+import { ComponentRegistryUtils } from './ComponentRegistryUtils';
+import { ComponentRegistryValidator } from './ComponentRegistryValidator';
 
-export interface ComponentRegistration {
-  name: string;
-  component: Component;
-  registeredAt: number;
-  version: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface ComponentFactory {
-  (props: Record<string, unknown>): ComponentInstance;
-}
-
-export interface RegistryConfig {
-  maxInstances?: number;
-  enableMetrics?: boolean;
-  autoCleanup?: boolean;
-  cleanupInterval?: number;
-}
-
-export interface ComponentQuery {
-  name?: string;
-  version?: string;
-  metadata?: Record<string, unknown>;
-  registeredAfter?: number;
-  registeredBefore?: number;
-}
-
-export interface RegistryMetrics {
-  totalComponents: number;
-  totalInstances: number;
-  activeInstances: number;
-  memoryUsage: number;
-  avgCreationTime: number;
-  lastCleanupTime: number;
-}
+export * from './ComponentRegistryTypes';
 
 export class ComponentRegistry {
   private components = new Map<string, ComponentRegistration>();
@@ -43,6 +20,22 @@ export class ComponentRegistry {
   private instances = new Map<string, ComponentInstance>();
   private instanceCounter = 0;
   private eventHandlers = new Map<string, Set<Function>>();
+  private config: RegistryConfig;
+  private lastCleanupTime = Date.now();
+
+  constructor(config: RegistryConfig = {}) {
+    this.config = {
+      maxInstances: 10000,
+      enableMetrics: true,
+      autoCleanup: true,
+      cleanupInterval: 300000, // 5 minutes
+      ...config,
+    };
+
+    if (this.config.autoCleanup === true) {
+      this.setupAutoCleanup();
+    }
+  }
 
   public register(
     name: string,
@@ -51,14 +44,7 @@ export class ComponentRegistry {
     metadata?: Record<string, unknown>
   ): void {
     if (this.components.has(name)) {
-      const existing = this.components.get(name);
-      if (existing != null) {
-        this.emit('componentOverwritten', {
-          name,
-          oldVersion: existing.version,
-          newVersion: version,
-        });
-      }
+      throw new Error(`Component '${name}' is already registered`);
     }
 
     const registration: ComponentRegistration = {
@@ -71,12 +57,13 @@ export class ComponentRegistry {
 
     this.components.set(name, registration);
 
-    // Create a factory function for this component
-    this.factories.set(name, (props: Record<string, unknown>) =>
-      this.createInstance(name, props)
-    );
+    const factory: ComponentFactory = (props) => {
+      const instanceId = `${name}-${++this.instanceCounter}`;
+      return new ComponentInstanceImpl(instanceId, component, props);
+    };
 
-    this.emit('componentRegistered', { name, version, metadata });
+    this.factories.set(name, factory);
+    this.emit('componentRegistered', { name, registration });
   }
 
   public unregister(name: string): boolean {
@@ -85,14 +72,16 @@ export class ComponentRegistry {
     }
 
     // Destroy all instances of this component
-    const instancesToDestroy = Array.from(this.instances.values()).filter(
-      (instance) => instance.component.id.startsWith(`${name}-`)
+    const instances = ComponentRegistryUtils.getInstancesByComponent(
+      this.instances,
+      name
     );
 
-    instancesToDestroy.forEach((instance) =>
-      this.destroyInstance(instance.component.id)
-    );
+    for (const instance of instances) {
+      instance.destroy();
+    }
 
+    // Remove from registry
     this.components.delete(name);
     this.factories.delete(name);
 
@@ -120,27 +109,22 @@ export class ComponentRegistry {
   public createInstance(
     name: string,
     props: Record<string, unknown> = {}
-  ): ComponentInstance {
-    const registration = this.components.get(name);
-    if (!registration) {
-      throw new Error(`Component '${name}' is not registered`);
+  ): ComponentInstance | null {
+    const factory = this.factories.get(name);
+    if (!factory) {
+      return null;
     }
 
-    const instanceId = `${name}-${++this.instanceCounter}`;
-    const instance = new ComponentInstanceImpl(
-      instanceId,
-      registration.component,
-      props
-    );
+    const maxInstances = this.config.maxInstances ?? 10000;
+    if (this.instances.size >= maxInstances) {
+      throw new Error('Maximum number of instances reached');
+    }
 
+    const instance = factory(props);
+    const instanceId = `${name}-${this.instanceCounter}`;
     this.instances.set(instanceId, instance);
 
-    this.emit('instanceCreated', {
-      instanceId,
-      componentName: name,
-      props,
-    });
-
+    this.emit('instanceCreated', { instanceId, name, instance });
     return instance;
   }
 
@@ -153,8 +137,9 @@ export class ComponentRegistry {
   }
 
   public getInstancesByComponent(componentName: string): ComponentInstance[] {
-    return Array.from(this.instances.values()).filter((instance) =>
-      instance.component.id.startsWith(`${componentName}-`)
+    return ComponentRegistryUtils.getInstancesByComponent(
+      this.instances,
+      componentName
     );
   }
 
@@ -167,25 +152,19 @@ export class ComponentRegistry {
     try {
       instance.destroy();
       this.instances.delete(instanceId);
-
-      this.emit('instanceDestroyed', { instanceId });
+      this.emit('instanceDestroyed', { instanceId, instance });
       return true;
     } catch (error) {
       this.emit('instanceDestroyError', { instanceId, error });
-      throw error;
+      return false;
     }
   }
 
   public destroyAllInstances(): void {
     const instanceIds = Array.from(this.instances.keys());
-
-    instanceIds.forEach((instanceId) => {
-      try {
-        this.destroyInstance(instanceId);
-      } catch (error) {
-        console.error(`Error destroying instance ${instanceId}:`, error);
-      }
-    });
+    for (const instanceId of instanceIds) {
+      this.destroyInstance(instanceId);
+    }
   }
 
   public getRegisteredComponents(): string[] {
@@ -200,187 +179,100 @@ export class ComponentRegistry {
     return this.instances.size;
   }
 
-  public findComponents(
-    predicate: (registration: ComponentRegistration) => boolean
-  ): ComponentRegistration[] {
-    return Array.from(this.components.values()).filter(predicate);
+  public findComponents(query: ComponentQuery): ComponentRegistration[] {
+    return ComponentRegistryUtils.findComponents(this.components, query);
   }
 
   public findInstancesByPredicate(
     predicate: (instance: ComponentInstance) => boolean
   ): ComponentInstance[] {
-    return Array.from(this.instances.values()).filter(predicate);
+    return ComponentRegistryUtils.findInstancesByPredicate(
+      this.instances,
+      predicate
+    );
   }
 
   public getComponentsByVersion(version: string): ComponentRegistration[] {
-    return this.findComponents((reg) => reg.version === version);
+    return ComponentRegistryUtils.getComponentsByVersion(
+      this.components,
+      version
+    );
   }
 
   public getComponentsRegisteredAfter(
     timestamp: number
   ): ComponentRegistration[] {
-    return this.findComponents((reg) => reg.registeredAt > timestamp);
+    return ComponentRegistryUtils.getComponentsRegisteredAfter(
+      this.components,
+      timestamp
+    );
   }
 
   public validateComponents(): ValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    this.validateDuplicateIds(errors);
-    this.validateRenderMethods(errors);
-    this.validateOrphanedInstances(warnings);
-    this.validateInstanceCounts(warnings);
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    };
-  }
-
-  private validateDuplicateIds(errors: string[]): void {
-    const componentIds = this.buildComponentIdMap();
-    componentIds.forEach((names, id) => {
-      if (names.length > 1) {
-        errors.push(
-          `Duplicate component ID '${id}' found in components: ${names.join(', ')}`
-        );
-      }
-    });
-  }
-
-  private buildComponentIdMap(): Map<string, string[]> {
-    const componentIds = new Map<string, string[]>();
-    this.components.forEach((registration, name) => {
-      const id = registration.component.id;
-      if (!componentIds.has(id)) {
-        componentIds.set(id, []);
-      }
-      const names = componentIds.get(id);
-      if (names != null) {
-        names.push(name);
-      }
-    });
-    return componentIds;
-  }
-
-  private validateRenderMethods(errors: string[]): void {
-    this.components.forEach((registration, name) => {
-      if (registration.component.render == null) {
-        errors.push(`Component '${name}' missing render method`);
-      }
-    });
-  }
-
-  private validateOrphanedInstances(warnings: string[]): void {
-    const orphanedInstances = Array.from(this.instances.values()).filter(
-      (instance) => {
-        const componentName = instance.component.id.split('-')[0];
-        return !this.components.has(componentName);
-      }
+    return ComponentRegistryValidator.validateComponents(
+      this.components,
+      this.instances
     );
-
-    if (orphanedInstances.length > 0) {
-      warnings.push(`${orphanedInstances.length} orphaned instance(s) found`);
-    }
   }
 
-  private validateInstanceCounts(warnings: string[]): void {
-    // Check for high instance count
-    if (this.instances.size > 100) {
-      warnings.push(`High instance count: ${this.instances.size} instances`);
-    }
-  }
-
-  public getMetrics() {
-    const now = Date.now();
-    const registrations = Array.from(this.components.values());
-
-    return {
-      componentCount: this.getComponentCount(),
-      instanceCount: this.getInstanceCount(),
-      averageInstancesPerComponent:
-        this.getInstanceCount() / Math.max(1, this.getComponentCount()),
-      oldestRegistration: registrations.reduce(
-        (oldest, reg) =>
-          reg.registeredAt < oldest ? reg.registeredAt : oldest,
-        now
-      ),
-      newestRegistration: registrations.reduce(
-        (newest, reg) =>
-          reg.registeredAt > newest ? reg.registeredAt : newest,
-        0
-      ),
-      componentVersions: this.getVersionDistribution(),
-      memoryUsage: this.estimateMemoryUsage(),
-    };
-  }
-
-  private getVersionDistribution(): Record<string, number> {
-    const distribution: Record<string, number> = {};
-
-    this.components.forEach((registration) => {
-      const version = registration.version;
-      distribution[version] = (distribution[version] ?? 0) + 1;
-    });
-
-    return distribution;
-  }
-
-  private estimateMemoryUsage(): number {
-    // Rough estimation of memory usage in bytes
-    let totalSize = 0;
-
-    // Components
-    totalSize += this.components.size * 1000; // Rough estimate per component
-
-    // Instances
-    totalSize += this.instances.size * 500; // Rough estimate per instance
-
-    return totalSize;
+  public getMetrics(): RegistryMetrics {
+    return ComponentRegistryUtils.calculateMetrics(
+      this.components,
+      this.instances,
+      this.lastCleanupTime
+    );
   }
 
   public exportComponents(): ComponentExport[] {
-    return Array.from(this.components.entries()).map(
-      ([name, registration]) => ({
-        name,
-        version: registration.version,
-        registeredAt: registration.registeredAt,
-        metadata: registration.metadata,
-        instanceCount: this.getInstancesByComponent(name).length,
-      })
-    );
+    return ComponentRegistryUtils.exportComponents(this.components);
   }
 
   public importComponents(exports: ComponentExport[]): void {
-    // Note: This would require actual component implementations
-    // For now, we just emit an event
-    this.emit('componentsImported', { count: exports.length });
+    if (!ComponentRegistryUtils.validateImportData(exports)) {
+      throw new Error('Invalid export data format');
+    }
+
+    this.emit('importStarted', { count: exports.length });
   }
 
   public clear(): void {
     this.destroyAllInstances();
     this.components.clear();
     this.factories.clear();
-
     this.emit('registryCleared');
+  }
+
+  private setupAutoCleanup(): void {
+    setInterval(() => {
+      this.performCleanup();
+    }, this.config.cleanupInterval);
+  }
+
+  private performCleanup(): void {
+    const destroyedInstances: string[] = [];
+
+    for (const [instanceId, instance] of this.instances) {
+      if (!instance.mounted) {
+        this.destroyInstance(instanceId);
+        destroyedInstances.push(instanceId);
+      }
+    }
+
+    this.lastCleanupTime = Date.now();
+    this.emit('cleanupCompleted', {
+      destroyedCount: destroyedInstances.length,
+    });
   }
 
   public on(event: string, handler: Function): void {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.add(handler);
-    }
+    this.eventHandlers.get(event)?.add(handler);
   }
 
   public off(event: string, handler: Function): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.delete(handler);
-    }
+    this.eventHandlers.get(event)?.delete(handler);
   }
 
   private emit(event: string, data?: unknown): void {
@@ -391,25 +283,11 @@ export class ComponentRegistry {
           handler(data);
         } catch (error) {
           console.error(
-            `Error in component registry event handler for '${event}':`,
+            `Error in registry event handler for '${event}':`,
             error
           );
         }
       });
     }
   }
-}
-
-export interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-export interface ComponentExport {
-  name: string;
-  version: string;
-  registeredAt: number;
-  metadata?: Record<string, unknown>;
-  instanceCount: number;
 }

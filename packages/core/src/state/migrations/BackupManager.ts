@@ -91,45 +91,62 @@ export class BackupManager {
   async listBackups(): Promise<BackupInfo[]> {
     try {
       await this.ensureBackupDir();
-      const entries = await Array.fromAsync(
-        new Bun.Glob('state-*.yaml').scan({ cwd: this.backupDir })
-      );
-
-      const backups: BackupInfo[] = [];
-      for (const entry of entries) {
-        const fullPath = path.join(this.backupDir, entry);
-        const stat = await Bun.file(fullPath).stat();
-
-        const match = entry.match(
-          /state-(v.+)-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)/
-        );
-        if (match) {
-          const [, version, timestamp] = match;
-          // Convert from "2025-09-14T15-44-55-964Z" to "2025-09-14T15:44:55.964Z"
-          const createdAt = timestamp.replace(
-            /T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/,
-            'T$1:$2:$3.$4Z'
-          );
-
-          backups.push({
-            path: fullPath,
-            version,
-            timestamp: createdAt,
-            createdAt,
-            size: stat.size,
-          });
-        }
-      }
-
-      return backups.sort((a, b) => {
-        const dateA = a.createdAt != null ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt != null ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA; // Sort in descending order (newest first)
-      });
+      const entries = await this.getBackupEntries();
+      const backups = await this.processBackupEntries(entries);
+      return this.sortBackupsByDate(backups);
     } catch (error) {
       logger.error({ msg: 'Failed to list backups', error });
       return [];
     }
+  }
+
+  private async getBackupEntries(): Promise<string[]> {
+    return Array.fromAsync(
+      new Bun.Glob('state-*.yaml').scan({ cwd: this.backupDir })
+    );
+  }
+
+  private async processBackupEntries(entries: string[]): Promise<BackupInfo[]> {
+    const backups: BackupInfo[] = [];
+    for (const entry of entries) {
+      const backup = await this.parseBackupEntry(entry);
+      if (backup) {
+        backups.push(backup);
+      }
+    }
+    return backups;
+  }
+
+  private async parseBackupEntry(entry: string): Promise<BackupInfo | null> {
+    const fullPath = path.join(this.backupDir, entry);
+    const stat = await Bun.file(fullPath).stat();
+    const match = entry.match(
+      /state-(v.+)-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)/
+    );
+
+    if (!match) return null;
+
+    const [, version, timestamp] = match;
+    const createdAt = timestamp.replace(
+      /T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/,
+      'T$1:$2:$3.$4Z'
+    );
+
+    return {
+      path: fullPath,
+      version,
+      timestamp: createdAt,
+      createdAt,
+      size: stat.size,
+    };
+  }
+
+  private sortBackupsByDate(backups: BackupInfo[]): BackupInfo[] {
+    return backups.sort((a, b) => {
+      const dateA = a.createdAt != null ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt != null ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   }
 
   async rollback(statePath: string, backupPath: string): Promise<void> {

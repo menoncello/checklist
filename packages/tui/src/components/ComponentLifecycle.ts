@@ -1,51 +1,15 @@
-export type LifecyclePhase =
-  | 'created'
-  | 'initializing'
-  | 'initialized'
-  | 'mounting'
-  | 'mounted'
-  | 'rendering'
-  | 'rendered'
-  | 'updating'
-  | 'updated'
-  | 'unmounting'
-  | 'unmounted'
-  | 'destroying'
-  | 'destroyed'
-  | 'error';
+import { ComponentInstanceEventHandler } from './ComponentInstanceEvents';
+import {
+  LifecyclePhase,
+  LifecycleTransition,
+  LifecycleHooks,
+  LifecycleValidationResult,
+  LifecycleMetrics,
+} from './ComponentLifecycleTypes';
+import { ComponentLifecycleUtils } from './ComponentLifecycleUtils';
+import { ComponentLifecycleValidator } from './ComponentLifecycleValidator';
 
-export interface LifecycleTransition {
-  from: LifecyclePhase;
-  to: LifecyclePhase;
-  timestamp: number;
-  duration?: number;
-  error?: Error;
-}
-
-export interface LifecycleHooks {
-  onPhaseChange?: (from: LifecyclePhase, to: LifecyclePhase) => void;
-  onError?: (error: Error, phase: LifecyclePhase) => void;
-  onTransition?: (transition: LifecycleTransition) => void;
-}
-
-export interface LifecycleState {
-  currentPhase: LifecyclePhase;
-  previousPhase: LifecyclePhase | null;
-  transitionHistory: LifecycleTransition[];
-  error: Error | null;
-  createdAt: number;
-  lastTransitionTime: number;
-}
-
-export type LifecycleHook = (phase: LifecyclePhase, data?: unknown) => void;
-export type LifecyclePhaseTransition = LifecycleTransition;
-
-export interface LifecycleEvent {
-  type: string;
-  phase: LifecyclePhase;
-  timestamp: number;
-  data?: unknown;
-}
+export * from './ComponentLifecycleTypes';
 
 export class ComponentLifecycle {
   private componentId: string;
@@ -55,29 +19,10 @@ export class ComponentLifecycle {
   private lastTransitionTime: number;
   private transitionHistory: LifecycleTransition[] = [];
   private maxHistorySize: number = 50;
-  private eventHandlers = new Map<string, Set<Function>>();
+  private eventHandler = new ComponentInstanceEventHandler();
   private hooks: LifecycleHooks = {};
   private error: Error | null = null;
   private phaseStartTime: number = 0;
-
-  // Valid phase transitions
-  private readonly validTransitions: Map<LifecyclePhase, LifecyclePhase[]> =
-    new Map([
-      ['created', ['initializing']],
-      ['initializing', ['initialized', 'error']],
-      ['initialized', ['mounting', 'destroying', 'error']],
-      ['mounting', ['mounted', 'error']],
-      ['mounted', ['rendering', 'updating', 'unmounting', 'error']],
-      ['rendering', ['rendered', 'error']],
-      ['rendered', ['rendering', 'updating', 'unmounting', 'error']],
-      ['updating', ['updated', 'error']],
-      ['updated', ['rendering', 'updating', 'unmounting', 'error']],
-      ['unmounting', ['unmounted', 'error']],
-      ['unmounted', ['mounting', 'destroying', 'error']],
-      ['destroying', ['destroyed', 'error']],
-      ['destroyed', []],
-      ['error', ['destroying', 'unmounting', 'initialized']],
-    ]);
 
   constructor(componentId: string, hooks?: LifecycleHooks) {
     this.componentId = componentId;
@@ -101,15 +46,15 @@ export class ComponentLifecycle {
   }
 
   private validateInitialization(): void {
-    if (!this.componentId || this.componentId.trim() === '') {
-      throw new Error('Component ID is required for initialization');
-    }
+    ComponentLifecycleValidator.validateInitialization(this.componentId);
   }
 
   public setPhase(newPhase: LifecyclePhase): void {
     if (newPhase === this.currentPhase) return;
 
-    if (!this.isValidTransition(this.currentPhase, newPhase)) {
+    if (
+      !ComponentLifecycleUtils.isValidTransition(this.currentPhase, newPhase)
+    ) {
       const error = new Error(
         `Invalid lifecycle transition from '${this.currentPhase}' to '${newPhase}' for component '${this.componentId}'`
       );
@@ -150,11 +95,6 @@ export class ComponentLifecycle {
     });
 
     this.emit('transition', transition);
-  }
-
-  private isValidTransition(from: LifecyclePhase, to: LifecyclePhase): boolean {
-    const validToPhases = this.validTransitions.get(from);
-    return validToPhases ? validToPhases.includes(to) : false;
   }
 
   private recordTransition(transition: LifecycleTransition): void {
@@ -224,24 +164,9 @@ export class ComponentLifecycle {
       this.error = null;
 
       // Attempt to return to a safe phase
-      const safePhase = this.getSafePhaseForRecovery();
+      const safePhase = ComponentLifecycleUtils.getSafePhaseForRecovery();
       this.transitionToPhase(safePhase);
     }
-  }
-
-  private getSafePhaseForRecovery(): LifecyclePhase {
-    // Prioritize returning to initialized state for recovery
-    if (this.isValidTransition('error', 'initialized')) {
-      return 'initialized';
-    }
-
-    // Fall back to unmounting for cleanup
-    if (this.isValidTransition('error', 'unmounting')) {
-      return 'unmounting';
-    }
-
-    // Last resort: destroying
-    return 'destroying';
   }
 
   public getCurrentPhase(): LifecyclePhase {
@@ -277,11 +202,13 @@ export class ComponentLifecycle {
   }
 
   public canTransitionTo(phase: LifecyclePhase): boolean {
-    return this.isValidTransition(this.currentPhase, phase);
+    return ComponentLifecycleUtils.isValidTransition(this.currentPhase, phase);
   }
 
   public getValidNextPhases(): LifecyclePhase[] {
-    return this.validTransitions.get(this.currentPhase) ?? [];
+    return (
+      ComponentLifecycleUtils.VALID_TRANSITIONS.get(this.currentPhase) ?? []
+    );
   }
 
   public isInPhase(phase: LifecyclePhase): boolean {
@@ -289,9 +216,7 @@ export class ComponentLifecycle {
   }
 
   public isInActivePhase(): boolean {
-    return ['mounted', 'rendering', 'rendered', 'updating', 'updated'].includes(
-      this.currentPhase
-    );
+    return ComponentLifecycleUtils.isInActivePhase(this.currentPhase);
   }
 
   public isInDestroyedState(): boolean {
@@ -310,99 +235,39 @@ export class ComponentLifecycle {
     this.hooks = {};
   }
 
-  public getMetrics() {
-    const history = this.transitionHistory;
-    const phaseDistribution = this.getPhaseDistribution();
-    const averagePhaseTime = this.getAveragePhaseTime();
-
-    return {
+  public getMetrics(): LifecycleMetrics {
+    return ComponentLifecycleUtils.collectMetrics({
       componentId: this.componentId,
       currentPhase: this.currentPhase,
       previousPhase: this.previousPhase,
-      age: this.getAge(),
-      timeInCurrentPhase: this.getTimeInCurrentPhase(),
-      timeSinceLastTransition: this.getTimeSinceLastTransition(),
-      transitionCount: history.length,
-      errorCount: history.filter((t) => t.to === 'error').length,
-      hasError: this.hasError(),
-      error: this.error?.message,
-      phaseDistribution,
-      averagePhaseTime,
-      isInActivePhase: this.isInActivePhase(),
-      isInDestroyedState: this.isInDestroyedState(),
-      validNextPhases: this.getValidNextPhases(),
-    };
-  }
-
-  private getPhaseDistribution(): Record<LifecyclePhase, number> {
-    const distribution: Partial<Record<LifecyclePhase, number>> = {};
-
-    this.transitionHistory.forEach((transition) => {
-      distribution[transition.to] = (distribution[transition.to] ?? 0) + 1;
+      timing: {
+        createdAt: this.createdAt,
+        phaseStartTime: this.phaseStartTime,
+        lastTransitionTime: this.lastTransitionTime,
+      },
+      transitionHistory: this.transitionHistory,
+      error: {
+        hasError: this.hasError(),
+        error: this.error,
+      },
+      getValidNextPhases: () => this.getValidNextPhases(),
     });
-
-    return distribution as Record<LifecyclePhase, number>;
-  }
-
-  private getAveragePhaseTime(): number {
-    const transitionsWithDuration = this.transitionHistory.filter(
-      (t) => t.duration !== undefined
-    );
-
-    if (transitionsWithDuration.length === 0) return 0;
-
-    const totalTime = transitionsWithDuration.reduce(
-      (sum, t) => sum + (t.duration ?? 0),
-      0
-    );
-    return totalTime / transitionsWithDuration.length;
   }
 
   public validate(): LifecycleValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    // Check for stuck in error state
-    if (this.currentPhase === 'error' && this.getTimeInCurrentPhase() > 30000) {
-      warnings.push('Component stuck in error state for over 30 seconds');
-    }
-
-    // Check for too many error transitions
-    const errorTransitions = this.transitionHistory.filter(
-      (t) => t.to === 'error'
-    ).length;
-    if (errorTransitions > 5) {
-      warnings.push(`High error count: ${errorTransitions} error transitions`);
-    }
-
-    // Check for invalid state
-    if (
-      this.currentPhase === 'destroyed' &&
-      this.getValidNextPhases().length > 0
-    ) {
-      errors.push('Destroyed component should not have valid next phases');
-    }
-
-    // Check for long time in single phase
-    if (this.getTimeInCurrentPhase() > 300000) {
-      // 5 minutes
-      warnings.push(
-        `Component stuck in '${this.currentPhase}' phase for over 5 minutes`
-      );
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    };
+    return ComponentLifecycleValidator.validate(
+      this.currentPhase,
+      this.transitionHistory,
+      () => this.getTimeInCurrentPhase(),
+      () => this.getValidNextPhases()
+    );
   }
 
   public destroy(): void {
     this.setPhase('destroying');
 
     // Clear all event handlers
-    this.eventHandlers.clear();
+    this.eventHandler.clear();
 
     // Clear hooks
     this.hooks = {};
@@ -414,41 +279,14 @@ export class ComponentLifecycle {
   }
 
   public on(event: string, handler: Function): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.add(handler);
-    }
+    this.eventHandler.on(event, handler);
   }
 
   public off(event: string, handler: Function): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.delete(handler);
-    }
+    this.eventHandler.off(event, handler);
   }
 
   private emit(event: string, data?: unknown): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.forEach((handler) => {
-        try {
-          handler(data);
-        } catch (error) {
-          console.error(
-            `Error in lifecycle event handler for '${event}':`,
-            error
-          );
-        }
-      });
-    }
+    this.eventHandler.emit(event, data);
   }
-}
-
-export interface LifecycleValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
 }

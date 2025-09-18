@@ -26,24 +26,31 @@ export class ProcessHandlers {
   }
 
   private setupProcessHandlers(): void {
+    this.registerSignalHandlers();
+    this.registerExceptionHandlers();
+    this.registerWarningHandler();
+  }
+
+  private registerSignalHandlers(): void {
     const handleExit = this.createExitHandler();
     const handleSignal = this.createSignalHandler();
 
-    // Store references for cleanup
-    this.processHandlerRefs.set('SIGINT', handleSignal);
-    this.processHandlerRefs.set('SIGTERM', handleSignal);
-    this.processHandlerRefs.set('SIGUSR2', handleSignal);
-    this.processHandlerRefs.set('exit', handleExit);
-    this.processHandlerRefs.set('beforeExit', handleExit);
+    // Store references and register signal handlers
+    const signals = ['SIGINT', 'SIGTERM', 'SIGUSR2'];
+    signals.forEach((signal) => {
+      this.processHandlerRefs.set(signal, handleSignal);
+      process.on(signal as NodeJS.Signals, handleSignal);
+    });
 
-    // Register handlers
-    process.on('SIGINT', handleSignal);
-    process.on('SIGTERM', handleSignal);
-    process.on('SIGUSR2', handleSignal);
-    process.on('exit', handleExit);
-    process.on('beforeExit', handleExit);
+    // Register exit handlers
+    const exitEvents = ['exit', 'beforeExit'];
+    exitEvents.forEach((event) => {
+      this.processHandlerRefs.set(event, handleExit);
+      process.on(event as 'exit' | 'beforeExit', handleExit);
+    });
+  }
 
-    // Handle uncaught exceptions
+  private registerExceptionHandlers(): void {
     const handleUncaughtException = (error: Error): void => {
       this.handleProcessCrash('Uncaught Exception', error);
     };
@@ -62,8 +69,9 @@ export class ProcessHandlers {
 
     process.on('uncaughtException', handleUncaughtException);
     process.on('unhandledRejection', handleUnhandledRejection);
+  }
 
-    // Handle process warnings
+  private registerWarningHandler(): void {
     const handleWarning = (warning: Error): void => {
       console.warn('Process warning:', warning);
       if (this.onWarningCallback) {

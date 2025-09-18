@@ -113,4 +113,12 @@ export class MetricsBuffer {
     this.buffer.clear();
     this.series.clear();
   }
+
+  public getCurrentSize(): number {
+    let size = 0;
+    for (const points of this.buffer.values()) {
+      size += points.length;
+    }
+    return size;
+  }
 }

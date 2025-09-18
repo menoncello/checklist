@@ -99,48 +99,47 @@ export class WorkflowStateManager {
     key: string;
   }): Promise<void> {
     try {
-      switch (entry.op) {
-        case 'advance':
-          this.logger.debug({
-            msg: 'Recovering advance operation',
-            key: entry.key,
-          });
-          break;
-
-        case 'goBack':
-          this.logger.debug({
-            msg: 'Recovering goBack operation',
-            key: entry.key,
-          });
-          break;
-
-        case 'skip':
-          this.logger.debug({
-            msg: 'Recovering skip operation',
-            key: entry.key,
-          });
-          break;
-
-        case 'reset':
-          this.logger.debug({
-            msg: 'Recovering reset operation',
-            key: entry.key,
-          });
-          break;
-
-        default:
-          this.logger.warn({
-            msg: 'Unknown WAL operation',
-            operation: entry.op,
-          });
-      }
+      this.processWALOperation(entry);
     } catch (error) {
-      this.logger.error({
-        msg: 'Failed to recover WAL entry',
-        entry,
-        error: (error as Error).message,
+      this.logWALRecoveryError(entry, error);
+    }
+  }
+
+  private processWALOperation(entry: { op: string; key: string }): void {
+    const operationMessage = this.getOperationMessage(entry.op);
+
+    if (operationMessage !== null) {
+      this.logger.debug({
+        msg: operationMessage,
+        key: entry.key,
+      });
+    } else {
+      this.logger.warn({
+        msg: 'Unknown WAL operation',
+        operation: entry.op,
       });
     }
+  }
+
+  private getOperationMessage(op: string): string | null {
+    const operationMessages: Record<string, string> = {
+      advance: 'Recovering advance operation',
+      goBack: 'Recovering goBack operation',
+      skip: 'Recovering skip operation',
+      reset: 'Recovering reset operation',
+    };
+    return operationMessages[op] ?? null;
+  }
+
+  private logWALRecoveryError(
+    entry: { op: string; key: string },
+    error: unknown
+  ): void {
+    this.logger.error({
+      msg: 'Failed to recover WAL entry',
+      entry,
+      error: (error as Error).message,
+    });
   }
 
   async loadTemplate(templateId: string): Promise<ChecklistTemplate> {

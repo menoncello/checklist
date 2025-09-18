@@ -14,26 +14,27 @@ export class StartupTargetAnalyzer {
     const renderPhase = phases.get('render') ?? phases.get('initial_render');
 
     return {
-      totalStartupTime: {
-        actual: totalDuration,
-        target: config.target.totalStartupTime,
-        met: totalDuration <= config.target.totalStartupTime,
-        percentage: (totalDuration / config.target.totalStartupTime) * 100,
-      },
-      initializationTime: {
-        actual: initPhase?.duration ?? 0,
-        target: config.target.initializationTime,
-        met: (initPhase?.duration ?? 0) <= config.target.initializationTime,
-        percentage:
-          ((initPhase?.duration ?? 0) / config.target.initializationTime) * 100,
-      },
-      renderTime: {
-        actual: renderPhase?.duration ?? 0,
-        target: config.target.renderTime,
-        met: (renderPhase?.duration ?? 0) <= config.target.renderTime,
-        percentage:
-          ((renderPhase?.duration ?? 0) / config.target.renderTime) * 100,
-      },
+      totalStartupTime: this.createMetric(
+        totalDuration,
+        config.target.totalStartupTime
+      ),
+      initializationTime: this.createMetric(
+        initPhase?.duration ?? 0,
+        config.target.initializationTime
+      ),
+      renderTime: this.createMetric(
+        renderPhase?.duration ?? 0,
+        config.target.renderTime
+      ),
+    };
+  }
+
+  private static createMetric(actual: number, target: number) {
+    return {
+      actual,
+      target,
+      met: actual <= target,
+      percentage: (actual / target) * 100,
     };
   }
 

@@ -285,34 +285,9 @@ export class SecurityAudit {
    * Get default severity for an event type
    */
   static getDefaultSeverity(eventType: SecurityEventType): SecuritySeverity {
-    switch (eventType) {
-      case SecurityEventType.SECRETS_DETECTED:
-      case SecurityEventType.ENCRYPTION_FAILURE:
-      case SecurityEventType.DECRYPTION_FAILURE:
-        return SecuritySeverity.CRITICAL;
-
-      case SecurityEventType.ACCESS_DENIED:
-      case SecurityEventType.LOCK_DENIED:
-      case SecurityEventType.LOCK_TIMEOUT:
-      case SecurityEventType.SUSPICIOUS_ACTIVITY:
-      case SecurityEventType.RECOVERY_ATTEMPT:
-        return SecuritySeverity.WARNING;
-
-      case SecurityEventType.PERMISSION_CHANGE:
-        return SecuritySeverity.ERROR;
-
-      case SecurityEventType.ACCESS_GRANTED:
-      case SecurityEventType.STATE_READ:
-      case SecurityEventType.STATE_WRITE:
-      case SecurityEventType.STATE_DELETE:
-      case SecurityEventType.ENCRYPTION_SUCCESS:
-      case SecurityEventType.DECRYPTION_SUCCESS:
-      case SecurityEventType.KEY_ROTATION:
-      case SecurityEventType.LOCK_ACQUIRED:
-      case SecurityEventType.BACKUP_CREATED:
-      default:
-        return SecuritySeverity.INFO;
-    }
+    // Delegated to helper to reduce complexity
+    const { SecuritySeverityHelper } = require('./SecuritySeverityHelper');
+    return SecuritySeverityHelper.getDefaultSeverity(eventType);
   }
 
   static async auditState(state: unknown): Promise<{

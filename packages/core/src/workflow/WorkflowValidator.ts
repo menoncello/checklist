@@ -82,26 +82,7 @@ export class WorkflowValidator {
   ): Promise<ValidationResult> {
     const errors: string[] = [];
 
-    // Run built-in validations if defined
-    if (targetStep.validation && targetStep.validation.length > 0) {
-      for (const validation of targetStep.validation) {
-        try {
-          const builtInResult = await validateStepFunction(
-            validation,
-            stepContext
-          );
-          if (!builtInResult.valid) {
-            errors.push(builtInResult.error ?? 'Validation failed');
-          }
-        } catch (error) {
-          errors.push(
-            `Built-in validation failed: ${(error as Error).message}`
-          );
-        }
-      }
-    }
-
-    // Run custom validations if defined
+    await this.runBuiltInValidations(targetStep, stepContext, errors);
     await this.runAllCustomValidations(
       targetStep,
       stepContext,
@@ -113,6 +94,25 @@ export class WorkflowValidator {
       valid: errors.length === 0,
       error: errors.length > 0 ? errors.join('; ') : undefined,
     };
+  }
+
+  private async runBuiltInValidations(
+    targetStep: Step,
+    stepContext: StepContext,
+    errors: string[]
+  ): Promise<void> {
+    if (!targetStep.validation || targetStep.validation.length === 0) return;
+
+    for (const validation of targetStep.validation) {
+      try {
+        const result = await validateStepFunction(validation, stepContext);
+        if (!result.valid) {
+          errors.push(result.error ?? 'Validation failed');
+        }
+      } catch (error) {
+        errors.push(`Built-in validation failed: ${(error as Error).message}`);
+      }
+    }
   }
 
   private async runAllCustomValidations(

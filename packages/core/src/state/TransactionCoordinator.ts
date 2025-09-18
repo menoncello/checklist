@@ -111,6 +111,11 @@ export class TransactionCoordinator {
     recoveredState: ChecklistState;
     recoveredTransactions: number;
   }> {
+    if (this.isRecovering) {
+      // Return early if recovery is already in progress
+      return { recoveredState: currentState, recoveredTransactions: 0 };
+    }
+
     this.isRecovering = true;
     try {
       return await this.recovery.recoverFromWAL(currentState);

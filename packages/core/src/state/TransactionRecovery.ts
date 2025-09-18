@@ -89,24 +89,44 @@ export class TransactionRecovery {
     maxSize: number
   ): Promise<void> {
     logger.info({
-      msg: 'Rotating WAL due to size',
+      msg: 'WAL rotation needed',
       currentSize,
       maxSize,
     });
-    await this.wal.rotate(maxSize);
+    // Create backup and clear WAL when it gets too large
+    await this.wal.createBackup();
+    await this.wal.clear();
   }
 
   private async prepareWALRecovery(): Promise<
     { op: string; key: string; value?: unknown }[]
   > {
     try {
-      // First replay the WAL to load entries from file
-      await this.wal.replay();
-      return await this.wal.getWALEntries();
+      await this.executeWALReplay();
+      const walEntries = await this.wal.getWALEntries();
+      return this.processWALEntries(walEntries);
     } catch (error) {
       logger.error({ msg: 'Failed to read WAL entries', error });
       throw new TransactionError('Cannot prepare WAL recovery', 'wal-read');
     }
+  }
+
+  private async executeWALReplay(): Promise<void> {
+    try {
+      // Replay to load entries but with type-safe approach
+      await this.wal.replay();
+      logger.debug({ msg: 'WAL replay completed' });
+    } catch (replayError) {
+      logger.error({ msg: 'Failed to replay WAL', error: replayError });
+      throw new TransactionError('Cannot prepare WAL recovery', 'wal-read');
+    }
+  }
+
+  private processWALEntries(
+    walEntries: unknown
+  ): { op: string; key: string; value?: unknown }[] {
+    if (walEntries == null || !Array.isArray(walEntries)) return [];
+    return walEntries as { op: string; key: string; value?: unknown }[];
   }
 
   private async executeWALRecovery(

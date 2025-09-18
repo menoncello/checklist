@@ -66,6 +66,13 @@ export class MigrationValidator {
     migration: Migration,
     state: StateSchema
   ): Promise<void> {
+    if (migration == null) {
+      throw new MigrationError(
+        'Migration definition is null or undefined',
+        'unknown',
+        'unknown'
+      );
+    }
     try {
       this.checkIfAlreadyApplied(migration, state);
       this.checkVersionMatch(migration, state);
@@ -75,7 +82,7 @@ export class MigrationValidator {
       logger.error({
         msg: 'Migration validation failed',
         error,
-        migrationId: migration.id,
+        migrationId: migration.id ?? 'unknown',
       });
       throw error;
     }
@@ -85,6 +92,12 @@ export class MigrationValidator {
     migration: Migration,
     state: StateSchema
   ): void {
+    if (migration == null)
+      throw new MigrationError(
+        'Migration definition is null or undefined',
+        'unknown',
+        'unknown'
+      );
     const migrations =
       (state.migrations as unknown as Array<{
         id: string;
@@ -93,18 +106,16 @@ export class MigrationValidator {
       }>) ?? [];
     const isApplied = migrations.some(
       (m) =>
-        m.id === migration.id ||
+        (m.id ?? 'unknown') === (migration.id ?? 'unknown') ||
         (m.fromVersion === migration.fromVersion &&
           m.toVersion === migration.toVersion)
     );
-
-    if (isApplied) {
+    if (isApplied)
       throw new MigrationError(
         `Migration ${migration.fromVersion}->${migration.toVersion} already applied`,
         migration.fromVersion,
         migration.toVersion
       );
-    }
   }
 
   private checkVersionMatch(migration: Migration, state: StateSchema): void {
@@ -122,9 +133,9 @@ export class MigrationValidator {
   private logMigrationValidationSuccess(migration: Migration): void {
     logger.debug({
       msg: 'Migration validation passed',
-      migrationId: migration.id,
-      fromVersion: migration.fromVersion,
-      toVersion: migration.toVersion,
+      migrationId: migration?.id ?? 'unknown',
+      fromVersion: migration?.fromVersion ?? 'unknown',
+      toVersion: migration?.toVersion ?? 'unknown',
     });
   }
 
@@ -141,36 +152,30 @@ export class MigrationValidator {
   }
 
   private validateStateObject(state: StateSchema): void {
-    if (state === null || state === undefined || typeof state !== 'object') {
+    if (state == null || typeof state !== 'object')
       throw new MigrationError(
         'Invalid state: not an object',
         'unknown',
         'unknown'
       );
-    }
   }
 
   private validateStateVersion(state: StateSchema): void {
-    if (
-      !this.isValidString(state.version) ||
-      typeof state.version !== 'string'
-    ) {
+    if (!this.isValidString(state.version) || typeof state.version !== 'string')
       throw new MigrationError(
         'Invalid state: missing or invalid version',
         'unknown',
         'unknown'
       );
-    }
   }
 
   private validateStateMigrations(state: StateSchema): void {
-    if (state.migrations && !Array.isArray(state.migrations)) {
+    if (state.migrations != null && !Array.isArray(state.migrations))
       throw new MigrationError(
         'Invalid state: migrations must be an array',
         'unknown',
         'unknown'
       );
-    }
   }
 
   private logValidationSuccess(state: StateSchema): void {
@@ -207,67 +212,64 @@ export class MigrationValidator {
   private async validateMigrationDefinition(
     migration: Migration
   ): Promise<void> {
-    this.validateMigrationId(migration);
-    this.validateMigrationVersions(migration);
-    this.validateMigrationFunctions(migration);
+    if (migration == null)
+      throw new MigrationError(
+        'Migration definition is null or undefined',
+        'unknown',
+        'unknown'
+      );
+    this.ensureMigrationId(migration);
+    this.validateVersions(migration);
+    this.validateFunctions(migration);
   }
 
-  private validateMigrationId(migration: Migration): void {
-    if (!this.isValidString(migration.id)) {
-      // Generate id automatically if not provided, since it's optional in the interface
+  private ensureMigrationId(migration: Migration): void {
+    if (!this.isValidString(migration.id ?? ''))
       migration.id = `${migration.fromVersion}->${migration.toVersion}`;
-    }
   }
 
-  private validateMigrationVersions(migration: Migration): void {
+  private validateVersions(migration: Migration): void {
     if (
       !this.isValidString(migration.fromVersion) ||
       !this.isValidString(migration.toVersion)
-    ) {
+    )
       throw new MigrationError(
         'Migration missing version information',
         migration.fromVersion ?? 'unknown',
         migration.toVersion ?? 'unknown'
       );
-    }
   }
 
-  private validateMigrationFunctions(migration: Migration): void {
+  private validateFunctions(migration: Migration): void {
     if (
       !this.isValidFunction(migration.migrate) &&
       !this.isValidFunction(migration.up)
-    ) {
+    )
       throw new MigrationError(
         'Migration missing migrate or up function',
         migration.fromVersion,
         migration.toVersion
       );
-    }
-
-    if (migration.validate && typeof migration.validate !== 'function') {
+    if (migration.validate != null && typeof migration.validate !== 'function')
       throw new MigrationError(
         'Migration validate must be a function',
         migration.fromVersion,
         migration.toVersion
       );
-    }
   }
 
   private isValidString(value: unknown): boolean {
-    return value !== null && value !== undefined && value !== '';
+    return value != null && value !== '';
   }
 
   private isValidFunction(value: unknown): boolean {
-    return value !== null && value !== undefined && typeof value === 'function';
+    return value != null && typeof value === 'function';
   }
 
   private async validatePrerequisites(
     _migration: Migration,
     _state: StateSchema
-  ): Promise<void> {
-    // Prerequisites field doesn't exist in Migration type, skip validation
-    return;
-  }
+  ): Promise<void> {}
 
   private calculateTotalSteps(migrations: Migration[]): number {
     return migrations.reduce((total, _migration) => {

@@ -190,8 +190,8 @@ export class EventBus {
   private getTargetSubscribers(message: BusMessage): Subscriber[] {
     return this.subscriberManager.getTargetSubscribers(
       message,
-      MessageMatcher.matchesFilter,
-      MessageMatcher.matchesTarget
+      MessageMatcher.matchesFilter.bind(MessageMatcher),
+      MessageMatcher.matchesTarget.bind(MessageMatcher)
     );
   }
 

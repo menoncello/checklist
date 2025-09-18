@@ -27,16 +27,19 @@ export class MigrationRecordKeeper {
       });
       const updatedState = this.addMigrationRecord(state, migrationRecord);
       await this.persistState(updatedState, statePath);
-
-      const duration = endTime - startTime;
-      this.logMigrationRecorded(migration, success, duration);
+      this.logMigrationRecorded(migration, success, endTime - startTime);
       return updatedState;
     } catch (recordError) {
-      this.logRecordingFailure(recordError as Error, migration);
-      throw new Error(
-        `Failed to record migration: ${(recordError as Error).message}`
-      );
+      this.handleRecordingError(recordError as Error, migration);
     }
+  }
+
+  private handleRecordingError(
+    recordError: Error,
+    migration: Migration
+  ): never {
+    this.logRecordingFailure(recordError, migration);
+    throw new Error(`Failed to record migration: ${recordError.message}`);
   }
 
   private async createMigrationRecord(params: {
@@ -46,33 +49,36 @@ export class MigrationRecordKeeper {
     success: boolean;
     error?: Error;
   }): Promise<MigrationRecord> {
-    const {
-      migration,
-      startTime: _startTime,
-      endTime: _endTime,
-      success,
-      error,
-    } = params;
+    const { migration, success, error } = params;
+    const appliedAt = new Date().toISOString();
 
     const migrationRecord: MigrationRecord = {
       from: migration.fromVersion,
       to: migration.toVersion,
-      applied: new Date().toISOString(),
-      appliedAt: new Date().toISOString(),
-      changes: success
-        ? [`Applied migration ${migration.id ?? 'unknown'}`]
-        : undefined,
+      applied: appliedAt,
+      appliedAt,
+      changes: this.buildChangesArray(migration, success, error),
     };
 
-    // Store additional metadata in changes array if needed
-    if (error !== undefined) {
-      migrationRecord.changes = [
-        ...(migrationRecord.changes ?? []),
-        `Error: ${error.message}`,
-      ];
+    return migrationRecord;
+  }
+
+  private buildChangesArray(
+    migration: Migration,
+    success: boolean,
+    error?: Error
+  ): string[] | undefined {
+    const changes: string[] = [];
+
+    if (success) {
+      changes.push(`Applied migration ${migration.id ?? 'unknown'}`);
     }
 
-    return migrationRecord;
+    if (error !== undefined) {
+      changes.push(`Error: ${error.message}`);
+    }
+
+    return changes.length > 0 ? changes : undefined;
   }
 
   private logMigrationRecorded(
@@ -82,7 +88,7 @@ export class MigrationRecordKeeper {
   ): void {
     logger.info({
       msg: 'Migration record saved',
-      migrationId: migration.id,
+      migrationId: migration.id ?? 'unknown',
       success,
       duration,
     });
@@ -92,7 +98,7 @@ export class MigrationRecordKeeper {
     logger.error({
       msg: 'Failed to record migration',
       error: recordError,
-      migrationId: migration.id,
+      migrationId: migration.id ?? 'unknown',
     });
   }
 
@@ -143,7 +149,7 @@ export class MigrationRecordKeeper {
       logger.warn({
         msg: 'Failed to check migration application status',
         error,
-        migrationId: migration.id,
+        migrationId: migration.id ?? 'unknown',
       });
       return false;
     }
@@ -182,37 +188,58 @@ export class MigrationRecordKeeper {
     try {
       const state = await this.loadState(statePath);
       const migrations = (state.migrations as MigrationRecord[]) ?? [];
-
-      // Keep only successful migrations (those without error messages in changes)
-      const successfulMigrations = migrations.filter((record) => {
-        const hasErrorChanges = record.changes?.some((c) =>
-          c.startsWith('Error:')
-        );
-        return hasErrorChanges !== true;
-      });
+      const successfulMigrations = this.filterSuccessfulMigrations(migrations);
 
       if (successfulMigrations.length !== migrations.length) {
-        const cleanedState = {
-          ...state,
-          migrations: successfulMigrations,
-        };
-
-        await this.persistState(cleanedState, statePath);
-
-        logger.info({
-          msg: 'Cleaned up failed migrations',
-          removed: migrations.length - successfulMigrations.length,
-          remaining: successfulMigrations.length,
-        });
+        await this.updateStateWithCleanedMigrations(
+          state,
+          successfulMigrations,
+          statePath,
+          migrations.length
+        );
       }
     } catch (error) {
-      logger.error({
-        msg: 'Failed to cleanup failed migrations',
-        error,
-        statePath,
-      });
+      this.logCleanupFailure(error as Error, statePath);
       throw error;
     }
+  }
+
+  private filterSuccessfulMigrations(
+    migrations: MigrationRecord[]
+  ): MigrationRecord[] {
+    return migrations.filter((record) => {
+      const hasErrorChanges = record.changes?.some((c) =>
+        c.startsWith('Error:')
+      );
+      return hasErrorChanges !== true;
+    });
+  }
+
+  private async updateStateWithCleanedMigrations(
+    state: StateSchema,
+    successfulMigrations: MigrationRecord[],
+    statePath: string,
+    originalCount: number
+  ): Promise<void> {
+    const cleanedState = { ...state, migrations: successfulMigrations };
+    await this.persistState(cleanedState, statePath);
+    this.logCleanupSuccess(originalCount, successfulMigrations.length);
+  }
+
+  private logCleanupSuccess(removed: number, remaining: number): void {
+    logger.info({
+      msg: 'Cleaned up failed migrations',
+      removed: removed - remaining,
+      remaining,
+    });
+  }
+
+  private logCleanupFailure(error: Error, statePath: string): void {
+    logger.error({
+      msg: 'Failed to cleanup failed migrations',
+      error,
+      statePath,
+    });
   }
 
   private async calculateMigrationChecksum(
@@ -221,7 +248,7 @@ export class MigrationRecordKeeper {
     try {
       // Create a simple checksum based on migration properties
       const migrationString = JSON.stringify({
-        id: migration.id,
+        id: migration.id ?? 'unknown',
         fromVersion: migration.fromVersion,
         toVersion: migration.toVersion,
         description: migration.description,
@@ -241,7 +268,7 @@ export class MigrationRecordKeeper {
       logger.warn({
         msg: 'Failed to calculate migration checksum',
         error,
-        migrationId: migration.id,
+        migrationId: migration.id ?? 'unknown',
       });
       return `fallback-${Date.now()}`;
     }

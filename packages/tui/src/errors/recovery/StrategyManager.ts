@@ -14,134 +14,162 @@ export class StrategyManager {
 
   private setupDefaultStrategies(): void {
     const defaultStrategies: RecoveryStrategy[] = [
-      {
-        name: 'memoryCleanup',
-        priority: 1,
-        timeoutMs: 2000,
-        description: 'Clean up memory and garbage collect',
-        condition: (crashState: CrashState) =>
-          crashState.crashReason.includes('memory') ||
-          crashState.crashReason.includes('heap'),
-        execute: async (): Promise<boolean> => {
-          try {
-            if (global.gc) {
-              global.gc();
-            }
-            await this.delay(500);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-      },
-      {
-        name: 'stateRestoration',
-        priority: 2,
-        timeoutMs: 3000,
-        description: 'Restore application state from backup',
-        condition: (): boolean => true, // Always applicable
-        execute: async (): Promise<boolean> => {
-          try {
-            // Attempt state restoration
-            await this.delay(1000);
-            // Emit state restored event via callback
-            if (this.onStateRestored) {
-              this.onStateRestored();
-            }
-            return true;
-          } catch {
-            return false;
-          }
-        },
-      },
-      {
-        name: 'componentRestart',
-        priority: 3,
-        timeoutMs: 4000,
-        description: 'Restart application components',
-        condition: (crashState: CrashState) => crashState.recoveryAttempts >= 1,
-        execute: async (): Promise<boolean> => {
-          try {
-            // Restart components
-            await this.delay(1500);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-      },
-      {
-        name: 'state-reset',
-        priority: 4,
-        timeoutMs: 1000,
-        description: 'Reset application state to safe defaults',
-        condition: (): boolean => true, // Always applicable
-        execute: async (): Promise<boolean> => {
-          try {
-            // Reset to safe state
-            await this.delay(200);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-      },
-      {
-        name: 'resource-cleanup',
-        priority: 5,
-        timeoutMs: 3000,
-        description: 'Clean up file handles and network connections',
-        condition: (crashState: CrashState) =>
-          crashState.crashReason.includes('EMFILE') ||
-          crashState.crashReason.includes('ECONNREFUSED') ||
-          crashState.crashReason.includes('resource'),
-        execute: async (): Promise<boolean> => {
-          try {
-            // Clean up resources
-            await this.delay(300);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-      },
-      {
-        name: 'safeMode',
-        priority: 6,
-        timeoutMs: 2000,
-        description: 'Enter safe mode with minimal functionality',
-        condition: (crashState: CrashState) => crashState.recoveryAttempts >= 1,
-        execute: async (): Promise<boolean> => {
-          try {
-            // Enter safe mode
-            await this.delay(800);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-      },
-      {
-        name: 'fullRestart',
-        priority: 7,
-        timeoutMs: 5000,
-        description: 'Attempt graceful application restart',
-        condition: (crashState: CrashState) => crashState.recoveryAttempts >= 2,
-        execute: async (): Promise<boolean> => {
-          try {
-            // Prepare for restart
-            await this.delay(1000);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-      },
+      this.createMemoryCleanupStrategy(),
+      this.createStateRestorationStrategy(),
+      this.createComponentRestartStrategy(),
+      this.createStateResetStrategy(),
+      this.createResourceCleanupStrategy(),
+      this.createSafeModeStrategy(),
+      this.createFullRestartStrategy(),
     ];
 
     for (const strategy of defaultStrategies) {
       this.addStrategy(strategy);
     }
+  }
+
+  private createMemoryCleanupStrategy(): RecoveryStrategy {
+    return {
+      name: 'memoryCleanup',
+      priority: 1,
+      timeoutMs: 2000,
+      description: 'Clean up memory and garbage collect',
+      condition: (crashState: CrashState) =>
+        crashState.crashReason.includes('memory') ||
+        crashState.crashReason.includes('heap'),
+      execute: async (): Promise<boolean> => {
+        try {
+          if (global.gc) {
+            global.gc();
+          }
+          await this.delay(500);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
+  }
+
+  private createStateRestorationStrategy(): RecoveryStrategy {
+    return {
+      name: 'stateRestoration',
+      priority: 2,
+      timeoutMs: 3000,
+      description: 'Restore application state from backup',
+      condition: (): boolean => true, // Always applicable
+      execute: async (): Promise<boolean> => {
+        try {
+          // Attempt state restoration
+          await this.delay(1000);
+          // Emit state restored event via callback
+          if (this.onStateRestored) {
+            this.onStateRestored();
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
+  }
+
+  private createComponentRestartStrategy(): RecoveryStrategy {
+    return {
+      name: 'componentRestart',
+      priority: 3,
+      timeoutMs: 4000,
+      description: 'Restart application components',
+      condition: (crashState: CrashState) => crashState.recoveryAttempts >= 1,
+      execute: async (): Promise<boolean> => {
+        try {
+          // Restart components
+          await this.delay(1500);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
+  }
+
+  private createStateResetStrategy(): RecoveryStrategy {
+    return {
+      name: 'state-reset',
+      priority: 4,
+      timeoutMs: 1000,
+      description: 'Reset application state to safe defaults',
+      condition: (): boolean => true, // Always applicable
+      execute: async (): Promise<boolean> => {
+        try {
+          // Reset to safe state
+          await this.delay(200);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
+  }
+
+  private createResourceCleanupStrategy(): RecoveryStrategy {
+    return {
+      name: 'resource-cleanup',
+      priority: 5,
+      timeoutMs: 3000,
+      description: 'Clean up file handles and network connections',
+      condition: (crashState: CrashState) =>
+        crashState.crashReason.includes('EMFILE') ||
+        crashState.crashReason.includes('ECONNREFUSED') ||
+        crashState.crashReason.includes('resource'),
+      execute: async (): Promise<boolean> => {
+        try {
+          // Clean up resources
+          await this.delay(300);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
+  }
+
+  private createSafeModeStrategy(): RecoveryStrategy {
+    return {
+      name: 'safeMode',
+      priority: 6,
+      timeoutMs: 2000,
+      description: 'Enter safe mode with minimal functionality',
+      condition: (crashState: CrashState) => crashState.recoveryAttempts >= 1,
+      execute: async (): Promise<boolean> => {
+        try {
+          // Enter safe mode
+          await this.delay(800);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
+  }
+
+  private createFullRestartStrategy(): RecoveryStrategy {
+    return {
+      name: 'fullRestart',
+      priority: 7,
+      timeoutMs: 5000,
+      description: 'Attempt graceful application restart',
+      condition: (crashState: CrashState) => crashState.recoveryAttempts >= 2,
+      execute: async (): Promise<boolean> => {
+        try {
+          // Prepare for restart
+          await this.delay(1000);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
   }
 
   private delay(ms: number): Promise<void> {

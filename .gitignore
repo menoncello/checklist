@@ -10,10 +10,14 @@ bun.lockb
 # Build outputs
 dist/
 *.tsbuildinfo
+.tsbuildinfo
 
 # Test coverage
 coverage/
 .nyc_output/
+
+# ESLint cache
+.eslintcache
 
 # Environment
 .env

@@ -13,60 +13,74 @@ export class StateSerializerManager {
   }
 
   private setupDefaultSerializers(): void {
-    // JSON serializer (default)
-    this.addSerializer({
+    this.addSerializer(this.createJsonSerializer());
+    this.addSerializer(this.createDateSerializer());
+    this.addSerializer(this.createMapSerializer());
+    this.addSerializer(this.createSetSerializer());
+    this.addSerializer(this.createErrorSerializer());
+  }
+
+  private createJsonSerializer(): StateSerializer {
+    return {
       type: 'json',
       serialize: (data: unknown) => JSON.stringify(data),
       deserialize: (data: string) => JSON.parse(data),
       canHandle: () => true,
-    });
+    };
+  }
 
-    // Date serializer
-    this.addSerializer({
+  private createDateSerializer(): StateSerializer {
+    return {
       type: 'date',
       serialize: (data: unknown) => (data as Date).toISOString(),
       deserialize: (data: string) => new Date(data),
       canHandle: (data: unknown) => data instanceof Date,
-    });
+    };
+  }
 
-    // Map serializer
-    this.addSerializer({
+  private createMapSerializer(): StateSerializer {
+    return {
       type: 'map',
       serialize: (data: unknown) =>
         JSON.stringify(Array.from((data as Map<unknown, unknown>).entries())),
       deserialize: (data: string) => new Map(JSON.parse(data)),
       canHandle: (data: unknown) => data instanceof Map,
-    });
+    };
+  }
 
-    // Set serializer
-    this.addSerializer({
+  private createSetSerializer(): StateSerializer {
+    return {
       type: 'set',
       serialize: (data: unknown) =>
         JSON.stringify(Array.from((data as Set<unknown>).values())),
       deserialize: (data: string) => new Set(JSON.parse(data)),
       canHandle: (data: unknown) => data instanceof Set,
-    });
+    };
+  }
 
-    // Error serializer
-    this.addSerializer({
+  private createErrorSerializer(): StateSerializer {
+    return {
       type: 'error',
-      serialize: (data: unknown) => {
-        const error = data as Error;
-        return JSON.stringify({
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        });
-      },
-      deserialize: (data: string) => {
-        const parsed = JSON.parse(data);
-        const error = new Error(parsed.message);
-        error.name = parsed.name;
-        error.stack = parsed.stack;
-        return error;
-      },
+      serialize: (data: unknown) => this.serializeError(data as Error),
+      deserialize: (data: string) => this.deserializeError(data),
       canHandle: (data: unknown) => data instanceof Error,
+    };
+  }
+
+  private serializeError(error: Error): string {
+    return JSON.stringify({
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
     });
+  }
+
+  private deserializeError(data: string): Error {
+    const parsed = JSON.parse(data);
+    const error = new Error(parsed.message);
+    error.name = parsed.name;
+    error.stack = parsed.stack;
+    return error;
   }
 
   public serializeData(data: unknown): string {

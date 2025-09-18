@@ -8,36 +8,18 @@ export class StartupBottleneckDetector {
   static calculatePhaseStatistics(
     phases: Map<string, StartupPhase>
   ): PhaseStatistics {
-    const validPhases = Array.from(phases.values()).filter(
-      (phase) => phase.duration != null && phase.duration > 0
-    );
+    const validPhases = this.getValidPhases(phases);
 
     if (validPhases.length === 0) {
-      return {
-        longestPhase: null,
-        shortestPhase: null,
-        averageDuration: 0,
-        totalPhases: 0,
-        averagePhaseTime: 0,
-        totalPhaseTime: 0,
-      };
+      return this.emptyStatistics();
     }
 
-    const durations = validPhases.map((phase) => phase.duration ?? 0);
-    const totalDuration = durations.reduce(
-      (sum, duration) => sum + duration,
-      0
-    );
-
+    const totalDuration = this.calculateTotalDuration(validPhases);
     const averageDuration = totalDuration / validPhases.length;
 
     return {
-      longestPhase: validPhases.reduce((longest, current) =>
-        (current.duration ?? 0) > (longest.duration ?? 0) ? current : longest
-      ),
-      shortestPhase: validPhases.reduce((shortest, current) =>
-        (current.duration ?? 0) < (shortest.duration ?? 0) ? current : shortest
-      ),
+      longestPhase: this.findLongestPhase(validPhases),
+      shortestPhase: this.findShortestPhase(validPhases),
       averageDuration,
       totalPhases: validPhases.length,
       averagePhaseTime: averageDuration, // Alias for backward compatibility
@@ -45,49 +27,103 @@ export class StartupBottleneckDetector {
     };
   }
 
+  private static getValidPhases(
+    phases: Map<string, StartupPhase>
+  ): StartupPhase[] {
+    return Array.from(phases.values()).filter(
+      (phase) => phase.duration != null && phase.duration > 0
+    );
+  }
+
+  private static emptyStatistics(): PhaseStatistics {
+    return {
+      longestPhase: null,
+      shortestPhase: null,
+      averageDuration: 0,
+      totalPhases: 0,
+      averagePhaseTime: 0,
+      totalPhaseTime: 0,
+    };
+  }
+
+  private static calculateTotalDuration(phases: StartupPhase[]): number {
+    return phases.reduce((sum, phase) => sum + (phase.duration ?? 0), 0);
+  }
+
+  private static findLongestPhase(phases: StartupPhase[]): StartupPhase {
+    return phases.reduce((longest, current) =>
+      (current.duration ?? 0) > (longest.duration ?? 0) ? current : longest
+    );
+  }
+
+  private static findShortestPhase(phases: StartupPhase[]): StartupPhase {
+    return phases.reduce((shortest, current) =>
+      (current.duration ?? 0) < (shortest.duration ?? 0) ? current : shortest
+    );
+  }
+
   static detectBottlenecks(
     phases: Map<string, StartupPhase>,
     statistics: PhaseStatistics
   ): BottleneckInfo[] {
-    const bottlenecks: BottleneckInfo[] = [];
     const validPhases = Array.from(phases.values()).filter(
       (phase) => phase.duration != null
     );
 
     if (validPhases.length === 0) {
-      return bottlenecks;
+      return [];
     }
 
-    // Detect phases that take significantly longer than average
-    for (const phase of validPhases) {
+    const ratioBottlenecks = this.detectRatioBottlenecks(
+      validPhases,
+      statistics
+    );
+    const thresholdBottlenecks = this.detectThresholdBottlenecks(validPhases);
+
+    return [...ratioBottlenecks, ...thresholdBottlenecks];
+  }
+
+  private static detectRatioBottlenecks(
+    phases: StartupPhase[],
+    statistics: PhaseStatistics
+  ): BottleneckInfo[] {
+    const bottlenecks: BottleneckInfo[] = [];
+
+    for (const phase of phases) {
       const duration = phase.duration ?? 0;
       const ratio = duration / statistics.averageDuration;
 
       if (ratio > 2) {
-        // Lowered threshold to make it more likely to detect issues
-        bottlenecks.push({
-          phase,
-          reason: `Phase duration is ${ratio.toFixed(1)}x longer than average`,
-          severity: 'high',
-          recommendation: `Optimize ${phase.name} - consider breaking into smaller phases`,
-          impact: 'high',
-          percentage: ratio * 100,
-        });
+        bottlenecks.push(
+          this.createBottleneck(
+            phase,
+            ratio,
+            'high',
+            `Optimize ${phase.name} - consider breaking into smaller phases`
+          )
+        );
       } else if (ratio > 1.5) {
-        bottlenecks.push({
-          phase,
-          reason: `Phase duration is ${ratio.toFixed(1)}x longer than average`,
-          severity: 'medium',
-          recommendation: `Review ${phase.name} for potential optimizations`,
-          impact: 'medium',
-          percentage: ratio * 100,
-        });
+        bottlenecks.push(
+          this.createBottleneck(
+            phase,
+            ratio,
+            'medium',
+            `Review ${phase.name} for potential optimizations`
+          )
+        );
       }
     }
 
-    // Detect phases that exceed specific thresholds
-    const criticalThreshold = 20; // 20ms (lowered to match test expectations)
-    for (const phase of validPhases) {
+    return bottlenecks;
+  }
+
+  private static detectThresholdBottlenecks(
+    phases: StartupPhase[]
+  ): BottleneckInfo[] {
+    const bottlenecks: BottleneckInfo[] = [];
+    const criticalThreshold = 20;
+
+    for (const phase of phases) {
       const duration = phase.duration ?? 0;
       if (duration > criticalThreshold) {
         bottlenecks.push({
@@ -102,6 +138,22 @@ export class StartupBottleneckDetector {
     }
 
     return bottlenecks;
+  }
+
+  private static createBottleneck(
+    phase: StartupPhase,
+    ratio: number,
+    severity: 'high' | 'medium',
+    recommendation: string
+  ): BottleneckInfo {
+    return {
+      phase,
+      reason: `Phase duration is ${ratio.toFixed(1)}x longer than average`,
+      severity,
+      recommendation,
+      impact: severity,
+      percentage: ratio * 100,
+    };
   }
 
   static calculatePerformanceScore(

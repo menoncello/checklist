@@ -22,6 +22,10 @@ class MockView implements View {
     public readonly canGoBack: boolean = true
   ) {}
 
+  getTitle(): string {
+    return this.title;
+  }
+
   async onMount(): Promise<void> {
     this.mounted = true;
   }

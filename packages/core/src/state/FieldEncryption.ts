@@ -3,41 +3,36 @@
  * Uses Bun's crypto APIs for AES-256-GCM encryption
  */
 
-import * as crypto from 'crypto';
-import * as path from 'path';
-import { createLogger } from '../utils/logger';
-import { STATE_DIR } from './constants';
+import { EncryptionKeyManager } from './EncryptionKeyManager';
+import { EncryptionMetadataManager } from './EncryptionMetadata';
+import {
+  EncryptionOperations,
+  type EncryptedField,
+} from './EncryptionOperations';
 
-const logger = createLogger('checklist:encryption');
-
-export interface EncryptedField {
-  encrypted: true;
-  algorithm: 'aes-256-gcm';
-  iv: string; // Base64 encoded initialization vector
-  authTag: string; // Base64 encoded auth tag
-  data: string; // Base64 encoded encrypted data
-}
-
-export interface EncryptionMetadata {
-  version: '1.0.0';
-  keyId: string;
-  encryptedFields: string[]; // Dot-notation paths to encrypted fields
-  createdAt: string;
-  rotatedAt?: string;
-}
+export { type EncryptedField } from './EncryptionOperations';
+export { type EncryptionMetadata } from './EncryptionMetadata';
 
 export class FieldEncryption {
+  /**
+   * Encryption algorithm
+   */
   private static readonly ALGORITHM = 'aes-256-gcm';
-  private static readonly KEY_LENGTH = 32; // 256 bits
-  private static readonly IV_LENGTH = 16; // 128 bits
-  private static readonly AUTH_TAG_LENGTH = 16; // 128 bits
-  private static readonly KEY_FILE = path.join(STATE_DIR, '.encryption-key');
-  private static readonly METADATA_FILE = path.join(
-    STATE_DIR,
-    '.encryption-metadata.json'
-  );
 
-  private static encryptionKey: Buffer | null = null;
+  /**
+   * Key length in bytes (32 bytes = 256 bits)
+   */
+  private static readonly KEY_LENGTH = 32;
+
+  /**
+   * IV length in bytes (16 bytes = 128 bits)
+   */
+  private static readonly IV_LENGTH = 16;
+
+  /**
+   * Authentication tag length in bytes
+   */
+  private static readonly AUTH_TAG_LENGTH = 16;
 
   /**
    * Fields that should be encrypted (dot-notation paths)
@@ -58,89 +53,53 @@ export class FieldEncryption {
    * Initialize or load the encryption key
    */
   public static async initializeKey(): Promise<void> {
-    try {
-      // Try to load existing key
-      const keyFile = Bun.file(this.KEY_FILE);
-      if (await keyFile.exists()) {
-        const keyData = await keyFile.text();
-        this.encryptionKey = Buffer.from(keyData, 'base64');
-        return;
-      }
-    } catch {
-      // Key doesn't exist or is corrupted, generate new one
-    }
-
-    // Generate new key
-    this.encryptionKey = crypto.randomBytes(this.KEY_LENGTH);
-
-    // Save key with restricted permissions
-    await Bun.write(this.KEY_FILE, this.encryptionKey.toString('base64'));
-
-    // Try to set restrictive permissions (owner read-only)
-    try {
-      const { chmod } = await import('fs/promises');
-      await chmod(this.KEY_FILE, 0o400);
-    } catch {
-      // Permission setting might fail on some systems, continue anyway
-    }
-
-    // Create initial metadata
-    const metadata: EncryptionMetadata = {
-      version: '1.0.0',
-      keyId: crypto.randomBytes(8).toString('hex'),
-      encryptedFields: [],
-      createdAt: new Date().toISOString(),
-    };
-
-    await Bun.write(this.METADATA_FILE, JSON.stringify(metadata, null, 2));
+    await EncryptionKeyManager.initializeKey();
+    await EncryptionMetadataManager.createInitialMetadata();
   }
 
   /**
-   * Get the encryption key, initializing if necessary
+   * Get the current encryption key (for testing)
    */
-  private static async getKey(): Promise<Buffer> {
-    if (!this.encryptionKey) {
-      await this.initializeKey();
-    }
+  public static getEncryptionKey(): Buffer | null {
+    return EncryptionKeyManager.getCurrentKey();
+  }
 
-    if (!this.encryptionKey) {
-      throw new Error('Failed to initialize encryption key');
-    }
+  /**
+   * Getter/setter for compatibility with existing tests
+   */
+  public static get encryptionKey(): Buffer | null {
+    return EncryptionKeyManager.getCurrentKey();
+  }
 
-    return this.encryptionKey;
+  public static set encryptionKey(key: Buffer | null) {
+    // This is for test compatibility - normally you shouldn't set the key directly
+    (EncryptionKeyManager as unknown as Record<string, unknown>).encryptionKey =
+      key;
+  }
+
+  /**
+   * Set the key file path (for testing)
+   */
+  public static set KEY_FILE(path: string) {
+    (EncryptionKeyManager as unknown as Record<string, unknown>).KEY_FILE =
+      path;
+  }
+
+  /**
+   * Set the metadata file path (for testing)
+   */
+  public static set METADATA_FILE(path: string) {
+    (
+      EncryptionMetadataManager as unknown as Record<string, unknown>
+    ).METADATA_FILE = path;
   }
 
   /**
    * Encrypt a value
    */
   public static async encrypt(value: unknown): Promise<EncryptedField> {
-    const key = await this.getKey();
-
-    // Convert value to JSON string
-    const plaintext = JSON.stringify(value);
-
-    // Generate random IV
-    const iv = crypto.randomBytes(this.IV_LENGTH);
-
-    // Create cipher
-    const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
-
-    // Encrypt data
-    const encrypted = Buffer.concat([
-      cipher.update(plaintext, 'utf8'),
-      cipher.final(),
-    ]);
-
-    // Get auth tag
-    const authTag = cipher.getAuthTag();
-
-    return {
-      encrypted: true,
-      algorithm: 'aes-256-gcm',
-      iv: iv.toString('base64'),
-      authTag: authTag.toString('base64'),
-      data: encrypted.toString('base64'),
-    };
+    const key = await EncryptionKeyManager.getKey();
+    return EncryptionOperations.encrypt(value, key);
   }
 
   /**
@@ -149,34 +108,8 @@ export class FieldEncryption {
   public static async decrypt(
     encryptedField: EncryptedField
   ): Promise<unknown> {
-    if (
-      !encryptedField.encrypted ||
-      encryptedField.algorithm !== 'aes-256-gcm'
-    ) {
-      throw new Error('Invalid encrypted field format');
-    }
-
-    const key = await this.getKey();
-
-    // Decode from base64
-    const iv = Buffer.from(encryptedField.iv, 'base64');
-    const authTag = Buffer.from(encryptedField.authTag, 'base64');
-    const encrypted = Buffer.from(encryptedField.data, 'base64');
-
-    // Create decipher with explicit authTagLength to avoid deprecation warning
-    const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv, {
-      authTagLength: 16, // 16 bytes = 128 bits
-    } as crypto.CipherGCMOptions);
-    decipher.setAuthTag(authTag);
-
-    // Decrypt data
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
-
-    // Parse JSON
-    return JSON.parse(decrypted.toString('utf8'));
+    const key = await EncryptionKeyManager.getKey();
+    return EncryptionOperations.decrypt(encryptedField, key);
   }
 
   /**
@@ -226,13 +159,7 @@ export class FieldEncryption {
   }
 
   private static isAlreadyEncrypted(value: unknown): boolean {
-    return (
-      value !== null &&
-      value !== undefined &&
-      typeof value === 'object' &&
-      'encrypted' in value &&
-      (value as Record<string, unknown>).encrypted === true
-    );
+    return EncryptionOperations.isEncryptedField(value);
   }
 
   private static shouldEncryptPath(currentPath: string): boolean {
@@ -306,13 +233,7 @@ export class FieldEncryption {
   }
 
   private static isEncryptedField(value: unknown): boolean {
-    return (
-      value !== null &&
-      value !== undefined &&
-      typeof value === 'object' &&
-      'encrypted' in value &&
-      (value as Record<string, unknown>).encrypted === true
-    );
+    return EncryptionOperations.isEncryptedField(value);
   }
 
   private static async processDecryptionRecursively(
@@ -350,29 +271,7 @@ export class FieldEncryption {
    * Update encryption metadata
    */
   public static async updateMetadata(encryptedPaths: string[]): Promise<void> {
-    try {
-      const metadataFile = Bun.file(this.METADATA_FILE);
-      const existing = (await metadataFile.exists())
-        ? (JSON.parse(await metadataFile.text()) as EncryptionMetadata)
-        : null;
-
-      const metadata: EncryptionMetadata = existing ?? {
-        version: '1.0.0',
-        keyId: crypto.randomBytes(8).toString('hex'),
-        encryptedFields: [],
-        createdAt: new Date().toISOString(),
-      };
-
-      // Update encrypted fields list
-      metadata.encryptedFields = Array.from(
-        new Set([...metadata.encryptedFields, ...encryptedPaths])
-      );
-
-      await Bun.write(this.METADATA_FILE, JSON.stringify(metadata, null, 2));
-    } catch (error) {
-      // Metadata update is non-critical, log and continue
-      logger.warn({ msg: 'Failed to update encryption metadata', error });
-    }
+    await EncryptionMetadataManager.updateMetadata(encryptedPaths);
   }
 
   /**
@@ -386,24 +285,13 @@ export class FieldEncryption {
     const decryptedData = await decryptFn();
 
     // Generate new key
-    this.encryptionKey = crypto.randomBytes(this.KEY_LENGTH);
-
-    // Save new key
-    await Bun.write(this.KEY_FILE, this.encryptionKey.toString('base64'));
+    await EncryptionKeyManager.rotateKey();
 
     // Re-encrypt data with new key
     await encryptFn(decryptedData);
 
     // Update metadata
-    const metadataFile = Bun.file(this.METADATA_FILE);
-    if (await metadataFile.exists()) {
-      const metadata = JSON.parse(
-        await metadataFile.text()
-      ) as EncryptionMetadata;
-      metadata.rotatedAt = new Date().toISOString();
-      metadata.keyId = crypto.randomBytes(8).toString('hex');
-      await Bun.write(this.METADATA_FILE, JSON.stringify(metadata, null, 2));
-    }
+    await EncryptionMetadataManager.updateRotationMetadata();
   }
 
   async encryptSensitiveFields(data: unknown): Promise<unknown> {
@@ -416,7 +304,9 @@ export class FieldEncryption {
     return result;
   }
 
-  private async encryptObjectFields(obj: Record<string, unknown>): Promise<void> {
+  private async encryptObjectFields(
+    obj: Record<string, unknown>
+  ): Promise<void> {
     const sensitiveFields = this.getSensitiveFieldNames();
 
     for (const key in obj) {

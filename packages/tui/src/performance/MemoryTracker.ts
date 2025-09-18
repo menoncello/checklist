@@ -263,49 +263,63 @@ export class MemoryTracker {
   private calculateTrends(): MemoryTrend[] {
     if (this.snapshots.length < 5) return [];
 
-    const recent = this.snapshots.slice(-10); // Last 10 snapshots
-    const trends: MemoryTrend[] = [];
-
-    // Calculate trend for each memory type
+    const recent = this.snapshots.slice(-10);
     const types = ['heap', 'rss', 'external'] as const;
 
-    for (const type of types) {
-      const values = recent.map((s) => {
-        switch (type) {
-          case 'heap':
-            return s.heapUsed;
-          case 'rss':
-            return s.rss;
-          case 'external':
-            return s.external;
-        }
-      });
+    return types
+      .map((type) => this.calculateTrendForType(type, recent))
+      .filter((trend): trend is MemoryTrend => trend !== null);
+  }
 
-      const trend = this.calculateLinearTrend(
-        recent.map((s) => s.timestamp),
-        values
-      );
+  private calculateTrendForType(
+    type: 'heap' | 'rss' | 'external',
+    recent: MemorySnapshot[]
+  ): MemoryTrend | null {
+    const values = this.extractValuesForType(type, recent);
+    const timestamps = recent.map((s) => s.timestamp);
+    const trend = this.calculateLinearTrend(timestamps, values);
 
-      if (trend) {
-        trends.push({
-          type,
-          direction:
-            trend.slope > 1000
-              ? 'increasing'
-              : trend.slope < -1000
-                ? 'decreasing'
-                : 'stable',
-          rate: trend.slope, // bytes per millisecond, will convert to per second
-          confidence: trend.r2,
-          projection: {
-            nextHour: trend.slope * 3600000, // bytes in next hour
-            nextDay: trend.slope * 86400000, // bytes in next day
-          },
-        });
+    return trend ? this.createMemoryTrend(type, trend) : null;
+  }
+
+  private extractValuesForType(
+    type: 'heap' | 'rss' | 'external',
+    snapshots: MemorySnapshot[]
+  ): number[] {
+    return snapshots.map((s) => {
+      switch (type) {
+        case 'heap':
+          return s.heapUsed;
+        case 'rss':
+          return s.rss;
+        case 'external':
+          return s.external;
       }
-    }
+    });
+  }
 
-    return trends;
+  private createMemoryTrend(
+    type: 'heap' | 'rss' | 'external',
+    trend: { slope: number; r2: number }
+  ): MemoryTrend {
+    return {
+      type,
+      direction: this.getTrendDirection(trend.slope),
+      rate: trend.slope,
+      confidence: trend.r2,
+      projection: {
+        nextHour: trend.slope * 3600000,
+        nextDay: trend.slope * 86400000,
+      },
+    };
+  }
+
+  private getTrendDirection(
+    slope: number
+  ): 'increasing' | 'decreasing' | 'stable' {
+    if (slope > 1000) return 'increasing';
+    if (slope < -1000) return 'decreasing';
+    return 'stable';
   }
 
   private calculateLinearTrend(
@@ -438,59 +452,64 @@ export class MemoryTracker {
 
   public getStatistics(): MemoryStatistics {
     if (this.snapshots.length === 0) {
-      const current = process.memoryUsage();
-      return {
-        current,
-        average: current,
-        peak: current,
-        trends: [],
-        leakCount: 0,
-        gcTriggers: this.gcTriggerCount,
-        samplesCount: 0,
-      };
+      return this.getEmptyStatistics();
     }
 
     const latest = this.snapshots[this.snapshots.length - 1];
-
-    // Calculate averages
-    const average = {
-      rss:
-        this.snapshots.reduce((sum, s) => sum + s.rss, 0) /
-        this.snapshots.length,
-      heapTotal:
-        this.snapshots.reduce((sum, s) => sum + s.heapTotal, 0) /
-        this.snapshots.length,
-      heapUsed:
-        this.snapshots.reduce((sum, s) => sum + s.heapUsed, 0) /
-        this.snapshots.length,
-      external:
-        this.snapshots.reduce((sum, s) => sum + s.external, 0) /
-        this.snapshots.length,
-      arrayBuffers:
-        this.snapshots.reduce((sum, s) => sum + s.arrayBuffers, 0) /
-        this.snapshots.length,
-    };
-
     return {
-      current: {
-        rss: latest.rss,
-        heapTotal: latest.heapTotal,
-        heapUsed: latest.heapUsed,
-        external: latest.external,
-        arrayBuffers: latest.arrayBuffers,
-      },
-      average,
-      peak: {
-        rss: this.peaks.rss,
-        heapTotal: this.peaks.heapTotal,
-        heapUsed: this.peaks.heapUsed,
-        external: Math.max(...this.snapshots.map((s) => s.external)),
-        arrayBuffers: Math.max(...this.snapshots.map((s) => s.arrayBuffers)),
-      },
+      current: this.getCurrentMemory(latest),
+      average: this.calculateAverages(),
+      peak: this.calculatePeaks(),
       trends: this.getTrends(),
       leakCount: this.detectedLeaks.size,
       gcTriggers: this.gcTriggerCount,
       samplesCount: this.snapshots.length,
+    };
+  }
+
+  private getEmptyStatistics(): MemoryStatistics {
+    const current = process.memoryUsage();
+    return {
+      current,
+      average: current,
+      peak: current,
+      trends: [],
+      leakCount: 0,
+      gcTriggers: this.gcTriggerCount,
+      samplesCount: 0,
+    };
+  }
+
+  private getCurrentMemory(latest: MemorySnapshot): NodeJS.MemoryUsage {
+    return {
+      rss: latest.rss,
+      heapTotal: latest.heapTotal,
+      heapUsed: latest.heapUsed,
+      external: latest.external,
+      arrayBuffers: latest.arrayBuffers,
+    };
+  }
+
+  private calculateAverages(): NodeJS.MemoryUsage {
+    const count = this.snapshots.length;
+    return {
+      rss: this.snapshots.reduce((sum, s) => sum + s.rss, 0) / count,
+      heapTotal:
+        this.snapshots.reduce((sum, s) => sum + s.heapTotal, 0) / count,
+      heapUsed: this.snapshots.reduce((sum, s) => sum + s.heapUsed, 0) / count,
+      external: this.snapshots.reduce((sum, s) => sum + s.external, 0) / count,
+      arrayBuffers:
+        this.snapshots.reduce((sum, s) => sum + s.arrayBuffers, 0) / count,
+    };
+  }
+
+  private calculatePeaks(): NodeJS.MemoryUsage {
+    return {
+      rss: this.peaks.rss,
+      heapTotal: this.peaks.heapTotal,
+      heapUsed: this.peaks.heapUsed,
+      external: Math.max(...this.snapshots.map((s) => s.external)),
+      arrayBuffers: Math.max(...this.snapshots.map((s) => s.arrayBuffers)),
     };
   }
 

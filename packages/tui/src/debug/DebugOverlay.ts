@@ -1,6 +1,8 @@
 import { BaseComponent } from '../components/BaseComponent';
 import { RenderContext } from '../framework/UIFramework';
-import { DebugManager, ComponentDebugInfo } from './DebugManager';
+import { DebugManager } from './DebugManager';
+import { DebugOverlayHelpers } from './DebugOverlayHelpers';
+import { DebugPanelRenderer } from './DebugPanels';
 
 export interface DebugOverlayConfig {
   position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -33,14 +35,15 @@ export class DebugOverlay extends BaseComponent {
   private isMoving = false;
   private lastInteraction = Date.now();
   private autoHideTimer: Timer | null = null;
+  private panelRenderer!: DebugPanelRenderer;
 
   constructor(
     debugManager: DebugManager,
     config: Partial<DebugOverlayConfig> = {}
   ) {
     super({ id: 'debug-overlay' });
-
     this.debugManager = debugManager;
+    this.panelRenderer = new DebugPanelRenderer(this.debugManager);
     this.config = {
       position: 'bottom-right',
       size: { width: 80, height: 25 },
@@ -52,102 +55,65 @@ export class DebugOverlay extends BaseComponent {
       theme: 'dark',
       ...config,
     };
-
     this.setupDefaultPanels();
     this.setupEventHandlers();
     this.startAutoHideTimer();
   }
 
   private setupDefaultPanels(): void {
-    // Logs panel
-    this.addPanel({
-      id: 'logs',
-      title: 'Logs',
-      hotkey: '1',
-      enabled: true,
-      icon: '📋',
-      render: (width, height) => this.renderLogsPanel(width, height),
-    });
+    [
+      { id: 'logs', title: 'Logs', hotkey: '1', icon: '📋' },
+      { id: 'metrics', title: 'Metrics', hotkey: '2', icon: '📊' },
+      { id: 'components', title: 'Components', hotkey: '3', icon: '🧩' },
+      { id: 'performance', title: 'Performance', hotkey: '4', icon: '⚡' },
+      { id: 'console', title: 'Console', hotkey: '5', icon: '💻' },
+    ].forEach((panel) =>
+      this.addPanel({
+        ...panel,
+        enabled: true,
+        render: this.createPanelRenderer(panel.id),
+      })
+    );
+  }
 
-    // Metrics panel
-    this.addPanel({
-      id: 'metrics',
-      title: 'Metrics',
-      hotkey: '2',
-      enabled: true,
-      icon: '📊',
-      render: (width, height) => this.renderMetricsPanel(width, height),
-    });
-
-    // Components panel
-    this.addPanel({
-      id: 'components',
-      title: 'Components',
-      hotkey: '3',
-      enabled: true,
-      icon: '🧩',
-      render: (width, height) => this.renderComponentsPanel(width, height),
-    });
-
-    // Performance panel
-    this.addPanel({
-      id: 'performance',
-      title: 'Performance',
-      hotkey: '4',
-      enabled: true,
-      icon: '⚡',
-      render: (width, height) => this.renderPerformancePanel(width, height),
-    });
-
-    // Console panel
-    this.addPanel({
-      id: 'console',
-      title: 'Console',
-      hotkey: '5',
-      enabled: true,
-      icon: '💻',
-      render: (width, height) => this.renderConsolePanel(width, height),
-    });
+  private createPanelRenderer(id: string): (w: number, h: number) => string[] {
+    const renderers: Record<string, (w: number, h: number) => string[]> = {
+      logs: (w, h) =>
+        this.panelRenderer.renderLogsPanel(w, h, this.scrollOffset),
+      metrics: (w, h) => this.panelRenderer.renderMetricsPanel(w, h),
+      components: (w, h) =>
+        this.panelRenderer.renderComponentsPanel(w, h, this.scrollOffset),
+      performance: (w, h) =>
+        this.panelRenderer.renderPerformancePanel(w, h, this.scrollOffset),
+      console: (w, h) => this.panelRenderer.renderConsolePanel(w, h),
+    };
+    return renderers[id] ?? (() => []);
   }
 
   private setupEventHandlers(): void {
     this.debugManager.on('logAdded', () => {
-      if (this.selectedPanelId === 'logs') {
-        this.markDirty();
-      }
+      if (this.selectedPanelId === 'logs') this.markDirty();
     });
-
     this.debugManager.on('metricsUpdated', () => {
-      if (this.selectedPanelId === 'metrics') {
-        this.markDirty();
-      }
+      if (this.selectedPanelId === 'metrics') this.markDirty();
     });
-
     this.debugManager.on('componentTreeUpdated', () => {
-      if (this.selectedPanelId === 'components') {
-        this.markDirty();
-      }
+      if (this.selectedPanelId === 'components') this.markDirty();
     });
   }
 
   private startAutoHideTimer(): void {
     if (!this.config.autoHide) return;
-
-    if (this.autoHideTimer) {
-      clearTimeout(this.autoHideTimer);
-    }
-
+    if (this.autoHideTimer) clearTimeout(this.autoHideTimer);
     this.autoHideTimer = setTimeout(() => {
-      if (Date.now() - this.lastInteraction > this.config.autoHideDelay) {
+      if (Date.now() - this.lastInteraction > this.config.autoHideDelay)
         this.hide();
-      }
     }, this.config.autoHideDelay);
   }
 
   public addPanel(panel: DebugPanel): void {
     this.panels.set(panel.id, panel);
   }
-
   public removePanel(id: string): boolean {
     return this.panels.delete(id);
   }
@@ -165,46 +131,41 @@ export class DebugOverlay extends BaseComponent {
 
   public handleKeyPress(key: string): boolean {
     this.recordInteraction();
-
-    // Panel selection hotkeys
     for (const [id, panel] of this.panels) {
       if (panel.hotkey === key && panel.enabled) {
         this.selectPanel(id);
         return true;
       }
     }
+    return this.handleNavigationKey(key);
+  }
 
-    // Navigation keys
-    switch (key) {
-      case 'ArrowUp':
-        this.scrollUp();
-        return true;
-      case 'ArrowDown':
-        this.scrollDown();
-        return true;
-      case 'PageUp':
+  private handleNavigationKey(key: string): boolean {
+    const actions: Record<string, () => void> = {
+      ArrowUp: () => this.scrollUp(),
+      ArrowDown: () => this.scrollDown(),
+      PageUp: () => {
         this.scrollOffset = Math.max(0, this.scrollOffset - 10);
         this.markDirty();
-        return true;
-      case 'PageDown':
+      },
+      PageDown: () => {
         this.scrollOffset += 10;
         this.markDirty();
-        return true;
-      case 'Home':
+      },
+      Home: () => {
         this.scrollOffset = 0;
         this.markDirty();
-        return true;
-      case 'c':
-        if (this.selectedPanelId === 'logs') {
-          this.debugManager.clearLogs();
-          return true;
-        }
-        break;
-      case 'e':
-        this.exportCurrentPanel();
-        return true;
+      },
+      c: () => {
+        if (this.selectedPanelId === 'logs') this.debugManager.clearLogs();
+      },
+      e: () => this.exportCurrentPanel(),
+    };
+    const action = actions[key];
+    if (action != null) {
+      action();
+      return true;
     }
-
     return false;
   }
 
@@ -215,49 +176,36 @@ export class DebugOverlay extends BaseComponent {
     delta?: number
   ): boolean {
     this.recordInteraction();
-
     const overlayBounds = this.getOverlayBounds();
-    if (!this.isPointInOverlay(x, y, overlayBounds)) {
-      return false;
-    }
-
+    if (!this.isPointInOverlay(x, y, overlayBounds)) return false;
     if (button === 'wheel' && delta != null) {
-      if (delta > 0) {
-        this.scrollDown();
-      } else {
-        this.scrollUp();
-      }
+      delta > 0 ? this.scrollDown() : this.scrollUp();
       return true;
     }
-
     if (button === 'left') {
-      // Check if clicking on panel tabs
-      const tabY = overlayBounds.y + 2; // Tab row
+      const tabY = overlayBounds.y + 2;
       if (y === tabY) {
         const tabIndex = Math.floor((x - overlayBounds.x) / 12);
-        const panels = Array.from(this.panels.values()).filter(
+        const enabledPanels = Array.from(this.panels.values()).filter(
           (p) => p.enabled
         );
-        if (tabIndex >= 0 && tabIndex < panels.length) {
-          this.selectPanel(panels[tabIndex].id);
+        if (tabIndex >= 0 && tabIndex < enabledPanels.length) {
+          this.selectPanel(enabledPanels[tabIndex].id);
           return true;
         }
       }
     }
-
-    return true; // Consume event even if not handled specifically
+    return true;
   }
 
   private scrollUp(): void {
     this.scrollOffset = Math.max(0, this.scrollOffset - 1);
     this.markDirty();
   }
-
   private scrollDown(): void {
     this.scrollOffset += 1;
     this.markDirty();
   }
-
   private recordInteraction(): void {
     this.lastInteraction = Date.now();
     this.startAutoHideTimer();
@@ -265,24 +213,16 @@ export class DebugOverlay extends BaseComponent {
 
   private exportCurrentPanel(): void {
     const panel = this.panels.get(this.selectedPanelId);
-    if (!panel) return;
-
-    const content = panel.render(
+    if (panel == null) return;
+    const _content = panel.render(
       this.config.size.width - 4,
       this.config.size.height - 6
     );
-    const _exportData = {
-      panel: panel.title,
-      timestamp: new Date().toISOString(),
-      content: content.join('\n'),
-    };
-
     this.debugManager.log(
       'info',
       'Debug',
       `Exported ${panel.title} panel data`
     );
-    // In a real implementation, this could save to a file or copy to clipboard
   }
 
   private getOverlayBounds(): {
@@ -291,8 +231,6 @@ export class DebugOverlay extends BaseComponent {
     width: number;
     height: number;
   } {
-    // This would need to be calculated based on terminal size and position
-    // For now, return a placeholder
     return {
       x: 0,
       y: 0,
@@ -306,310 +244,47 @@ export class DebugOverlay extends BaseComponent {
     y: number,
     bounds: ReturnType<typeof this.getOverlayBounds>
   ): boolean {
-    return (
-      x >= bounds.x &&
-      x < bounds.x + bounds.width &&
-      y >= bounds.y &&
-      y < bounds.y + bounds.height
-    );
-  }
-
-  private renderLogsPanel(width: number, height: number): string[] {
-    const logs = this.debugManager.getLogs();
-    const visibleLogs = logs.slice(
-      this.scrollOffset,
-      this.scrollOffset + height
-    );
-    const lines: string[] = [];
-
-    for (const log of visibleLogs) {
-      const timestamp = new Date(log.timestamp).toLocaleTimeString();
-      const levelIcon = this.getLevelIcon(log.level);
-      const line = `${levelIcon} ${timestamp} [${log.category}] ${log.message}`;
-      lines.push(this.truncateLine(line, width));
-    }
-
-    // Fill remaining space
-    while (lines.length < height) {
-      lines.push('');
-    }
-
-    return lines;
-  }
-
-  private renderMetricsPanel(width: number, height: number): string[] {
-    const metrics = this.debugManager.getMetrics();
-    const lines: string[] = [];
-
-    lines.push(`📊 Performance Metrics`);
-    lines.push('');
-    lines.push(`⏱️  Render Time: ${metrics.renderTime.toFixed(2)}ms`);
-    lines.push(`🧩 Components: ${metrics.componentCount}`);
-    lines.push(`🎯 Events: ${metrics.eventCount}`);
-    lines.push(
-      `💾 Memory: ${(metrics.memoryUsage / 1024 / 1024).toFixed(2)}MB`
-    );
-    lines.push(`📈 FPS: ${metrics.fps.toFixed(1)}`);
-    lines.push(
-      `🕐 Last Update: ${new Date(metrics.lastUpdate).toLocaleTimeString()}`
-    );
-
-    // System info
-    if (typeof process !== 'undefined') {
-      lines.push('');
-      lines.push('🖥️  System Info');
-      lines.push(`Node.js: ${process.version}`);
-      lines.push(`Platform: ${process.platform}`);
-      lines.push(`Uptime: ${Math.floor(process.uptime())}s`);
-    }
-
-    // Fill remaining space
-    while (lines.length < height) {
-      lines.push('');
-    }
-
-    return lines;
-  }
-
-  private renderComponentsPanel(width: number, height: number): string[] {
-    const tree = this.debugManager.getComponentTree();
-    const lines: string[] = [];
-
-    if (tree) {
-      lines.push('🧩 Component Tree');
-      lines.push('');
-      this.renderComponentTreeRecursive(tree, lines, 0, width);
-    } else {
-      lines.push('No component tree available');
-    }
-
-    // Apply scroll offset
-    const visibleLines = lines.slice(
-      this.scrollOffset,
-      this.scrollOffset + height
-    );
-
-    // Fill remaining space
-    while (visibleLines.length < height) {
-      visibleLines.push('');
-    }
-
-    return visibleLines;
-  }
-
-  private renderComponentTreeRecursive(
-    component: ComponentDebugInfo,
-    lines: string[],
-    depth: number,
-    width: number
-  ): void {
-    const indent = '  '.repeat(depth);
-    const prefix = depth > 0 ? '├─ ' : '';
-    const line = `${indent}${prefix}${component.type} (${component.id})`;
-    const statusIcon = component.state === 'mounted' ? '✅' : '⏸️';
-    const fullLine = `${statusIcon} ${line}`;
-
-    lines.push(this.truncateLine(fullLine, width));
-
-    for (const child of component.children) {
-      this.renderComponentTreeRecursive(child, lines, depth + 1, width);
-    }
-  }
-
-  private renderPerformancePanel(width: number, height: number): string[] {
-    const lines: string[] = [];
-    const perfLogs = this.debugManager
-      .getLogs()
-      .filter((log) => log.category === 'Profiler')
-      .slice(this.scrollOffset, this.scrollOffset + height);
-
-    lines.push('⚡ Performance Profiling');
-    lines.push('');
-
-    if (perfLogs.length === 0) {
-      lines.push('No performance data available');
-      lines.push('Enable profiling in debug config');
-    } else {
-      for (const log of perfLogs) {
-        const timestamp = new Date(log.timestamp).toLocaleTimeString();
-        const line = `${timestamp} ${log.message}`;
-        lines.push(this.truncateLine(line, width));
-      }
-    }
-
-    // Fill remaining space
-    while (lines.length < height) {
-      lines.push('');
-    }
-
-    return lines;
-  }
-
-  private renderConsolePanel(width: number, height: number): string[] {
-    const lines: string[] = [];
-
-    lines.push('💻 Debug Console');
-    lines.push('');
-    lines.push('Available commands:');
-    lines.push('  clear - Clear logs');
-    lines.push('  export - Export current panel');
-    lines.push('  metrics - Show current metrics');
-    lines.push('  gc - Trigger garbage collection');
-    lines.push('');
-    lines.push('Hotkeys:');
-    lines.push('  1-5 - Switch panels');
-    lines.push('  ↑↓ - Scroll');
-    lines.push('  PgUp/PgDn - Page scroll');
-    lines.push('  Home - Go to top');
-    lines.push('  c - Clear (in logs panel)');
-    lines.push('  e - Export current panel');
-
-    // Fill remaining space
-    while (lines.length < height) {
-      lines.push('');
-    }
-
-    return lines;
-  }
-
-  private getLevelIcon(level: string): string {
-    switch (level) {
-      case 'debug':
-        return '🔍';
-      case 'info':
-        return 'ℹ️';
-      case 'warn':
-        return '⚠️';
-      case 'error':
-        return '❌';
-      default:
-        return '•';
-    }
-  }
-
-  private truncateLine(line: string, maxWidth: number): string {
-    if (line.length <= maxWidth) {
-      return line.padEnd(maxWidth, ' ');
-    }
-    return line.slice(0, maxWidth - 3) + '...';
-  }
-
-  private renderTabs(width: number): string {
-    const enabledPanels = Array.from(this.panels.values()).filter(
-      (p) => p.enabled
-    );
-    const tabs: string[] = [];
-
-    for (const panel of enabledPanels) {
-      const isSelected = panel.id === this.selectedPanelId;
-      const icon = panel.icon ?? '';
-      const title = panel.title;
-      const hotkey = `(${panel.hotkey})`;
-
-      let tab = `${icon} ${title} ${hotkey}`;
-      if (isSelected) {
-        tab = `[${tab}]`;
-      } else {
-        tab = ` ${tab} `;
-      }
-
-      tabs.push(tab);
-    }
-
-    const tabLine = tabs.join('│');
-    return this.truncateLine(tabLine, width);
-  }
-
-  private renderBorder(width: number, height: number, title: string): string[] {
-    const lines: string[] = [];
-
-    // Top border with title
-    const titleLine = title ? ` ${title} ` : '';
-    const remainingWidth = width - titleLine.length - 2;
-    const leftPadding = Math.floor(remainingWidth / 2);
-    const rightPadding = remainingWidth - leftPadding;
-
-    lines.push(
-      `┌${'─'.repeat(leftPadding)}${titleLine}${'─'.repeat(rightPadding)}┐`
-    );
-
-    // Tab row
-    const tabsLine = this.renderTabs(width - 2);
-    lines.push(`│${tabsLine}│`);
-    lines.push(`├${'─'.repeat(width - 2)}┤`);
-
-    return lines;
+    return DebugOverlayHelpers.isPointInBounds(x, y, bounds);
   }
 
   public render(props: unknown): string {
     const context = props as RenderContext;
-    if (!this.debugManager.isEnabled() || !this.debugManager.isDebugVisible()) {
+    if (!this.debugManager.isEnabled() || !this.debugManager.isDebugVisible())
       return '';
-    }
-
-    const lines: string[] = [];
     const selectedPanel = this.panels.get(this.selectedPanelId);
-
-    if (!selectedPanel) {
-      return '';
-    }
-
-    // Calculate overlay dimensions and position
-    const overlayWidth = Math.min(this.config.size.width, context.width);
-    const overlayHeight = Math.min(this.config.size.height, context.height);
-    const contentHeight = overlayHeight - 4; // Account for borders and tabs
-
-    // Render border and tabs
-    const borderLines = this.renderBorder(
-      overlayWidth,
-      overlayHeight,
-      'Debug Panel'
-    );
-    lines.push(...borderLines);
-
-    // Render panel content
-    const contentLines = selectedPanel.render(overlayWidth - 2, contentHeight);
-
-    for (const line of contentLines) {
-      lines.push(`│${line}│`);
-    }
-
-    // Bottom border
-    lines.push(`└${'─'.repeat(overlayWidth - 2)}┘`);
-
-    // Position overlay based on config
-    const { x, y } = this.calculatePosition(
-      context.width,
-      context.height,
-      overlayWidth,
-      overlayHeight
-    );
-
-    // Apply positioning using ANSI escape codes
-    const positionedLines = lines.map((line, index) => {
-      return `\x1b[${y + index + 1};${x + 1}H${line}`;
-    });
-
-    return positionedLines.join('');
+    if (!selectedPanel) return '';
+    return this.renderSelectedPanel(context, selectedPanel);
   }
 
-  private calculatePosition(
-    termWidth: number,
-    termHeight: number,
-    overlayWidth: number,
-    overlayHeight: number
-  ): { x: number; y: number } {
-    switch (this.config.position) {
-      case 'top-left':
-        return { x: 0, y: 0 };
-      case 'top-right':
-        return { x: termWidth - overlayWidth, y: 0 };
-      case 'bottom-left':
-        return { x: 0, y: termHeight - overlayHeight };
-      case 'bottom-right':
-      default:
-        return { x: termWidth - overlayWidth, y: termHeight - overlayHeight };
-    }
+  private renderSelectedPanel(
+    context: RenderContext,
+    selectedPanel: DebugPanel
+  ): string {
+    const width = Math.min(this.config.size.width, context.width);
+    const height = Math.min(this.config.size.height, context.height);
+    const tabs = DebugOverlayHelpers.formatTabs(
+      Array.from(this.panels.values()),
+      this.selectedPanelId,
+      width - 2
+    );
+    const contentLines = selectedPanel.render(width - 2, height - 4);
+    const lines = DebugOverlayHelpers.buildOverlayLines({
+      panelContent: contentLines,
+      width,
+      height,
+      title: 'Debug Panel',
+      tabs,
+    });
+    const { x, y } = DebugOverlayHelpers.calculatePosition({
+      position: this.config.position,
+      termWidth: context.width,
+      termHeight: context.height,
+      overlayWidth: width,
+      overlayHeight: height,
+    });
+    return lines
+      .map((line, i) => `\x1b[${y + i + 1};${x + 1}H${line}`)
+      .join('');
   }
 
   public show(): void {
@@ -617,26 +292,17 @@ export class DebugOverlay extends BaseComponent {
     this.recordInteraction();
     this.markDirty();
   }
-
   public hide(): void {
-    // Don't disable debug manager, just hide overlay
     this.recordInteraction();
     this.markDirty();
   }
-
   public toggle(): void {
-    if (this.debugManager.isDebugVisible()) {
-      this.hide();
-    } else {
-      this.show();
-    }
+    this.debugManager.isDebugVisible() ? this.hide() : this.show();
   }
-
-  public updateConfig(newConfig: Partial<DebugOverlayConfig>): void {
-    this.config = { ...this.config, ...newConfig };
+  public updateConfig(cfg: Partial<DebugOverlayConfig>): void {
+    this.config = { ...this.config, ...cfg };
     this.markDirty();
   }
-
   public getConfig(): DebugOverlayConfig {
     return { ...this.config };
   }

@@ -124,7 +124,9 @@ export class StateLoader {
       }
     }
 
-    throw new RecoveryError(`Recovery failed: ${originalError.message}`);
+    throw new RecoveryError(
+      `Recovery failed: ${originalError?.message || 'Unknown error'}`
+    );
   }
 
   private async findRecoveryBackups(): Promise<string[]> {

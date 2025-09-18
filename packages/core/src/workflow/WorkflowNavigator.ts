@@ -1,20 +1,17 @@
 import { createLogger, type Logger } from '../utils/logger';
-import { safeEval } from './conditions';
-import {
-  WorkflowState,
-  ChecklistTemplate,
-  Step,
-  StepResult,
-  Summary,
-  CompletedStep,
-  SkippedStep,
-} from './types';
+import { NavigationHelper } from './NavigationHelper';
+import { WorkflowStateManager } from './StateManager';
+import { WorkflowState, ChecklistTemplate, Step, StepResult } from './types';
 
 export class WorkflowNavigator {
   private logger: Logger;
+  private navigationHelper: NavigationHelper;
+  private stateManager: WorkflowStateManager;
 
   constructor() {
     this.logger = createLogger('checklist:workflow:navigator');
+    this.navigationHelper = new NavigationHelper();
+    this.stateManager = new WorkflowStateManager();
   }
 
   async advance(
@@ -26,8 +23,11 @@ export class WorkflowNavigator {
       return this.completeWorkflowResult(state, template);
     }
 
-    const completedStep = this.createCompletedStep(currentStep, state);
-    const updatedState = this.completeCurrentStep(
+    const completedStep = this.navigationHelper.createCompletedStep(
+      currentStep,
+      state
+    );
+    const updatedState = this.stateManager.completeCurrentStep(
       state,
       completedStep,
       template
@@ -35,10 +35,7 @@ export class WorkflowNavigator {
     const nextState = await this.moveToNextStep(updatedState, template);
     const nextStep = this.getNextVisibleStep(nextState, template);
 
-    this.logAdvancement(state, nextState, nextStep);
-
-    // Check if workflow completed during the move
-    const _isCompleted = nextState.status === 'completed';
+    this.navigationHelper.logAdvancement(state, nextState, nextStep);
 
     return {
       newState: nextState,
@@ -49,58 +46,25 @@ export class WorkflowNavigator {
     };
   }
 
-  async goBack(
-    state: WorkflowState,
-    template: ChecklistTemplate
-  ): Promise<{ newState: WorkflowState; result: StepResult }> {
-    if (state.currentStepIndex <= 0) {
-      return this.createFailureResult(state, template);
-    }
-
-    const previousStep = this.getPreviousVisibleStep(state, template);
-    if (previousStep === null) {
-      return this.createFailureResult(state, template);
-    }
-
-    const newState = this.createGoBackState(state, template, previousStep);
-    const updatedState = this.updateProgress(newState, template);
-
-    this.logGoBack(state, updatedState, previousStep);
-
-    return {
-      newState: updatedState,
-      result: {
-        success: true,
-        step: previousStep,
-      },
-    };
-  }
-
   async skip(
     state: WorkflowState,
     template: ChecklistTemplate,
-    reason?: string
+    reason: string = 'User skipped'
   ): Promise<{ newState: WorkflowState; result: StepResult }> {
     const currentStep = template.steps[state.currentStepIndex];
     if (currentStep === undefined) {
-      return {
-        newState: state,
-        result: { success: false, step: null },
-      };
+      return this.completeWorkflowResult(state, template);
     }
 
-    const skippedStep = this.createSkippedStep(currentStep, state, reason);
-    const newState = this.createSkippedState(state, skippedStep);
-    const updatedState = this.updateProgress(newState, template);
+    const skippedStep = this.navigationHelper.createSkippedStep(
+      currentStep,
+      reason
+    );
+    const updatedState = this.stateManager.skipStep(state, skippedStep);
+    const nextState = await this.moveToNextStep(updatedState, template);
+    const _nextStep = this.getNextVisibleStep(nextState, template);
 
-    // Check if workflow completed after skipping
-    const nextStep = this.getNextVisibleStep(updatedState, template);
-    const nextState =
-      nextStep === null
-        ? this.completeWorkflow(updatedState, template)
-        : updatedState;
-
-    this.logSkip(state, currentStep, reason);
+    this.navigationHelper.logSkip(currentStep, reason);
 
     return {
       newState: nextState,
@@ -111,262 +75,118 @@ export class WorkflowNavigator {
     };
   }
 
-  getNextVisibleStep(
+  async goBack(
     state: WorkflowState,
     template: ChecklistTemplate
-  ): Step | null {
-    const visibleSteps = this.getVisibleSteps(state, template);
-    const currentIndex = visibleSteps.findIndex(
-      (step) => template.steps.indexOf(step) >= state.currentStepIndex
-    );
+  ): Promise<{ newState: WorkflowState; result: StepResult }> {
+    const previousIndex = this.findPreviousStepIndex(state, template);
 
-    return currentIndex >= 0 ? visibleSteps[currentIndex] : null;
-  }
+    if (previousIndex === -1) {
+      return {
+        newState: state,
+        result: {
+          success: false,
+          step: null,
+          error: 'No previous step available',
+        },
+      };
+    }
 
-  getPreviousVisibleStep(
-    state: WorkflowState,
-    template: ChecklistTemplate
-  ): Step | null {
-    const visibleSteps = this.getVisibleSteps(state, template);
-    const currentIndex = visibleSteps.findIndex(
-      (step) => template.steps.indexOf(step) === state.currentStepIndex
-    );
+    const newState = this.stateManager.moveToStep(state, previousIndex);
+    const previousStep = template.steps[previousIndex];
 
-    return currentIndex > 0 ? visibleSteps[currentIndex - 1] : null;
-  }
+    this.logger.info({
+      msg: 'Moved back to previous step',
+      step: previousStep?.id,
+    });
 
-  private completeWorkflowResult(
-    state: WorkflowState,
-    template: ChecklistTemplate
-  ): { newState: WorkflowState; result: StepResult } {
     return {
-      newState: this.completeWorkflow(state, template),
-      result: { success: true, step: null },
-    };
-  }
-
-  private createFailureResult(
-    state: WorkflowState,
-    template: ChecklistTemplate
-  ): { newState: WorkflowState; result: StepResult } {
-    return {
-      newState: state,
+      newState,
       result: {
-        success: false,
-        step: template.steps[state.currentStepIndex] ?? null,
+        success: true,
+        step: previousStep,
       },
     };
   }
 
-  private createGoBackState(
-    state: WorkflowState,
-    template: ChecklistTemplate,
-    previousStep: Step
-  ): WorkflowState {
-    const previousStepIndex = template.steps.indexOf(previousStep);
-    return {
-      ...state,
-      currentStepIndex: previousStepIndex,
-      status: 'active' as const,
-      completedSteps: state.completedSteps.filter((completedStep) => {
-        const stepIndex = template.steps.findIndex(
-          (s) => s.id === completedStep.step.id
-        );
-        return stepIndex < previousStepIndex;
-      }),
-    };
-  }
-
-  private createSkippedState(
-    state: WorkflowState,
-    skippedStep: SkippedStep
-  ): WorkflowState {
-    return {
-      ...state,
-      skippedSteps: [...state.skippedSteps, skippedStep],
-      currentStepIndex: state.currentStepIndex + 1,
-    };
-  }
-
-  private getVisibleSteps(
-    state: WorkflowState,
-    template: ChecklistTemplate
-  ): Step[] {
-    return template.steps.filter((step) => {
-      if (step.condition === undefined) return true;
-      return this.evaluateCondition(step.condition, state, template);
-    });
-  }
-
-  private evaluateCondition(
-    condition: string,
-    state: WorkflowState,
-    template: ChecklistTemplate
-  ): boolean {
-    try {
-      const context = this.buildContext(state, template);
-      return safeEval(condition, context);
-    } catch (error) {
-      this.logger.error({
-        msg: 'Condition evaluation failed',
-        condition,
-        error: (error as Error).message,
-      });
-      return false;
-    }
-  }
-
-  private buildContext(
-    state: WorkflowState,
-    _template: ChecklistTemplate
-  ): Record<string, unknown> {
-    return {
-      ...state.variables,
-      vars: state.variables,
-      completedSteps: state.completedSteps.map((step) => step.step.id),
-      currentStepIndex: state.currentStepIndex,
-    };
-  }
-
-  private completeCurrentStep(
-    state: WorkflowState,
-    completedStep: CompletedStep,
-    template: ChecklistTemplate
-  ): WorkflowState {
-    const newState = {
-      ...state,
-      completedSteps: [...state.completedSteps, completedStep],
-    };
-
-    return this.updateProgress(newState, template);
+  reset(template: ChecklistTemplate): WorkflowState {
+    const newState = this.stateManager.resetWorkflow(template);
+    this.logger.info({ msg: 'Workflow reset' });
+    return newState;
   }
 
   private async moveToNextStep(
     state: WorkflowState,
     template: ChecklistTemplate
   ): Promise<WorkflowState> {
-    const nextIndex = state.currentStepIndex + 1;
-    const nextStep = this.getNextVisibleStep(
-      { ...state, currentStepIndex: nextIndex },
-      template
+    const nextIndex = this.navigationHelper.findNextValidStepIndex(
+      state.currentStepIndex,
+      template.steps,
+      state.variables
     );
 
-    if (nextStep === null) {
-      return this.completeWorkflow(state, template);
+    // Skip any steps that don't meet conditions
+    let currentState = state;
+    let currentIndex = state.currentStepIndex + 1;
+
+    while (currentIndex < nextIndex && currentIndex < template.steps.length) {
+      const step = template.steps[currentIndex];
+      if (
+        step != null &&
+        !this.navigationHelper.shouldShowStep(step, state.variables)
+      ) {
+        const skippedStep = this.navigationHelper.createSkippedStep(
+          step,
+          'Condition not met'
+        );
+        currentState = this.stateManager.skipStep(currentState, skippedStep);
+      }
+      currentIndex++;
     }
 
-    return {
-      ...state,
-      currentStepIndex: template.steps.indexOf(nextStep),
-      status: 'active',
-    };
+    return this.stateManager.moveToStep(currentState, nextIndex);
   }
 
-  private completeWorkflow(
+  private findPreviousStepIndex(
     state: WorkflowState,
     template: ChecklistTemplate
-  ): WorkflowState {
-    const _summary = this.generateSummary(state, template);
-    return {
-      ...state,
-      status: 'completed',
-      currentStepIndex: template.steps.length,
-      completedAt: new Date(),
-    };
+  ): number {
+    for (let i = state.currentStepIndex - 1; i >= 0; i--) {
+      const step = template.steps[i];
+      if (
+        step != null &&
+        this.navigationHelper.shouldShowStep(step, state.variables)
+      ) {
+        return i;
+      }
+    }
+    return -1;
   }
 
-  private createCompletedStep(
-    step: Step,
-    _state: WorkflowState
-  ): CompletedStep {
-    return {
-      step: step,
-      completedAt: new Date(),
-    };
+  private getNextVisibleStep(
+    state: WorkflowState,
+    template: ChecklistTemplate
+  ): Step | null {
+    if (state.currentStepIndex === -1) {
+      return null; // Workflow completed
+    }
+
+    return template.steps[state.currentStepIndex] ?? null;
   }
 
-  private createSkippedStep(
-    step: Step,
-    _state: WorkflowState,
-    reason?: string
-  ): SkippedStep {
-    return {
-      step: step,
-      timestamp: new Date(),
-      reason: reason,
-    };
-  }
-
-  private updateProgress(
+  private completeWorkflowResult(
     state: WorkflowState,
     _template: ChecklistTemplate
-  ): WorkflowState {
-    return state;
-  }
-
-  private generateSummary(
-    state: WorkflowState,
-    template: ChecklistTemplate
-  ): Summary {
-    const completedSteps = state.completedSteps.length;
-    const skippedSteps = state.skippedSteps.length;
-    const totalSteps = template.steps.length;
+  ): { newState: WorkflowState; result: StepResult } {
+    const completedState = this.stateManager.completeWorkflow(state);
+    this.navigationHelper.logCompletion(completedState);
 
     return {
-      templateId:
-        state.templateId != null && state.templateId !== ''
-          ? state.templateId
-          : '',
-      instanceId:
-        state.instanceId != null && state.instanceId !== ''
-          ? state.instanceId
-          : '',
-      startedAt: state.startedAt ?? new Date(),
-      completedAt: state.completedAt ?? new Date(),
-      duration: 0,
-      totalSteps,
-      completedSteps,
-      skippedSteps,
-      status: 'completed',
+      newState: completedState,
+      result: {
+        success: true,
+        step: null,
+      },
     };
-  }
-
-  private logAdvancement(
-    fromState: WorkflowState,
-    toState: WorkflowState,
-    nextStep: Step | null
-  ): void {
-    this.logger.info({
-      msg: 'Advanced to next step',
-      fromStep: fromState.currentStepIndex,
-      toStep: toState.currentStepIndex,
-      nextStepTitle: nextStep?.title,
-    });
-  }
-
-  private logGoBack(
-    fromState: WorkflowState,
-    toState: WorkflowState,
-    previousStep: Step
-  ): void {
-    this.logger.info({
-      msg: 'Moved back to previous step',
-      fromStep: fromState.currentStepIndex,
-      toStep: toState.currentStepIndex,
-      stepTitle: previousStep.title,
-    });
-  }
-
-  private logSkip(
-    state: WorkflowState,
-    currentStep: Step,
-    reason?: string
-  ): void {
-    this.logger.info({
-      msg: 'Skipped step',
-      stepIndex: state.currentStepIndex,
-      stepTitle: currentStep.title,
-      reason: reason ?? 'No reason provided',
-    });
   }
 }

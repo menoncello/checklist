@@ -28,10 +28,21 @@ export class SnapshotManager {
     estimateSize: (state: PreservedState) => number = () => 0
   ): string {
     const snapshotId = `snapshot-${name}-${Date.now()}`;
+    const selectedStates = this.selectStates(states, keys);
+    const totalSize = this.calculateTotalSize(selectedStates, estimateSize);
+    const snapshot = this.buildSnapshot(snapshotId, selectedStates, totalSize);
+
+    this.snapshots.set(name, snapshot);
+    return snapshotId;
+  }
+
+  private selectStates(
+    states: Map<string, PreservedState>,
+    keys?: string[]
+  ): Map<string, PreservedState> {
     const selectedStates = new Map<string, PreservedState>();
 
     if (keys != null && keys.length > 0) {
-      // Include only specified keys
       for (const key of keys) {
         const state = states.get(key);
         if (state != null) {
@@ -39,27 +50,36 @@ export class SnapshotManager {
         }
       }
     } else {
-      // Include all states
       for (const [key, state] of states.entries()) {
         selectedStates.set(key, { ...state });
       }
     }
 
-    const totalSize = Array.from(selectedStates.values()).reduce(
+    return selectedStates;
+  }
+
+  private calculateTotalSize(
+    states: Map<string, PreservedState>,
+    estimateSize: (state: PreservedState) => number
+  ): number {
+    return Array.from(states.values()).reduce(
       (size, state) => size + estimateSize(state),
       0
     );
+  }
 
-    const snapshot: StateSnapshot = {
-      id: snapshotId,
+  private buildSnapshot(
+    id: string,
+    states: Map<string, PreservedState>,
+    totalSize: number
+  ): StateSnapshot {
+    return {
+      id,
       timestamp: Date.now(),
-      states: selectedStates,
+      states,
       totalSize,
-      compressed: totalSize > 10240, // Compress if larger than 10KB
+      compressed: totalSize > 10240,
     };
-
-    this.snapshots.set(name, snapshot);
-    return snapshotId;
   }
 
   public restoreFromSnapshot(
