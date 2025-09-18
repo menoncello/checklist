@@ -23,20 +23,29 @@ export interface Environment {
 /**
  * Detect current environment
  */
+// Helper functions to reduce complexity
+function detectCI(): boolean {
+  return Boolean(
+    process.env.CI ??
+      process.env.CONTINUOUS_INTEGRATION ??
+      process.env.GITHUB_ACTIONS
+  );
+}
+
+function detectDevelopmentMode(): boolean {
+  return (
+    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined
+  );
+}
+
 export function detectEnvironment(): Environment {
   return {
     platform: process.platform,
     arch: process.arch,
     nodeVersion: process.version,
     bunVersion: Bun.version,
-    isCI: Boolean(
-      process.env.CI ??
-        process.env.CONTINUOUS_INTEGRATION ??
-        process.env.GITHUB_ACTIONS
-    ),
-    isDevelopment:
-      process.env.NODE_ENV === 'development' ||
-      process.env.NODE_ENV === undefined,
+    isCI: detectCI(),
+    isDevelopment: detectDevelopmentMode(),
     isProduction: process.env.NODE_ENV === 'production',
     isTTY: Boolean(process.stdout.isTTY),
     hasNetwork: process.env.OFFLINE === undefined || process.env.OFFLINE === '',
@@ -148,7 +157,15 @@ export const features = {
     // CI environments usually support color
     if (env.isCI) return true;
 
-    // Check for explicit color support
+    // Check various color support indicators
+    if (this.hasExplicitColorSupport()) return true;
+    if (this.hasWindowsColorSupport()) return true;
+
+    // Default based on TTY
+    return env.isTTY;
+  },
+
+  hasExplicitColorSupport(): boolean {
     if (process.env.COLORTERM !== undefined && process.env.COLORTERM !== '')
       return true;
     if (
@@ -157,16 +174,14 @@ export const features = {
       process.env.TERM.includes('color')
     )
       return true;
+    return false;
+  },
 
-    // Windows Terminal and ConEmu support color
-    if (
+  hasWindowsColorSupport(): boolean {
+    return (
       (process.env.WT_SESSION !== undefined && process.env.WT_SESSION !== '') ||
       (process.env.ConEmuDir !== undefined && process.env.ConEmuDir !== '')
-    )
-      return true;
-
-    // Default based on TTY
-    return env.isTTY;
+    );
   },
 
   /**

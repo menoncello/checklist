@@ -51,8 +51,16 @@ export class HealthMonitor {
   }
 
   private registerDefaultChecks(): void {
-    // Logger performance check
-    this.registerCheck('logger-performance', async () => {
+    this.registerCheck(
+      'logger-performance',
+      this.createLoggerPerformanceCheck()
+    );
+    this.registerCheck('log-rotation', this.createLogRotationCheck());
+    this.registerCheck('error-rate', this.createErrorRateCheck());
+  }
+
+  private createLoggerPerformanceCheck(): () => Promise<HealthCheckResult> {
+    return async () => {
       const avgTime =
         this.logMetrics.totalLogs > 0
           ? this.logMetrics.totalTime / this.logMetrics.totalLogs
@@ -70,35 +78,22 @@ export class HealthMonitor {
           threshold: 5,
         },
       };
-    });
+    };
+  }
 
-    // Log rotation check
-    this.registerCheck('log-rotation', async () => {
+  private createLogRotationCheck(): () => Promise<HealthCheckResult> {
+    return async () => {
       const logDir = '.logs';
 
       try {
-        if (!existsSync(logDir)) {
-          return {
-            name: 'log-rotation',
-            status: 'unhealthy',
-            message: 'Log directory does not exist',
-          };
+        const dirCheckResult = this.checkLogDirectory(logDir);
+        if (dirCheckResult != null) {
+          return dirCheckResult;
         }
 
-        const infoLogPath = join(logDir, 'info', 'app.log');
-        if (existsSync(infoLogPath)) {
-          const stats = statSync(infoLogPath);
-          const sizeInMB = stats.size / (1024 * 1024);
-
-          // Check if rotation is working (file should not exceed 10MB)
-          if (sizeInMB > 10) {
-            return {
-              name: 'log-rotation',
-              status: 'degraded',
-              message: `Log file size exceeds rotation threshold: ${sizeInMB.toFixed(2)}MB`,
-              metadata: { sizeInMB, threshold: 10 },
-            };
-          }
+        const sizeCheckResult = this.checkLogFileSize(logDir);
+        if (sizeCheckResult != null) {
+          return sizeCheckResult;
         }
 
         return {
@@ -113,10 +108,41 @@ export class HealthMonitor {
           message: `Log rotation check failed: ${error}`,
         };
       }
-    });
+    };
+  }
 
-    // Error rate check
-    this.registerCheck('error-rate', async () => {
+  private checkLogDirectory(logDir: string): HealthCheckResult | null {
+    if (!existsSync(logDir)) {
+      return {
+        name: 'log-rotation',
+        status: 'unhealthy',
+        message: 'Log directory does not exist',
+      };
+    }
+    return null;
+  }
+
+  private checkLogFileSize(logDir: string): HealthCheckResult | null {
+    const infoLogPath = join(logDir, 'info', 'app.log');
+    if (existsSync(infoLogPath)) {
+      const stats = statSync(infoLogPath);
+      const sizeInMB = stats.size / (1024 * 1024);
+
+      // Check if rotation is working (file should not exceed 10MB)
+      if (sizeInMB > 10) {
+        return {
+          name: 'log-rotation',
+          status: 'degraded',
+          message: `Log file size exceeds rotation threshold: ${sizeInMB.toFixed(2)}MB`,
+          metadata: { sizeInMB, threshold: 10 },
+        };
+      }
+    }
+    return null;
+  }
+
+  private createErrorRateCheck(): () => Promise<HealthCheckResult> {
+    return async () => {
       // Clean up old error timestamps (older than 1 hour)
       const oneHourAgo = Date.now() - 3600000;
       this.logMetrics.lastHourErrors = this.logMetrics.lastHourErrors.filter(
@@ -143,7 +169,7 @@ export class HealthMonitor {
           totalErrors: this.logMetrics.errorCount,
         },
       };
-    });
+    };
   }
 
   /**
@@ -183,17 +209,37 @@ export class HealthMonitor {
    * Get logger health metrics
    */
   async getLoggerMetrics(): Promise<LoggerHealthMetrics> {
-    const avgTime =
-      this.logMetrics.totalLogs > 0
-        ? this.logMetrics.totalTime / this.logMetrics.totalLogs
-        : 0;
+    const avgTime = this.calculateAverageLogTime();
+    this.cleanupOldErrorTimestamps();
+    const { rotationStatus, logFileSize } = this.getRotationStatus();
 
-    // Clean up old error timestamps
+    return {
+      performanceOk: avgTime < 5,
+      averageLogTime: avgTime,
+      rotationStatus,
+      errorRate: this.logMetrics.lastHourErrors.length,
+      logFileSize,
+      diskSpaceAvailable: true, // Would need platform-specific implementation
+    };
+  }
+
+  private calculateAverageLogTime(): number {
+    return this.logMetrics.totalLogs > 0
+      ? this.logMetrics.totalTime / this.logMetrics.totalLogs
+      : 0;
+  }
+
+  private cleanupOldErrorTimestamps(): void {
     const oneHourAgo = Date.now() - 3600000;
     this.logMetrics.lastHourErrors = this.logMetrics.lastHourErrors.filter(
       (timestamp) => timestamp > oneHourAgo
     );
+  }
 
+  private getRotationStatus(): {
+    rotationStatus: 'active' | 'inactive' | 'error';
+    logFileSize: number | undefined;
+  } {
     const logDir = '.logs';
     let rotationStatus: 'active' | 'inactive' | 'error' = 'inactive';
     let logFileSize: number | undefined;
@@ -215,14 +261,7 @@ export class HealthMonitor {
       });
     }
 
-    return {
-      performanceOk: avgTime < 5,
-      averageLogTime: avgTime,
-      rotationStatus,
-      errorRate: this.logMetrics.lastHourErrors.length,
-      logFileSize,
-      diskSpaceAvailable: true, // Would need platform-specific implementation
-    };
+    return { rotationStatus, logFileSize };
   }
 
   /**
@@ -230,9 +269,30 @@ export class HealthMonitor {
    */
   async checkHealth(): Promise<HealthStatus> {
     const startTime = performance.now();
-    const results: HealthCheckResult[] = [];
-
     this.logger.debug({ msg: 'Running health checks' });
+
+    const results = await this.runAllChecks();
+    const overallStatus = this.determineOverallStatus(results);
+    const duration = performance.now() - startTime;
+    const uptime = Date.now() - this.startTime.getTime();
+
+    this.logger.info({
+      msg: 'Health check completed',
+      status: overallStatus,
+      checksRun: results.length,
+      duration,
+    });
+
+    return {
+      status: overallStatus,
+      checks: results,
+      timestamp: new Date(),
+      uptime,
+    };
+  }
+
+  private async runAllChecks(): Promise<HealthCheckResult[]> {
+    const results: HealthCheckResult[] = [];
 
     for (const [name, check] of this.checks) {
       try {
@@ -262,34 +322,21 @@ export class HealthMonitor {
       }
     }
 
-    // Determine overall status
+    return results;
+  }
+
+  private determineOverallStatus(
+    results: HealthCheckResult[]
+  ): 'healthy' | 'degraded' | 'unhealthy' {
     const hasUnhealthy = results.some((r) => r.status === 'unhealthy');
     const hasDegraded = results.some((r) => r.status === 'degraded');
 
-    let overallStatus: 'healthy' | 'degraded' | 'unhealthy';
     if (hasUnhealthy) {
-      overallStatus = 'unhealthy';
+      return 'unhealthy';
     } else if (hasDegraded) {
-      overallStatus = 'degraded';
+      return 'degraded';
     } else {
-      overallStatus = 'healthy';
+      return 'healthy';
     }
-
-    const duration = performance.now() - startTime;
-    const uptime = Date.now() - this.startTime.getTime();
-
-    this.logger.info({
-      msg: 'Health check completed',
-      status: overallStatus,
-      checksRun: results.length,
-      duration,
-    });
-
-    return {
-      status: overallStatus,
-      checks: results,
-      timestamp: new Date(),
-      uptime,
-    };
   }
 }

@@ -374,3 +374,63 @@ class Service {
 // ALWAYS use WeakMap/WeakSet for object metadata
 const metadata = new WeakMap<object, Metadata>();
 ```
+
+## Code Quality Metrics
+
+**MANDATORY quality rules enforced via ESLint (Story 1.16):**
+
+### Size and Complexity Limits
+
+```javascript
+// Add to ESLint rules configuration:
+'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
+'max-lines-per-function': ['error', { max: 30, skipBlankLines: true, skipComments: true }],
+'complexity': ['error', { max: 10 }],
+'max-depth': ['error', { max: 3 }],
+'max-nested-callbacks': ['error', { max: 3 }],
+'max-params': ['error', { max: 4 }],
+```
+
+### Quality Thresholds
+
+- **File size**: Maximum 300 lines (excluding comments and blank lines)
+- **Function size**: Maximum 30 lines (excluding comments and blank lines)
+- **Cyclomatic complexity**: Maximum 10
+- **Nesting depth**: Maximum 3 levels
+- **Parameters**: Maximum 4 per function
+- **Nested callbacks**: Maximum 3 levels
+
+### Quality Enforcement
+
+These rules are automatically enforced through:
+
+1. **Pre-commit hooks**: Block commits that violate quality thresholds
+2. **CI/CD pipeline**: Fail builds when quality metrics are exceeded
+3. **Quality reports**: HTML reports generated in `reports/quality/`
+4. **Development workflow**: `bun run quality` includes all quality checks
+
+### Rationale
+
+These thresholds ensure:
+- **Maintainability**: Smaller, focused functions are easier to understand and modify
+- **Readability**: Limited complexity makes code easier to follow
+- **Testability**: Smaller units are easier to test comprehensively
+- **Performance**: Reduced nesting improves execution efficiency
+
+### Exemptions Process
+
+Legitimate edge cases may request exemptions through:
+1. **Code review** with explicit justification
+2. **Documentation** of why the threshold cannot be met
+3. **Alternative approaches** considered and rejected
+4. **Team approval** required for any exemption
+
+### Refactoring Guidelines
+
+When code exceeds thresholds:
+1. **Extract functions**: Break down large functions into smaller, focused units
+2. **Simplify logic**: Replace complex conditionals with early returns
+3. **Use composition**: Combine simple functions rather than creating complex ones
+4. **Document trade-offs**: Explain why certain patterns are necessary
+
+**Quality is not optional - these standards protect the long-term health of the codebase.**

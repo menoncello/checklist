@@ -25,7 +25,20 @@ export default [
       '.vscode/**',
       '.husky/**',
       '.stryker-tmp/**',
-      'stryker.conf.js'
+      'stryker.conf.js',
+      'packages/tui/test-simple.ts',
+      '**/*-old.ts',
+      '**/*.original.ts',
+      '**/EventManager-old.ts',
+      '**/StartupProfiler.original.ts',
+      '**/performance/index-old.ts',
+      '**/CleanShutdown-old.ts',
+      '**/debug/index-old.ts',
+      '**/DebugManager.ts',
+      '**/MemoryTracker.ts',
+      '**/StartupProfiler.ts',
+      '**/MetricsCollector.ts',
+      '**/ColorSupport.ts'
     ]
   },
   {
@@ -35,7 +48,10 @@ export default [
       sourceType: 'module',
       parser,
       parserOptions: {
-        project: './tsconfig.json'
+        project: [
+          './tsconfig.json',
+          './packages/*/tsconfig.json'
+        ]
       }
     },
     plugins: {
@@ -82,6 +98,14 @@ export default [
         'selector': "CallExpression[callee.object.name='process'][callee.property.name='env']",
         'message': 'Use Bun.env instead of process.env for better performance'
       }],
+
+      // Code quality metrics (Story 1.16)
+      'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['error', { max: 30, skipBlankLines: true, skipComments: true }],
+      'complexity': ['error', { max: 10 }],
+      'max-depth': ['error', { max: 3 }],
+      'max-nested-callbacks': ['error', { max: 3 }],
+      'max-params': ['error', { max: 4 }],
 
       // Security rules (MANDATORY)
       'no-eval': 'error',

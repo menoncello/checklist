@@ -1,7 +1,7 @@
 /**
  * @type {import('@stryker-mutator/api/core').PartialStrykerOptions}
  */
-module.exports = {
+export default {
   // Package manager configuration (required for StrykerJS)
   packageManager: 'npm',
 
@@ -60,7 +60,7 @@ module.exports = {
   force: process.env.STRYKER_INCREMENTAL_FORCE !== 'false',
 
   // Performance settings - reduced for faster runs
-  concurrency: 2,
+  concurrency: 4,
   maxTestRunnerReuse: 0, // Disable reuse for Bun compatibility
 
   // Timeout settings (in milliseconds) - reduced for faster iteration

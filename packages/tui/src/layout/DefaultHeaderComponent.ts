@@ -5,7 +5,7 @@
  * information for the terminal UI application.
  */
 
-import type { HeaderComponent, LayoutContext } from '../views/types.js';
+import type { HeaderComponent, LayoutContext } from '../views/types';
 
 export class DefaultHeaderComponent implements HeaderComponent {
   public readonly id = 'default-header';

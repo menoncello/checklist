@@ -1,8 +1,8 @@
-import { randomUUID } from 'crypto';
-import { promises as fs } from 'fs';
-import { watch as fsWatch } from 'fs';
-import { tmpdir } from 'os';
-import * as path from 'path';
+/**
+ * Bun-optimized file system service
+ * Refactored to use composition pattern with specialized components
+ */
+
 import type {
   IFileSystemService,
   FileInfo,
@@ -13,6 +13,11 @@ import type {
 } from '../interfaces/IFileSystemService';
 import type { Logger } from '../utils/logger';
 import { BaseService, ServiceConfig } from './BaseService';
+import { DirectoryOperations } from './filesystem/DirectoryOperations';
+import { FileInfoOperations } from './filesystem/FileInfoOperations';
+import { FileOperations } from './filesystem/FileOperations';
+import { FileWatcher } from './filesystem/FileWatcher';
+import { TempFileOperations } from './filesystem/TempFileOperations';
 
 export interface BunFileSystemConfig extends ServiceConfig {
   tempDirectory?: string;
@@ -23,378 +28,130 @@ export class BunFileSystemService
   extends BaseService
   implements IFileSystemService
 {
-  private tempDir: string;
-  private defaultEncoding: BufferEncoding = 'utf8';
+  // Composed services
+  private fileOps: FileOperations;
+  private dirOps: DirectoryOperations;
+  private fileInfoOps: FileInfoOperations;
+  private tempOps: TempFileOperations;
+  private watcher: FileWatcher;
 
   constructor(config: BunFileSystemConfig, logger: Logger) {
     super(config, logger);
-    this.tempDir = config.tempDirectory ?? tmpdir();
 
-    if (config.defaultEncoding) {
-      this.defaultEncoding = config.defaultEncoding as BufferEncoding;
-    }
+    // Initialize composed services
+    this.fileOps = new FileOperations(logger, config.defaultEncoding);
+    this.dirOps = new DirectoryOperations(logger);
+    this.fileInfoOps = new FileInfoOperations(logger);
+    this.tempOps = new TempFileOperations(
+      logger,
+      this.fileOps,
+      this.dirOps,
+      config.tempDirectory
+    );
+    this.watcher = new FileWatcher(logger);
   }
 
+  // File Operations
   async exists(path: string): Promise<boolean> {
-    try {
-      const file = Bun.file(path);
-      return await file.exists();
-    } catch {
-      return false;
-    }
+    return await this.fileOps.exists(path);
   }
 
   async readFile(filePath: string, options?: ReadOptions): Promise<string> {
-    try {
-      const file = Bun.file(filePath);
-      const encoding = options?.encoding ?? this.defaultEncoding;
-
-      if (encoding === 'utf8') {
-        return await file.text();
-      } else {
-        const buffer = await file.arrayBuffer();
-        return Buffer.from(buffer).toString(encoding as BufferEncoding);
-      }
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to read file',
-        path: filePath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    return await this.fileOps.readFile(filePath, options);
   }
 
   async readFileBuffer(filePath: string): Promise<Buffer> {
-    try {
-      const file = Bun.file(filePath);
-      const arrayBuffer = await file.arrayBuffer();
-      return Buffer.from(arrayBuffer);
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to read file buffer',
-        path: filePath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    return await this.fileOps.readFileBuffer(filePath);
   }
 
   async writeFile(
     filePath: string,
-    data: string | Buffer,
-    _options?: WriteOptions
+    data: string | Buffer | Uint8Array,
+    options?: WriteOptions
   ): Promise<void> {
-    try {
-      await Bun.write(filePath, data);
-
-      this.logger.debug({
-        msg: 'File written',
-        path: filePath,
-        size: data.length,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to write file',
-        path: filePath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    await this.fileOps.writeFile(filePath, data, options);
   }
 
   async appendFile(
     filePath: string,
-    data: string | Buffer,
+    data: string | Buffer | Uint8Array,
     options?: WriteOptions
   ): Promise<void> {
-    try {
-      const existingContent = (await this.exists(filePath))
-        ? await this.readFile(filePath)
-        : '';
-
-      const newContent = existingContent + data;
-      await this.writeFile(filePath, newContent, options);
-
-      this.logger.debug({
-        msg: 'Data appended to file',
-        path: filePath,
-        appendedSize: data.length,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to append to file',
-        path: filePath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    await this.fileOps.appendFile(filePath, data, options);
   }
 
   async deleteFile(filePath: string): Promise<void> {
-    try {
-      await fs.unlink(filePath);
-
-      this.logger.debug({
-        msg: 'File deleted',
-        path: filePath,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to delete file',
-        path: filePath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
-  }
-
-  async createDirectory(
-    dirPath: string,
-    recursive: boolean = true
-  ): Promise<void> {
-    try {
-      await fs.mkdir(dirPath, { recursive });
-
-      this.logger.debug({
-        msg: 'Directory created',
-        path: dirPath,
-        recursive,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to create directory',
-        path: dirPath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
-  }
-
-  async removeDirectory(
-    dirPath: string,
-    recursive: boolean = true
-  ): Promise<void> {
-    try {
-      await fs.rm(dirPath, { recursive, force: true });
-
-      this.logger.debug({
-        msg: 'Directory removed',
-        path: dirPath,
-        recursive,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to remove directory',
-        path: dirPath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
-  }
-
-  async readDirectory(dirPath: string): Promise<string[]> {
-    try {
-      const entries = await fs.readdir(dirPath);
-
-      this.logger.debug({
-        msg: 'Directory read',
-        path: dirPath,
-        entries: entries.length,
-      });
-
-      return entries;
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to read directory',
-        path: dirPath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
-  }
-
-  async getFileInfo(filePath: string): Promise<FileInfo> {
-    try {
-      const stats = await fs.stat(filePath);
-
-      return {
-        path: filePath,
-        size: stats.size,
-        isDirectory: stats.isDirectory(),
-        isFile: stats.isFile(),
-        createdAt: stats.birthtime,
-        modifiedAt: stats.mtime,
-        permissions: stats.mode.toString(8),
-      };
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to get file info',
-        path: filePath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    await this.fileOps.deleteFile(filePath);
   }
 
   async copyFile(source: string, destination: string): Promise<void> {
-    try {
-      await fs.copyFile(source, destination);
-
-      this.logger.debug({
-        msg: 'File copied',
-        source,
-        destination,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to copy file',
-        source,
-        destination,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    await this.fileOps.copyFile(source, destination);
   }
 
   async moveFile(source: string, destination: string): Promise<void> {
-    try {
-      await fs.rename(source, destination);
-
-      this.logger.debug({
-        msg: 'File moved',
-        source,
-        destination,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to move file',
-        source,
-        destination,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    await this.fileOps.moveFile(source, destination);
   }
 
+  // Directory Operations
+  async createDirectory(dirPath: string, recursive?: boolean): Promise<void> {
+    await this.dirOps.createDirectory(dirPath, { recursive });
+  }
+
+  async removeDirectory(dirPath: string, recursive?: boolean): Promise<void> {
+    await this.dirOps.removeDirectory(dirPath, { recursive });
+  }
+
+  async readDirectory(dirPath: string): Promise<string[]> {
+    return await this.dirOps.readDirectory(dirPath);
+  }
+
+  async ensureDirectory(dirPath: string): Promise<void> {
+    await this.dirOps.ensureDirectory(dirPath);
+  }
+
+  async isDirectory(filePath: string): Promise<boolean> {
+    return await this.dirOps.isDirectory(filePath);
+  }
+
+  async isFile(filePath: string): Promise<boolean> {
+    return await this.dirOps.isFile(filePath);
+  }
+
+  // File Information
+  async getFileInfo(filePath: string): Promise<FileInfo> {
+    return await this.fileInfoOps.getFileInfo(filePath);
+  }
+
+  // Temporary Files
   async createTempFile(
     prefix: string = 'tmp',
-    extension: string = ''
+    extension: string = '.tmp',
+    content?: string | Buffer
   ): Promise<string> {
-    try {
-      const filename = `${prefix}-${randomUUID()}${extension}`;
-      const tempPath = path.join(this.tempDir, filename);
-
-      await this.writeFile(tempPath, '');
-
-      this.logger.debug({
-        msg: 'Temporary file created',
-        path: tempPath,
-      });
-
-      return tempPath;
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to create temporary file',
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    return await this.tempOps.createTempFile(prefix, extension, content);
   }
 
   async createTempDirectory(prefix: string = 'tmp'): Promise<string> {
-    try {
-      const dirname = `${prefix}-${randomUUID()}`;
-      const tempPath = path.join(this.tempDir, dirname);
-
-      await this.createDirectory(tempPath);
-
-      this.logger.debug({
-        msg: 'Temporary directory created',
-        path: tempPath,
-      });
-
-      return tempPath;
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to create temporary directory',
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    return await this.tempOps.createTempDirectory(prefix);
   }
 
+  // File Watching
   watch(
     filePath: string,
     handler: FileChangeHandler,
     options?: WatchOptions
   ): () => void {
-    try {
-      const watcher = fsWatch(
-        filePath,
-        {
-          persistent: options?.persistent ?? true,
-          recursive: options?.recursive ?? false,
-          encoding: (options?.encoding as BufferEncoding) ?? 'utf8',
-        },
-        (event, filename) => {
-          handler(event as 'change' | 'rename', filename ?? '');
-        }
-      );
-
-      this.logger.debug({
-        msg: 'File watcher created',
-        path: filePath,
-      });
-
-      // Return cleanup function
-      return () => {
-        watcher.close();
-        this.logger.debug({
-          msg: 'File watcher closed',
-          path: filePath,
-        });
-      };
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to create file watcher',
-        path: filePath,
-        error: (error as Error).message,
-      });
-      throw error;
-    }
+    return this.watcher.watchFile(filePath, handler, options);
   }
 
-  async ensureDirectory(dirPath: string): Promise<void> {
-    if (!(await this.exists(dirPath))) {
-      await this.createDirectory(dirPath, true);
-    }
-  }
-
-  async isDirectory(filePath: string): Promise<boolean> {
-    try {
-      const info = await this.getFileInfo(filePath);
-      return info.isDirectory;
-    } catch {
-      return false;
-    }
-  }
-
-  async isFile(filePath: string): Promise<boolean> {
-    try {
-      const info = await this.getFileInfo(filePath);
-      return info.isFile;
-    } catch {
-      return false;
-    }
-  }
-
+  // Required BaseService methods
   protected async onInitialize(): Promise<void> {
-    // Ensure temp directory exists
-    await this.ensureDirectory(this.tempDir);
+    // Initialize file system service components
+    this.logger.debug({ msg: 'Initializing BunFileSystemService' });
   }
 
   protected async onShutdown(): Promise<void> {
-    // Clean up any resources if needed
+    // Clean up any resources
+    this.logger.debug({ msg: 'Shutting down BunFileSystemService' });
   }
 }

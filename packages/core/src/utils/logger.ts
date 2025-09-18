@@ -98,34 +98,54 @@ export class LoggerService {
   }
 
   private createPinoLogger(): Logger {
-    // In test environment, return a silent logger to avoid log output
-    if (Bun.env.NODE_ENV === 'test' && this.config.enableFileLogging !== true) {
-      const silentOptions: LoggerOptions = {
-        level: 'silent',
-        base: null,
-      };
-      const pinoLogger = pino(silentOptions);
-      return new PinoLoggerWrapper(pinoLogger);
+    if (this.isTestEnvironment()) {
+      return this.createSilentLogger();
     }
 
-    // Ensure log directories exist if file logging is enabled
-    if (this.config.enableFileLogging === true) {
-      const logDirectory = this.config.logDirectory ?? '.logs';
-      try {
-        mkdirSync(join(logDirectory, 'info'), { recursive: true });
-        mkdirSync(join(logDirectory, 'error'), { recursive: true });
-        if (Bun.env.NODE_ENV === 'development') {
-          mkdirSync(join(logDirectory, 'debug'), { recursive: true });
-        }
-      } catch (_error) {
-        // If directory creation fails, disable file logging silently
-        this.config.enableFileLogging = false;
-        // Bootstrap error - can't log because logger isn't created yet
-        // Will be logged once logger is available
+    this.ensureLogDirectories();
+    const options = this.createLoggerOptions();
+    const transports = this.configureTransports();
+
+    const pinoLogger =
+      transports.length > 0
+        ? pino(options, pino.transport({ targets: transports }))
+        : pino(options);
+
+    return new PinoLoggerWrapper(pinoLogger);
+  }
+
+  private isTestEnvironment(): boolean {
+    return (
+      Bun.env.NODE_ENV === 'test' && this.config.enableFileLogging !== true
+    );
+  }
+
+  private createSilentLogger(): Logger {
+    const silentOptions: LoggerOptions = {
+      level: 'silent',
+      base: null,
+    };
+    const pinoLogger = pino(silentOptions);
+    return new PinoLoggerWrapper(pinoLogger);
+  }
+
+  private ensureLogDirectories(): void {
+    if (this.config.enableFileLogging !== true) return;
+
+    const logDirectory = this.config.logDirectory ?? '.logs';
+    try {
+      mkdirSync(join(logDirectory, 'info'), { recursive: true });
+      mkdirSync(join(logDirectory, 'error'), { recursive: true });
+      if (Bun.env.NODE_ENV === 'development') {
+        mkdirSync(join(logDirectory, 'debug'), { recursive: true });
       }
+    } catch (_error) {
+      this.config.enableFileLogging = false;
     }
+  }
 
-    const options: LoggerOptions = {
+  private createLoggerOptions(): LoggerOptions {
+    return {
       level: this.config.level ?? 'info',
       timestamp: pino.stdTimeFunctions.isoTime,
       base: {
@@ -133,11 +153,23 @@ export class LoggerService {
         hostname: undefined,
       },
     };
+  }
 
-    // Configure transports
+  private configureTransports(): TransportTargetOptions<
+    Record<string, unknown>
+  >[] {
     const transports: TransportTargetOptions<Record<string, unknown>>[] = [];
 
-    // Development pretty print transport
+    this.addPrettyPrintTransport(transports);
+    this.addFileTransports(transports);
+    this.addExternalTransports(transports);
+
+    return transports;
+  }
+
+  private addPrettyPrintTransport(
+    transports: TransportTargetOptions<Record<string, unknown>>[]
+  ): void {
     if (
       this.config.prettyPrint === true &&
       Bun.env.NODE_ENV === 'development'
@@ -151,84 +183,95 @@ export class LoggerService {
         },
       });
     }
+  }
 
-    // File logging with rotation
-    if (this.config.enableFileLogging === true) {
-      const logDirectory = this.config.logDirectory ?? '.logs';
+  private addFileTransports(
+    transports: TransportTargetOptions<Record<string, unknown>>[]
+  ): void {
+    if (this.config.enableFileLogging !== true) return;
 
-      // Info level logs
-      transports.push({
-        target: 'pino-roll',
-        options: {
-          file: join(logDirectory, 'info', 'app.log'),
-          size: this.config.maxFileSize,
-          limit: {
-            count: this.config.maxFiles,
-          },
-          frequency: 'daily',
-        },
-        level: 'info',
-      });
+    const fileOptions = this.createFileOptions();
+    this.addInfoTransport(transports, fileOptions);
+    this.addErrorTransport(transports, fileOptions);
+    this.addDebugTransport(transports, fileOptions);
+  }
 
-      // Error level logs
-      transports.push({
-        target: 'pino-roll',
-        options: {
-          file: join(logDirectory, 'error', 'error.log'),
-          size: this.config.maxFileSize,
-          limit: {
-            count: this.config.maxFiles,
-          },
-          frequency: 'daily',
-        },
-        level: 'error',
-      });
+  private createFileOptions(): Record<string, unknown> {
+    return {
+      size: this.config.maxFileSize,
+      limit: { count: this.config.maxFiles },
+      frequency: 'daily',
+    };
+  }
 
-      // Debug logs (development only)
-      if (Bun.env.NODE_ENV === 'development') {
-        transports.push({
-          target: 'pino-roll',
-          options: {
-            file: join(logDirectory, 'debug', 'debug.log'),
-            size: this.config.maxFileSize,
-            limit: {
-              count: this.config.maxFiles,
-            },
-            frequency: 'daily',
-          },
-          level: 'debug',
-        });
-      }
-    }
+  private addInfoTransport(
+    transports: TransportTargetOptions<Record<string, unknown>>[],
+    fileOptions: Record<string, unknown>
+  ): void {
+    const logDirectory = this.config.logDirectory ?? '.logs';
+    transports.push({
+      target: 'pino-roll',
+      options: {
+        file: join(logDirectory, 'info', 'app.log'),
+        ...fileOptions,
+      },
+      level: 'info',
+    });
+  }
 
-    // Add external transports (for 3rd party services)
+  private addErrorTransport(
+    transports: TransportTargetOptions<Record<string, unknown>>[],
+    fileOptions: Record<string, unknown>
+  ): void {
+    const logDirectory = this.config.logDirectory ?? '.logs';
+    transports.push({
+      target: 'pino-roll',
+      options: {
+        file: join(logDirectory, 'error', 'error.log'),
+        ...fileOptions,
+      },
+      level: 'error',
+    });
+  }
+
+  private addDebugTransport(
+    transports: TransportTargetOptions<Record<string, unknown>>[],
+    fileOptions: Record<string, unknown>
+  ): void {
+    if (Bun.env.NODE_ENV !== 'development') return;
+
+    const logDirectory = this.config.logDirectory ?? '.logs';
+    transports.push({
+      target: 'pino-roll',
+      options: {
+        file: join(logDirectory, 'debug', 'debug.log'),
+        ...fileOptions,
+      },
+      level: 'debug',
+    });
+  }
+
+  private addExternalTransports(
+    transports: TransportTargetOptions<Record<string, unknown>>[]
+  ): void {
     if (
-      this.config.externalTransports &&
-      this.config.externalTransports.length > 0
-    ) {
-      for (const transport of this.config.externalTransports) {
-        try {
-          transports.push({
-            target: transport.target,
-            options: transport.options ?? {},
-            level: transport.level ?? this.config.level,
-          });
-        } catch (_error) {
-          // External transport failed to load - skip it silently
-          // Can't log error because logger isn't created yet
-        }
+      !this.config.externalTransports ||
+      this.config.externalTransports.length === 0
+    )
+      return;
+
+    for (const transport of this.config.externalTransports) {
+      try {
+        transports.push({
+          target: transport.target,
+          options: transport.options ?? {},
+          level: transport.level ?? this.config.level,
+        });
+      } catch (_error) {
+        // External transport failed to load - skip it silently
+        // Can't log error because logger isn't created yet
       }
     }
-
-    // Use transports if configured, otherwise use standard output
-    if (transports.length > 0) {
-      options.transport = {
-        targets: transports,
-      };
-    }
-
-    const pinoLogger = pino(options);
-    return new PinoLoggerWrapper(pinoLogger);
   }
 
   createLogger(namespace: string): Logger {

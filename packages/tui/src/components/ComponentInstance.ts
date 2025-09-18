@@ -1,38 +1,13 @@
-import { Component, ComponentInstance } from '../framework/UIFramework.js';
-import { ComponentLifecycle, LifecyclePhase } from './ComponentLifecycle.js';
-
-// Component instance types
-export interface ComponentInstanceState {
-  mounted: boolean;
-  renderCount: number;
-  totalRenderTime: number;
-  lastRenderTime: number;
-  errorCount: number;
-  cacheHitRate: number;
-}
-
-export interface ComponentInstanceConfig {
-  cacheTTL?: number;
-  enableMetrics?: boolean;
-  maxErrors?: number;
-}
-
-export interface ComponentInstanceMetrics {
-  componentId: string;
-  mounted: boolean;
-  renderCount: number;
-  totalRenderTime: number;
-  averageRenderTime: number;
-  lastRenderTime: number;
-  errorCount: number;
-  lastError?: string;
-  cacheHitRate: number;
-  cacheTTL: number;
-  isCached: boolean;
-  lifecyclePhase: LifecyclePhase;
-  eventHandlerCount: number;
-  memoryEstimate: number;
-}
+import { Component, ComponentInstance } from '../framework/UIFramework';
+import { ComponentInstanceEventHandler } from './ComponentInstanceEvents';
+import { ComponentInstanceMetricsCollector } from './ComponentInstanceMetrics';
+import {
+  ComponentInstanceOptions,
+  ComponentValidationResult,
+  ComponentInstanceMetrics,
+} from './ComponentInstanceTypes';
+import { ComponentInstanceUtils } from './ComponentInstanceUtils';
+import { ComponentLifecycle, LifecyclePhase } from './ComponentLifecycle';
 
 export class ComponentInstanceImpl implements ComponentInstance {
   public readonly component: Component;
@@ -48,7 +23,7 @@ export class ComponentInstanceImpl implements ComponentInstance {
   private lastRenderTime: number = 0;
   private errorCount: number = 0;
   private lastError: Error | null = null;
-  private eventHandlers = new Map<string, Set<Function>>();
+  private eventHandler = new ComponentInstanceEventHandler();
 
   constructor(
     id: string,
@@ -192,7 +167,7 @@ export class ComponentInstanceImpl implements ComponentInstance {
 
   private cleanup(): void {
     this.invalidateCache();
-    this.eventHandlers.clear();
+    this.eventHandler.clear();
     this.lifecycle.destroy();
   }
 
@@ -257,94 +232,32 @@ export class ComponentInstanceImpl implements ComponentInstance {
     this.emit('error', { error, errorCount: this.errorCount });
   }
 
-  public getMetrics() {
-    const lifecycleMetrics = this.lifecycle.getMetrics();
-
-    return {
+  public getMetrics(): ComponentInstanceMetrics {
+    return ComponentInstanceMetricsCollector.collectMetrics({
       componentId: this.component.id,
       mounted: this.mounted,
       renderCount: this.renderCount,
       totalRenderTime: this.totalRenderTime,
-      averageRenderTime:
-        this.renderCount > 0 ? this.totalRenderTime / this.renderCount : 0,
       lastRenderTime: this.lastRenderTime,
       errorCount: this.errorCount,
-      lastError: this.lastError?.message,
-      cacheHitRate: this.calculateCacheHitRate(),
+      lastError: this.lastError,
       cacheTTL: this.cacheTTL,
       isCached: this.isCached(),
-      lifecyclePhase: this.getLifecyclePhase(),
-      lifecycleMetrics,
-      eventHandlerCount: Array.from(this.eventHandlers.values()).reduce(
-        (total, handlers) => total + handlers.size,
-        0
-      ),
-      memoryEstimate: this.estimateMemoryUsage(),
-    };
-  }
-
-  private calculateCacheHitRate(): number {
-    // Simple estimation - would need more detailed tracking for accuracy
-    return this.renderCount > 0 ? Math.min(0.8, 1 - this.renderCount / 100) : 0;
-  }
-
-  private estimateMemoryUsage(): number {
-    // Rough estimation of memory usage in bytes
-    let size = 0;
-
-    // Props
-    size += JSON.stringify(this.props).length * 2; // Rough estimate
-
-    // Render cache
-    if (this.renderCache != null) {
-      size += this.renderCache.length * 2;
-    }
-
-    // Base overhead
-    size += 1000;
-
-    return size;
+      lifecycle: this.lifecycle,
+      eventHandlers: this.eventHandler.getHandlers(),
+      props: this.props,
+      renderCache: this.renderCache,
+    });
   }
 
   public validate(): ComponentValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    // Check if component has required methods
-    if (this.component.render == null) {
-      errors.push('Component missing render method');
-    }
-
-    // Check if component ID is valid
-    if (!this.component.id || this.component.id.trim() === '') {
-      errors.push('Component has invalid ID');
-    }
-
-    // Check for high error rate
-    if (this.errorCount > 0 && this.renderCount > 0) {
-      const errorRate = this.errorCount / this.renderCount;
-      if (errorRate > 0.1) {
-        warnings.push(`High error rate: ${(errorRate * 100).toFixed(1)}%`);
-      }
-    }
-
-    // Check for slow rendering
-    if (this.lastRenderTime > 50) {
-      warnings.push(
-        `Slow rendering detected: ${this.lastRenderTime.toFixed(2)}ms`
-      );
-    }
-
-    // Check lifecycle state consistency
-    const lifecycleValidation = this.lifecycle.validate();
-    errors.push(...lifecycleValidation.errors);
-    warnings.push(...lifecycleValidation.warnings);
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    };
+    return ComponentInstanceUtils.validateComponent({
+      component: this.component,
+      renderCount: this.renderCount,
+      errorCount: this.errorCount,
+      lastRenderTime: this.lastRenderTime,
+      lifecycle: this.lifecycle,
+    });
   }
 
   public reset(): void {
@@ -355,59 +268,33 @@ export class ComponentInstanceImpl implements ComponentInstance {
     this.errorCount = 0;
     this.lastError = null;
     this.invalidateCache();
-
     this.emit('reset');
   }
 
   public clone(newProps?: Record<string, unknown>): ComponentInstanceImpl {
-    const clonedProps = newProps ?? { ...this.props };
-    const clonedId = `${this.component.id}-clone-${Date.now()}`;
+    const cloneData = ComponentInstanceUtils.cloneComponent(
+      this.component,
+      this.props,
+      newProps
+    );
 
-    return new ComponentInstanceImpl(clonedId, this.component, clonedProps, {
-      cacheTTL: this.cacheTTL,
-    });
+    return new ComponentInstanceImpl(
+      cloneData.id,
+      this.component,
+      cloneData.props,
+      { cacheTTL: this.cacheTTL }
+    );
   }
 
   public on(event: string, handler: Function): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.add(handler);
-    }
+    this.eventHandler.on(event, handler);
   }
 
   public off(event: string, handler: Function): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.delete(handler);
-    }
+    this.eventHandler.off(event, handler);
   }
 
   private emit(event: string, data?: unknown): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.forEach((handler) => {
-        try {
-          handler(data);
-        } catch (error) {
-          console.error(
-            `Error in component instance event handler for '${event}':`,
-            error
-          );
-        }
-      });
-    }
+    this.eventHandler.emit(event, data);
   }
-}
-
-export interface ComponentInstanceOptions {
-  cacheTTL?: number;
-}
-
-export interface ComponentValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
 }

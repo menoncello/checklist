@@ -247,7 +247,7 @@ graph TD
 
 ## Risk Mitigation
 
-See [TUI Spike Mitigation Plan](../tui-spike-mitigation-plan.md) for fallback strategy.
+See TUI Spike Mitigation Plan in the main stories directory for fallback strategy.
 
 ## Definition of Done
 

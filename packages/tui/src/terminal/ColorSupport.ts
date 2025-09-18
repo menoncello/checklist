@@ -107,8 +107,43 @@ export class ColorSupport {
     const term = Bun.env.TERM ?? '';
     const termProgram = Bun.env.TERM_PROGRAM?.toLowerCase() ?? '';
 
-    // Known color support by terminal type
-    const colorCapabilities = {
+    return (
+      this.checkByTermType(term, colors) ??
+      this.checkByTermProgram(termProgram, colors) ??
+      null
+    );
+  }
+
+  private checkByTermType(term: string, colors: number): boolean | null {
+    const colorCapabilities = this.getTerminalCapabilities();
+    const capability =
+      colorCapabilities[term as keyof typeof colorCapabilities];
+
+    return capability !== undefined
+      ? this.getColorSupport(capability, colors)
+      : null;
+  }
+
+  private checkByTermProgram(
+    termProgram: string,
+    colors: number
+  ): boolean | null {
+    const programCapabilities = this.getProgramCapabilities();
+
+    for (const [program, caps] of Object.entries(programCapabilities)) {
+      if (termProgram.includes(program)) {
+        return this.getColorSupport(caps, colors);
+      }
+    }
+
+    return null;
+  }
+
+  private getTerminalCapabilities(): Record<
+    string,
+    { basic: boolean; '256': boolean; truecolor: boolean }
+  > {
+    return {
       xterm: { basic: true, '256': true, truecolor: false },
       'xterm-256color': { basic: true, '256': true, truecolor: false },
       'xterm-color': { basic: true, '256': false, truecolor: false },
@@ -119,17 +154,13 @@ export class ColorSupport {
       alacritty: { basic: true, '256': true, truecolor: true },
       kitty: { basic: true, '256': true, truecolor: true },
     };
+  }
 
-    const capability =
-      colorCapabilities[term as keyof typeof colorCapabilities];
-    if (capability !== undefined) {
-      if (colors === 256) return capability['256'];
-      if (colors === 16777216) return capability.truecolor;
-      return capability.basic;
-    }
-
-    // Check by terminal program
-    const programCapabilities = {
+  private getProgramCapabilities(): Record<
+    string,
+    { basic: boolean; '256': boolean; truecolor: boolean }
+  > {
+    return {
       iterm: { basic: true, '256': true, truecolor: true },
       alacritty: { basic: true, '256': true, truecolor: true },
       kitty: { basic: true, '256': true, truecolor: true },
@@ -137,63 +168,131 @@ export class ColorSupport {
       hyper: { basic: true, '256': true, truecolor: true },
       terminal: { basic: true, '256': false, truecolor: false }, // macOS Terminal
     };
+  }
 
-    for (const [program, caps] of Object.entries(programCapabilities)) {
-      if (termProgram.includes(program)) {
-        if (colors === 256) return caps['256'];
-        if (colors === 16777216) return caps.truecolor;
-        return caps.basic;
-      }
-    }
-
-    return null;
+  private getColorSupport(
+    capability: { basic: boolean; '256': boolean; truecolor: boolean },
+    colors: number
+  ): boolean {
+    if (colors === 256) return capability['256'];
+    if (colors === 16777216) return capability.truecolor;
+    return capability.basic;
   }
 
   public async detectWithQuery(): Promise<ColorSupportInfo> {
-    if (
-      this.detectionCache &&
-      Date.now() - this.cacheTimestamp < this.cacheTTL
-    ) {
+    if (this.isCacheValid() && this.detectionCache) {
       return this.detectionCache;
     }
 
-    const info: ColorSupportInfo = {
+    const info = this.createDefaultColorInfo();
+    await this.performColorDetection(info);
+    this.cacheDetectionResult(info);
+
+    return info;
+  }
+
+  /**
+   * Check if cached detection result is still valid
+   */
+  private isCacheValid(): boolean {
+    return (
+      this.detectionCache !== null &&
+      Date.now() - this.cacheTimestamp < this.cacheTTL
+    );
+  }
+
+  /**
+   * Create default color support info structure
+   */
+  private createDefaultColorInfo(): ColorSupportInfo {
+    return {
       basic: false,
       color256: false,
       trueColor: false,
       method: 'env',
       confidence: 'low',
     };
+  }
 
-    // Try environment detection first
-    const basicColor = this.detectBasicColor();
-    const color256 = this.detect256Color();
-    const trueColor = this.detectTrueColor();
+  /**
+   * Perform color detection using environment variables or queries
+   */
+  private async performColorDetection(info: ColorSupportInfo): Promise<void> {
+    const envResults = this.getEnvironmentColorSupport();
 
-    if (basicColor !== null || color256 !== null || trueColor !== null) {
-      info.basic = basicColor ?? false;
-      info.color256 = color256 ?? false;
-      info.trueColor = trueColor ?? false;
-      info.method = 'env';
-      info.confidence = 'high';
+    if (this.hasEnvironmentColorInfo(envResults)) {
+      this.applyEnvironmentResults(info, envResults);
     } else {
-      // Fallback to querying if TTY is available
-      if (process.stdout.isTTY === true) {
-        const queryResults = await this.queryTerminalColorSupport();
-        Object.assign(info, queryResults);
-        info.method = 'query';
-        info.confidence = 'medium';
-      } else {
-        // Final fallback
-        info.basic = false;
-        info.method = 'fallback';
-        info.confidence = 'low';
-      }
+      await this.fallbackToTerminalQuery(info);
     }
+  }
 
+  /**
+   * Get color support information from environment variables
+   */
+  private getEnvironmentColorSupport() {
+    return {
+      basic: this.detectBasicColor(),
+      color256: this.detect256Color(),
+      trueColor: this.detectTrueColor(),
+    };
+  }
+
+  /**
+   * Check if any environment color information is available
+   */
+  private hasEnvironmentColorInfo(envResults: {
+    basic: boolean | null;
+    color256: boolean | null;
+    trueColor: boolean | null;
+  }): boolean {
+    return (
+      envResults.basic !== null ||
+      envResults.color256 !== null ||
+      envResults.trueColor !== null
+    );
+  }
+
+  /**
+   * Apply environment detection results
+   */
+  private applyEnvironmentResults(
+    info: ColorSupportInfo,
+    envResults: {
+      basic: boolean | null;
+      color256: boolean | null;
+      trueColor: boolean | null;
+    }
+  ): void {
+    info.basic = envResults.basic ?? false;
+    info.color256 = envResults.color256 ?? false;
+    info.trueColor = envResults.trueColor ?? false;
+    info.method = 'env';
+    info.confidence = 'high';
+  }
+
+  /**
+   * Fallback to terminal query or use defaults
+   */
+  private async fallbackToTerminalQuery(info: ColorSupportInfo): Promise<void> {
+    if (process.stdout.isTTY === true) {
+      const queryResults = await this.queryTerminalColorSupport();
+      Object.assign(info, queryResults);
+      info.method = 'query';
+      info.confidence = 'medium';
+    } else {
+      info.basic = false;
+      info.method = 'fallback';
+      info.confidence = 'low';
+    }
+  }
+
+  /**
+   * Cache the detection result
+   */
+  private cacheDetectionResult(info: ColorSupportInfo): void {
     this.detectionCache = info;
     this.cacheTimestamp = Date.now();
-    return info;
   }
 
   private async queryTerminalColorSupport(): Promise<
@@ -327,8 +426,13 @@ export class ColorSupport {
   }
 
   private rgbTo16(r: number, g: number, b: number): number {
-    // Convert RGB to nearest 16-color
-    const colors = [
+    const colors = this.get16ColorPalette();
+    const bestMatch = this.findClosestColor(r, g, b, colors);
+    return 30 + bestMatch; // ANSI color codes start at 30
+  }
+
+  private get16ColorPalette(): number[][] {
+    return [
       [0, 0, 0], // Black
       [128, 0, 0], // Dark Red
       [0, 128, 0], // Dark Green
@@ -346,15 +450,19 @@ export class ColorSupport {
       [0, 255, 255], // Cyan
       [255, 255, 255], // White
     ];
+  }
 
+  private findClosestColor(
+    r: number,
+    g: number,
+    b: number,
+    colors: number[][]
+  ): number {
     let bestMatch = 0;
     let bestDistance = Infinity;
 
     for (let i = 0; i < colors.length; i++) {
-      const [cr, cg, cb] = colors[i];
-      const distance = Math.sqrt(
-        Math.pow(r - cr, 2) + Math.pow(g - cg, 2) + Math.pow(b - cb, 2)
-      );
+      const distance = this.calculateColorDistance(r, g, b, colors[i]);
 
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -362,7 +470,19 @@ export class ColorSupport {
       }
     }
 
-    return 30 + bestMatch; // ANSI color codes start at 30
+    return bestMatch;
+  }
+
+  private calculateColorDistance(
+    r: number,
+    g: number,
+    b: number,
+    targetColor: number[]
+  ): number {
+    const [cr, cg, cb] = targetColor;
+    return Math.sqrt(
+      Math.pow(r - cr, 2) + Math.pow(g - cg, 2) + Math.pow(b - cb, 2)
+    );
   }
 
   public createColorTest(): string {

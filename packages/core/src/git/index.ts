@@ -76,46 +76,8 @@ export class GitIntegration {
    */
   async getStatus(): Promise<GitStatus> {
     const branch = await this.getCurrentBranch();
-
-    // Get ahead/behind counts
-    let ahead = 0;
-    let behind = 0;
-    try {
-      const counts = await this.exec([
-        'rev-list',
-        '--left-right',
-        '--count',
-        'HEAD...@{u}',
-      ]);
-      const [a, b] = counts.split('\t').map(Number);
-      ahead = a ?? 0;
-      behind = b ?? 0;
-    } catch {
-      // No upstream branch
-    }
-
-    // Get file statuses
-    const statusOutput = await this.exec(['status', '--porcelain=v1']);
-    const lines = statusOutput.split('\n').filter(Boolean);
-
-    const staged: string[] = [];
-    const modified: string[] = [];
-    const untracked: string[] = [];
-
-    for (const line of lines) {
-      const status = line.substring(0, 2);
-      const file = line.substring(3);
-
-      if (status[0] !== ' ' && status[0] !== '?') {
-        staged.push(file);
-      }
-      if (status[1] !== ' ' && status[1] !== '?') {
-        modified.push(file);
-      }
-      if (status === '??') {
-        untracked.push(file);
-      }
-    }
+    const { ahead, behind } = await this.getAheadBehindCounts();
+    const { staged, modified, untracked } = await this.getFileStatuses();
 
     return {
       branch,
@@ -127,6 +89,81 @@ export class GitIntegration {
       isClean:
         staged.length === 0 && modified.length === 0 && untracked.length === 0,
     };
+  }
+
+  private async getAheadBehindCounts(): Promise<{
+    ahead: number;
+    behind: number;
+  }> {
+    try {
+      const counts = await this.exec([
+        'rev-list',
+        '--left-right',
+        '--count',
+        'HEAD...@{u}',
+      ]);
+      const [a, b] = counts.split('\t').map(Number);
+      return { ahead: a ?? 0, behind: b ?? 0 };
+    } catch {
+      return { ahead: 0, behind: 0 };
+    }
+  }
+
+  private async getFileStatuses(): Promise<{
+    staged: string[];
+    modified: string[];
+    untracked: string[];
+  }> {
+    const statusOutput = await this.exec(['status', '--porcelain=v1']);
+    const lines = statusOutput.split('\n').filter(Boolean);
+
+    return this.categorizeFileStatuses(lines);
+  }
+
+  private categorizeFileStatuses(lines: string[]): {
+    staged: string[];
+    modified: string[];
+    untracked: string[];
+  } {
+    const staged: string[] = [];
+    const modified: string[] = [];
+    const untracked: string[] = [];
+
+    for (const line of lines) {
+      const status = line.substring(0, 2);
+      const file = line.substring(3);
+
+      this.categorizeFileByStatus({
+        status,
+        file,
+        categories: { staged, modified, untracked },
+      });
+    }
+
+    return { staged, modified, untracked };
+  }
+
+  private categorizeFileByStatus(config: {
+    status: string;
+    file: string;
+    categories: {
+      staged: string[];
+      modified: string[];
+      untracked: string[];
+    };
+  }): void {
+    const { status, file, categories } = config;
+    const { staged, modified, untracked } = categories;
+
+    if (status[0] !== ' ' && status[0] !== '?') {
+      staged.push(file);
+    }
+    if (status[1] !== ' ' && status[1] !== '?') {
+      modified.push(file);
+    }
+    if (status === '??') {
+      untracked.push(file);
+    }
   }
 
   /**

@@ -91,7 +91,7 @@ describe('LayoutManager Mutation Tests', () => {
       layoutManager.registerComponent(comp1);
       layoutManager.registerComponent(comp2);
 
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Verify exact newline character joining
       expect(result.header).toBe('Line 1\nLine 2'); // Kill string mutations on '\n'
@@ -100,7 +100,7 @@ describe('LayoutManager Mutation Tests', () => {
 
   describe('Boolean and Conditional Mutations', () => {
     test('should handle exactly zero components - boundary condition', () => {
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       expect(result.header).toBe('');
       expect(result.footer).toBe('');
@@ -116,7 +116,7 @@ describe('LayoutManager Mutation Tests', () => {
       };
 
       layoutManager.registerComponent(headerComp);
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       expect(result.header).toBe('Single Header');
     });
@@ -129,7 +129,7 @@ describe('LayoutManager Mutation Tests', () => {
       };
 
       layoutManager.registerComponent(leftSidebarComp);
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Test the exact condition: leftSidebar.length > 0
       expect(result.sidebars.left).toBe('Left');
@@ -139,7 +139,7 @@ describe('LayoutManager Mutation Tests', () => {
 
     test('should handle left sidebar length = 0 condition exactly', () => {
       // No left sidebar registered
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Test the exact condition: leftSidebar.length = 0
       expect(result.sidebars.left).toBeUndefined();
@@ -155,7 +155,7 @@ describe('LayoutManager Mutation Tests', () => {
       };
 
       layoutManager.registerComponent(rightSidebarComp);
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Test the exact condition: rightSidebar.length > 0
       expect(result.sidebars.right).toBe('Right');
@@ -164,7 +164,7 @@ describe('LayoutManager Mutation Tests', () => {
 
     test('should handle right sidebar length = 0 condition exactly', () => {
       // No right sidebar registered
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Test the exact condition: rightSidebar.length = 0
       expect(result.sidebars.right).toBeUndefined();
@@ -187,7 +187,7 @@ describe('LayoutManager Mutation Tests', () => {
       layoutManager.registerComponent(leftComp);
       layoutManager.registerComponent(rightComp);
       
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Test both conditions true
       expect(result.sidebars.left).toBe('L');
@@ -206,7 +206,7 @@ describe('LayoutManager Mutation Tests', () => {
       };
 
       layoutManager.registerComponent(leftComp);
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Test exact arithmetic: x = 20 (not 19, 21, 0)
       expect(result.content.x).toBe(20);
@@ -230,7 +230,7 @@ describe('LayoutManager Mutation Tests', () => {
       layoutManager.registerComponent(leftComp);
       layoutManager.registerComponent(rightComp);
       
-      const result = layoutManager.renderLayout(100, 24);
+      const result = layoutManager.renderLayout({ width: 100, height: 24 });
       
       // Test exact calculation: 100 - 20 - 20 = 60
       expect(result.content.width).toBe(60);
@@ -255,7 +255,7 @@ describe('LayoutManager Mutation Tests', () => {
       layoutManager.registerComponent(headerComp);
       layoutManager.registerComponent(footerComp);
       
-      const result = layoutManager.renderLayout(80, 30);
+      const result = layoutManager.renderLayout({ width: 80, height: 30 });
       
       // Header height = 2, Footer height = 1
       // Content height = 30 - 2 - 1 = 27
@@ -274,7 +274,7 @@ describe('LayoutManager Mutation Tests', () => {
       };
 
       layoutManager.registerComponent(headerComp);
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Content Y should start after header (3 lines)
       expect(result.content.y).toBe(3);
@@ -345,7 +345,7 @@ describe('LayoutManager Mutation Tests', () => {
       layoutManager.registerComponent(comp1);
       layoutManager.registerComponent(comp2);
 
-      const result = layoutManager.renderLayout(80, 24);
+      const result = layoutManager.renderLayout({ width: 80, height: 24 });
       
       // Test exact mapping and joining
       expect(result.header).toBe('Content1\nContent2');
@@ -369,7 +369,7 @@ describe('LayoutManager Mutation Tests', () => {
       layoutManager.registerComponent(comp1);
       layoutManager.registerComponent(comp2);
 
-      const result = layoutManager.renderLayout(80, 20);
+      const result = layoutManager.renderLayout({ width: 80, height: 20 });
       
       // Header height should be 2 + 1 = 3 lines
       // Content Y should be 3
@@ -431,7 +431,7 @@ describe('LayoutManager Mutation Tests', () => {
 
   describe('Boundary Value Testing - Edge Cases', () => {
     test('should handle minimum dimensions - 1x1', () => {
-      const result = layoutManager.renderLayout(1, 1);
+      const result = layoutManager.renderLayout({ width: 1, height: 1 });
       
       expect(result.content.width).toBe(1);
       expect(result.content.height).toBe(1);
@@ -440,21 +440,21 @@ describe('LayoutManager Mutation Tests', () => {
     });
 
     test('should handle zero dimensions', () => {
-      const result = layoutManager.renderLayout(0, 0);
+      const result = layoutManager.renderLayout({ width: 0, height: 0 });
       
       expect(result.content.width).toBe(0);
       expect(result.content.height).toBe(0);
     });
 
     test('should handle negative dimensions gracefully', () => {
-      const result = layoutManager.renderLayout(-10, -5);
+      const result = layoutManager.renderLayout({ width: -10, height: -5 });
       
       expect(result.content.width).toBe(-10);
       expect(result.content.height).toBe(-5);
     });
 
     test('should handle large dimensions', () => {
-      const result = layoutManager.renderLayout(1000, 500);
+      const result = layoutManager.renderLayout({ width: 1000, height: 500 });
       
       expect(result.content.width).toBe(1000);
       expect(result.content.height).toBe(500);
@@ -464,7 +464,7 @@ describe('LayoutManager Mutation Tests', () => {
   describe('Optional Chaining and Null Safety Mutations', () => {
     test('should handle undefined currentView safely', () => {
       // No current view provided
-      const result = layoutManager.renderLayout(80, 24, undefined);
+      const result = layoutManager.renderLayout({ width: 80, height: 24, currentView: undefined });
       
       expect(result.content.content).toBe(''); // Should be empty string, not null/undefined
     });
@@ -483,7 +483,7 @@ describe('LayoutManager Mutation Tests', () => {
         getKeyBindings: () => []
       };
       
-      const result = layoutManager.renderLayout(80, 24, mockView);
+      const result = layoutManager.renderLayout({ width: 80, height: 24, currentView: mockView });
       
       expect(result.content.content).toBe('View Content');
     });
@@ -502,12 +502,12 @@ describe('LayoutManager Mutation Tests', () => {
         getKeyBindings: () => []
       };
       
-      const result = layoutManager.renderLayout(80, 24, mockView);
+      const result = layoutManager.renderLayout({ width: 80, height: 24, currentView: mockView });
       
       expect(result.content.content).toBe('Content');
       // Should handle empty key bindings
       expect(() => {
-        layoutManager.renderLayout(80, 24, mockView);
+        layoutManager.renderLayout({ width: 80, height: 24, currentView: mockView });
       }).not.toThrow();
     });
   });
@@ -568,7 +568,7 @@ describe('LayoutManager Mutation Tests', () => {
         getKeyBindings: () => [{ key: 'q', description: 'Quit', action: () => {} }]
       };
 
-      const result = layoutManager.renderLayout(120, 30, mockView);
+      const result = layoutManager.renderLayout({ width: 120, height: 30, currentView: mockView });
 
       // Verify exact calculations
       expect(result.header).toBe('Header 1\nHeader 2');

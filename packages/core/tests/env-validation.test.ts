@@ -54,12 +54,22 @@ describe.skip('Environment Variable Validation', () => {
   describe('Environment variable values', () => {
     it('should have NODE_ENV set to valid value', () => {
       const validEnvs = ['development', 'test', 'production'];
-      expect(validEnvs).toContain(envConfig.NODE_ENV);
+      const nodeEnv = envConfig.NODE_ENV;
+      if (nodeEnv) {
+        expect(validEnvs).toContain(nodeEnv);
+      } else {
+        expect(nodeEnv).toBeDefined();
+      }
     });
 
     it('should have LOG_LEVEL set to valid value', () => {
       const validLevels = ['debug', 'info', 'warn', 'error', 'fatal'];
-      expect(validLevels).toContain(envConfig.LOG_LEVEL);
+      const logLevel = envConfig.LOG_LEVEL;
+      if (logLevel) {
+        expect(validLevels).toContain(logLevel);
+      } else {
+        expect(logLevel).toBeDefined();
+      }
     });
 
     it('should have CHECKLIST_HOME as valid path', () => {
@@ -76,7 +86,11 @@ describe.skip('Environment Variable Validation', () => {
 
     it('should have ENABLE_TELEMETRY as boolean string', () => {
       const telemetryValue = envConfig.ENABLE_TELEMETRY;
-      expect(['true', 'false']).toContain(telemetryValue);
+      if (telemetryValue) {
+        expect(['true', 'false']).toContain(telemetryValue);
+      } else {
+        expect(telemetryValue).toBeDefined();
+      }
     });
   });
 

@@ -1,10 +1,102 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from 'bun:test';
 import * as path from 'path';
+import { tmpdir } from 'os';
+import { mkdtemp } from 'fs/promises';
 import * as yaml from 'js-yaml';
 import { MigrationRunner } from '@checklist/core/src/state/migrations/MigrationRunner';
 import { MigrationRegistry } from '@checklist/core/src/state/migrations/MigrationRegistry';
 import { detectVersion } from '@checklist/core/src/state/migrations/versionDetection';
 import type { StateSchema } from '@checklist/core/src/state/migrations/types';
+import { MigrateCommand } from '../../src/commands/migrate';
+import ansi from 'ansis';
+
+// Tests for MigrateCommand class
+describe('MigrateCommand Class', () => {
+  let command: MigrateCommand;
+  let consoleLogSpy: any;
+  let consoleErrorSpy: any;
+  let processExitSpy: any;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    // Create temp directory for tests
+    tempDir = `/tmp/checklist-test-${Date.now()}`;
+    const { mkdir } = await import('fs/promises');
+    await mkdir(tempDir, { recursive: true });
+
+    // Create spies for console methods
+    consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
+    processExitSpy = spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit');
+    });
+
+    // Create command instance
+    command = new MigrateCommand(tempDir);
+  });
+
+  afterEach(async () => {
+    // Cleanup temp directory
+    const { rm } = await import('fs/promises');
+    await rm(tempDir, { recursive: true, force: true });
+
+    // Restore spies
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+    processExitSpy.mockRestore();
+  });
+
+  describe('execute with real StateManager', () => {
+    it('should handle check option with no migration needed', async () => {
+      // Create a state file with current version
+      const statePath = path.join(tempDir, 'state.yaml');
+      const testState = {
+        version: '1.0.0',
+        schemaVersion: '1.0.0',
+        lastModified: new Date().toISOString(),
+        checklists: []
+      };
+      await Bun.write(statePath, yaml.dump(testState));
+
+      await command.execute({ check: true });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(ansi.cyan('Checking migration status...'));
+      // State manager will determine no migration is needed
+    });
+
+    it('should handle verbose option', async () => {
+      const statePath = path.join(tempDir, 'state.yaml');
+      const testState = {
+        version: '1.0.0',
+        schemaVersion: '1.0.0',
+        lastModified: new Date().toISOString(),
+        checklists: []
+      };
+      await Bun.write(statePath, yaml.dump(testState));
+
+      await command.execute({ check: true, verbose: true });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(ansi.cyan('Checking migration status...'));
+    });
+
+    it('should handle error and exit process', async () => {
+      // Create a command with a temp directory to avoid constructor error
+      const tempDir = await mkdtemp(path.join(tmpdir(), 'checklist-test-'));
+      const command = new MigrateCommand(tempDir);
+
+      // Force an error by corrupting state file after construction
+      const statePath = path.join(tempDir, 'state.yaml');
+      await Bun.write(statePath, 'invalid: yaml: content: that: will: cause: error');
+
+      try {
+        await command.execute({ check: true });
+      } catch (e: any) {
+        // Either process.exit was called or an error was thrown
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+      }
+    });
+  });
+});
 
 // Re-enabled tests after fixing timeout issues
 describe('CLI Migration Commands', () => {
@@ -277,10 +369,12 @@ describe('CLI Migration Commands', () => {
       expect(backups[0].version).toBeDefined();
       expect(backups[0].timestamp).toBeDefined();
       expect(backups[0].path).toBeDefined();
-      
+
       // Verify backups are sorted by timestamp (newest first)
       for (let i = 1; i < backups.length; i++) {
-        expect(backups[i - 1].timestamp >= backups[i].timestamp).toBe(true);
+        const prevDate = new Date(backups[i - 1].timestamp).getTime();
+        const currentDate = new Date(backups[i].timestamp).getTime();
+        expect(prevDate >= currentDate).toBe(true);
       }
     });
 
@@ -369,13 +463,112 @@ describe('CLI Migration Commands', () => {
       await Bun.write(statePath, yaml.dump(modifiedState));
       
       // Restore using backup info
-      await runner.restoreFromBackup(statePath, backups[0]);
+      await runner.rollback(statePath, backups[0].path);
       
       // Verify restoration
       const file = Bun.file(statePath);
       const content = await file.text();
       const state = yaml.load(content) as any;
       expect(state.version).toBe('0.1.0');
+    });
+  });
+
+  describe('MigrateCommand Integration', () => {
+    it('should execute full migration flow with MigrateCommand', async () => {
+      const command = new MigrateCommand(tempDir);
+
+      // Create old version state
+      const oldState = {
+        version: '0.0.0',
+        checklists: []
+      };
+
+      await Bun.write(statePath, yaml.dump(oldState));
+
+      // Spy on console output
+      const logSpy = spyOn(console, 'log').mockImplementation(() => {});
+
+      // Execute migration
+      await command.execute();
+
+      // Verify migration messages were logged
+      expect(logSpy).toHaveBeenCalled();
+
+      logSpy.mockRestore();
+    });
+
+    it('should handle dry run with MigrateCommand', async () => {
+      const command = new MigrateCommand(tempDir);
+
+      // Create old version state
+      const oldState = {
+        version: '0.0.0',
+        checklists: []
+      };
+
+      await Bun.write(statePath, yaml.dump(oldState));
+
+      // Spy on console output
+      const logSpy = spyOn(console, 'log').mockImplementation(() => {});
+
+      // Execute dry run
+      await command.execute({ dryRun: true });
+
+      // Verify dry run messages
+      expect(logSpy).toHaveBeenCalled();
+
+      // Verify state wasn't changed
+      const file = Bun.file(statePath);
+      const content = await file.text();
+      const state = yaml.load(content) as any;
+      expect(state.version).toBe('0.0.0');
+
+      logSpy.mockRestore();
+    });
+
+    it('should list backups with MigrateCommand', async () => {
+      const command = new MigrateCommand(tempDir);
+
+      // Create state and backup
+      const testState = {
+        version: '0.1.0',
+        checklists: []
+      };
+
+      await Bun.write(statePath, yaml.dump(testState));
+      await runner.createBackup(statePath, '0.1.0');
+
+      // Spy on console output
+      const logSpy = spyOn(console, 'log').mockImplementation(() => {});
+
+      // List backups
+      await command.execute({ listBackups: true });
+
+      expect(logSpy).toHaveBeenCalledWith(ansi.cyan('Available backups:'));
+
+      logSpy.mockRestore();
+    });
+
+    it('should create backup only with MigrateCommand', async () => {
+      const command = new MigrateCommand(tempDir);
+
+      // Create state
+      const testState = {
+        version: '0.1.0',
+        checklists: []
+      };
+
+      await Bun.write(statePath, yaml.dump(testState));
+
+      // Spy on console output
+      const logSpy = spyOn(console, 'log').mockImplementation(() => {});
+
+      // Create backup
+      await command.execute({ backupOnly: true });
+
+      expect(logSpy).toHaveBeenCalledWith(ansi.cyan('Creating backup...'));
+
+      logSpy.mockRestore();
     });
   });
 

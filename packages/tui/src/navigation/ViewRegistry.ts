@@ -5,7 +5,7 @@
  * Provides view registration, retrieval, and lifecycle management.
  */
 
-import { View } from '../views/types.js';
+import { View } from '../views/types';
 
 export interface ViewRegistrationInfo {
   view: View;

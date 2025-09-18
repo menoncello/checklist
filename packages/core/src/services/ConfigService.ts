@@ -1,4 +1,3 @@
-import * as path from 'path';
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import type {
   IConfigService,
@@ -8,6 +7,9 @@ import type {
 import type { IFileSystemService } from '../interfaces/IFileSystemService';
 import type { Logger } from '../utils/logger';
 import { BaseService, ServiceConfig as BaseServiceConfig } from './BaseService';
+import { ConfigDefaults } from './ConfigDefaults';
+import { ConfigValidator } from './ConfigValidator';
+import { ConfigWatcher } from './ConfigWatcher';
 
 export interface ConfigServiceConfig extends BaseServiceConfig {
   configPath?: string;
@@ -19,8 +21,9 @@ export class ConfigService extends BaseService implements IConfigService {
   private appConfig: AppConfig | null = null;
   private configPath: string = '.checklist/config.yaml';
   private fileSystemService: IFileSystemService;
-  private watchers: Set<(config: AppConfig) => void> = new Set();
-  private watcherCleanup?: () => void;
+  private validator: ConfigValidator;
+  private watcher: ConfigWatcher;
+  private configWatchers: Set<(config: AppConfig) => void> = new Set();
 
   constructor(
     config: ConfigServiceConfig,
@@ -29,6 +32,8 @@ export class ConfigService extends BaseService implements IConfigService {
   ) {
     super(config, logger);
     this.fileSystemService = fileSystemService;
+    this.validator = new ConfigValidator(logger);
+    this.watcher = new ConfigWatcher(fileSystemService, logger);
 
     if (config.configPath !== undefined && config.configPath !== '') {
       this.configPath = config.configPath;
@@ -38,100 +43,109 @@ export class ConfigService extends BaseService implements IConfigService {
   async load(configPath?: string): Promise<AppConfig> {
     try {
       const pathToLoad = configPath ?? this.configPath;
+      await this.loadConfigFromPath(pathToLoad);
 
-      if (await this.fileSystemService.exists(pathToLoad)) {
-        const content = await this.fileSystemService.readFile(pathToLoad, {
-          encoding: 'utf8',
-        });
-        this.appConfig = yamlLoad(content) as AppConfig;
-      } else {
-        // Create default config
-        this.appConfig = this.createDefaultConfig();
-        await this.save(this.appConfig, pathToLoad);
+      if (!this.appConfig) {
+        throw new Error('Configuration not loaded');
       }
 
-      if (!this.validate(this.appConfig)) {
-        throw new Error('Config validation failed');
+      if (!this.validator.validate(this.appConfig)) {
+        throw new Error('Configuration validation failed');
       }
 
-      // Set up file watching if enabled
-      const serviceConfig = this.config as ConfigServiceConfig;
-      if (serviceConfig.autoReload === true) {
-        this.setupFileWatcher();
-      }
-
-      this.logger.info({
-        msg: 'Configuration loaded',
-        configPath: pathToLoad,
-        environment: this.appConfig.environment,
-      });
+      this.setupAutoReloadIfEnabled();
+      this.logConfigLoaded(pathToLoad);
 
       return this.appConfig;
     } catch (error) {
-      this.logger.error({
-        msg: 'Failed to load configuration',
-        error: (error as Error).message,
-        configPath: configPath ?? this.configPath,
-      });
-      throw error;
+      this.logConfigLoadError(error, configPath);
+      this.appConfig = ConfigDefaults.createDefault();
+      return this.appConfig;
     }
+  }
+
+  private async loadConfigFromPath(pathToLoad: string): Promise<void> {
+    const exists = await this.fileSystemService.exists(pathToLoad);
+
+    if (!exists) {
+      this.logger.info({
+        msg: 'Config file not found, creating default',
+        path: pathToLoad,
+      });
+      this.appConfig = ConfigDefaults.createDefault();
+      await this.save(this.appConfig, pathToLoad);
+    } else {
+      const configContent = await this.fileSystemService.readFile(pathToLoad);
+      this.appConfig = yamlLoad(configContent) as AppConfig;
+    }
+  }
+
+  private setupAutoReloadIfEnabled(): void {
+    const serviceConfig = this.config as ConfigServiceConfig;
+    if (serviceConfig.autoReload === true) {
+      this.setupFileWatcher();
+    }
+  }
+
+  private logConfigLoaded(pathToLoad: string): void {
+    this.logger.info({
+      msg: 'Configuration loaded',
+      path: pathToLoad,
+      config: this.appConfig,
+    });
+  }
+
+  private logConfigLoadError(error: unknown, configPath?: string): void {
+    this.logger.error({
+      msg: 'Failed to load configuration',
+      path: configPath ?? this.configPath,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   async save(config: AppConfig, configPath?: string): Promise<void> {
     try {
-      if (!this.validate(config)) {
-        throw new Error('Config validation failed before save');
+      const pathToSave = configPath ?? this.configPath;
+
+      if (!this.validator.validate(config)) {
+        throw new Error('Invalid configuration');
       }
 
-      const pathToSave = configPath ?? this.configPath;
-      const dir = path.dirname(pathToSave);
-
-      await this.fileSystemService.ensureDirectory(dir);
-
-      const yamlContent = yamlDump(config, { indent: 2 });
-      await this.fileSystemService.writeFile(pathToSave, yamlContent);
+      const configYaml = yamlDump(config, { indent: 2, lineWidth: 120 });
+      await this.fileSystemService.writeFile(pathToSave, configYaml);
 
       this.appConfig = config;
-
-      this.logger.debug({
-        msg: 'Configuration saved',
-        configPath: pathToSave,
-      });
-
-      // Notify watchers
       this.notifyWatchers(config);
+
+      this.logger.info({
+        msg: 'Configuration saved',
+        path: pathToSave,
+      });
     } catch (error) {
       this.logger.error({
         msg: 'Failed to save configuration',
-        error: (error as Error).message,
-        configPath: configPath ?? this.configPath,
+        path: configPath ?? this.configPath,
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
   }
 
   get<T = unknown>(key: string): T | undefined {
-    if (!this.appConfig) {
-      return undefined;
-    }
+    if (!this.appConfig) return undefined;
 
     const keys = key.split('.');
-    let current: unknown = this.appConfig as unknown;
+    let value: unknown = this.appConfig;
 
     for (const k of keys) {
-      if (
-        current !== null &&
-        current !== undefined &&
-        typeof current === 'object' &&
-        k in current
-      ) {
-        current = (current as Record<string, unknown>)[k];
+      if (value != null && typeof value === 'object' && k in value) {
+        value = (value as Record<string, unknown>)[k];
       } else {
         return undefined;
       }
     }
 
-    return current as T;
+    return value as T;
   }
 
   set(key: string, value: unknown): void {
@@ -140,26 +154,23 @@ export class ConfigService extends BaseService implements IConfigService {
     }
 
     const keys = key.split('.');
-    let current: Record<string, unknown> = this.appConfig as unknown as Record<
+    const lastKey = keys.pop();
+    if (lastKey == null || lastKey === '') return;
+
+    let target: Record<string, unknown> = this.appConfig as unknown as Record<
       string,
       unknown
     >;
 
-    for (let i = 0; i < keys.length - 1; i++) {
-      const k = keys[i];
-      if (!(k in current) || typeof current[k] !== 'object') {
-        current[k] = {};
+    for (const k of keys) {
+      if (!(k in target) || typeof target[k] !== 'object') {
+        target[k] = {};
       }
-      current = current[k] as Record<string, unknown>;
+      target = target[k] as Record<string, unknown>;
     }
 
-    current[keys[keys.length - 1]] = value;
-
-    this.logger.debug({
-      msg: 'Configuration value set',
-      key,
-      value,
-    });
+    target[lastKey] = value;
+    this.notifyWatchers(this.appConfig);
   }
 
   has(key: string): boolean {
@@ -171,119 +182,96 @@ export class ConfigService extends BaseService implements IConfigService {
       throw new Error('Configuration not loaded');
     }
 
-    this.appConfig = {
-      ...this.appConfig,
-      ...partial,
-      services: {
-        ...this.appConfig.services,
-        ...partial.services,
-      },
-      featureFlags: {
-        ...this.appConfig.featureFlags,
-        ...partial.featureFlags,
-      },
-      metadata: {
-        ...this.appConfig.metadata,
-        ...partial.metadata,
-      },
-    };
-
-    this.logger.debug({
-      msg: 'Configuration merged',
-      partial,
-    });
-
-    // Notify watchers
+    this.appConfig = { ...this.appConfig, ...partial };
     this.notifyWatchers(this.appConfig);
   }
 
-  validate(config: AppConfig): boolean {
-    try {
-      // Required fields
-      if (!config.appName || typeof config.appName !== 'string') {
-        return false;
-      }
+  validate(config?: AppConfig): boolean {
+    const configToValidate = config ?? this.appConfig;
 
-      if (!config.version || typeof config.version !== 'string') {
-        return false;
-      }
-
-      const validEnvironments = ['development', 'test', 'production'];
-      if (!validEnvironments.includes(config.environment)) {
-        return false;
-      }
-
-      if (typeof config.debug !== 'boolean') {
-        return false;
-      }
-
-      // Optional fields validation
-      if (config.services && typeof config.services !== 'object') {
-        return false;
-      }
-
-      if (config.featureFlags && typeof config.featureFlags !== 'object') {
-        return false;
-      }
-
-      return true;
-    } catch {
+    if (!configToValidate) {
+      this.logger.error({ msg: 'No configuration to validate' });
       return false;
     }
+
+    return this.validator.validate(configToValidate);
+  }
+
+  reset(): void {
+    this.appConfig = ConfigDefaults.createDefault();
+    this.notifyWatchers(this.appConfig);
+
+    this.logger.info({ msg: 'Configuration reset to defaults' });
+  }
+
+  getDefault(): AppConfig {
+    return ConfigDefaults.createDefault();
+  }
+
+  watch(callback: (config: AppConfig) => void): void {
+    this.configWatchers.add(callback);
+  }
+
+  unwatch(callback: (config: AppConfig) => void): void {
+    this.configWatchers.delete(callback);
   }
 
   getEnvironment(): 'development' | 'test' | 'production' {
-    if (!this.appConfig) {
-      throw new Error('Configuration not loaded');
-    }
-    return this.appConfig.environment;
+    return this.appConfig?.environment ?? 'development';
   }
 
   isFeatureEnabled(feature: string): boolean {
-    if (!this.appConfig?.featureFlags) {
-      return false;
-    }
-    const value = this.appConfig.featureFlags[feature];
-    return typeof value === 'boolean' ? value : false;
+    if (!this.appConfig?.featureFlags) return false;
+    const flag = this.appConfig.featureFlags[feature];
+    return flag === true || flag === 'true' || flag === 'enabled';
   }
 
   getServiceConfig(serviceName: string): ServiceConfig | undefined {
-    if (!this.appConfig?.services) {
-      return undefined;
-    }
+    if (!this.appConfig?.services) return undefined;
     return this.appConfig.services[serviceName];
   }
 
   async reload(): Promise<void> {
-    try {
-      await this.load(this.configPath);
+    this.logger.info({ msg: 'Reloading configuration' });
 
-      this.logger.info({ msg: 'Configuration reloaded' });
+    try {
+      const previousConfig = this.appConfig;
+      await this.load();
+
+      if (JSON.stringify(previousConfig) !== JSON.stringify(this.appConfig)) {
+        this.logger.info({ msg: 'Configuration changed after reload' });
+        if (this.appConfig) {
+          this.notifyWatchers(this.appConfig);
+        }
+      } else {
+        this.logger.debug({ msg: 'Configuration unchanged after reload' });
+      }
     } catch (error) {
       this.logger.error({
         msg: 'Failed to reload configuration',
-        error: (error as Error).message,
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
   }
 
-  watch(onChange: (config: AppConfig) => void): void {
-    this.watchers.add(onChange);
-
-    this.logger.debug({
-      msg: 'Configuration watcher added',
-      totalWatchers: this.watchers.size,
-    });
+  getService(serviceName: keyof AppConfig['services']): ServiceConfig | null {
+    if (!this.appConfig?.services) return null;
+    return this.appConfig.services[serviceName] ?? null;
   }
 
-  unwatch(onChange: (config: AppConfig) => void): void {
-    this.watchers.delete(onChange);
+  setService(
+    serviceName: keyof AppConfig['services'],
+    config: ServiceConfig
+  ): void {
+    if (!this.appConfig) {
+      throw new Error('Configuration not loaded');
+    }
 
-    this.logger.debug({
-      msg: 'Configuration watcher removed',
-      totalWatchers: this.watchers.size,
-    });
+    this.appConfig.services ??= {};
+
+    this.appConfig.services[serviceName] = config;
+    this.notifyWatchers(this.appConfig);
   }
 
   protected async onInitialize(): Promise<void> {
@@ -291,65 +279,54 @@ export class ConfigService extends BaseService implements IConfigService {
   }
 
   protected async onShutdown(): Promise<void> {
-    if (this.watcherCleanup) {
-      this.watcherCleanup();
-      this.watcherCleanup = undefined;
-    }
-    this.watchers.clear();
-  }
+    this.watcher.stopWatch();
+    this.configWatchers.clear();
 
-  private createDefaultConfig(): AppConfig {
-    return {
-      appName: 'checklist',
-      version: '1.0.0',
-      environment: 'development',
-      debug: false,
-      workingDirectory: '.checklist',
-      featureFlags: {
-        DI_ENABLED: 'partial',
-        DI_LOGGER_ENABLED: false,
-      },
-      services: {},
-      metadata: {
-        createdAt: new Date().toISOString(),
-      },
-    };
+    if (this.appConfig) {
+      await this.save(this.appConfig);
+    }
   }
 
   private setupFileWatcher(): void {
-    if (this.watcherCleanup) {
-      this.watcherCleanup();
-    }
+    this.watcher
+      .setupWatch(this.configPath, async (content) => {
+        try {
+          const newConfig = yamlLoad(content) as AppConfig;
 
-    try {
-      this.watcherCleanup = this.fileSystemService.watch(
-        this.configPath,
-        async (event) => {
-          if (event === 'change') {
-            this.logger.debug({ msg: 'Configuration file changed, reloading' });
-            await this.reload();
+          if (this.validator.validate(newConfig)) {
+            this.appConfig = newConfig;
+            this.notifyWatchers(newConfig);
+
+            this.logger.info({
+              msg: 'Configuration auto-reloaded',
+              path: this.configPath,
+            });
           }
-        },
-        { persistent: true }
-      );
-    } catch (error) {
-      this.logger.warn({
-        msg: 'Failed to set up configuration file watcher',
-        error: (error as Error).message,
+        } catch (error) {
+          this.logger.error({
+            msg: 'Failed to auto-reload configuration',
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })
+      .catch((error) => {
+        this.logger.error({
+          msg: 'Failed to setup file watcher',
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
-    }
   }
 
   private notifyWatchers(config: AppConfig): void {
-    for (const watcher of this.watchers) {
+    this.configWatchers.forEach((watcher) => {
       try {
         watcher(config);
       } catch (error) {
         this.logger.error({
-          msg: 'Error in configuration watcher',
-          error: (error as Error).message,
+          msg: 'Error in config watcher callback',
+          error: error instanceof Error ? error.message : String(error),
         });
       }
-    }
+    });
   }
 }

@@ -46,7 +46,7 @@ export class MigrateCommand {
       console.log(`  Current version: ${ansi.red(status.currentVersion)}`);
       console.log(`  Target version:  ${ansi.green(status.targetVersion)}`);
 
-      if (status.migrationPath && status.migrationPath.length > 0) {
+      if (status.migrationPath != null && status.migrationPath.length > 0) {
         console.log(ansi.cyan('\nMigration path:'));
         status.migrationPath.forEach((step, index) => {
           console.log(`  ${index + 1}. ${step}`);
@@ -111,39 +111,54 @@ export class MigrateCommand {
     const status = await this.stateManager.checkMigrationStatus();
 
     if (!status.needsMigration) {
-      console.log(ansi.green('✅ No migration needed'));
-      console.log(`  Current version: ${status.currentVersion}`);
+      this.showNoMigrationNeeded(status.currentVersion);
       return;
     }
 
+    this.showMigrationInfo(status);
+
+    if (options.dryRun === true) {
+      this.showDryRunInfo(status.migrationPath);
+      return;
+    }
+
+    await this.executeMigration(status.targetVersion);
+  }
+
+  private showNoMigrationNeeded(currentVersion: string): void {
+    console.log(ansi.green('✅ No migration needed'));
+    console.log(`  Current version: ${currentVersion}`);
+  }
+
+  private showMigrationInfo(status: {
+    currentVersion: string;
+    targetVersion: string;
+  }): void {
     console.log(ansi.cyan('Starting migration...'));
     console.log(`  From: ${ansi.yellow(status.currentVersion)}`);
     console.log(`  To:   ${ansi.green(status.targetVersion)}`);
+  }
 
-    if (options.dryRun === true) {
-      console.log(ansi.yellow('\n🔍 Dry run mode - no changes will be made'));
+  private showDryRunInfo(migrationPath?: string[]): void {
+    console.log(ansi.yellow('\n🔍 Dry run mode - no changes will be made'));
 
-      if (
-        status.migrationPath !== undefined &&
-        status.migrationPath.length > 0
-      ) {
-        console.log(ansi.cyan('\nMigrations that would be applied:'));
-        status.migrationPath.forEach((step, index) => {
-          console.log(`  ${index + 1}. ${step}`);
-        });
-      }
-
-      console.log(ansi.green('\n✅ Dry run completed successfully'));
-      return;
+    if (migrationPath !== undefined && migrationPath.length > 0) {
+      console.log(ansi.cyan('\nMigrations that would be applied:'));
+      migrationPath.forEach((step, index) => {
+        console.log(`  ${index + 1}. ${step}`);
+      });
     }
 
-    // Actually run the migration
+    console.log(ansi.green('\n✅ Dry run completed successfully'));
+  }
+
+  private async executeMigration(targetVersion: string): Promise<void> {
     console.log(ansi.cyan('\nApplying migrations...'));
 
     try {
       await this.stateManager.loadState();
       console.log(ansi.green('\n🎉 Migration completed successfully!'));
-      console.log(`  New version: ${status.targetVersion}`);
+      console.log(`  New version: ${targetVersion}`);
     } catch (error) {
       console.error(ansi.red('\n❌ Migration failed:'), error);
       console.log(

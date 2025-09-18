@@ -10,7 +10,7 @@ import type {
   LayoutContext,
   LayoutRender,
   View,
-} from '../views/types.js';
+} from '../views/types';
 
 export class LayoutManager {
   private readonly components = new Map<string, LayoutComponent>();
@@ -35,19 +35,20 @@ export class LayoutManager {
     );
   }
 
-  renderLayout(
-    width: number,
-    height: number,
-    currentView?: View,
+  renderLayout(options: {
+    width: number;
+    height: number;
+    currentView?: View;
     navigation?: {
       canGoBack: boolean;
       breadcrumbs: string[];
-    },
+    };
     status?: {
       message: string;
       type: 'info' | 'warning' | 'error' | 'success';
-    }
-  ): LayoutRender {
+    };
+  }): LayoutRender {
+    const { width, height, currentView, navigation, status } = options;
     const context: LayoutContext = {
       width,
       height,
@@ -57,65 +58,126 @@ export class LayoutManager {
       keyBindings: currentView?.getKeyBindings() ?? [],
     };
 
-    // Render header components
-    const headerComponents = this.getComponentsByPosition('header');
-    const header = headerComponents
-      .map((component) => component.render(context))
-      .join('\n');
+    const renderedComponents = this.renderAllComponents(context);
+    const contentArea = this.calculateContentArea(options, renderedComponents);
 
-    // Render footer components
-    const footerComponents = this.getComponentsByPosition('footer');
-    const footer = footerComponents
-      .map((component) => component.render(context))
-      .join('\n');
+    return this.buildLayoutRender(renderedComponents, contentArea);
+  }
 
-    // Render sidebar components
-    const leftSidebarComponents = this.getComponentsByPosition('sidebar-left');
-    const rightSidebarComponents =
-      this.getComponentsByPosition('sidebar-right');
-
-    const leftSidebar =
-      leftSidebarComponents.length > 0
-        ? leftSidebarComponents
-            .map((component) => component.render(context))
-            .join('\n')
-        : '';
-
-    const rightSidebar =
-      rightSidebarComponents.length > 0
-        ? rightSidebarComponents
-            .map((component) => component.render(context))
-            .join('\n')
-        : '';
-
-    // Calculate content area dimensions
-    const headerHeight = this.calculateComponentHeight(
-      headerComponents,
-      context
-    );
-    const footerHeight = this.calculateComponentHeight(
-      footerComponents,
-      context
-    );
-
-    const contentArea = {
-      x: leftSidebar.length > 0 ? 20 : 0, // Assume sidebar width of 20
-      y: headerHeight,
-      width:
-        width -
-        (leftSidebar.length > 0 ? 20 : 0) -
-        (rightSidebar.length > 0 ? 20 : 0),
-      height: height - headerHeight - footerHeight,
-      content: currentView?.render() ?? '',
+  private renderAllComponents(context: LayoutContext) {
+    return {
+      header: this.renderComponentsByPosition('header', context) as string,
+      footer: this.renderComponentsByPosition('footer', context) as string,
+      leftSidebar: this.renderComponentsByPosition(
+        'sidebar-left',
+        context
+      ) as string[],
+      rightSidebar: this.renderComponentsByPosition(
+        'sidebar-right',
+        context
+      ) as string[],
     };
+  }
 
+  private renderComponentsByPosition(
+    position: 'header' | 'footer' | 'sidebar-left' | 'sidebar-right',
+    context: LayoutContext
+  ): string | string[] {
+    const components = this.getComponentsByPosition(position);
+    const rendered = components.map((component) => component.render(context));
+
+    // Return arrays for sidebars, joined strings for header/footer
+    if (position === 'sidebar-left' || position === 'sidebar-right') {
+      return rendered;
+    }
+    return rendered.join('\n');
+  }
+
+  private calculateContentArea(
+    options: {
+      width: number;
+      height: number;
+      currentView?: { render(): string };
+    },
+    renderedComponents: {
+      leftSidebar: string[];
+      rightSidebar: string[];
+      header: string;
+      footer: string;
+    }
+  ) {
+    const { width, height, currentView } = options;
+    const { leftSidebar, rightSidebar } = renderedComponents;
+    const layoutCtx = { width, height } as LayoutContext;
+    const heights = this.calculateHeaderFooterHeights(layoutCtx);
+    return this.buildContentArea({
+      width,
+      height,
+      headerHeight: heights.header,
+      footerHeight: heights.footer,
+      leftSidebar,
+      rightSidebar,
+      currentView,
+    });
+  }
+
+  private calculateHeaderFooterHeights(layoutCtx: LayoutContext) {
+    return {
+      header: this.calculateComponentHeight(
+        this.getComponentsByPosition('header'),
+        layoutCtx
+      ),
+      footer: this.calculateComponentHeight(
+        this.getComponentsByPosition('footer'),
+        layoutCtx
+      ),
+    };
+  }
+
+  private buildContentArea(params: {
+    width: number;
+    height: number;
+    headerHeight: number;
+    footerHeight: number;
+    leftSidebar: string[];
+    rightSidebar: string[];
+    currentView?: { render(): string };
+  }) {
+    const leftOffset = params.leftSidebar.length > 0 ? 20 : 0;
+    const rightOffset = params.rightSidebar.length > 0 ? 20 : 0;
+
+    return {
+      x: leftOffset,
+      y: params.headerHeight,
+      width: params.width - leftOffset - rightOffset,
+      height: params.height - params.headerHeight - params.footerHeight,
+      content: params.currentView?.render() ?? '',
+    };
+  }
+
+  private buildLayoutRender(
+    renderedComponents: {
+      header: string;
+      footer: string;
+      leftSidebar: string[];
+      rightSidebar: string[];
+    },
+    contentArea: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      content: string;
+    }
+  ) {
+    const { header, footer, leftSidebar, rightSidebar } = renderedComponents;
     return {
       header,
       footer,
       content: contentArea,
       sidebars: {
-        left: leftSidebar.length > 0 ? leftSidebar : undefined,
-        right: rightSidebar.length > 0 ? rightSidebar : undefined,
+        left: leftSidebar.length > 0 ? leftSidebar.join('\n') : undefined,
+        right: rightSidebar.length > 0 ? rightSidebar.join('\n') : undefined,
       },
     };
   }

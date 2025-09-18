@@ -220,12 +220,12 @@ describe('Development Environment Setup Validation', () => {
 
     it('should run linting in pre-commit hook', () => {
       const hookContent = fs.readFileSync(preCommitPath, 'utf-8');
-      expect(hookContent).toContain('bun run lint');
+      expect(hookContent).toContain('bunx lint-staged');
     });
 
     it('should run format check in pre-commit hook', () => {
       const hookContent = fs.readFileSync(preCommitPath, 'utf-8');
-      expect(hookContent).toContain('bun run format:check');
+      expect(hookContent).toContain('bunx lint-staged');
     });
 
     it('should run type checking in pre-commit hook', () => {

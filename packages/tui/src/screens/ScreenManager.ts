@@ -1,5 +1,5 @@
-import { Screen } from '../framework/UIFramework.js';
-import { ScreenStack } from './ScreenStack.js';
+import { Screen } from '../framework/UIFramework';
+import { ScreenStack } from './ScreenStack';
 
 export interface ScreenTransition {
   type: 'push' | 'pop' | 'replace';
@@ -54,139 +54,61 @@ export class ScreenManager {
 
   public async pushScreen(screen: Screen): Promise<void> {
     const currentScreen = this.stack.current();
+    await this.exitCurrentScreen(currentScreen);
 
-    if (currentScreen?.onExit) {
-      await this.executeScreenMethod(currentScreen.onExit);
-    }
-
-    const transition: ScreenTransition = {
-      type: 'push',
-      fromScreen: currentScreen ?? undefined,
-      toScreen: screen,
-      timestamp: Date.now(),
-    };
-
-    this.activeTransition = transition;
-    this.emit('transitionStart', transition);
-
-    try {
+    const transition = this.createTransition('push', currentScreen, screen);
+    await this.executeTransition(transition, async () => {
       this.stack.push(screen);
+      await this.enterScreen(screen);
+    });
 
-      if (screen.onEnter) {
-        await this.executeScreenMethod(screen.onEnter);
-      }
-
-      if (this.config.enableTransitions) {
-        await this.performTransition(transition);
-      }
-
-      transition.duration = Date.now() - transition.timestamp;
-      this.recordTransition(transition);
-
-      this.emit('transitionEnd', transition);
-      this.emit('screenPushed', { screen, stack: this.stack.getStack() });
-    } catch (error) {
-      this.emit('transitionError', { transition, error });
-      throw error;
-    } finally {
-      this.activeTransition = null;
-    }
+    this.emit('screenPushed', { screen, stack: this.stack.getStack() });
   }
 
   public async popScreen(): Promise<Screen | null> {
     const currentScreen = this.stack.current();
     if (!currentScreen) return null;
 
-    if (currentScreen.onExit) {
-      await this.executeScreenMethod(currentScreen.onExit);
-    }
-
+    await this.exitCurrentScreen(currentScreen);
     const poppedScreen = this.stack.pop();
     const newCurrentScreen = this.stack.current();
 
-    const transition: ScreenTransition = {
-      type: 'pop',
-      fromScreen: poppedScreen ?? undefined,
-      toScreen: newCurrentScreen ?? undefined,
-      timestamp: Date.now(),
-    };
+    const transition = this.createTransition(
+      'pop',
+      poppedScreen,
+      newCurrentScreen
+    );
+    await this.executeTransition(transition, async () => {
+      await this.enterScreen(newCurrentScreen);
+    });
 
-    this.activeTransition = transition;
-    this.emit('transitionStart', transition);
+    this.emit('screenPopped', {
+      screen: poppedScreen,
+      currentScreen: newCurrentScreen,
+      stack: this.stack.getStack(),
+    });
 
-    try {
-      if (newCurrentScreen?.onEnter) {
-        await this.executeScreenMethod(newCurrentScreen.onEnter);
-      }
-
-      if (this.config.enableTransitions) {
-        await this.performTransition(transition);
-      }
-
-      transition.duration = Date.now() - transition.timestamp;
-      this.recordTransition(transition);
-
-      this.emit('transitionEnd', transition);
-      this.emit('screenPopped', {
-        screen: poppedScreen,
-        currentScreen: newCurrentScreen,
-        stack: this.stack.getStack(),
-      });
-
-      return poppedScreen;
-    } catch (error) {
-      this.emit('transitionError', { transition, error });
-      throw error;
-    } finally {
-      this.activeTransition = null;
-    }
+    return poppedScreen;
   }
 
   public async replaceScreen(screen: Screen): Promise<Screen | null> {
     const currentScreen = this.stack.current();
-
-    if (currentScreen?.onExit) {
-      await this.executeScreenMethod(currentScreen.onExit);
-    }
+    await this.exitCurrentScreen(currentScreen);
 
     const replacedScreen = this.stack.replace(screen);
 
-    const transition: ScreenTransition = {
-      type: 'replace',
-      fromScreen: replacedScreen ?? undefined,
-      toScreen: screen,
-      timestamp: Date.now(),
-    };
+    const transition = this.createTransition('replace', replacedScreen, screen);
+    await this.executeTransition(transition, async () => {
+      await this.enterScreen(screen);
+    });
 
-    this.activeTransition = transition;
-    this.emit('transitionStart', transition);
+    this.emit('screenReplaced', {
+      oldScreen: replacedScreen,
+      newScreen: screen,
+      stack: this.stack.getStack(),
+    });
 
-    try {
-      if (screen.onEnter) {
-        await this.executeScreenMethod(screen.onEnter);
-      }
-
-      if (this.config.enableTransitions) {
-        await this.performTransition(transition);
-      }
-
-      transition.duration = Date.now() - transition.timestamp;
-      this.recordTransition(transition);
-
-      this.emit('transitionEnd', transition);
-      this.emit('screenReplaced', {
-        oldScreen: replacedScreen,
-        newScreen: screen,
-        stack: this.stack.getStack(),
-      });
-
-      return replacedScreen;
-    } catch (error) {
-      this.emit('transitionError', { transition, error });
-      throw error;
-    } finally {
-      this.activeTransition = null;
-    }
+    return replacedScreen;
   }
 
   public getCurrentScreen(): Screen | null {
@@ -243,6 +165,75 @@ export class ScreenManager {
         this.emit('inputError', { input, screen: currentScreen, error });
       }
     }
+  }
+
+  /**
+   * Exit current screen if it has onExit method
+   */
+  private async exitCurrentScreen(screen: Screen | null): Promise<void> {
+    if (screen?.onExit) {
+      await this.executeScreenMethod(screen.onExit);
+    }
+  }
+
+  /**
+   * Enter screen if it has onEnter method
+   */
+  private async enterScreen(screen: Screen | null): Promise<void> {
+    if (screen?.onEnter) {
+      await this.executeScreenMethod(screen.onEnter);
+    }
+  }
+
+  /**
+   * Create a screen transition object
+   */
+  private createTransition(
+    type: 'push' | 'pop' | 'replace',
+    fromScreen: Screen | null,
+    toScreen: Screen | null
+  ): ScreenTransition {
+    return {
+      type,
+      fromScreen: fromScreen ?? undefined,
+      toScreen: toScreen ?? undefined,
+      timestamp: Date.now(),
+    };
+  }
+
+  /**
+   * Execute transition with error handling and timing
+   */
+  private async executeTransition(
+    transition: ScreenTransition,
+    transitionLogic: () => Promise<void>
+  ): Promise<void> {
+    this.activeTransition = transition;
+    this.emit('transitionStart', transition);
+
+    try {
+      await transitionLogic();
+
+      if (this.config.enableTransitions) {
+        await this.performTransition(transition);
+      }
+
+      this.finalizeTransition(transition);
+    } catch (error) {
+      this.emit('transitionError', { transition, error });
+      throw error;
+    } finally {
+      this.activeTransition = null;
+    }
+  }
+
+  /**
+   * Finalize transition with timing and events
+   */
+  private finalizeTransition(transition: ScreenTransition): void {
+    transition.duration = Date.now() - transition.timestamp;
+    this.recordTransition(transition);
+    this.emit('transitionEnd', transition);
   }
 
   private async executeScreenMethod(

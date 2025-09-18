@@ -36,67 +36,96 @@ export interface TimedOptions {
  * ```
  */
 export function Timed(options: TimedOptions = {}) {
-  return function <T extends (...args: unknown[]) => unknown>(
+  return function (
     target: unknown,
     propertyKey: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
-  ): TypedPropertyDescriptor<T> | void {
-    if (!descriptor?.value) {
+    descriptor: PropertyDescriptor
+  ): PropertyDescriptor | void {
+    if (descriptor?.value === undefined || descriptor?.value === null) {
       return;
     }
 
+    const methodInfo = extractMethodInfo(target, propertyKey, options);
     const originalMethod = descriptor.value;
-    const className = (target as { constructor: { name: string } }).constructor
-      .name;
 
-    const operationName =
-      options.operationName ??
-      (options.includeClassName !== false
-        ? `${className}.${String(propertyKey)}`
-        : String(propertyKey));
-
-    descriptor.value = function (
-      this: unknown,
-      ...args: Parameters<T>
-    ): ReturnType<T> {
-      const monitor = options.monitor ?? getGlobalPerformanceMonitor();
-
-      if (monitor?.isEnabled() !== true) {
-        // If monitoring is disabled, just call the original method
-        return originalMethod.apply(this, args) as ReturnType<T>;
-      }
-
-      // Set budget if specified
-      if (typeof options.budgetMs === 'number') {
-        monitor.setBudget(operationName, options.budgetMs, options.severity);
-      }
-
-      const timer = monitor.startTimer(operationName);
-
-      try {
-        const result = originalMethod.apply(this, args) as ReturnType<T>;
-
-        // Handle both sync and async methods
-        if (
-          result !== null &&
-          result !== undefined &&
-          typeof (result as { then?: unknown }).then === 'function'
-        ) {
-          return (result as unknown as Promise<unknown>).finally(() =>
-            timer()
-          ) as ReturnType<T>;
-        } else {
-          timer();
-          return result;
-        }
-      } catch (error) {
-        timer();
-        throw error;
-      }
-    } as T;
+    descriptor.value = createTimedWrapper(
+      originalMethod,
+      methodInfo.operationName,
+      options
+    );
 
     return descriptor;
   };
+}
+
+function extractMethodInfo(
+  target: unknown,
+  propertyKey: string | symbol,
+  options: TimedOptions
+): { operationName: string } {
+  const className = (target as { constructor: { name: string } }).constructor
+    .name;
+
+  const operationName =
+    options.operationName ??
+    (options.includeClassName !== false
+      ? `${className}.${String(propertyKey)}`
+      : String(propertyKey));
+
+  return { operationName };
+}
+
+function createTimedWrapper<T extends (...args: unknown[]) => unknown>(
+  originalMethod: T,
+  operationName: string,
+  options: TimedOptions
+): T {
+  return function (this: unknown, ...args: Parameters<T>): ReturnType<T> {
+    const monitor = options.monitor ?? getGlobalPerformanceMonitor();
+
+    if (monitor?.isEnabled() !== true) {
+      return originalMethod.apply(this, args) as ReturnType<T>;
+    }
+
+    const timer = setupPerformanceMonitoring(monitor, operationName, options);
+
+    try {
+      const result = originalMethod.apply(this, args) as ReturnType<T>;
+      return handleMethodResult(result, timer);
+    } catch (error) {
+      timer();
+      throw error;
+    }
+  } as T;
+}
+
+function setupPerformanceMonitoring(
+  monitor: IPerformanceMonitor,
+  operationName: string,
+  options: TimedOptions
+): () => void {
+  if (typeof options.budgetMs === 'number') {
+    monitor.setBudget(operationName, options.budgetMs, options.severity);
+  }
+
+  return monitor.startTimer(operationName);
+}
+
+function handleMethodResult<T>(result: T, timer: () => void): T {
+  if (isPromise(result)) {
+    return (result as unknown as Promise<unknown>).finally(() => timer()) as T;
+  }
+
+  timer();
+  return result;
+}
+
+function isPromise(value: unknown): boolean {
+  return (
+    value !== null &&
+    value !== undefined &&
+    typeof (value as { then?: unknown }).then === 'function'
+  );
 }
 
 /**
@@ -112,7 +141,7 @@ export function Timed(options: TimedOptions = {}) {
  * ```
  */
 export function TimedClass(defaultOptions: TimedOptions = {}) {
-  return function <T extends new (...args: unknown[]) => object>(
+  return function <T extends new (...args: unknown[]) => unknown>(
     constructor: T
   ): T {
     const prototype = constructor.prototype;
@@ -201,25 +230,14 @@ export function createTimedFunction<T extends (...args: unknown[]) => unknown>(
       return fn(...args);
     }
 
-    if (typeof options.budgetMs === 'number') {
-      monitor.setBudget(operationName, options.budgetMs, options.severity);
-    }
-
-    const timer = monitor.startTimer(operationName);
+    const timer = setupPerformanceMonitoring(monitor, operationName, {
+      ...options,
+      operationName,
+    });
 
     try {
       const result = fn(...args);
-
-      if (
-        result !== null &&
-        result !== undefined &&
-        typeof (result as { then?: unknown }).then === 'function'
-      ) {
-        return (result as unknown as Promise<unknown>).finally(() => timer());
-      } else {
-        timer();
-        return result;
-      }
+      return handleMethodResult(result, timer);
     } catch (error) {
       timer();
       throw error;

@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { PathFinder } from './PathFinder';
 import {
   Migration,
   MigrationPath,
@@ -44,15 +45,51 @@ export class MigrationRegistry extends EventEmitter {
   }
 
   findPath(fromVersion: string, toVersion: string): MigrationPath {
-    if (fromVersion === toVersion) {
-      return {
-        migrations: [],
-        fromVersion,
-        toVersion,
-        totalSteps: 0,
-      };
+    if (this.isSameVersion(fromVersion, toVersion)) {
+      return this.createEmptyPath(fromVersion, toVersion);
     }
 
+    this.validateMigrationDirection(fromVersion, toVersion);
+    const path = this.findShortestPath(fromVersion, toVersion);
+    const migrations = this.buildMigrationChain(path);
+
+    return {
+      migrations,
+      fromVersion,
+      toVersion,
+      totalSteps: migrations.length,
+    };
+  }
+
+  /**
+   * Check if versions are the same
+   */
+  private isSameVersion(fromVersion: string, toVersion: string): boolean {
+    return fromVersion === toVersion;
+  }
+
+  /**
+   * Create empty migration path for same versions
+   */
+  private createEmptyPath(
+    fromVersion: string,
+    toVersion: string
+  ): MigrationPath {
+    return {
+      migrations: [],
+      fromVersion,
+      toVersion,
+      totalSteps: 0,
+    };
+  }
+
+  /**
+   * Validate that migration direction is forward
+   */
+  private validateMigrationDirection(
+    fromVersion: string,
+    toVersion: string
+  ): void {
     const comparison = compareVersions(fromVersion, toVersion);
     if (comparison > 0) {
       throw new MigrationError(
@@ -61,7 +98,12 @@ export class MigrationRegistry extends EventEmitter {
         toVersion
       );
     }
+  }
 
+  /**
+   * Find shortest path using Dijkstra's algorithm
+   */
+  private findShortestPath(fromVersion: string, toVersion: string): string[] {
     const path = this.dijkstraPath(fromVersion, toVersion);
 
     if (!path) {
@@ -72,6 +114,13 @@ export class MigrationRegistry extends EventEmitter {
       );
     }
 
+    return path;
+  }
+
+  /**
+   * Build migration chain from path
+   */
+  private buildMigrationChain(path: string[]): Migration[] {
     const migrations: Migration[] = [];
     for (let i = 0; i < path.length - 1; i++) {
       const migration = this.getMigration(path[i], path[i + 1]);
@@ -84,75 +133,15 @@ export class MigrationRegistry extends EventEmitter {
       }
       migrations.push(migration);
     }
-
-    return {
-      migrations,
-      fromVersion,
-      toVersion,
-      totalSteps: migrations.length,
-    };
+    return migrations;
   }
 
   private dijkstraPath(start: string, end: string): string[] | null {
-    const distances = new Map<string, number>();
-    const previous = new Map<string, string | null>();
-    const unvisited = new Set<string>();
-
-    for (const version of this.getAllVersions()) {
-      distances.set(version, version === start ? 0 : Infinity);
-      previous.set(version, null);
-      unvisited.add(version);
-    }
-
-    if (!unvisited.has(end)) {
-      unvisited.add(end);
-      distances.set(end, Infinity);
-      previous.set(end, null);
-    }
-
-    while (unvisited.size > 0) {
-      let current: string | null = null;
-      let minDistance = Infinity;
-
-      for (const version of unvisited) {
-        const distance = distances.get(version) ?? Infinity;
-        if (distance < minDistance) {
-          minDistance = distance;
-          current = version;
-        }
-      }
-
-      if (current === null || minDistance === Infinity) {
-        break;
-      }
-
-      if (current === end) {
-        const path: string[] = [];
-        let node: string | null = end;
-
-        while (node !== null) {
-          path.unshift(node);
-          node = previous.get(node) ?? null;
-        }
-
-        return path[0] === start ? path : null;
-      }
-
-      unvisited.delete(current);
-
-      const neighbors = this.versionGraph.get(current) ?? new Set();
-      for (const neighbor of neighbors) {
-        if (unvisited.has(neighbor)) {
-          const alt = (distances.get(current) ?? 0) + 1;
-          if (alt < (distances.get(neighbor) ?? Infinity)) {
-            distances.set(neighbor, alt);
-            previous.set(neighbor, current);
-          }
-        }
-      }
-    }
-
-    return null;
+    const pathFinder = new PathFinder(
+      this.versionGraph,
+      Array.from(this.getAllVersions())
+    );
+    return pathFinder.findPath(start, end);
   }
 
   private getAllVersions(): Set<string> {
@@ -209,6 +198,21 @@ export class MigrationRegistry extends EventEmitter {
           to: Array.from(toSet),
         })
       ),
+    };
+  }
+
+  getMigrationPath(
+    fromVersion: string,
+    toVersion: string
+  ): {
+    migrations: Migration[];
+    totalSteps: number;
+  } {
+    // Use findPath to get the correct migration path
+    const path = this.findPath(fromVersion, toVersion);
+    return {
+      migrations: path.migrations,
+      totalSteps: path.totalSteps,
     };
   }
 }

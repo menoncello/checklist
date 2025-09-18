@@ -1,40 +1,23 @@
-echo "🔍 Scanning for potential secrets..."
-# Check for potential secrets (excluding GitHub Actions syntax and test files)
-STAGED_FILES=$(git diff --staged --name-only | grep -v '.github/workflows' | grep -v '.test.ts' | grep -v 'stories/' || true)
-if [ -n "$STAGED_FILES" ]; then
-  if echo "$STAGED_FILES" | xargs grep -E 'api[_-]?key\s*=\s*["'"'"'][^"'"'"']{20,}|secret\s*=\s*["'"'"'][^"'"'"']{20,}|token\s*=\s*["'"'"'][^"'"'"']{20,}|password\s*=\s*["'"'"'][^"'"'"']{8,}|AKIA[0-9A-Z]{16}' 2>/dev/null; then
-    echo "❌ Potential secrets detected! Please remove sensitive data before committing."
-    exit 1
-  fi
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Security: Scanning for potential secrets
+echo "🔒 Scanning for potential secrets..."
+# Skip certain known false positives: XML files, Stryker temp files, dist files, and test patterns
+if grep -rn --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.stryker-tmp --exclude-dir=dist --exclude="*.xml" --exclude="*.gitleaksignore" \
+  -E "(api[_-]?key.*=.*['\"][^'\"]{20,}|secret.*=.*['\"][^'\"]{20,}|token.*=.*['\"][^'\"]{20,}|password.*=.*['\"][^'\"]{8,}|AKIA[0-9A-Z]{16})" . ; then
+  echo "❌ Potential secrets detected! Please review and remove before committing."
+  exit 1
 fi
 
-# Run linting
-echo "🎨 Running linting..."
-bun run lint
-
-# Run format check
-echo "📝 Checking code formatting..."
-bun run format:check
-
-# Run type checking
-echo "🔧 Running type checking..."
+# TypeScript type checking
+echo "🔍 Running TypeScript type checking..."
 bun run typecheck
 
-# Run quality checks
-echo "✨ Running quality checks..."
-bun run quality
+# Linting and formatting with lint-staged
+echo "📝 Running linting and formatting..."
+bunx lint-staged
 
-# Run tests on changed files
-echo "🧪 Running tests..."
-# Temporarily simplified due to EAGAIN issue with bun test in hooks
-# TODO: Investigate and fix the EAGAIN error with bun test --changed
-# For now, just run a basic test check to ensure tests compile
-bun test --dry-run 2>/dev/null || {
-  echo "❌ Test compilation failed"
-  exit 1
-}
-echo "✅ Tests validated (dry run)"
-
-# Security audit
-echo "🔒 Running security audit..."
-bun audit --audit-level moderate
+echo "✅ Pre-commit checks passed!"

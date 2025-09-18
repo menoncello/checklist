@@ -5,7 +5,7 @@
  * Implements the View interface with standard behavior that can be extended.
  */
 
-import { View, ViewParams, ViewState, KeyBinding } from './types.js';
+import { View, ViewParams, ViewState, KeyBinding } from './types';
 
 export abstract class BaseView implements View {
   public readonly id: string;

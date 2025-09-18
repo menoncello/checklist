@@ -202,36 +202,64 @@ export class BackupManager {
     const backupsToKeep: BackupManifestEntry[] = [];
 
     for (const backup of manifest.backups) {
-      const backupTime = new Date(backup.createdAt).getTime();
+      const shouldDelete = this.shouldDeleteBackup(backup, cutoffTime);
 
-      if (backupTime < cutoffTime) {
-        const backupPath = join(this.backupDir, backup.filename);
-        try {
-          const file = Bun.file(backupPath);
-          if (await file.exists()) {
-            await Bun.write(backupPath, '');
-            const { unlink } = await import('fs/promises');
-            await unlink(backupPath);
-            deletedCount++;
-          }
-        } catch (error) {
-          logger.error({
-            msg: 'Failed to delete old backup',
-            filename: backup.filename,
-            error,
-          });
+      if (shouldDelete) {
+        const wasDeleted = await this.deleteBackupFile(backup);
+        if (wasDeleted) {
+          deletedCount++;
         }
       } else {
         backupsToKeep.push(backup);
       }
     }
 
+    await this.updateManifestIfNeeded(manifest, backupsToKeep, deletedCount);
+    return deletedCount;
+  }
+
+  private shouldDeleteBackup(
+    backup: BackupManifestEntry,
+    cutoffTime: number
+  ): boolean {
+    const backupTime = new Date(backup.createdAt).getTime();
+    return backupTime < cutoffTime;
+  }
+
+  private async deleteBackupFile(
+    backup: BackupManifestEntry
+  ): Promise<boolean> {
+    const backupPath = join(this.backupDir, backup.filename);
+
+    try {
+      const file = Bun.file(backupPath);
+      if (!(await file.exists())) {
+        return false;
+      }
+
+      await Bun.write(backupPath, '');
+      const { unlink } = await import('fs/promises');
+      await unlink(backupPath);
+      return true;
+    } catch (error) {
+      logger.error({
+        msg: 'Failed to delete old backup',
+        filename: backup.filename,
+        error,
+      });
+      return false;
+    }
+  }
+
+  private async updateManifestIfNeeded(
+    manifest: BackupManifest,
+    backupsToKeep: BackupManifestEntry[],
+    deletedCount: number
+  ): Promise<void> {
     if (deletedCount > 0) {
       manifest.backups = backupsToKeep;
       await Bun.write(this.manifestPath, yaml.dump(manifest));
     }
-
-    return deletedCount;
   }
 
   async verifyBackup(filename: string): Promise<boolean> {

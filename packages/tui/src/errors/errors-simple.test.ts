@@ -79,8 +79,8 @@ describe('Error Handling and Recovery - Simple Tests', () => {
       crashRecovery.handleCrash('Test crash');
       const metrics = crashRecovery.getMetrics();
 
-      expect(metrics.hasCrashed).toBe(true);
-      expect(metrics.recoveryAttempts).toBeDefined();
+      expect(metrics.totalCrashes).toBeGreaterThan(0);
+      expect(metrics.totalRecoveries).toBeDefined();
 
       crashRecovery.cleanup();
     });

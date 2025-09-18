@@ -1,13 +1,14 @@
 /**
  * ViewSystem Implementation
- *
- * Main view management system that coordinates navigation, layout management,
- * and state preservation for the terminal UI application.
  */
 
-import { LayoutManager } from '../layout/LayoutManager.js';
-import { NavigationStack } from '../navigation/NavigationStack.js';
-import { ViewRegistry } from '../navigation/ViewRegistry.js';
+import { LayoutManager } from '../layout/LayoutManager';
+import { NavigationStack } from '../navigation/NavigationStack';
+import { ViewRegistry } from '../navigation/ViewRegistry';
+import { BaseView } from './BaseView';
+import { ViewSystemModalHelper } from './ViewSystemModalHelper';
+import { ViewSystemNavigation } from './ViewSystemNavigation';
+import { ViewSystemTabManager } from './ViewSystemTabManager';
 import {
   ViewSystem as IViewSystem,
   View,
@@ -20,20 +21,18 @@ import {
   TabInfo,
   LayoutComponent,
   LayoutRender,
-} from './types.js';
+} from './types';
 
 export class ViewSystem implements IViewSystem {
-  private readonly navigationStack: NavigationStack;
   private readonly viewRegistry: ViewRegistry;
   private readonly layoutManager: LayoutManager;
+  private readonly tabManager: ViewSystemTabManager;
+  private readonly modalHelper: ViewSystemModalHelper;
+  private readonly navigation: ViewSystemNavigation;
   private readonly viewStates = new Map<string, ViewState>();
   private currentLayout: LayoutType;
-  private currentModal: Modal | null = null;
-  private currentOverlay: Overlay | null = null;
   private readonly options: Required<ViewSystemOptions>;
   private isInitialized = false;
-  private readonly tabs = new Map<string, TabInfo>();
-  private activeTabId: string | undefined;
 
   constructor(options: ViewSystemOptions = {}) {
     this.options = {
@@ -42,64 +41,55 @@ export class ViewSystem implements IViewSystem {
       defaultLayout: options.defaultLayout ?? LayoutType.SINGLE,
     };
 
-    this.navigationStack = new NavigationStack(this.options.maxHistorySize);
+    const navigationStack = new NavigationStack(this.options.maxHistorySize);
     this.viewRegistry = new ViewRegistry();
     this.layoutManager = new LayoutManager();
+    this.tabManager = new ViewSystemTabManager(
+      this.viewRegistry,
+      this.viewStates
+    );
+    this.modalHelper = new ViewSystemModalHelper();
+    this.navigation = new ViewSystemNavigation(
+      navigationStack,
+      this.viewRegistry,
+      this.viewStates
+    );
     this.currentLayout = this.options.defaultLayout;
   }
 
-  /**
-   * Initialize the view system
-   */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
       return;
     }
-
-    // Perform any initialization tasks
     this.isInitialized = true;
   }
 
-  /**
-   * Destroy the view system and cleanup resources
-   */
   async destroy(): Promise<void> {
     if (!this.isInitialized) {
       return;
     }
 
-    // Unmount current view
     const currentView = this.getCurrentView();
     if (currentView) {
       await currentView.onUnmount();
     }
 
-    // Clear all state
-    this.navigationStack.clear();
+    this.navigation.clear();
     this.viewRegistry.clear();
     this.layoutManager.clear();
     this.viewStates.clear();
-    this.currentModal = null;
-    this.currentOverlay = null;
-    this.tabs.clear();
-    this.activeTabId = undefined;
-
+    this.tabManager.clear();
+    this.modalHelper.clear();
     this.isInitialized = false;
   }
 
-  // View Management
   registerView(id: string, view: View): void {
     this.viewRegistry.register(id, view);
   }
 
   unregisterView(id: string): void {
-    // Remove from navigation stack
-    this.navigationStack.removeView(id);
-
-    // Remove saved state
+    this.navigation.removeView(id);
     this.viewStates.delete(id);
-
-    // Unregister from registry
     this.viewRegistry.unregister(id);
   }
 
@@ -108,103 +98,46 @@ export class ViewSystem implements IViewSystem {
   }
 
   getCurrentView(): View | undefined {
-    // In tabbed layout, return the active tab view
-    if (
-      this.currentLayout === LayoutType.TABBED &&
-      this.activeTabId !== undefined
-    ) {
-      return this.viewRegistry.get(this.activeTabId);
+    const activeTabId = this.tabManager.getActiveTabId();
+    if (this.currentLayout === LayoutType.TABBED && activeTabId !== undefined) {
+      return this.viewRegistry.get(activeTabId);
     }
 
-    // Otherwise, use navigation stack
-    const current = this.navigationStack.peek();
-    if (!current) {
-      return undefined;
-    }
-    return this.viewRegistry.get(current.viewId);
+    const current = this.navigation.peek();
+    return current ? this.viewRegistry.get(current.viewId) : undefined;
   }
 
-  // Navigation
   async navigateTo(viewId: string, params?: ViewParams): Promise<void> {
     if (!this.isInitialized) {
       throw new Error('ViewSystem not initialized');
     }
 
-    const targetView = this.viewRegistry.get(viewId);
-    if (!targetView) {
-      throw new Error(`View '${viewId}' not found`);
-    }
-
-    const currentView = this.getCurrentView();
-
-    // Save current view state before navigation
-    if (currentView) {
-      this.saveViewState(currentView.id);
-      await currentView.onUnmount();
-      this.viewRegistry.setActive(currentView.id, false);
-    }
-
-    // Add to navigation stack
-    this.navigationStack.push(viewId, params);
-
-    // Restore or create state for target view
-    this.restoreViewState(viewId);
-
-    // Activate and mount the new view
-    this.viewRegistry.setActive(viewId, true);
-    await targetView.onMount(params);
+    await this.navigation.navigateTo(viewId, params, {
+      saveViewState: (id) => this.saveViewState(id),
+      restoreViewState: (id) => this.restoreViewState(id),
+      getCurrentView: () => this.getCurrentView(),
+    });
   }
 
   async goBack(): Promise<boolean> {
-    if (!this.canGoBack()) {
-      return false;
-    }
-
-    const currentView = this.getCurrentView();
-    if (currentView) {
-      this.saveViewState(currentView.id);
-      await currentView.onUnmount();
-      this.viewRegistry.setActive(currentView.id, false);
-    }
-
-    // Remove current entry
-    this.navigationStack.pop();
-
-    // Get previous view
-    const previous = this.navigationStack.peek();
-    if (!previous) {
-      return false;
-    }
-
-    const previousView = this.viewRegistry.get(previous.viewId);
-    if (!previousView) {
-      return false;
-    }
-
-    // Restore and mount previous view
-    this.restoreViewState(previous.viewId);
-    this.viewRegistry.setActive(previous.viewId, true);
-    await previousView.onMount(previous.params);
-
-    return true;
+    return this.navigation.goBack({
+      saveViewState: (id) => this.saveViewState(id),
+      restoreViewState: (id) => this.restoreViewState(id),
+      getCurrentView: () => this.getCurrentView(),
+    });
   }
 
   canGoBack(): boolean {
-    return this.navigationStack.canGoBack();
+    return this.navigation.canGoBack();
   }
 
-  clearHistory(): void {
-    this.navigationStack.clear();
-  }
-
-  // Layout Management
   setLayout(layout: LayoutType): void {
     this.currentLayout = layout;
 
-    // Trigger resize on current view if active
+    // Trigger resize on current view when layout changes
     const currentView = this.getCurrentView();
-    if (currentView) {
-      // Get terminal dimensions (would come from terminal canvas)
+    if (currentView && typeof currentView.onResize === 'function') {
+      // Use process.stdout dimensions as default
       const width = process.stdout.columns || 80;
       const height = process.stdout.rows || 24;
       currentView.onResize(width, height);
@@ -216,22 +149,15 @@ export class ViewSystem implements IViewSystem {
   }
 
   async splitView(primary: string, secondary: string): Promise<void> {
-    const primaryView = this.viewRegistry.get(primary);
-    const secondaryView = this.viewRegistry.get(secondary);
-
-    if (!primaryView || !secondaryView) {
+    // Validate both views exist
+    if (!this.viewRegistry.has(primary) || !this.viewRegistry.has(secondary)) {
       throw new Error('Both views must be registered for split view');
     }
 
-    // Set layout to split and activate both views
     this.setLayout(LayoutType.SPLIT_VERTICAL);
-
-    // For now, just navigate to primary - full split implementation
-    // would require layout manager integration
     await this.navigateTo(primary);
   }
 
-  // Layout Component Management
   registerLayoutComponent(component: LayoutComponent): void {
     this.layoutManager.registerComponent(component);
   }
@@ -254,42 +180,20 @@ export class ViewSystem implements IViewSystem {
     const currentView = this.getCurrentView();
     const navigation = {
       canGoBack: this.canGoBack(),
-      breadcrumbs: this.generateBreadcrumbs(),
+      breadcrumbs: this.navigation.generateBreadcrumbs(
+        this.currentLayout.toString(),
+        () => this.getCurrentView()
+      ),
     };
 
-    return this.layoutManager.renderLayout(
+    return this.layoutManager.renderLayout({
       width,
       height,
       currentView,
-      navigation
-    );
+      navigation,
+    });
   }
 
-  private generateBreadcrumbs(): string[] {
-    const breadcrumbs: string[] = [];
-    const currentView = this.getCurrentView();
-
-    if (currentView) {
-      // In tabbed layout, show tab navigation
-      if (this.currentLayout === LayoutType.TABBED) {
-        breadcrumbs.push('Tabs');
-        breadcrumbs.push(currentView.title);
-      } else {
-        // For regular navigation, show navigation history
-        const history = this.navigationStack.getHistory();
-        history.slice(-3).forEach((entry) => {
-          const view = this.viewRegistry.get(entry.viewId);
-          if (view) {
-            breadcrumbs.push(view.title);
-          }
-        });
-      }
-    }
-
-    return breadcrumbs;
-  }
-
-  // State Management
   saveViewState(viewId: string): void {
     const view = this.viewRegistry.get(viewId);
     if (view) {
@@ -301,81 +205,56 @@ export class ViewSystem implements IViewSystem {
   restoreViewState(viewId: string): void {
     const view = this.viewRegistry.get(viewId);
     const state = this.viewStates.get(viewId);
-
     if (view && state) {
       view.restoreState(state);
     }
   }
 
-  // Modal/Overlay
   async showModal(modal: Modal): Promise<unknown> {
-    this.currentModal = modal;
-
-    // Return a promise that resolves when modal is closed
-    return new Promise((resolve) => {
-      // Modal implementation would handle user interaction
-      // For now, just resolve immediately
-      resolve(undefined);
-    });
+    return this.modalHelper.showModal(modal);
   }
 
   hideModal(): void {
-    this.currentModal = null;
+    this.modalHelper.hideModal();
   }
 
   showOverlay(overlay: Overlay): void {
-    this.currentOverlay = overlay;
+    this.modalHelper.showOverlay(overlay);
   }
 
   hideOverlay(): void {
-    this.currentOverlay = null;
+    this.modalHelper.hideOverlay();
   }
 
-  // Tab Management
   async addTab(viewId: string): Promise<void> {
     if (!this.isInitialized) {
       throw new Error('ViewSystem not initialized');
     }
 
-    const view = this.viewRegistry.get(viewId);
-    if (!view) {
-      throw new Error(`View '${viewId}' not found`);
-    }
+    await this.tabManager.addTab(viewId);
 
-    // Create tab info
-    const tabInfo: TabInfo = {
-      viewId,
-      title: view.title,
-      isActive: false,
-    };
-
-    this.tabs.set(viewId, tabInfo);
-
-    // If this is the first tab or layout is TABBED, make it active
-    if (this.tabs.size === 1 || this.currentLayout === LayoutType.TABBED) {
+    if (
+      this.tabManager.getTabs().length === 1 ||
+      this.currentLayout === LayoutType.TABBED
+    ) {
       await this.switchToTab(viewId);
     }
   }
 
   async removeTab(viewId: string): Promise<void> {
-    if (!this.tabs.has(viewId)) {
+    if (!this.tabManager.hasTab(viewId)) {
       return;
     }
 
-    const wasActive = this.activeTabId === viewId;
-    this.tabs.delete(viewId);
+    const wasActive = this.tabManager.getActiveTabId() === viewId;
+    await this.tabManager.removeTab(viewId);
 
-    // If we removed the active tab, switch to another tab
     if (wasActive) {
-      const remainingTabs = Array.from(this.tabs.keys());
+      const remainingTabs = this.tabManager.getTabs();
       if (remainingTabs.length > 0) {
-        await this.switchToTab(remainingTabs[0]);
-      } else {
-        this.activeTabId = undefined;
-        // If no tabs left and we're in tabbed layout, switch to single
-        if (this.currentLayout === LayoutType.TABBED) {
-          this.setLayout(LayoutType.SINGLE);
-        }
+        await this.switchToTab(remainingTabs[0].viewId);
+      } else if (this.currentLayout === LayoutType.TABBED) {
+        this.setLayout(LayoutType.SINGLE);
       }
     }
   }
@@ -385,60 +264,28 @@ export class ViewSystem implements IViewSystem {
       throw new Error('ViewSystem not initialized');
     }
 
-    if (!this.tabs.has(viewId)) {
-      throw new Error(`Tab '${viewId}' not found`);
-    }
+    await this.tabManager.switchToTab(
+      viewId,
+      this.getCurrentView() as unknown as BaseView | undefined,
+      (id) => this.saveViewState(id),
+      (id) => this.restoreViewState(id)
+    );
 
-    const targetView = this.viewRegistry.get(viewId);
-    if (!targetView) {
-      throw new Error(`View '${viewId}' not found`);
-    }
-
-    // Save current view state if we have an active tab
-    const currentView = this.getCurrentView();
-    if (currentView && this.activeTabId !== undefined) {
-      this.saveViewState(this.activeTabId);
-      await currentView.onUnmount();
-      this.viewRegistry.setActive(this.activeTabId, false);
-
-      // Update previous tab info
-      const prevTab = this.tabs.get(this.activeTabId);
-      if (prevTab) {
-        this.tabs.set(this.activeTabId, { ...prevTab, isActive: false });
-      }
-    }
-
-    // Switch to new tab
-    this.activeTabId = viewId;
-
-    // Update tab info
-    const currentTab = this.tabs.get(viewId);
-    if (currentTab) {
-      this.tabs.set(viewId, { ...currentTab, isActive: true });
-    }
-
-    // Restore view state and mount
-    this.restoreViewState(viewId);
-    this.viewRegistry.setActive(viewId, true);
-    await targetView.onMount();
-
-    // Switch to tabbed layout if not already
     if (this.currentLayout !== LayoutType.TABBED) {
       this.setLayout(LayoutType.TABBED);
     }
   }
 
   getTabs(): readonly TabInfo[] {
-    return Array.from(this.tabs.values());
+    return this.tabManager.getTabs();
   }
 
   getActiveTabId(): string | undefined {
-    return this.activeTabId;
+    return this.tabManager.getActiveTabId();
   }
 
-  // Utility methods
   getNavigationHistory(): readonly import('../views/types.js').NavigationStackEntry[] {
-    return this.navigationStack.getHistory();
+    return this.navigation.getHistory();
   }
 
   getRegisteredViews(): string[] {
@@ -446,11 +293,15 @@ export class ViewSystem implements IViewSystem {
   }
 
   getCurrentModal(): Modal | null {
-    return this.currentModal;
+    return this.modalHelper.getCurrentModal();
   }
 
   getCurrentOverlay(): Overlay | null {
-    return this.currentOverlay;
+    return this.modalHelper.getCurrentOverlay();
+  }
+
+  clearHistory(): void {
+    this.navigation.clear();
   }
 
   getStats(): {
@@ -464,12 +315,12 @@ export class ViewSystem implements IViewSystem {
     const registryStats = this.viewRegistry.getStats();
 
     return {
-      navigationStackSize: this.navigationStack.size(),
+      navigationStackSize: this.navigation.size(),
       registeredViews: registryStats.totalViews,
       activeViews: registryStats.activeViews,
       savedStates: this.viewStates.size,
-      tabs: this.tabs.size,
-      activeTabId: this.activeTabId,
+      tabs: this.tabManager.getTabs().length,
+      activeTabId: this.tabManager.getActiveTabId(),
     };
   }
 }

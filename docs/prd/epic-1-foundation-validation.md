@@ -210,3 +210,22 @@
 7. All new assertions are meaningful (not just to kill mutants)
 8. Test readability and maintainability preserved
 9. Mutation report shows clear improvement in reports/mutation/
+
+## Story 1.16: Code Quality Metrics Enforcement
+
+**As a** technical lead,
+**I want** automated code quality metrics enforcement with strict thresholds,
+**So that** the codebase maintains high standards of readability, maintainability, and simplicity.
+
+**Acceptance Criteria:**
+
+1. ESLint built-in quality rules configured (max-lines, complexity, max-depth)
+2. File size limits enforced (max 300 lines per file, excluding comments/blanks)
+3. Function complexity limits enforced (max cyclomatic complexity of 10)
+4. Maximum nesting depth enforced (max 3 levels)
+5. Quality metrics integrated into existing eslint.config.js using flat config format
+6. CI/CD pipeline fails when quality thresholds exceeded (via existing lint job)
+7. ESLint HTML reports generated in reports/quality/ directory
+8. Existing code refactored to meet quality standards while maintaining tests
+9. Pre-commit hooks validate quality metrics via existing husky configuration
+10. Mutation testing score maintained above 85% during refactoring

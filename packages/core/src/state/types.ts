@@ -7,7 +7,11 @@ export type CorruptionType =
 export type RecoveryMethod = 'backup' | 'reset' | 'manual';
 export type ConflictResolution = 'local' | 'remote' | 'merge';
 export type OperationType = 'read' | 'write' | 'delete';
-export type TransactionStatus = 'active' | 'committed' | 'rolled-back';
+export type TransactionStatus =
+  | 'active'
+  | 'committed'
+  | 'rolled-back'
+  | 'aborted';
 
 export interface CommandResult {
   command: string;
@@ -52,12 +56,24 @@ export interface Conflicts {
 }
 
 export interface ChecklistState {
+  version?: string;
   schemaVersion: string;
   checksum: string;
   activeInstance?: ActiveInstance;
   completedSteps: CompletedStep[];
   recovery: Recovery;
   conflicts: Conflicts;
+  metadata?: {
+    created?: string;
+    modified?: string;
+    [key: string]: unknown;
+  };
+  items?: Array<{
+    id: string;
+    title: string;
+    completed: boolean;
+    [key: string]: unknown;
+  }>;
 }
 
 export interface LockMetadata {
@@ -107,6 +123,7 @@ export interface Operation {
 export interface Transaction {
   id: string;
   startedAt: Date;
+  committedAt?: Date;
   operations: Operation[];
   snapshot: ChecklistState;
   status: TransactionStatus;

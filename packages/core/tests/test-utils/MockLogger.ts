@@ -39,7 +39,7 @@ export class MockLogger implements Logger {
   child(
     _bindings: Record<string, unknown>,
     _options?: ChildLoggerOptions
-  ): Logger {
+  ): MockLogger {
     this.childCalls.push({ bindings: _bindings, options: _options });
     // Return a new MockLogger instance for chaining
     const childLogger = new MockLogger();
@@ -136,7 +136,7 @@ export class InMemoryLogger implements Logger {
   child(
     _bindings: Record<string, unknown>,
     _options?: ChildLoggerOptions
-  ): Logger {
+  ): InMemoryLogger {
     const childLogger = new InMemoryLogger();
     // Inherit parent logs
     childLogger.logs = [...this.logs];

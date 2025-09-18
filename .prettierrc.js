@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   // Basic formatting (MANDATORY)
   semi: true,
   singleQuote: true,

@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Security: Scanning for potential secrets
+echo "🔒 Scanning for potential secrets..."
+if grep -rn --exclude-dir=node_modules --exclude-dir=.git \
+  -E "(api[_-]?key|secret.*token.*password|AKIA[0-9A-Z]{16})" . ; then
+  echo "❌ Potential secrets detected! Please review and remove before committing."
+  exit 1
+fi
+
+# TypeScript type checking
+echo "🔍 Running TypeScript type checking..."
+bun run typecheck
+
+# Linting and formatting with lint-staged
+echo "📝 Running linting and formatting..."
+bunx lint-staged
+
+echo "✅ Pre-commit checks passed!"

@@ -1,156 +1,107 @@
-import { StateSchema, VersionDetectionError } from './types';
+import { SchemaValidator } from './SchemaValidator';
+import { VersionDetector } from './VersionDetector';
+import { StateSchema } from './types';
 
 export async function detectVersion(state: unknown): Promise<string> {
-  if (state === null || state === undefined || typeof state !== 'object') {
-    throw new VersionDetectionError('Invalid state object');
-  }
+  VersionDetector.validateStateObject(state);
 
   const s = state as Record<string, unknown>;
-  if (s.schemaVersion !== undefined && typeof s.schemaVersion === 'string') {
-    return s.schemaVersion;
+
+  const explicitVersion = VersionDetector.getExplicitVersion(s);
+  if (explicitVersion !== null) return explicitVersion;
+
+  const inferredVersion = VersionDetector.inferVersionFromStructure(s);
+  return inferredVersion;
+}
+
+export function validateStateSchema(
+  state: StateSchema,
+  version: string
+): boolean {
+  // Parse version to handle minor and patch versions
+  const [major, minor] = version.split('.').map(Number);
+
+  // For 1.x.x versions, use v1.0.0 validator
+  if (major === 1) {
+    return SchemaValidator.validateV100(state);
   }
 
-  if (s.version !== undefined && typeof s.version === 'string') {
-    return s.version;
+  // For 0.x.x versions, check minor version
+  if (major === 0) {
+    if (minor === 0) return SchemaValidator.validateV000(state);
+    if (minor === 1) return SchemaValidator.validateV010(state);
+    if (minor === 2) return SchemaValidator.validateV020(state);
   }
 
-  if (s.templates !== undefined && s.variables !== undefined) {
-    if (s.recovery !== undefined || s.conflicts !== undefined) {
-      return '1.0.0';
-    }
-    return '0.2.0';
-  }
-
-  if (
-    s.metadata !== null &&
-    s.metadata !== undefined &&
-    typeof s.metadata === 'object'
-  ) {
-    const metadata = s.metadata as Record<string, unknown>;
-    if (
-      (metadata.created !== null && metadata.created !== undefined) ||
-      (metadata.modified !== null && metadata.modified !== undefined)
-    ) {
-      return '0.1.0';
-    }
-  }
-
-  if (
-    s.checklists !== null &&
-    s.checklists !== undefined &&
-    Array.isArray(s.checklists)
-  ) {
-    return '0.0.0';
-  }
-
-  if (
-    (s.activeInstance !== null && s.activeInstance !== undefined) ||
-    (s.completedSteps !== null && s.completedSteps !== undefined) ||
-    (s.currentStepId !== null && s.currentStepId !== undefined)
-  ) {
-    return '0.0.0';
-  }
-
-  return '0.0.0';
+  return false;
 }
 
 export function isCompatibleVersion(
-  currentVersion: string,
-  requiredVersion: string,
-  allowNewer: boolean = true
+  current: string,
+  target: string,
+  allowNewer: boolean = false
 ): boolean {
-  const current = parseVersionParts(currentVersion);
-  const required = parseVersionParts(requiredVersion);
+  const currentNumber = getVersionNumber(current);
+  const targetNumber = getVersionNumber(target);
+  const currentParts = current.split('.').map(Number);
+  const targetParts = target.split('.').map(Number);
 
-  if (current.major < required.major) {
-    return false;
+  // Major version mismatch
+  if (currentParts[0] !== targetParts[0]) {
+    return currentParts[0] > targetParts[0] ? allowNewer : false;
   }
 
-  if (current.major > required.major) {
-    return allowNewer;
-  }
-
-  if (current.minor < required.minor) {
-    return false;
-  }
-
-  if (current.minor > required.minor) {
-    return allowNewer;
-  }
-
-  if (current.patch < required.patch) {
-    return false;
-  }
-
-  return true;
+  // Same major version - newer or equal minor/patch versions are compatible
+  return currentNumber >= targetNumber;
 }
 
+export function getVersionNumber(version: string): number {
+  const parts = version.split('.').map(Number);
+  return parts[0] * 10000 + parts[1] * 100 + parts[2];
+}
+
+export function compareVersions(v1: string, v2: string): number {
+  const n1 = getVersionNumber(v1);
+  const n2 = getVersionNumber(v2);
+  return n1 - n2;
+}
+
+// Re-export utilities for backward compatibility
+export { VersionDetector, SchemaValidator };
+
+// Additional utility functions
 export function parseVersionParts(version: string): {
   major: number;
   minor: number;
   patch: number;
   prerelease?: string;
 } {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
+  const [versionPart, prerelease] = version.split('-');
+  const parts = versionPart.split('.');
 
-  if (!match) {
-    throw new VersionDetectionError(`Invalid version format: ${version}`);
+  if (parts.length < 3) throw new Error('Invalid version format');
+
+  const [major, minor, patch] = parts.map((p) => parseInt(p, 10));
+  if (isNaN(major) || isNaN(minor) || isNaN(patch)) {
+    throw new Error('Invalid version format');
   }
 
-  return {
-    major: parseInt(match[1], 10),
-    minor: parseInt(match[2], 10),
-    patch: parseInt(match[3], 10),
-    prerelease: match[4],
-  };
+  return prerelease
+    ? { major, minor, patch, prerelease }
+    : { major, minor, patch };
 }
 
-export function needsMigration(
-  stateVersion: string,
-  applicationVersion: string
-): boolean {
-  if (stateVersion === applicationVersion) {
-    return false;
-  }
-
-  const state = parseVersionParts(stateVersion);
-  const app = parseVersionParts(applicationVersion);
-
-  if (state.major !== app.major) {
-    return true;
-  }
-
-  if (state.minor !== app.minor) {
-    return true;
-  }
-
-  if (state.patch !== app.patch) {
-    return true;
-  }
-
-  return false;
+export function needsMigration(current: string, target: string): boolean {
+  return compareVersions(current, target) < 0;
 }
 
 export function getMigrationDirection(
-  fromVersion: string,
-  toVersion: string
+  current: string,
+  target: string
 ): 'upgrade' | 'downgrade' | 'none' {
-  if (fromVersion === toVersion) {
-    return 'none';
-  }
-
-  const from = parseVersionParts(fromVersion);
-  const to = parseVersionParts(toVersion);
-
-  if (from.major < to.major) return 'upgrade';
-  if (from.major > to.major) return 'downgrade';
-
-  if (from.minor < to.minor) return 'upgrade';
-  if (from.minor > to.minor) return 'downgrade';
-
-  if (from.patch < to.patch) return 'upgrade';
-  if (from.patch > to.patch) return 'downgrade';
-
+  const comparison = compareVersions(current, target);
+  if (comparison < 0) return 'upgrade';
+  if (comparison > 0) return 'downgrade';
   return 'none';
 }
 
@@ -159,145 +110,192 @@ export function getVersionRange(versions: string[]): {
   max: string;
 } {
   if (versions.length === 0) {
-    throw new VersionDetectionError('No versions provided');
+    throw new Error('No versions provided');
   }
-
-  const sorted = versions.sort((a, b) => {
-    const aVer = parseVersionParts(a);
-    const bVer = parseVersionParts(b);
-
-    if (aVer.major !== bVer.major) {
-      return aVer.major - bVer.major;
-    }
-    if (aVer.minor !== bVer.minor) {
-      return aVer.minor - bVer.minor;
-    }
-    return aVer.patch - bVer.patch;
-  });
-
-  return {
-    min: sorted[0],
-    max: sorted[sorted.length - 1],
-  };
+  const sorted = [...versions].sort((a, b) => compareVersions(a, b));
+  return { min: sorted[0], max: sorted[sorted.length - 1] };
 }
 
 export function inferStateStructure(state: unknown): {
-  hasChecklists: boolean;
-  hasTemplates: boolean;
-  hasVariables: boolean;
-  hasMetadata: boolean;
-  hasRecovery: boolean;
-  hasConflicts: boolean;
-  hasMigrations: boolean;
+  hasChecklists?: boolean;
+  hasTemplates?: boolean;
+  hasVariables?: boolean;
+  hasMetadata?: boolean;
+  hasRecovery?: boolean;
+  hasConflicts?: boolean;
+  hasMigrations?: boolean;
   estimatedVersion: string;
 } {
-  const s = state as Record<string, unknown>;
-  const structure = {
-    hasChecklists: s.checklists !== undefined && Array.isArray(s.checklists),
-    hasTemplates: s.templates !== undefined && Array.isArray(s.templates),
-    hasVariables: s.variables !== undefined && typeof s.variables === 'object',
-    hasMetadata: s.metadata !== undefined && typeof s.metadata === 'object',
-    hasRecovery: s.recovery !== undefined,
-    hasConflicts: s.conflicts !== undefined && Array.isArray(s.conflicts),
-    hasMigrations: s.migrations !== undefined && Array.isArray(s.migrations),
-    estimatedVersion: '0.0.0',
-  };
-
-  if (
-    structure.hasMigrations &&
-    structure.hasRecovery &&
-    structure.hasConflicts
-  ) {
-    structure.estimatedVersion = '1.0.0';
-  } else if (structure.hasTemplates && structure.hasVariables) {
-    structure.estimatedVersion = '0.2.0';
-  } else if (structure.hasMetadata) {
-    structure.estimatedVersion = '0.1.0';
-  } else if (structure.hasChecklists) {
-    structure.estimatedVersion = '0.0.0';
+  if (typeof state !== 'object' || state === null) {
+    return { estimatedVersion: 'unknown' };
   }
 
-  return structure;
+  const s = state as Record<string, unknown>;
+  const features = analyzeFeatures(s);
+  const estimatedVersion = estimateVersion(features);
+  return { ...features, estimatedVersion };
 }
 
-export async function validateStateIntegrity(state: StateSchema): Promise<{
+function analyzeFeatures(s: Record<string, unknown>): Record<string, boolean> {
+  const fields = [
+    'checklists',
+    'templates',
+    'variables',
+    'metadata',
+    'recovery',
+    'conflicts',
+    'migrations',
+  ];
+  return fields.reduce(
+    (acc, field) => {
+      if (field in s)
+        acc[`has${field.charAt(0).toUpperCase()}${field.slice(1)}`] = true;
+      return acc;
+    },
+    {} as Record<string, boolean>
+  );
+}
+
+function estimateVersion(f: Record<string, boolean>): string {
+  if (hasAllFields(f)) return '1.0.0';
+  if (f.hasTemplates && f.hasVariables) return '0.2.0';
+  if (f.hasMetadata) return '0.1.0';
+  if (f.hasChecklists) return '0.0.0';
+  return 'unknown';
+}
+
+function hasAllFields(f: Record<string, boolean>): boolean {
+  return Boolean(
+    f.hasChecklists &&
+      f.hasTemplates &&
+      f.hasVariables &&
+      f.hasMetadata &&
+      f.hasRecovery &&
+      f.hasConflicts &&
+      f.hasMigrations
+  );
+}
+
+function checkRequiredFieldsForVersion(
+  state: Record<string, unknown>,
+  version: string
+): boolean {
+  const [major] = version.split('.').map(Number);
+
+  // For v1.x.x, require all fields
+  if (major === 1) {
+    return (
+      'checklists' in state &&
+      'templates' in state &&
+      'variables' in state &&
+      'metadata' in state
+    );
+  }
+
+  // For v0.2.x, require templates and variables
+  if (major === 0) {
+    const [, minor] = version.split('.').map(Number);
+    if (minor === 2) {
+      return 'templates' in state && 'variables' in state;
+    }
+    if (minor === 1) {
+      return 'metadata' in state;
+    }
+    if (minor === 0) {
+      return 'checklists' in state;
+    }
+  }
+
+  return false;
+}
+
+export async function validateStateIntegrity(state: unknown): Promise<{
   valid: boolean;
   errors: string[];
   warnings: string[];
 }> {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const s = state as unknown as Record<string, unknown>;
 
-  if (s.version === undefined && s.schemaVersion === undefined) {
-    errors.push('State file missing version information');
+  try {
+    if (typeof state !== 'object' || state === null) {
+      return { valid: false, errors: ['State must be an object'], warnings };
+    }
+
+    const s = state as Record<string, unknown>;
+    checkVersion(s, errors, warnings);
+    checkFields(s, errors);
+    checkTimestamps(s, warnings);
+
+    if (errors.length === 0) {
+      await validateSchemaForState(state, s, errors);
+    }
+
+    return { valid: errors.length === 0, errors, warnings };
+  } catch (error) {
+    errors.push('Unexpected error: ' + (error as Error).message);
+    return { valid: false, errors, warnings };
   }
+}
 
-  if (
-    s.version !== undefined &&
-    s.schemaVersion !== undefined &&
+async function validateSchemaForState(
+  state: unknown,
+  s: Record<string, unknown>,
+  errors: string[]
+): Promise<void> {
+  const version = await detectVersion(state);
+  if (checkRequiredFieldsForVersion(s, version)) {
+    if (!validateStateSchema(state as StateSchema, version)) {
+      errors.push('Schema validation failed for version ' + version);
+    }
+  }
+}
+
+function checkVersion(
+  s: Record<string, unknown>,
+  e: string[],
+  w: string[]
+): void {
+  if (!('version' in s || 'schemaVersion' in s)) {
+    e.push('State file missing version information');
+  } else if (
+    'version' in s &&
+    'schemaVersion' in s &&
     s.version !== s.schemaVersion
   ) {
-    warnings.push(
+    w.push(
       `Version mismatch: version=${s.version}, schemaVersion=${s.schemaVersion}`
     );
   }
-
-  if (s.lastModified === undefined) {
-    warnings.push('State file missing lastModified timestamp');
-  }
-
-  if (s.migrations !== undefined && !Array.isArray(s.migrations)) {
-    errors.push('Invalid migrations field: must be an array');
-  }
-
-  if (s.checklists !== undefined && !Array.isArray(s.checklists)) {
-    errors.push('Invalid checklists field: must be an array');
-  }
-
-  if (s.templates !== undefined && !Array.isArray(s.templates)) {
-    errors.push('Invalid templates field: must be an array');
-  }
-
-  if (
-    s.variables !== undefined &&
-    (typeof s.variables !== 'object' || Array.isArray(s.variables))
-  ) {
-    errors.push('Invalid variables field: must be an object');
-  }
-
-  if (s.conflicts !== undefined && !Array.isArray(s.conflicts)) {
-    errors.push('Invalid conflicts field: must be an array');
-  }
-
-  if (s.metadata !== undefined) {
-    if (typeof s.metadata !== 'object') {
-      errors.push('Invalid metadata field: must be an object');
-    } else {
-      const metadata = s.metadata as Record<string, unknown>;
-      if (
-        metadata.created !== undefined &&
-        !isValidDate(metadata.created as string)
-      ) {
-        warnings.push('Invalid metadata.created timestamp');
-      }
-      if (
-        metadata.modified !== undefined &&
-        !isValidDate(metadata.modified as string)
-      ) {
-        warnings.push('Invalid metadata.modified timestamp');
-      }
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-  };
 }
 
-function isValidDate(dateString: string): boolean {
-  const date = new Date(dateString);
-  return !isNaN(date.getTime());
+function checkFields(s: Record<string, unknown>, e: string[]): void {
+  ['checklists', 'templates', 'conflicts'].forEach((f) => {
+    if (f in s && !Array.isArray(s[f]))
+      e.push(`Invalid ${f} field: must be an array`);
+  });
+  ['variables', 'metadata'].forEach((f) => {
+    if (f in s && (typeof s[f] !== 'object' || Array.isArray(s[f]))) {
+      e.push(`Invalid ${f} field: must be an object`);
+    }
+  });
+}
+
+function checkTimestamps(s: Record<string, unknown>, w: string[]): void {
+  if (
+    'metadata' in s &&
+    typeof s.metadata === 'object' &&
+    !Array.isArray(s.metadata)
+  ) {
+    const m = s.metadata as Record<string, unknown>;
+    ['created', 'modified'].forEach((f) => {
+      if (
+        f in m &&
+        typeof m[f] === 'string' &&
+        isNaN(new Date(m[f] as string).getTime())
+      ) {
+        w.push(`Invalid metadata.${f} timestamp`);
+      }
+    });
+  }
 }

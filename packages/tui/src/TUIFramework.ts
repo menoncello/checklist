@@ -1,618 +1,319 @@
+import { EventEmitter } from 'events';
+
 import { ComponentRegistry } from './components/ComponentRegistry';
 import { DebugIntegration } from './debug';
 import { ErrorBoundary } from './errors/ErrorBoundary';
 import { EventManager } from './events/EventManager';
 import { KeyboardHandler } from './events/KeyboardHandler';
 import { ApplicationLoop } from './framework/ApplicationLoop';
+import { EventHandlerSetup } from './framework/EventHandlerSetup';
+import {
+  FrameworkInitializer,
+  InitializationContext,
+  TUIFrameworkConfig,
+} from './framework/FrameworkInitializer';
+import { FrameworkUtils, TUIFrameworkState } from './framework/FrameworkUtils';
 import { LifecycleManager } from './framework/Lifecycle';
 import { TerminalCanvas } from './framework/TerminalCanvas';
-import { Screen, Component } from './framework/UIFramework';
+import { Component, Screen } from './framework/UIFramework';
 import { PerformanceManager } from './performance';
 import { ScreenManager } from './screens/ScreenManager';
 import { CapabilityDetector } from './terminal/CapabilityDetector';
 
-export interface TUIFrameworkConfig {
-  // Framework settings
-  enableFramework: boolean;
-  targetFPS: number;
+export { TUIFrameworkConfig, TUIFrameworkState };
 
-  // Performance settings
-  enablePerformanceMonitoring: boolean;
-  performanceTargets: {
-    startupTime: number;
-    renderTime: number;
-    memoryLimit: number;
-  };
-
-  // Debug settings
-  enableDebugMode: boolean;
-  debugInProduction: boolean;
-
-  // Error handling
-  enableErrorBoundaries: boolean;
-  enableCrashRecovery: boolean;
-
-  // Terminal settings
-  enableTerminalDetection: boolean;
-  fallbackToBasic: boolean;
-
-  // Event handling
-  enableKeyboardShortcuts: boolean;
-  enableMouseSupport: boolean;
-}
-
-export interface TUIFrameworkState {
-  isInitialized: boolean;
-  isRunning: boolean;
-  currentScreen: string | null;
-  componentCount: number;
-  errorCount: number;
-  startupTime: number;
-  uptime: number;
-}
-
-export class TUIFramework {
+export class TUIFramework extends EventEmitter {
   private config: TUIFrameworkConfig;
   private state: TUIFrameworkState;
 
   // Core components
-  private canvas!: TerminalCanvas;
-  private applicationLoop!: ApplicationLoop;
-  private lifecycle!: LifecycleManager;
-  private screenManager!: ScreenManager;
-  private componentRegistry!: ComponentRegistry;
-  private eventManager!: EventManager;
-  private keyboardHandler!: KeyboardHandler;
-  private capabilityDetector!: CapabilityDetector;
-  private errorBoundary?: ErrorBoundary;
   private performanceManager?: PerformanceManager;
   private debugIntegration?: DebugIntegration;
+  private capabilityDetector?: CapabilityDetector;
+  private canvas?: TerminalCanvas;
+  private errorBoundary?: ErrorBoundary;
+  private componentRegistry?: ComponentRegistry;
+  private eventManager?: EventManager;
+  private keyboardHandler?: KeyboardHandler;
+  private screenManager?: ScreenManager;
+  private lifecycle?: LifecycleManager;
+  private applicationLoop?: ApplicationLoop;
 
-  private eventHandlers = new Map<string, Set<Function>>();
-  private isShuttingDown = false;
+  // Initialization helpers
+  private initializer: FrameworkInitializer;
+  private eventSetup?: EventHandlerSetup;
 
   constructor(config: Partial<TUIFrameworkConfig> = {}) {
-    this.config = {
-      enableFramework: true,
-      targetFPS: 60,
-      enablePerformanceMonitoring: true,
-      performanceTargets: {
-        startupTime: 100, // 100ms
-        renderTime: 16, // 16ms (60 FPS)
-        memoryLimit: 50 * 1024 * 1024, // 50MB
-      },
-      enableDebugMode: process.env.NODE_ENV !== 'production',
-      debugInProduction: false,
-      enableErrorBoundaries: true,
-      enableCrashRecovery: true,
-      enableTerminalDetection: true,
-      fallbackToBasic: true,
-      enableKeyboardShortcuts: true,
-      enableMouseSupport: false,
-      ...config,
-    };
-
-    this.state = {
-      isInitialized: false,
-      isRunning: false,
-      currentScreen: null,
-      componentCount: 0,
-      errorCount: 0,
-      startupTime: 0,
-      uptime: 0,
-    };
-
-    this.initializeFramework();
+    super();
+    this.config = FrameworkUtils.createDefaultConfig(config);
+    this.state = FrameworkUtils.createInitialState();
+    this.initializer = new FrameworkInitializer(this.config);
   }
 
-  private async initializeFramework(): Promise<void> {
-    const startTime = performance.now();
+  async start(): Promise<void> {
+    if (this.state.isRunning) {
+      throw new Error('Framework is already running');
+    }
 
     try {
-      // Initialize performance monitoring first
-      if (this.config.enablePerformanceMonitoring) {
-        this.performanceManager = new PerformanceManager({
-          enableMonitoring: true,
-          enableStartupProfiling: true,
-          enableMemoryTracking: true,
-          enableMetricsCollection: true,
-        });
-
-        this.performanceManager.startStartupPhase('framework_init', {
-          description: 'TUI Framework initialization',
-        });
-      }
-
-      // Initialize debug integration
-      if (this.config.enableDebugMode === true) {
-        this.debugIntegration = new DebugIntegration({
-          enableInProduction: this.config.debugInProduction,
-          enablePerformanceIntegration: this.config.enablePerformanceMonitoring,
-        });
-
-        if (this.performanceManager != null) {
-          this.debugIntegration.setPerformanceManager(this.performanceManager);
-        }
-
-        this.debugIntegration.log(
-          'info',
-          'Framework',
-          'TUI Framework initialization started'
-        );
-      }
-
-      // Initialize terminal capabilities
-      if (this.config.enableTerminalDetection) {
-        this.capabilityDetector = new CapabilityDetector();
-
-        await this.capabilityDetector.detect();
-        this.debugIntegration?.log(
-          'info',
-          'Terminal',
-          'Terminal capabilities detected'
-        );
-      }
-
-      // Initialize canvas
-      this.canvas = new TerminalCanvas();
-
-      // Initialize error boundary
-      if (this.config.enableErrorBoundaries) {
-        this.errorBoundary = new ErrorBoundary({
-          maxRetries: 3,
-          retryDelay: 1000,
-          logErrors: true,
-          enableStatePreservation: true,
-          fallbackRenderer: (error: Error) => `Error: ${error.message}`,
-        });
-
-        this.errorBoundary.on('errorCaught', (data: unknown) => {
-          this.state.errorCount++;
-          this.debugIntegration?.log(
-            'error',
-            'Framework',
-            'Error caught by boundary',
-            data
-          );
-        });
-      }
-
-      // Initialize component registry
-      this.componentRegistry = new ComponentRegistry();
-
-      // Initialize event system
-      this.eventManager = new EventManager();
-
-      this.keyboardHandler = new KeyboardHandler();
-
-      // Initialize screen manager
-      this.screenManager = new ScreenManager({
-        enableTransitions: true,
-        enableHistory: true,
-        transitionDuration: 300,
-        maxStackSize: 10,
-        historySize: 50,
-      });
-
-      // Initialize lifecycle manager
-      this.lifecycle = new LifecycleManager();
-
-      // Initialize application loop
-      this.applicationLoop = new ApplicationLoop(this.config.targetFPS);
-
-      // Setup event handlers
+      const context = await this.initializer.initialize();
+      this.assignComponents(context);
       this.setupEventHandlers();
-
-      // Complete initialization
-      this.state.isInitialized = true;
-      this.state.startupTime = performance.now() - startTime;
-
-      if (this.performanceManager != null) {
-        this.performanceManager.endStartupPhase('framework_init');
-        this.performanceManager.addStartupMilestone(
-          'framework_initialized',
-          'Framework initialization completed'
-        );
-      }
-
-      this.debugIntegration?.log(
-        'info',
-        'Framework',
-        `TUI Framework initialized in ${this.state.startupTime.toFixed(2)}ms`
-      );
-      this.emit('initialized', { startupTime: this.state.startupTime });
+      this.completeStartup();
     } catch (error) {
       this.debugIntegration?.log(
         'error',
         'Framework',
-        'Framework initialization failed',
+        'Failed to start framework',
         error
       );
-      this.state.errorCount++;
       throw error;
     }
   }
 
+  private assignComponents(context: InitializationContext): void {
+    this.performanceManager = context.performanceManager;
+    this.debugIntegration = context.debugIntegration;
+    this.capabilityDetector = context.capabilityDetector;
+    this.canvas = context.canvas;
+    this.errorBoundary = context.errorBoundary;
+    this.componentRegistry = context.componentRegistry;
+    this.eventManager = context.eventManager;
+    this.keyboardHandler = context.keyboardHandler;
+    this.screenManager = context.screenManager;
+    this.lifecycle = context.lifecycle;
+    this.applicationLoop = context.applicationLoop;
+  }
+
   private setupEventHandlers(): void {
-    // Application loop events
-    this.applicationLoop.on('frame', (data) => {
-      this.handleFrame(data);
-    });
-
-    this.applicationLoop.on('input', (data) => {
-      this.handleInput(data);
-    });
-
-    // Keyboard events
-    this.keyboardHandler.on('keyPressed', (data: unknown) => {
-      // First try debug integration
-      if (
-        this.debugIntegration?.handleKeyPress((data as { key: string }).key) ===
-        true
-      ) {
-        return;
-      }
-
-      // Then try current screen
-      const currentScreen = this.screenManager.getCurrentScreen();
-      if (
-        currentScreen &&
-        'handleKeyPress' in currentScreen &&
-        typeof currentScreen.handleKeyPress === 'function'
-      ) {
-        const keyData = data as { key: string };
-        currentScreen.handleKeyPress(keyData.key);
-      }
-
-      this.debugIntegration?.logComponentEvent('keyboard', 'keyPress', data);
-    });
-
-    // Screen manager events
-    this.screenManager.on('screenChanged', (data: unknown) => {
-      if (
-        data !== null &&
-        data !== undefined &&
-        typeof data === 'object' &&
-        'screen' in data
-      ) {
-        const screenData = data as { screen: { getId(): string } };
-        this.state.currentScreen = screenData.screen.getId();
-        this.debugIntegration?.log(
-          'info',
-          'Navigation',
-          `Screen changed to: ${screenData.screen.getId()}`
-        );
-      }
-    });
-
-    // Error boundary events
-    this.errorBoundary?.on('errorCaught', (data: unknown) => {
-      this.debugIntegration?.log(
-        'error',
-        'ErrorBoundary',
-        'Error caught',
-        data
-      );
-    });
-
-    // Performance events
-    this.performanceManager?.on('performanceAlert', (data: unknown) => {
-      const alertData = data as { alert: { message: string } };
-      this.debugIntegration?.log(
-        'warn',
-        'Performance',
-        `Performance alert: ${alertData.alert.message}`,
-        data
-      );
-    });
-
-    // Graceful shutdown handling
-    process.on('SIGINT', () => this.shutdown('SIGINT'));
-    process.on('SIGTERM', () => this.shutdown('SIGTERM'));
+    const setupConfig = this.createEventSetupConfig();
+    this.eventSetup = new EventHandlerSetup(setupConfig);
+    this.eventSetup.setupAllEventHandlers();
   }
 
-  private handleFrame(_data: unknown): void {
-    if (!this.state.isRunning || this.isShuttingDown) return;
-
-    try {
-      // Update uptime
-      this.state.uptime = performance.now();
-
-      // Render current screen
-      const currentScreen = this.screenManager.getCurrentScreen();
-      if (currentScreen) {
-        const screenOutput = currentScreen.render();
-        this.canvas.setContent(screenOutput);
-      }
-
-      // Render debug overlay if enabled
-      if (this.debugIntegration?.isVisible() === true) {
-        const debugOverlay = this.debugIntegration.renderOverlay(
-          this.canvas.getWidth(),
-          this.canvas.getHeight()
-        );
-        this.canvas.addOverlay(debugOverlay);
-      }
-
-      // Commit to terminal
-      this.canvas.render();
-
-      // Update component count
-      this.state.componentCount = this.componentRegistry.getComponentCount();
-    } catch (error) {
-      this.errorBoundary?.handleError(error as Error, {});
-    }
+  private createEventSetupConfig() {
+    return {
+      applicationLoop: this.applicationLoop,
+      keyboardHandler: this.keyboardHandler,
+      screenManager: this.screenManager,
+      errorBoundary: this.errorBoundary,
+      performanceManager: this.performanceManager,
+      debugIntegration: this.debugIntegration,
+      state: this.state,
+      eventEmitter: this,
+    };
   }
 
-  private handleInput(data: unknown): void {
-    if (!this.state.isRunning) return;
-
-    try {
-      if (
-        'handleInput' in this.keyboardHandler &&
-        typeof this.keyboardHandler.handleInput === 'function'
-      ) {
-        this.keyboardHandler.handleInput(data);
-      }
-    } catch (error) {
-      this.errorBoundary?.handleError(error as Error, {});
-    }
-  }
-
-  // Public API
-  public async start(): Promise<void> {
-    if (!this.state.isInitialized) {
-      throw new Error('Framework not initialized');
-    }
-
-    if (this.state.isRunning) {
-      return;
-    }
-
-    this.debugIntegration?.log('info', 'Framework', 'Starting TUI Framework');
-
-    // Start performance profiling for startup
-    if (this.performanceManager != null) {
-      this.performanceManager.startStartupPhase('application_start', {
-        description: 'Application startup',
-      });
-    }
-
-    // Start application loop
-    await this.applicationLoop.start();
+  private completeStartup(): void {
+    this.state.isInitialized = true;
     this.state.isRunning = true;
+    this.state.startupTime = this.initializer.getInitializationTime();
 
-    // Complete startup profiling
-    if (this.performanceManager != null) {
-      this.performanceManager.endStartupPhase('application_start');
-      this.performanceManager.completeStartup();
-    }
-
-    this.debugIntegration?.log('info', 'Framework', 'TUI Framework started');
-    this.emit('started');
-  }
-
-  public async stop(): Promise<void> {
-    if (!this.state.isRunning) return;
-
-    this.debugIntegration?.log('info', 'Framework', 'Stopping TUI Framework');
-
-    this.state.isRunning = false;
-    await this.applicationLoop.stop();
-
-    this.debugIntegration?.log('info', 'Framework', 'TUI Framework stopped');
-    this.emit('stopped');
-  }
-
-  public async shutdown(signal?: string): Promise<void> {
-    if (this.isShuttingDown) return;
-
-    this.isShuttingDown = true;
+    this.emit('initialized', { startupTime: this.state.startupTime });
     this.debugIntegration?.log(
       'info',
       'Framework',
-      `Shutting down TUI Framework (${signal ?? 'manual'})`
+      'TUI Framework started successfully'
     );
+  }
 
+  async stop(): Promise<void> {
+    if (!this.state.isRunning) {
+      throw new Error('Framework is not running');
+    }
+
+    this.state.isRunning = false;
+    this.applicationLoop?.stop();
+    this.emit('stopped');
+
+    this.debugIntegration?.log('info', 'Framework', 'TUI Framework stopped');
+  }
+
+  async shutdown(signal?: string): Promise<void> {
     try {
-      // Stop application loop
-      await this.stop();
-
-      // Cleanup components
-      if (
-        'destroy' in this.componentRegistry &&
-        typeof this.componentRegistry.destroy === 'function'
-      ) {
-        this.componentRegistry.destroy();
-      }
-      if (
-        'destroy' in this.screenManager &&
-        typeof this.screenManager.destroy === 'function'
-      ) {
-        this.screenManager.destroy();
-      }
-      if (
-        'destroy' in this.eventManager &&
-        typeof this.eventManager.destroy === 'function'
-      ) {
-        this.eventManager.destroy();
-      }
-      this.performanceManager?.destroy();
-      if (
-        'destroy' in this.canvas &&
-        typeof this.canvas.destroy === 'function'
-      ) {
-        this.canvas.destroy();
-      }
-
-      this.debugIntegration?.log(
-        'info',
-        'Framework',
-        'TUI Framework shutdown complete'
-      );
+      await this.performShutdown(signal);
     } catch (error) {
-      this.debugIntegration?.log(
-        'error',
-        'Framework',
-        'Error during shutdown',
-        error
-      );
+      this.handleShutdownError(error, signal);
+      throw error;
     }
-
-    process.exit(0);
   }
 
-  // Screen management
-  public registerScreen(screen: Screen): void {
-    if (
-      'registerScreen' in this.screenManager &&
-      typeof this.screenManager.registerScreen === 'function'
-    ) {
-      this.screenManager.registerScreen(screen);
+  private async performShutdown(signal?: string): Promise<void> {
+    FrameworkUtils.logShutdownStart(signal);
+
+    if (this.state.isRunning) {
+      await this.stop();
     }
-    const screenId =
-      'getId' in screen && typeof screen.getId === 'function'
-        ? screen.getId()
-        : 'unknown';
+
+    this.cleanupComponents();
+    this.state.isInitialized = false;
+
+    FrameworkUtils.logShutdownComplete();
+    this.emit('shutdown', { signal });
+  }
+
+  private handleShutdownError(error: unknown, signal?: string): void {
+    FrameworkUtils.logShutdownError(error);
+    this.emit('shutdownError', { error, signal });
+  }
+
+  private cleanupComponents(): void {
+    const components = this.getCleanupableComponents();
+    components.forEach(FrameworkUtils.destroyIfExists);
+  }
+
+  private getCleanupableComponents() {
+    return [
+      this.performanceManager,
+      this.debugIntegration,
+      this.errorBoundary,
+      this.componentRegistry,
+      this.eventManager,
+      this.keyboardHandler,
+      this.screenManager,
+      this.lifecycle,
+      this.applicationLoop,
+    ];
+  }
+
+  // Public API methods
+  registerScreen(screen: Screen): void {
+    if (!this.screenManager) {
+      throw new Error('Screen manager not initialized');
+    }
+
+    // Register screen using available method
+    if (
+      'register' in this.screenManager &&
+      typeof this.screenManager.register === 'function'
+    ) {
+      this.screenManager.register(screen);
+    }
     this.debugIntegration?.log(
-      'debug',
+      'info',
       'Framework',
-      `Screen registered: ${screenId}`
+      `Screen registered: ${screen.id}`
     );
   }
 
-  public navigateToScreen(screenId: string, data?: unknown): void {
-    if (
-      'push' in this.screenManager &&
-      typeof this.screenManager.push === 'function'
-    ) {
-      this.screenManager.push(screenId, data);
+  navigateToScreen(screenId: string, data?: unknown): void {
+    if (!this.screenManager) {
+      throw new Error('Screen manager not initialized');
     }
-    this.debugIntegration?.logComponentEvent('navigation', 'navigate', {
-      screenId,
-      data,
-    });
+
+    // Navigate using available method
+    if (
+      'navigate' in this.screenManager &&
+      typeof this.screenManager.navigate === 'function'
+    ) {
+      this.screenManager.navigate(screenId, data);
+    }
+    this.debugIntegration?.log(
+      'info',
+      'Framework',
+      `Navigated to screen: ${screenId}`
+    );
   }
 
-  public goBack(): boolean {
+  goBack(): boolean {
+    if (!this.screenManager) {
+      throw new Error('Screen manager not initialized');
+    }
+
     let result = false;
     if (
-      'pop' in this.screenManager &&
-      typeof this.screenManager.pop === 'function'
+      'back' in this.screenManager &&
+      typeof this.screenManager.back === 'function'
     ) {
-      result = this.screenManager.pop();
+      result = this.screenManager.back() ?? false;
     }
-    if (result) {
-      this.debugIntegration?.logComponentEvent('navigation', 'back', {});
-    }
+    this.debugIntegration?.log(
+      'info',
+      'Framework',
+      `Go back result: ${result}`
+    );
     return result;
   }
 
-  // Component management
-  public registerComponent(name: string, component: Component): void {
-    if (
-      'register' in this.componentRegistry &&
-      typeof this.componentRegistry.register === 'function'
-    ) {
-      this.componentRegistry.register(name, component);
+  registerComponent(name: string, component: Component): void {
+    if (!this.componentRegistry) {
+      throw new Error('Component registry not initialized');
     }
+
+    this.componentRegistry.register(name, component);
+    this.state.componentCount++;
     this.debugIntegration?.log(
-      'debug',
+      'info',
       'Framework',
       `Component registered: ${name}`
     );
   }
 
-  // Event handling
-  public on(event: string, handler: Function): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
+  on(event: string, handler: (...args: unknown[]) => void): this {
+    if (FrameworkUtils.isValidHandlerFunction(handler)) {
+      super.on(event, handler);
     }
-    this.eventHandlers.get(event)?.add(handler);
+    return this;
   }
 
-  public off(event: string, handler: Function): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.delete(handler);
+  off(event: string, handler: (...args: unknown[]) => void): this {
+    if (FrameworkUtils.isValidHandlerFunction(handler)) {
+      super.off(event, handler);
     }
+    return this;
   }
 
-  private emit(event: string, data?: unknown): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.forEach((handler) => {
-        try {
-          handler(data);
-        } catch (error) {
-          this.debugIntegration?.log(
-            'error',
-            'Framework',
-            `Error in event handler for '${event}'`,
-            error
-          );
-        }
-      });
-    }
-  }
-
-  // Getters
-  public getState(): TUIFrameworkState {
+  // Getter methods
+  getState(): TUIFrameworkState {
     return { ...this.state };
   }
 
-  public getConfig(): TUIFrameworkConfig {
+  getConfig(): TUIFrameworkConfig {
     return { ...this.config };
   }
 
-  public getPerformanceManager(): PerformanceManager {
-    if (!this.performanceManager) {
-      throw new Error('PerformanceManager not initialized');
-    }
+  getPerformanceManager(): PerformanceManager | undefined {
     return this.performanceManager;
   }
 
-  public getDebugIntegration(): DebugIntegration {
-    if (!this.debugIntegration) {
-      throw new Error('DebugIntegration not initialized');
-    }
+  getDebugIntegration(): DebugIntegration | undefined {
     return this.debugIntegration;
   }
 
-  public getCanvas(): TerminalCanvas {
+  getCanvas(): TerminalCanvas | undefined {
     return this.canvas;
   }
 
-  public getScreenManager(): ScreenManager {
+  getScreenManager(): ScreenManager | undefined {
     return this.screenManager;
   }
 
-  public getComponentRegistry(): ComponentRegistry {
+  getComponentRegistry(): ComponentRegistry | undefined {
     return this.componentRegistry;
   }
 
-  // UIFramework interface implementation
-  public render(): void {
-    this.canvas.render();
+  render(): void {
+    this.canvas?.render();
   }
 
-  public handleEvent(event: unknown): void {
+  handleEvent(event: unknown): void {
+    // Handle event using emit if handleEvent doesn't exist
     if (
-      'handleEvent' in this.eventManager &&
-      typeof this.eventManager.handleEvent === 'function'
+      this.eventManager &&
+      'emit' in this.eventManager &&
+      typeof this.eventManager.emit === 'function'
     ) {
-      this.eventManager.handleEvent(event);
+      this.eventManager.emit('event', event);
     }
   }
 
-  public getMetrics(): Record<string, unknown> {
-    const debugMetrics = this.debugIntegration?.getDebugManager().getMetrics();
-
-    return {
-      uptime: this.state.uptime,
-      memoryUsage: process.memoryUsage().heapUsed,
-      componentCount: this.state.componentCount,
-      ...debugMetrics,
+  getMetrics(): Record<string, unknown> {
+    const perfManagerWithMetrics = this.performanceManager as {
+      getMetrics?: () => Record<string, unknown>;
     };
+    return FrameworkUtils.createMetricsSnapshot(
+      this.state,
+      perfManagerWithMetrics
+    );
   }
 }

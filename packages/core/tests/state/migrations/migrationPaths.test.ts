@@ -15,13 +15,15 @@ describe('Migration Paths', () => {
   beforeEach(async () => {
     registry = new MigrationRegistry();
     migrations.forEach(m => registry.registerMigration(m));
+
+
     runner = new MigrationRunner(registry, path.join(testDir, '.backup'));
-    
+
     // Ensure directory exists
     const { mkdir } = await import('fs/promises');
     await mkdir(testDir, { recursive: true });
     await mkdir(path.join(testDir, '.backup'), { recursive: true });
-    
+
     await Bun.write(path.join(testDir, '.gitkeep'), '');
   });
 
@@ -45,7 +47,14 @@ describe('Migration Paths', () => {
       
       await Bun.write(statePath, yaml.dump(initialState));
 
-      const result = await runner.migrate(statePath, '1.0.0', { verbose: true });
+
+      let result;
+      try {
+        result = await runner.migrate(statePath, '1.0.0', { verbose: true });
+      } catch (error) {
+        console.error('Migration threw error:', error);
+        throw error;
+      }
 
       expect(result.success).toBe(true);
       expect(result.fromVersion).toBe('0.0.0');
@@ -66,8 +75,12 @@ describe('Migration Paths', () => {
       expect(finalState.templates).toEqual([]);
       expect(finalState.variables).toEqual({});
       
-      expect(finalState.recovery).toEqual({ enabled: false, checkpoints: [] });
-      expect(finalState.conflicts).toEqual([]);
+      expect(finalState.recovery).toEqual({
+        enabled: false,
+        checkpoints: [],
+        dataLoss: false,
+      });
+      expect(finalState.conflicts).toEqual({ resolutions: [] });
       
       // Checksums are added by StateManager, not migrations
       
@@ -104,8 +117,12 @@ describe('Migration Paths', () => {
       expect(finalState.version).toBe('1.0.0');
       expect(finalState.templates).toEqual([]);
       expect(finalState.variables).toEqual({});
-      expect(finalState.recovery).toEqual({ enabled: false, checkpoints: [] });
-      expect(finalState.conflicts).toEqual([]);
+      expect(finalState.recovery).toEqual({
+        enabled: false,
+        checkpoints: [],
+        dataLoss: false,
+      });
+      expect(finalState.conflicts).toEqual({ resolutions: [] });
     });
 
     it('should skip migration for already up-to-date state', async () => {

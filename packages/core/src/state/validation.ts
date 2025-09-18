@@ -5,6 +5,11 @@ import { StateCorruptedError } from './errors';
 import stateSchema from './schemas/state.schema.json';
 import { ChecklistState } from './types';
 
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
 export class StateValidator {
   private ajv: Ajv;
   private validateSchema: ValidateFunction;
@@ -93,5 +98,23 @@ export class StateValidator {
     const [toMajor] = toVersion.split('.').map(Number);
 
     return fromMajor === toMajor || fromMajor + 1 === toMajor;
+  }
+
+  validateState(state: ChecklistState): ValidationResult {
+    try {
+      // Basic schema validation
+      if (this.validateSchema(state) !== true) {
+        const errors =
+          this.validateSchema.errors
+            ?.map((e) => `${e.instancePath} ${e.message}`)
+            .filter(Boolean) ?? [];
+        return { isValid: false, errors };
+      }
+      return { isValid: true, errors: [] };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown validation error';
+      return { isValid: false, errors: [message] };
+    }
   }
 }

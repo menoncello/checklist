@@ -1,5 +1,3 @@
-import { randomUUID } from 'crypto';
-import { EventEmitter } from 'events';
 import type { WorkflowInstance } from '../interfaces/IStateManager';
 import type { IStateManager } from '../interfaces/IStateManager';
 import type {
@@ -11,6 +9,13 @@ import type {
 } from '../interfaces/IWorkflowEngine';
 import type { Logger } from '../utils/logger';
 import { BaseService, ServiceConfig } from './BaseService';
+import { WorkflowEventHelper } from './WorkflowEventHelper';
+import { WorkflowEventManager } from './WorkflowEventManager';
+import { WorkflowInstanceManager } from './WorkflowInstanceManager';
+import { WorkflowLoader } from './WorkflowLoader';
+import { WorkflowStateHelper } from './WorkflowStateHelper';
+import { WorkflowStepManager } from './WorkflowStepManager';
+import { WorkflowValidator } from './WorkflowValidator';
 
 export interface WorkflowEngineConfig extends ServiceConfig {
   maxStepRetries?: number;
@@ -22,11 +27,15 @@ export class WorkflowEngineService
   extends BaseService
   implements IWorkflowEngine
 {
-  private workflows: Map<string, WorkflowDefinition> = new Map();
   private currentInstance: WorkflowInstance | null = null;
   private currentWorkflow: WorkflowDefinition | null = null;
-  private eventEmitter: EventEmitter = new EventEmitter();
   private stateManager: IStateManager;
+  private stateHelper: WorkflowStateHelper;
+  private eventManager: WorkflowEventManager;
+  private stepManager: WorkflowStepManager;
+  private instanceManager: WorkflowInstanceManager;
+  private workflowLoader: WorkflowLoader;
+  private eventHelper: WorkflowEventHelper;
   private status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' =
     'idle';
 
@@ -37,80 +46,40 @@ export class WorkflowEngineService
   ) {
     super(config, logger);
     this.stateManager = stateManager;
+    this.stateHelper = new WorkflowStateHelper(stateManager, logger);
+    this.eventManager = new WorkflowEventManager(
+      logger,
+      config.enableEventLogging ?? false
+    );
+    this.stepManager = new WorkflowStepManager(
+      this.stateHelper,
+      logger,
+      this.eventManager.emit.bind(this.eventManager)
+    );
+    this.instanceManager = new WorkflowInstanceManager(logger);
+    this.workflowLoader = new WorkflowLoader(logger);
+    this.eventHelper = new WorkflowEventHelper(this.eventManager);
   }
 
   async loadWorkflow(definition: WorkflowDefinition): Promise<void> {
-    try {
-      this.validateWorkflowDefinition(definition);
-      this.workflows.set(definition.id, definition);
-
-      this.logger.info({
-        msg: 'Workflow loaded',
-        workflowId: definition.id,
-        workflowName: definition.name,
-      });
-    } catch (error) {
-      this.logger.error({
-        msg: 'Failed to load workflow',
-        error: (error as Error).message,
-        workflowId: definition.id,
-      });
-      throw error;
-    }
+    await this.workflowLoader.loadWorkflow(definition);
   }
 
   async startWorkflow(workflowId: string): Promise<WorkflowInstance> {
     try {
-      const workflow = this.workflows.get(workflowId);
-      if (!workflow) {
-        throw new Error(`Workflow not found: ${workflowId}`);
-      }
+      const workflow = this.workflowLoader.getWorkflow(workflowId);
+      this.instanceManager.checkForActiveWorkflow(this.currentInstance);
 
-      if (this.currentInstance && this.currentInstance.status === 'active') {
-        throw new Error('Another workflow is already running');
-      }
-
-      const instance: WorkflowInstance = {
-        id: randomUUID(),
+      const instance = this.instanceManager.createInstance(
         workflowId,
-        currentStepId: workflow.steps[0]?.id ?? '',
-        startedAt: new Date(),
-        updatedAt: new Date(),
-        status: 'active',
-        stepStates: {},
-      };
+        workflow
+      );
+      this.stateHelper.initializeStepStates(instance, workflow.steps);
 
-      // Initialize step states
-      for (const step of workflow.steps) {
-        instance.stepStates[step.id] = {
-          stepId: step.id,
-          status: 'pending',
-        };
-      }
-
-      this.currentInstance = instance;
-      this.currentWorkflow = workflow;
-      this.status = 'running';
-
-      // Save to state manager
-      const state = await this.stateManager.load();
-      state.activeInstance = instance;
-      state.instances.push(instance);
-      await this.stateManager.save(state);
-
-      await this.emit({
-        type: 'workflow-started',
-        workflowId,
-        instanceId: instance.id,
-        timestamp: new Date(),
-      });
-
-      this.logger.info({
-        msg: 'Workflow started',
-        workflowId,
-        instanceId: instance.id,
-      });
-
+      this.setActiveWorkflow(instance, workflow);
+      await this.stateHelper.persistWorkflowStart(instance);
+      await this.eventHelper.emitWorkflowStarted(workflowId, instance.id);
+      this.instanceManager.logWorkflowStart(workflowId, instance.id);
       return instance;
     } catch (error) {
       this.logger.error({
@@ -123,93 +92,29 @@ export class WorkflowEngineService
   }
 
   getCurrentStep(): WorkflowStep | null {
-    if (!this.currentInstance || !this.currentWorkflow) {
-      return null;
-    }
-
-    return (
-      this.currentWorkflow.steps.find(
-        (step) =>
-          this.currentInstance !== null &&
-          step.id === this.currentInstance.currentStepId
-      ) ?? null
+    return WorkflowValidator.findCurrentStep(
+      this.currentInstance,
+      this.currentWorkflow
     );
   }
 
   async advance(): Promise<void> {
     try {
-      if (!this.currentInstance || !this.currentWorkflow) {
-        throw new Error('No active workflow');
-      }
-
-      const currentStep = this.getCurrentStep();
-      if (!currentStep) {
-        throw new Error('Current step not found');
-      }
-
-      // Mark current step as completed
-      this.currentInstance.stepStates[currentStep.id] = {
-        ...this.currentInstance.stepStates[currentStep.id],
-        status: 'completed',
-        completedAt: new Date(),
-      };
-
-      await this.emit({
-        type: 'step-completed',
-        workflowId: this.currentWorkflow.id,
-        instanceId: this.currentInstance.id,
-        stepId: currentStep.id,
-        timestamp: new Date(),
-      });
-
-      // Find next step
-      const nextStepId = this.findNextStep(currentStep);
-
-      if (
-        nextStepId !== null &&
-        nextStepId !== undefined &&
-        nextStepId !== ''
-      ) {
-        this.currentInstance.currentStepId = nextStepId;
-        this.currentInstance.updatedAt = new Date();
-
-        await this.emit({
-          type: 'step-started',
-          workflowId: this.currentWorkflow.id,
-          instanceId: this.currentInstance.id,
-          stepId: nextStepId,
-          timestamp: new Date(),
-        });
-      } else {
-        // Workflow completed
-        this.currentInstance.status = 'completed';
-        this.currentInstance.completedAt = new Date();
-        this.status = 'completed';
-
-        await this.emit({
-          type: 'workflow-completed',
-          workflowId: this.currentWorkflow.id,
-          instanceId: this.currentInstance.id,
-          timestamp: new Date(),
-        });
-      }
-
-      // Save state
-      const state = await this.stateManager.load();
-      state.activeInstance = this.currentInstance;
-      const instanceIndex = state.instances.findIndex(
-        (i) => i.id === this.currentInstance?.id
+      const { currentStep } = this.validateActiveWorkflow();
+      await this.stepManager.completeCurrentStep(
+        currentStep,
+        this.currentInstance,
+        this.currentWorkflow
       );
-      if (instanceIndex >= 0) {
-        state.instances[instanceIndex] = this.currentInstance;
-      }
-      await this.stateManager.save(state);
 
-      this.logger.debug({
-        msg: 'Workflow advanced',
-        currentStepId: this.currentInstance.currentStepId,
-        status: this.currentInstance.status,
-      });
+      const nextStepId = this.stepManager.findNextStep(
+        currentStep,
+        this.currentWorkflow
+      );
+      await this.handleStepTransition(nextStepId);
+
+      await this.stateHelper.saveWorkflowState(this.currentInstance);
+      this.instanceManager.logAdvancement(this.currentInstance);
     } catch (error) {
       this.logger.error({
         msg: 'Failed to advance workflow',
@@ -219,45 +124,35 @@ export class WorkflowEngineService
     }
   }
 
+  private async handleStepTransition(
+    nextStepId: string | null | undefined
+  ): Promise<void> {
+    if (nextStepId !== null && nextStepId !== undefined && nextStepId !== '') {
+      await this.stepManager.moveToNextStep(
+        nextStepId,
+        this.currentInstance,
+        this.currentWorkflow
+      );
+    } else {
+      this.status = await this.stepManager.completeWorkflow(
+        this.currentInstance,
+        this.currentWorkflow
+      );
+    }
+  }
+
   async goBack(): Promise<void> {
     try {
-      if (!this.currentInstance || !this.currentWorkflow) {
-        throw new Error('No active workflow');
-      }
+      this.validateActiveWorkflow();
 
-      const currentStepIndex = this.currentWorkflow.steps.findIndex(
-        (step) => step.id === this.currentInstance?.currentStepId
+      const previousStep = this.stepManager.findPreviousStep(
+        this.currentWorkflow,
+        this.currentInstance
       );
+      this.stepManager.moveToPreviousStep(previousStep, this.currentInstance);
 
-      if (currentStepIndex <= 0) {
-        throw new Error('Cannot go back from first step');
-      }
-
-      const previousStep = this.currentWorkflow.steps[currentStepIndex - 1];
-      this.currentInstance.currentStepId = previousStep.id;
-      this.currentInstance.updatedAt = new Date();
-
-      // Reset step state
-      this.currentInstance.stepStates[previousStep.id] = {
-        stepId: previousStep.id,
-        status: 'pending',
-      };
-
-      // Save state
-      const state = await this.stateManager.load();
-      state.activeInstance = this.currentInstance;
-      const instanceIndex = state.instances.findIndex(
-        (i) => i.id === this.currentInstance?.id
-      );
-      if (instanceIndex >= 0) {
-        state.instances[instanceIndex] = this.currentInstance;
-      }
-      await this.stateManager.save(state);
-
-      this.logger.debug({
-        msg: 'Workflow moved back',
-        currentStepId: this.currentInstance.currentStepId,
-      });
+      await this.stateHelper.saveWorkflowState(this.currentInstance);
+      this.instanceManager.logGoBack(this.currentInstance);
     } catch (error) {
       this.logger.error({
         msg: 'Failed to go back in workflow',
@@ -269,37 +164,15 @@ export class WorkflowEngineService
 
   async skip(): Promise<void> {
     try {
-      if (!this.currentInstance || !this.currentWorkflow) {
-        throw new Error('No active workflow');
-      }
+      const { currentStep } = this.validateActiveWorkflow();
 
-      const currentStep = this.getCurrentStep();
-      if (!currentStep) {
-        throw new Error('Current step not found');
-      }
-
-      // Mark current step as skipped
-      this.currentInstance.stepStates[currentStep.id] = {
-        ...this.currentInstance.stepStates[currentStep.id],
-        status: 'skipped',
-        completedAt: new Date(),
-      };
-
-      await this.emit({
-        type: 'step-skipped',
-        workflowId: this.currentWorkflow.id,
-        instanceId: this.currentInstance.id,
-        stepId: currentStep.id,
-        timestamp: new Date(),
-      });
-
-      // Advance to next step
+      await this.stepManager.markStepAsSkipped(
+        currentStep,
+        this.currentInstance,
+        this.currentWorkflow
+      );
       await this.advance();
-
-      this.logger.debug({
-        msg: 'Step skipped',
-        stepId: currentStep.id,
-      });
+      this.instanceManager.logSkip(currentStep.id);
     } catch (error) {
       this.logger.error({
         msg: 'Failed to skip step',
@@ -312,24 +185,17 @@ export class WorkflowEngineService
   async reset(): Promise<void> {
     try {
       if (this.currentInstance && this.currentWorkflow) {
-        await this.emit({
-          type: 'workflow-failed',
-          workflowId: this.currentWorkflow.id,
-          instanceId: this.currentInstance.id,
-          timestamp: new Date(),
-        });
+        await this.eventHelper.emitWorkflowFailed(
+          this.currentWorkflow.id,
+          this.currentInstance.id
+        );
       }
 
       this.currentInstance = null;
       this.currentWorkflow = null;
       this.status = 'idle';
-
-      // Clear active instance in state
-      const state = await this.stateManager.load();
-      state.activeInstance = undefined;
-      await this.stateManager.save(state);
-
-      this.logger.info({ msg: 'Workflow engine reset' });
+      await this.stateHelper.clearPersistedState();
+      this.instanceManager.logReset();
     } catch (error) {
       this.logger.error({
         msg: 'Failed to reset workflow',
@@ -340,48 +206,27 @@ export class WorkflowEngineService
   }
 
   async pause(): Promise<void> {
-    if (this.status !== 'running') {
-      throw new Error('Workflow is not running');
-    }
-
+    WorkflowValidator.validateRunningStatus(this.status);
     this.status = 'paused';
 
-    if (this.currentInstance) {
-      this.currentInstance.status = 'paused';
-
-      await this.emit({
-        type: 'workflow-paused',
-        workflowId: this.currentWorkflow?.id ?? '',
-        instanceId: this.currentInstance.id,
-        timestamp: new Date(),
-      });
-
-      // Save state
-      const state = await this.stateManager.load();
-      state.activeInstance = this.currentInstance;
-      await this.stateManager.save(state);
+    if (this.currentInstance && this.currentWorkflow) {
+      await this.stateHelper.pauseInstance(this.currentInstance);
+      await this.eventHelper.emitWorkflowPaused(
+        this.currentWorkflow.id,
+        this.currentInstance.id
+      );
     }
-
-    this.logger.info({ msg: 'Workflow paused' });
+    this.instanceManager.logPause();
   }
 
   async resume(): Promise<void> {
-    if (this.status !== 'paused') {
-      throw new Error('Workflow is not paused');
-    }
-
+    WorkflowValidator.validatePausedStatus(this.status);
     this.status = 'running';
 
     if (this.currentInstance) {
-      this.currentInstance.status = 'active';
-
-      // Save state
-      const state = await this.stateManager.load();
-      state.activeInstance = this.currentInstance;
-      await this.stateManager.save(state);
+      await this.stateHelper.resumeInstance(this.currentInstance);
     }
-
-    this.logger.info({ msg: 'Workflow resumed' });
+    this.instanceManager.logResume();
   }
 
   getStatus(): 'idle' | 'running' | 'paused' | 'completed' | 'failed' {
@@ -393,47 +238,33 @@ export class WorkflowEngineService
   }
 
   on(event: WorkflowEvent['type'], handler: WorkflowEventHandler): void {
-    this.eventEmitter.on(event, handler);
+    this.eventManager.on(event, handler);
   }
 
   off(event: WorkflowEvent['type'], handler: WorkflowEventHandler): void {
-    this.eventEmitter.off(event, handler);
+    this.eventManager.off(event, handler);
   }
 
   async emit(event: WorkflowEvent): Promise<void> {
-    if ((this.config as WorkflowEngineConfig).enableEventLogging === true) {
-      this.logger.debug({
-        msg: 'Workflow event',
-        event,
-      });
-    }
-
-    this.eventEmitter.emit(event.type, event);
+    await this.eventHelper.emit(event);
   }
 
   protected async onInitialize(): Promise<void> {
-    // Load any persisted active instance
-    try {
-      const state = await this.stateManager.load();
-      if (state.activeInstance && state.activeInstance.status === 'active') {
-        this.currentInstance = state.activeInstance;
-        const workflow = this.workflows.get(state.activeInstance.workflowId);
-        if (workflow) {
-          this.currentWorkflow = workflow;
-          this.status = 'running';
-
-          this.logger.info({
-            msg: 'Restored active workflow instance',
-            instanceId: state.activeInstance.id,
-            workflowId: state.activeInstance.workflowId,
-          });
-        }
-      }
-    } catch (error) {
-      this.logger.warn({
-        msg: 'Could not restore active workflow',
-        error: (error as Error).message,
-      });
+    const activeInstance = await this.stateHelper.loadActiveInstance();
+    if (
+      activeInstance &&
+      this.workflowLoader.hasWorkflow(activeInstance.workflowId)
+    ) {
+      const workflow = this.workflowLoader.getWorkflow(
+        activeInstance.workflowId
+      );
+      this.currentInstance = activeInstance;
+      this.currentWorkflow = workflow;
+      this.status = 'running';
+      this.instanceManager.logRestoration(
+        activeInstance.id,
+        activeInstance.workflowId
+      );
     }
   }
 
@@ -441,56 +272,29 @@ export class WorkflowEngineService
     if (this.status === 'running') {
       await this.pause();
     }
-    this.eventEmitter.removeAllListeners();
+    this.eventManager.removeAllListeners();
   }
 
-  private validateWorkflowDefinition(definition: WorkflowDefinition): void {
-    if (
-      !definition.id ||
-      !definition.name ||
-      !Array.isArray(definition.steps) ||
-      definition.steps.length === 0
-    ) {
-      throw new Error('Invalid workflow definition');
-    }
-
-    const stepIds = new Set<string>();
-    for (const step of definition.steps) {
-      if (!step.id || !step.name || !step.type) {
-        throw new Error(`Invalid step in workflow: ${JSON.stringify(step)}`);
-      }
-      if (stepIds.has(step.id)) {
-        throw new Error(`Duplicate step ID: ${step.id}`);
-      }
-      stepIds.add(step.id);
-    }
+  private setActiveWorkflow(
+    instance: WorkflowInstance,
+    workflow: WorkflowDefinition
+  ): void {
+    this.currentInstance = instance;
+    this.currentWorkflow = workflow;
+    this.status = 'running';
   }
 
-  private findNextStep(currentStep: WorkflowStep): string | null {
-    if (!this.currentWorkflow) {
-      return null;
-    }
-
-    // If step has explicit next
-    if (currentStep.next !== undefined && currentStep.next !== null) {
-      if (typeof currentStep.next === 'string' && currentStep.next !== '') {
-        return currentStep.next;
-      }
-      // For parallel/conditional, return first valid next
-      return currentStep.next[0] ?? null;
-    }
-
-    // Otherwise, find next step in sequence
-    const currentIndex = this.currentWorkflow.steps.findIndex(
-      (s) => s.id === currentStep.id
+  private validateActiveWorkflow(): { currentStep: WorkflowStep } {
+    WorkflowValidator.validateActiveWorkflow(
+      this.currentInstance,
+      this.currentWorkflow
     );
-    if (
-      currentIndex >= 0 &&
-      currentIndex < this.currentWorkflow.steps.length - 1
-    ) {
-      return this.currentWorkflow.steps[currentIndex + 1].id;
+
+    const currentStep = this.getCurrentStep();
+    if (!currentStep) {
+      throw new Error('Current step not found');
     }
 
-    return null;
+    return { currentStep };
   }
 }

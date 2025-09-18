@@ -3,6 +3,9 @@
 # Test Configuration
 [test]
 
+# Setup file to run before tests
+preload = ["./packages/core/tests/setup.ts"]
+
 # Enable coverage reporting
 coverage = true
 

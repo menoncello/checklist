@@ -1,38 +1,27 @@
-export interface PerformanceMetric {
-  id: string;
-  name: string;
-  value: number;
-  timestamp: number;
-  tags?: Record<string, string>;
-  metadata?: Record<string, unknown>;
-}
+import {
+  AlertManager,
+  PerformanceAlert,
+  PerformanceThreshold,
+} from './helpers/AlertManager';
+import {
+  BenchmarkManager,
+  PerformanceBenchmark,
+  BenchmarkFilter,
+} from './helpers/BenchmarkManager';
+import {
+  MetricsTracker,
+  PerformanceMetric,
+  MetricFilter,
+} from './helpers/MetricsTracker';
+import { SystemProfiler, SystemSnapshot } from './helpers/SystemProfiler';
 
-export interface PerformanceThreshold {
-  metric: string;
-  warningValue: number;
-  criticalValue: number;
-  direction: 'above' | 'below'; // Above threshold is bad, or below threshold is bad
-}
-
-export interface PerformanceBenchmark {
-  id: string;
-  name: string;
-  category: string;
-  startTime: number;
-  endTime?: number;
-  duration?: number;
-  metadata?: Record<string, unknown>;
-}
-
-export interface PerformanceAlert {
-  id: string;
-  timestamp: number;
-  metric: string;
-  value: number;
-  threshold: PerformanceThreshold;
-  level: 'warning' | 'critical';
-  message: string;
-}
+export {
+  PerformanceMetric,
+  PerformanceBenchmark,
+  PerformanceAlert,
+  PerformanceThreshold,
+};
+export { MetricFilter, BenchmarkFilter, SystemSnapshot };
 
 export interface PerformanceMonitorConfig {
   enableMetrics: boolean;
@@ -49,15 +38,12 @@ export interface PerformanceMonitorConfig {
 
 export class PerformanceMonitor {
   private config: PerformanceMonitorConfig;
-  private metrics: PerformanceMetric[] = [];
-  private benchmarks: PerformanceBenchmark[] = [];
-  private alerts: PerformanceAlert[] = [];
-  private thresholds = new Map<string, PerformanceThreshold>();
-  private activeBenchmarks = new Map<string, PerformanceBenchmark>();
+  private metricsTracker: MetricsTracker;
+  private benchmarkManager: BenchmarkManager;
+  private alertManager: AlertManager;
+  private systemProfiler: SystemProfiler;
   private eventHandlers = new Map<string, Set<Function>>();
-  private samplingTimer: Timer | null = null;
   private startTime = performance.now();
-  private memoryBaseline: NodeJS.MemoryUsage | null = null;
 
   constructor(config: Partial<PerformanceMonitorConfig> = {}) {
     this.config = {
@@ -67,512 +53,175 @@ export class PerformanceMonitor {
       metricsBufferSize: 1000,
       benchmarksBufferSize: 500,
       alertsBufferSize: 100,
-      samplingInterval: 5000, // 5 seconds
+      samplingInterval: 5000,
       enableAutoSampling: true,
       enableMemoryProfiling: true,
       enableCPUProfiling: false,
       ...config,
     };
 
-    this.setupDefaultThresholds();
-    this.captureBaseline();
+    this.metricsTracker = new MetricsTracker(this.config.metricsBufferSize);
+    this.benchmarkManager = new BenchmarkManager(
+      this.config.benchmarksBufferSize
+    );
+    this.alertManager = new AlertManager(this.config.alertsBufferSize);
+    this.systemProfiler = new SystemProfiler(
+      this.config.samplingInterval,
+      (name, value, metadata) => this.handleSystemMetric(name, value, metadata)
+    );
 
     if (this.config.enableAutoSampling) {
-      this.startAutoSampling();
+      this.systemProfiler.start();
     }
   }
 
-  private setupDefaultThresholds(): void {
-    // Startup time threshold
-    this.addThreshold({
-      metric: 'startup_time',
-      warningValue: 100, // 100ms
-      criticalValue: 200, // 200ms
-      direction: 'above',
-    });
-
-    // Render time threshold
-    this.addThreshold({
-      metric: 'render_time',
-      warningValue: 16, // 16ms (60 FPS)
-      criticalValue: 33, // 33ms (30 FPS)
-      direction: 'above',
-    });
-
-    // Memory usage threshold
-    this.addThreshold({
-      metric: 'memory_usage',
-      warningValue: 50 * 1024 * 1024, // 50MB
-      criticalValue: 100 * 1024 * 1024, // 100MB
-      direction: 'above',
-    });
-
-    // Event loop delay threshold
-    this.addThreshold({
-      metric: 'event_loop_delay',
-      warningValue: 10, // 10ms
-      criticalValue: 50, // 50ms
-      direction: 'above',
-    });
-
-    // FPS threshold
-    this.addThreshold({
-      metric: 'fps',
-      warningValue: 30, // 30 FPS
-      criticalValue: 15, // 15 FPS
-      direction: 'below',
-    });
-  }
-
-  // Public API methods for compatibility
-  public mark(name: string): number {
-    const now = performance.now();
-    this.recordMetricValue(name, now - this.startTime, { type: 'mark' });
-    return now;
-  }
-
-  public measure(name: string, startMark: string, endMark: string): number {
-    const start = this.metrics.find((m) => m.name === startMark)?.value ?? 0;
-    const end = this.metrics.find((m) => m.name === endMark)?.value ?? 0;
-    const duration = end - start;
-    this.recordMetricValue(name, duration, {
-      type: 'measure',
-      startMark,
-      endMark,
-    });
-    return duration;
-  }
-
-  public recordMetricValue(
+  private handleSystemMetric(
     name: string,
     value: number,
     metadata?: Record<string, unknown>
   ): void {
+    if (!this.config.enableMetrics) return;
+
     const metric: PerformanceMetric = {
-      id: `${name}-${Date.now()}`,
+      id: `system-${Date.now()}-${Math.random()}`,
       name,
       value,
       timestamp: Date.now(),
       metadata,
     };
 
-    this.metrics.push(metric);
+    this.metricsTracker.recordMetric(metric);
 
-    // Trim buffer if needed
-    if (this.metrics.length > this.config.metricsBufferSize) {
-      this.metrics.shift();
-    }
-  }
-
-  public generateReport(): {
-    marks: Record<string, number>;
-    measures: Record<string, number>;
-  } {
-    const marks: Record<string, number> = {};
-    const measures: Record<string, number> = {};
-
-    for (const metric of this.metrics) {
-      if (metric.metadata?.type === 'mark') {
-        marks[metric.name] = metric.value;
-      } else if (metric.metadata?.type === 'measure') {
-        measures[metric.name] = metric.value;
+    if (this.config.enableAlerts) {
+      const alert = this.alertManager.checkMetric(metric);
+      if (alert != null) {
+        this.emit('alert', alert);
       }
     }
-
-    return { marks, measures };
   }
 
-  private captureBaseline(): void {
-    this.memoryBaseline = process.memoryUsage();
+  // Delegation methods to maintain API compatibility
+  public mark(name: string): number {
+    return this.metricsTracker.mark(name);
   }
 
-  private startAutoSampling(): void {
-    this.samplingTimer = setInterval(() => {
-      this.sampleSystemMetrics();
-    }, this.config.samplingInterval);
+  public measure(name: string, startMark: string, endMark: string): number {
+    return this.metricsTracker.measure(name, startMark, endMark);
   }
 
-  private sampleSystemMetrics(): void {
-    const now = performance.now();
-    const timestamp = Date.now();
-
-    // Memory metrics
-    if (this.config.enableMemoryProfiling) {
-      const memUsage = process.memoryUsage();
-
-      this.recordMetric({
-        id: `memory_rss_${timestamp}`,
-        name: 'memory_rss',
-        value: memUsage.rss,
-        timestamp,
-        tags: { type: 'system' },
-      });
-
-      this.recordMetric({
-        id: `memory_heap_used_${timestamp}`,
-        name: 'memory_heap_used',
-        value: memUsage.heapUsed,
-        timestamp,
-        tags: { type: 'system' },
-      });
-
-      this.recordMetric({
-        id: `memory_heap_total_${timestamp}`,
-        name: 'memory_heap_total',
-        value: memUsage.heapTotal,
-        timestamp,
-        tags: { type: 'system' },
-      });
-
-      if (this.memoryBaseline) {
-        this.recordMetric({
-          id: `memory_growth_${timestamp}`,
-          name: 'memory_growth',
-          value: memUsage.heapUsed - this.memoryBaseline.heapUsed,
-          timestamp,
-          tags: { type: 'system' },
-        });
-      }
-    }
-
-    // Event loop delay
-    const start = performance.now();
-    setImmediate(() => {
-      const delay = performance.now() - start;
-      this.recordMetric({
-        id: `event_loop_delay_${timestamp}`,
-        name: 'event_loop_delay',
-        value: delay,
-        timestamp,
-        tags: { type: 'system' },
-      });
-    });
-
-    // CPU usage (simplified approximation)
-    if (this.config.enableCPUProfiling) {
-      const cpuUsage = process.cpuUsage();
-      this.recordMetric({
-        id: `cpu_user_${timestamp}`,
-        name: 'cpu_user',
-        value: cpuUsage.user / 1000, // Convert to milliseconds
-        timestamp,
-        tags: { type: 'system' },
-      });
-
-      this.recordMetric({
-        id: `cpu_system_${timestamp}`,
-        name: 'cpu_system',
-        value: cpuUsage.system / 1000, // Convert to milliseconds
-        timestamp,
-        tags: { type: 'system' },
-      });
-    }
-
-    // Uptime
-    this.recordMetric({
-      id: `uptime_${timestamp}`,
-      name: 'uptime',
-      value: now - this.startTime,
-      timestamp,
-      tags: { type: 'system' },
-    });
+  public recordMetricValue(
+    name: string,
+    value: number,
+    tags?: Record<string, string>,
+    metadata?: Record<string, unknown>
+  ): void {
+    if (!this.config.enableMetrics) return;
+    this.metricsTracker.recordMetricValue(name, value, tags, metadata);
   }
 
   public recordMetric(metric: PerformanceMetric): void {
     if (!this.config.enableMetrics) return;
+    this.metricsTracker.recordMetric(metric);
 
-    this.metrics.push(metric);
-
-    // Trim buffer if needed
-    if (this.metrics.length > this.config.metricsBufferSize) {
-      this.metrics = this.metrics.slice(-this.config.metricsBufferSize);
+    if (this.config.enableAlerts) {
+      const alert = this.alertManager.checkMetric(metric);
+      if (alert != null) {
+        this.emit('alert', alert);
+      }
     }
-
-    // Check thresholds
-    this.checkThreshold(metric);
-
-    this.emit('metricRecorded', { metric });
   }
 
   public startBenchmark(
-    id: string,
     name: string,
     category: string = 'general',
     metadata?: Record<string, unknown>
-  ): void {
-    if (!this.config.enableBenchmarks) return;
-
-    const benchmark: PerformanceBenchmark = {
-      id,
-      name,
-      category,
-      startTime: performance.now(),
-      metadata,
-    };
-
-    this.activeBenchmarks.set(id, benchmark);
-    this.emit('benchmarkStarted', { benchmark });
+  ): string {
+    if (!this.config.enableBenchmarks) return '';
+    return this.benchmarkManager.startBenchmark(name, category, metadata);
   }
 
   public endBenchmark(id: string): PerformanceBenchmark | null {
     if (!this.config.enableBenchmarks) return null;
-
-    const benchmark = this.activeBenchmarks.get(id);
-    if (!benchmark) return null;
-
-    benchmark.endTime = performance.now();
-    benchmark.duration = benchmark.endTime - benchmark.startTime;
-
-    this.activeBenchmarks.delete(id);
-    this.benchmarks.push(benchmark);
-
-    // Trim buffer if needed
-    if (this.benchmarks.length > this.config.benchmarksBufferSize) {
-      this.benchmarks = this.benchmarks.slice(
-        -this.config.benchmarksBufferSize
-      );
-    }
-
-    // Record as metric
-    this.recordMetric({
-      id: `benchmark_${id}_${Date.now()}`,
-      name: benchmark.name,
-      value: benchmark.duration,
-      timestamp: Date.now(),
-      tags: {
-        type: 'benchmark',
-        category: benchmark.category,
-      },
-      metadata: benchmark.metadata,
-    });
-
-    this.emit('benchmarkCompleted', { benchmark });
-    return benchmark;
+    return this.benchmarkManager.endBenchmark(id);
   }
 
   public measureFunction<T extends (...args: unknown[]) => unknown>(
     fn: T,
     name: string,
-    category?: string
+    category: string = 'function'
   ): T {
-    return ((...args: unknown[]) => {
-      const id = `fn_${name}_${Date.now()}`;
-      this.startBenchmark(id, name, category ?? 'function');
-
-      try {
-        const result = fn(...args);
-
-        if (result instanceof Promise) {
-          return result.finally(() => {
-            this.endBenchmark(id);
-          });
-        } else {
-          this.endBenchmark(id);
-          return result;
-        }
-      } catch (error) {
-        this.endBenchmark(id);
-        throw error;
-      }
-    }) as T;
+    if (!this.config.enableBenchmarks) return fn;
+    return this.benchmarkManager.measureFunction(fn, name, category);
   }
 
-  public measureAsync<T>(
+  public async measureAsync<T>(
     promise: Promise<T>,
     name: string,
-    category?: string
+    category: string = 'async'
   ): Promise<T> {
-    const id = `async_${name}_${Date.now()}`;
-    this.startBenchmark(id, name, category ?? 'async');
-
-    return promise.finally(() => {
-      this.endBenchmark(id);
-    });
+    if (!this.config.enableBenchmarks) return promise;
+    return this.benchmarkManager.measureAsync(promise, name, category);
   }
 
-  private checkThreshold(metric: PerformanceMetric): void {
-    if (!this.config.enableAlerts) return;
-
-    const threshold = this.thresholds.get(metric.name);
-    if (!threshold) return;
-
-    let level: 'warning' | 'critical' | null = null;
-
-    if (threshold.direction === 'above') {
-      if (metric.value >= threshold.criticalValue) {
-        level = 'critical';
-      } else if (metric.value >= threshold.warningValue) {
-        level = 'warning';
-      }
-    } else {
-      if (metric.value <= threshold.criticalValue) {
-        level = 'critical';
-      } else if (metric.value <= threshold.warningValue) {
-        level = 'warning';
-      }
-    }
-
-    if (level) {
-      this.createAlert(metric, threshold, level);
-    }
-  }
-
-  private createAlert(
-    metric: PerformanceMetric,
-    threshold: PerformanceThreshold,
-    level: 'warning' | 'critical'
-  ): void {
-    const alert: PerformanceAlert = {
-      id: `alert_${metric.id}_${Date.now()}`,
-      timestamp: Date.now(),
-      metric: metric.name,
-      value: metric.value,
-      threshold,
-      level,
-      message: `${metric.name} ${threshold.direction} threshold: ${metric.value} (${level}: ${
-        level === 'critical' ? threshold.criticalValue : threshold.warningValue
-      })`,
+  public generateReport(): {
+    metrics: PerformanceMetric[];
+    benchmarks: PerformanceBenchmark[];
+    alerts: PerformanceAlert[];
+    systemSnapshot: SystemSnapshot;
+  } {
+    return {
+      metrics: this.metricsTracker.getMetrics(),
+      benchmarks: this.benchmarkManager.getBenchmarks(),
+      alerts: this.alertManager.getAlerts(),
+      systemSnapshot: this.systemProfiler.getSystemSnapshot(),
     };
-
-    this.alerts.push(alert);
-
-    // Trim buffer if needed
-    if (this.alerts.length > this.config.alertsBufferSize) {
-      this.alerts = this.alerts.slice(-this.config.alertsBufferSize);
-    }
-
-    this.emit('performanceAlert', { alert });
   }
 
   public addThreshold(threshold: PerformanceThreshold): void {
-    this.thresholds.set(threshold.metric, threshold);
+    this.alertManager.addThreshold(threshold);
   }
 
   public removeThreshold(metric: string): boolean {
-    return this.thresholds.delete(metric);
+    return this.alertManager.removeThreshold(metric);
   }
 
   public getMetrics(filter?: MetricFilter): PerformanceMetric[] {
-    let filtered = [...this.metrics];
-
-    if (filter) {
-      if (filter.name != null && filter.name.length > 0) {
-        filtered = filtered.filter((m) => m.name === filter.name);
-      }
-
-      if (filter.since != null && filter.since !== 0) {
-        const since = filter.since;
-        filtered = filtered.filter((m) => m.timestamp >= since);
-      }
-
-      if (filter.until != null && filter.until !== 0) {
-        const until = filter.until;
-        filtered = filtered.filter((m) => m.timestamp <= until);
-      }
-
-      if (filter.tags) {
-        const filterTags = filter.tags;
-        filtered = filtered.filter((m) => {
-          if (!m.tags) return false;
-          return Object.entries(filterTags).every(
-            ([key, value]) => m.tags?.[key] === value
-          );
-        });
-      }
-    }
-
-    return filtered;
+    return this.metricsTracker.getMetrics(filter);
   }
 
   public getBenchmarks(filter?: BenchmarkFilter): PerformanceBenchmark[] {
-    let filtered = [...this.benchmarks];
-
-    if (filter) {
-      if (filter.category != null && filter.category.length > 0) {
-        filtered = filtered.filter((b) => b.category === filter.category);
-      }
-
-      if (filter.name != null && filter.name.length > 0) {
-        filtered = filtered.filter((b) => b.name === filter.name);
-      }
-
-      if (filter.since != null && filter.since !== 0) {
-        const since = filter.since;
-        filtered = filtered.filter((b) => b.startTime >= since);
-      }
-    }
-
-    return filtered;
+    return this.benchmarkManager.getBenchmarks(filter);
   }
 
   public getAlerts(level?: 'warning' | 'critical'): PerformanceAlert[] {
-    if (level) {
-      return this.alerts.filter((a) => a.level === level);
-    }
-    return [...this.alerts];
+    return this.alertManager.getAlerts(level);
   }
 
-  public getStatistics(
-    metricName: string,
-    period?: number
-  ): MetricStatistics | null {
-    const since = period != null && period !== 0 ? Date.now() - period : 0;
-    const metrics = this.getMetrics({ name: metricName, since });
-
-    if (metrics.length === 0) return null;
-
-    const values = metrics.map((m) => m.value);
-    const sum = values.reduce((a, b) => a + b, 0);
-
-    return {
-      count: values.length,
-      min: Math.min(...values),
-      max: Math.max(...values),
-      avg: sum / values.length,
-      sum,
-      p50: this.percentile(values, 0.5),
-      p95: this.percentile(values, 0.95),
-      p99: this.percentile(values, 0.99),
-    };
-  }
-
-  private percentile(values: number[], p: number): number {
-    const sorted = [...values].sort((a, b) => a - b);
-    const index = Math.ceil(sorted.length * p) - 1;
-    return sorted[Math.max(0, index)];
+  public getStatistics(metricName: string): {
+    count: number;
+    min: number;
+    max: number;
+    average: number;
+    median: number;
+    p95: number;
+  } {
+    return this.metricsTracker.getStatistics(metricName);
   }
 
   public getSystemSnapshot(): SystemSnapshot {
-    const memUsage = process.memoryUsage();
-    const cpuUsage = process.cpuUsage();
-
-    return {
-      timestamp: Date.now(),
-      uptime: performance.now() - this.startTime,
-      memory: memUsage,
-      cpu: {
-        user: cpuUsage.user / 1000,
-        system: cpuUsage.system / 1000,
-      },
-      activeMetrics: this.metrics.length,
-      activeBenchmarks: this.activeBenchmarks.size,
-      totalAlerts: this.alerts.length,
-      warningAlerts: this.alerts.filter((a) => a.level === 'warning').length,
-      criticalAlerts: this.alerts.filter((a) => a.level === 'critical').length,
-    };
+    return this.systemProfiler.getSystemSnapshot();
   }
 
   public clearMetrics(): void {
-    this.metrics = [];
+    this.metricsTracker.clear();
   }
 
   public clearBenchmarks(): void {
-    this.benchmarks = [];
-    this.activeBenchmarks.clear();
+    this.benchmarkManager.clear();
   }
 
   public clearAlerts(): void {
-    this.alerts = [];
+    this.alertManager.clear();
   }
 
   public clearAll(): void {
@@ -582,19 +231,18 @@ export class PerformanceMonitor {
   }
 
   public updateConfig(newConfig: Partial<PerformanceMonitorConfig>): void {
+    const wasAutoSampling = this.config.enableAutoSampling;
     this.config = { ...this.config, ...newConfig };
 
-    // Restart auto-sampling if needed
-    if (newConfig.enableAutoSampling !== undefined) {
-      if (this.samplingTimer) {
-        clearInterval(this.samplingTimer);
-        this.samplingTimer = null;
-      }
-
-      if (newConfig.enableAutoSampling) {
-        this.startAutoSampling();
+    if (wasAutoSampling !== this.config.enableAutoSampling) {
+      if (this.config.enableAutoSampling) {
+        this.systemProfiler.start();
+      } else {
+        this.systemProfiler.stop();
       }
     }
+
+    this.emit('configUpdated', this.config);
   }
 
   public getConfig(): PerformanceMonitorConfig {
@@ -602,14 +250,10 @@ export class PerformanceMonitor {
   }
 
   public destroy(): void {
-    if (this.samplingTimer) {
-      clearInterval(this.samplingTimer);
-      this.samplingTimer = null;
-    }
-
+    this.systemProfiler.stop();
     this.clearAll();
-    this.thresholds.clear();
     this.eventHandlers.clear();
+    this.emit('destroyed');
   }
 
   public on(event: string, handler: Function): void {
@@ -624,14 +268,14 @@ export class PerformanceMonitor {
 
   public off(event: string, handler: Function): void {
     const handlers = this.eventHandlers.get(event);
-    if (handlers) {
+    if (handlers != null) {
       handlers.delete(handler);
     }
   }
 
   private emit(event: string, data?: unknown): void {
     const handlers = this.eventHandlers.get(event);
-    if (handlers) {
+    if (handlers != null) {
       handlers.forEach((handler) => {
         try {
           handler(data);
@@ -644,43 +288,4 @@ export class PerformanceMonitor {
       });
     }
   }
-}
-
-export interface MetricFilter {
-  name?: string;
-  since?: number;
-  until?: number;
-  tags?: Record<string, string>;
-}
-
-export interface BenchmarkFilter {
-  category?: string;
-  name?: string;
-  since?: number;
-}
-
-export interface MetricStatistics {
-  count: number;
-  min: number;
-  max: number;
-  avg: number;
-  sum: number;
-  p50: number;
-  p95: number;
-  p99: number;
-}
-
-export interface SystemSnapshot {
-  timestamp: number;
-  uptime: number;
-  memory: NodeJS.MemoryUsage;
-  cpu: {
-    user: number;
-    system: number;
-  };
-  activeMetrics: number;
-  activeBenchmarks: number;
-  totalAlerts: number;
-  warningAlerts: number;
-  criticalAlerts: number;
 }

@@ -1,4 +1,4 @@
-import { Screen } from '../framework/UIFramework.js';
+import { Screen } from '../framework/UIFramework';
 
 export class ScreenStack {
   private stack: Screen[] = [];

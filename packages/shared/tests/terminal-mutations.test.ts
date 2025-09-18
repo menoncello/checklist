@@ -6,15 +6,21 @@
  * coverage of all branches and conditions.
  */
 
-import { test, expect, beforeEach, afterEach, describe } from 'bun:test';
-import { terminal, ansi, stripAnsi, style } from '../src/terminal';
+import { test, expect, beforeEach, afterEach, describe, mock, spyOn } from 'bun:test';
 
-// Mock supports-color module
+// Mock supports-color module before importing terminal
 const mockSupportsColor = {
   stdout: {
     level: 3
   }
 };
+
+// Use Bun's module mocking system
+mock.module('supports-color', () => ({
+  default: mockSupportsColor
+}));
+
+import { terminal, ansi, stripAnsi, style } from '../src/terminal';
 
 describe('Terminal Utilities Mutation Tests', () => {
   const originalEnv = { ...process.env };
@@ -37,6 +43,9 @@ describe('Terminal Utilities Mutation Tests', () => {
     Object.defineProperty(process.stdout, 'rows', { value: originalStdout.rows, writable: true, configurable: true });
     Object.defineProperty(process.stdout, 'isTTY', { value: originalStdout.isTTY, writable: true, configurable: true });
     Object.defineProperty(process, 'platform', { value: originalPlatform, writable: true, configurable: true });
+
+    // Reset mock to original state
+    mockSupportsColor.stdout = { level: 3 };
   });
 
   describe('Boolean Comparison Mutations - Exact False/Undefined Checks', () => {
@@ -593,9 +602,14 @@ describe('Terminal Utilities Mutation Tests', () => {
       expect(stripAnsi('')).toBe('');
       expect(stripAnsi(' ')).toBe(' ');
       expect(stripAnsi('\n\t')).toBe('\n\t');
-      
+
+      // Style function applies codes even to empty strings
       const result = style('', ansi.red);
-      expect(result).toBe(''); // Handle empty text
+      expect(result).toBe(`${ansi.red}${ansi.reset}`);
+
+      // Test with whitespace
+      const whitespaceResult = style(' ', ansi.red);
+      expect(whitespaceResult).toBe(`${ansi.red} ${ansi.reset}`);
     });
 
     test('should handle complex environment combinations', () => {

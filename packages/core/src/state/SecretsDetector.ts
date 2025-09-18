@@ -97,34 +97,66 @@ export class SecretsDetector {
       column: number;
     }> = [];
 
-    // const lines = content.split('\n');  // Reserved for future use
-
     for (const pattern of this.patterns) {
-      // Reset regex lastIndex for global patterns
-      pattern.regex.lastIndex = 0;
-
-      let match: RegExpExecArray | null;
-      while ((match = pattern.regex.exec(content)) !== null) {
-        const position = this.getLineColumn(content, match.index);
-
-        // Get the actual matched secret (full match or first capture group)
-        const secretMatch = match[1] || match[0];
-
-        // Skip false positives (placeholders, examples)
-        if (this.isFalsePositive(secretMatch)) {
-          continue;
-        }
-
-        detectedSecrets.push({
-          type: pattern.name,
-          match: this.redact(secretMatch),
-          line: position.line,
-          column: position.column,
-        });
-      }
+      this.scanPattern(content, pattern, detectedSecrets);
     }
 
     return detectedSecrets;
+  }
+
+  private static scanPattern(
+    content: string,
+    pattern: { name: string; regex: RegExp },
+    detectedSecrets: Array<{
+      type: string;
+      match: string;
+      line: number;
+      column: number;
+    }>
+  ): void {
+    pattern.regex.lastIndex = 0;
+
+    let match: RegExpExecArray | null;
+    while ((match = pattern.regex.exec(content)) !== null) {
+      const secretMatch = this.extractSecretMatch(match);
+
+      if (this.isValidSecret(secretMatch)) {
+        const position = this.getLineColumn(content, match.index);
+        this.addDetectedSecret(
+          detectedSecrets,
+          pattern.name,
+          secretMatch,
+          position
+        );
+      }
+    }
+  }
+
+  private static extractSecretMatch(match: RegExpExecArray): string {
+    return match[1] || match[0];
+  }
+
+  private static isValidSecret(secretMatch: string): boolean {
+    return !this.isFalsePositive(secretMatch);
+  }
+
+  private static addDetectedSecret(
+    detectedSecrets: Array<{
+      type: string;
+      match: string;
+      line: number;
+      column: number;
+    }>,
+    type: string,
+    secretMatch: string,
+    position: { line: number; column: number }
+  ): void {
+    detectedSecrets.push({
+      type,
+      match: this.redact(secretMatch),
+      line: position.line,
+      column: position.column,
+    });
   }
 
   /**
@@ -231,5 +263,15 @@ export class SecretsDetector {
         ? `\n  ... and ${detectedSecrets.length - 5} more`
         : '')
     );
+  }
+
+  async detectSecrets(content: string): Promise<boolean> {
+    const patterns = SecretsDetector.patterns;
+    for (const pattern of patterns) {
+      if (pattern.regex.test(content)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

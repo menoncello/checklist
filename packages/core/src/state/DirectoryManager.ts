@@ -42,32 +42,43 @@ export class DirectoryManager {
 
   async cleanup(): Promise<void> {
     try {
-      if (existsSync(this.baseDir)) {
-        const dirs = [
-          join(this.baseDir, '.cache'),
-          join(this.baseDir, '.locks'),
-          join(this.baseDir, 'logs'),
-          join(this.baseDir, 'backups'),
-        ];
+      if (!existsSync(this.baseDir)) {
+        return;
+      }
 
-        for (const dir of dirs) {
-          if (existsSync(dir)) {
-            const glob = new Bun.Glob('*');
-            for await (const file of glob.scan({ cwd: dir, onlyFiles: true })) {
-              try {
-                const filePath = join(dir, file);
-                await Bun.write(filePath, '');
-                const { unlink } = await import('fs/promises');
-                await unlink(filePath);
-              } catch {
-                // Ignore file deletion errors during cleanup
-              }
-            }
-          }
-        }
+      const dirs = [
+        join(this.baseDir, '.cache'),
+        join(this.baseDir, '.locks'),
+        join(this.baseDir, 'logs'),
+        join(this.baseDir, 'backups'),
+      ];
+
+      for (const dir of dirs) {
+        await this.cleanupDirectory(dir);
       }
     } catch (error) {
       logger.error({ msg: 'Cleanup error', error });
+    }
+  }
+
+  private async cleanupDirectory(dir: string): Promise<void> {
+    if (!existsSync(dir)) {
+      return;
+    }
+
+    const glob = new Bun.Glob('*');
+    for await (const file of glob.scan({ cwd: dir, onlyFiles: true })) {
+      await this.cleanupFile(join(dir, file));
+    }
+  }
+
+  private async cleanupFile(filePath: string): Promise<void> {
+    try {
+      await Bun.write(filePath, '');
+      const { unlink } = await import('fs/promises');
+      await unlink(filePath);
+    } catch {
+      // Ignore file deletion errors during cleanup
     }
   }
 
@@ -93,5 +104,47 @@ export class DirectoryManager {
 
   getStatePath(): string {
     return join(this.baseDir, 'state.yaml');
+  }
+
+  // File operations - delegating to Bun's file system
+  async fileExists(filePath: string): Promise<boolean> {
+    const file = Bun.file(filePath);
+    return await file.exists();
+  }
+
+  async readFile(filePath: string): Promise<string> {
+    const file = Bun.file(filePath);
+    return await file.text();
+  }
+
+  async writeFile(filePath: string, content: string): Promise<void> {
+    await Bun.write(filePath, content);
+  }
+
+  async listFiles(dirPath: string): Promise<string[]> {
+    // Check if directory exists before trying to list files
+    if (!existsSync(dirPath)) {
+      return [];
+    }
+
+    const glob = new Bun.Glob('*');
+    const files: string[] = [];
+    for await (const file of glob.scan({ cwd: dirPath, onlyFiles: true })) {
+      files.push(file);
+    }
+    return files;
+  }
+
+  async ensureDirectoriesExist(): Promise<void> {
+    await this.initialize();
+  }
+
+  async deleteFile(filePath: string): Promise<void> {
+    const { unlink } = await import('fs/promises');
+    await unlink(filePath);
+  }
+
+  getArchivePath(): string {
+    return join(this.baseDir, 'archive');
   }
 }

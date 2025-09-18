@@ -290,65 +290,91 @@ export class ServiceRecoveryManager {
     retryFn?: () => Promise<unknown>
   ): Promise<unknown> {
     const config = this.recoveryConfigs.get(serviceName);
-
     if (!config) {
       throw error;
     }
 
-    const currentRetries = this.retryCount.get(serviceName) ?? 0;
+    return this.executeRecoveryStrategy(serviceName, error, config, retryFn);
+  }
 
+  private async executeRecoveryStrategy(
+    serviceName: string,
+    error: Error,
+    config: ServiceRecoveryConfig,
+    retryFn?: () => Promise<unknown>
+  ): Promise<unknown> {
     switch (config.strategy) {
       case RecoveryStrategy.RETRY:
-        if (currentRetries < (config.maxRetries ?? 3)) {
-          this.retryCount.set(serviceName, currentRetries + 1);
-
-          if (config.retryDelay !== undefined && config.retryDelay > 0) {
-            await new Promise((resolve) =>
-              setTimeout(resolve, config.retryDelay)
-            );
-          }
-
-          if (retryFn) {
-            return retryFn();
-          }
-        } else {
-          this.handleRecoveryFailed(serviceName, error, config);
-          throw error;
-        }
-        break;
-
+        return this.handleRetryStrategy(serviceName, error, config, retryFn);
       case RecoveryStrategy.RESTART:
-        // Reset retry count and attempt restart
-        this.retryCount.set(serviceName, 0);
-        if (retryFn) {
-          return retryFn();
-        }
-        break;
-
+        return this.handleRestartStrategy(serviceName, retryFn);
       case RecoveryStrategy.FAILOVER:
-        if (
-          config.fallbackService !== undefined &&
-          config.fallbackService !== ''
-        ) {
-          // Switch to fallback service
-          return config.fallbackService;
-        }
-        throw error;
-
+        return this.handleFailoverStrategy(error, config);
       case RecoveryStrategy.IGNORE:
-        // Log and continue
-        // Ignoring error in service - handled as recovery strategy
         return null;
-
       case RecoveryStrategy.ROLLBACK:
-        this.handleRecoveryFailed(serviceName, error, config);
-        throw new Error(
-          `Rollback required for service ${serviceName}: ${error.message}`
-        );
-
+        return this.handleRollbackStrategy(serviceName, error, config);
       default:
         throw error;
     }
+  }
+
+  private async handleRetryStrategy(
+    serviceName: string,
+    error: Error,
+    config: ServiceRecoveryConfig,
+    retryFn?: () => Promise<unknown>
+  ): Promise<unknown> {
+    const currentRetries = this.retryCount.get(serviceName) ?? 0;
+    const maxRetries = config.maxRetries ?? 3;
+
+    if (currentRetries >= maxRetries) {
+      this.handleRecoveryFailed(serviceName, error, config);
+      throw error;
+    }
+
+    this.retryCount.set(serviceName, currentRetries + 1);
+    await this.applyRetryDelay(config.retryDelay);
+
+    if (retryFn) {
+      return retryFn();
+    }
+    return undefined;
+  }
+
+  private async applyRetryDelay(retryDelay?: number): Promise<void> {
+    if (retryDelay !== undefined && retryDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    }
+  }
+
+  private handleRestartStrategy(
+    serviceName: string,
+    retryFn?: () => Promise<unknown>
+  ): Promise<unknown> | undefined {
+    this.retryCount.set(serviceName, 0);
+    return retryFn ? retryFn() : undefined;
+  }
+
+  private handleFailoverStrategy(
+    error: Error,
+    config: ServiceRecoveryConfig
+  ): unknown {
+    if (config.fallbackService != null && config.fallbackService !== '') {
+      return config.fallbackService;
+    }
+    throw error;
+  }
+
+  private handleRollbackStrategy(
+    serviceName: string,
+    error: Error,
+    config: ServiceRecoveryConfig
+  ): never {
+    this.handleRecoveryFailed(serviceName, error, config);
+    throw new Error(
+      `Rollback required for service ${serviceName}: ${error.message}`
+    );
   }
 
   /**

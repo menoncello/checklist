@@ -291,7 +291,7 @@ describe('Migration Rollback Scenarios', () => {
 
       const backups = await runner.listBackups();
       expect(backups.length).toBe(1);
-      expect(backups[0].version).toBe('0.0.0');
+      expect(backups[0].version).toBe('v0.0.0');
     });
   });
 

@@ -8,8 +8,11 @@ A high-performance, terminal-based interactive checklist application built with 
 - 📝 **Interactive TUI**: Rich terminal interface with keyboard navigation
 - 🔄 **State Management**: YAML-based state persistence with automatic saves
 - 📦 **Modular Architecture**: Clean separation between core, TUI, and CLI layers
-- 🧪 **Well-Tested**: Comprehensive test coverage with Bun's native test runner
+- 🧪 **Well-Tested**: Comprehensive test coverage (>80%) with Bun's native test runner
 - 🎨 **Customizable**: Template-based checklist system
+- 📊 **Performance Monitoring**: Built-in performance dashboard with budget tracking
+- 🔒 **Type-Safe**: Full TypeScript with strict mode enabled
+- 📋 **Structured Logging**: Pino-based logging with structured output
 
 ## Quick Start
 

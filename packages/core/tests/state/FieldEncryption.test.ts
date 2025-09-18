@@ -352,10 +352,10 @@ describe('FieldEncryption', () => {
           apiKey: 'api-secret',
         },
       };
-      
+
       const { data } = await FieldEncryption.encryptObject(original);
       const decrypted = await FieldEncryption.decryptObject(data);
-      
+
       expect(decrypted).toEqual(original);
     });
 
@@ -367,9 +367,9 @@ describe('FieldEncryption', () => {
           apiKey: encryptedField,
         },
       };
-      
+
       const decrypted = await FieldEncryption.decryptObject(obj) as any;
-      
+
       expect(decrypted.plain).toBe('not-encrypted');
       expect(decrypted.config.apiKey).toBe('secret');
     });
@@ -387,9 +387,264 @@ describe('FieldEncryption', () => {
           },
         },
       };
-      
+
       const decrypted = await FieldEncryption.decryptObject(obj) as any;
       expect(decrypted.level1.level2.level3.config.apiKey).toBe('deep-secret');
+    });
+
+    it('should handle arrays in decryption', async () => {
+      const encryptedField1 = await FieldEncryption.encrypt('secret1');
+      const encryptedField2 = await FieldEncryption.encrypt('secret2');
+      const obj = {
+        items: [
+          { data: encryptedField1 },
+          { data: encryptedField2 },
+          { plain: 'not-encrypted' }
+        ],
+      };
+
+      const decrypted = await FieldEncryption.decryptObject(obj) as any;
+
+      expect(decrypted.items[0].data).toBe('secret1');
+      expect(decrypted.items[1].data).toBe('secret2');
+      expect(decrypted.items[2].plain).toBe('not-encrypted');
+    });
+
+    it('should handle primitive values in arrays and objects', async () => {
+      const obj = {
+        numbers: [1, 2, 3],
+        strings: ['a', 'b', 'c'],
+        booleans: [true, false],
+        nulls: [null, undefined],
+      };
+
+      const decrypted = await FieldEncryption.decryptObject(obj);
+
+      expect(decrypted).toEqual(obj);
+    });
+  });
+
+  describe('array processing', () => {
+    beforeEach(async () => {
+      await FieldEncryption.initializeKey();
+    });
+
+    it('should handle arrays with sensitive field patterns', async () => {
+      const obj = {
+        completedSteps: [
+          { name: 'step1', secrets: 'secret1' },
+          { name: 'step2', secrets: 'secret2' },
+          { name: 'step3', credentials: 'creds3' },
+        ],
+      };
+
+      const result = await FieldEncryption.encryptObject(obj);
+      const encrypted = result.data as any;
+
+      // Verify that secrets in array items are encrypted
+      expect(encrypted.completedSteps[0].secrets).toHaveProperty('encrypted', true);
+      expect(encrypted.completedSteps[1].secrets).toHaveProperty('encrypted', true);
+      expect(encrypted.completedSteps[2].credentials).toHaveProperty('encrypted', true);
+
+      // Non-sensitive fields should remain unchanged
+      expect(encrypted.completedSteps[0].name).toBe('step1');
+      expect(encrypted.completedSteps[1].name).toBe('step2');
+      expect(encrypted.completedSteps[2].name).toBe('step3');
+
+      // Check encrypted paths
+      expect(result.encryptedPaths).toContain('completedSteps.0.secrets');
+      expect(result.encryptedPaths).toContain('completedSteps.1.secrets');
+      expect(result.encryptedPaths).toContain('completedSteps.2.credentials');
+    });
+
+    it('should handle nested arrays', async () => {
+      const obj = {
+        items: [
+          [{ someField: 'value1' }],
+          [{ someField: 'value2' }],
+        ],
+      };
+
+      const result = await FieldEncryption.encryptObject(obj);
+      const encrypted = result.data as any;
+
+      // Nested arrays should be processed but no sensitive fields to encrypt here
+      expect(encrypted.items[0][0].someField).toBe('value1');
+      expect(encrypted.items[1][0].someField).toBe('value2');
+      expect(result.encryptedPaths).toEqual([]);
+    });
+
+    it('should handle empty arrays', async () => {
+      const obj = { items: [] };
+      const result = await FieldEncryption.encryptObject(obj);
+
+      expect(result.data).toEqual({ items: [] });
+      expect(result.encryptedPaths).toEqual([]);
+    });
+  });
+
+  describe('updateMetadata', () => {
+    beforeEach(async () => {
+      await FieldEncryption.initializeKey();
+    });
+
+    it('should create metadata file when none exists', async () => {
+      const encryptedPaths = ['config.apiKey', 'activeInstance.secrets'];
+      await FieldEncryption.updateMetadata(encryptedPaths);
+
+      const file = Bun.file(metadataFile);
+      expect(await file.exists()).toBe(true);
+
+      const metadata = await file.json();
+      expect(metadata.version).toBe('1.0.0');
+      expect(metadata.encryptedFields).toEqual(encryptedPaths);
+      expect(metadata.keyId).toBeDefined();
+      expect(metadata.createdAt).toBeDefined();
+    });
+
+    it('should update existing metadata file', async () => {
+      // Create initial metadata
+      await FieldEncryption.updateMetadata(['config.apiKey']);
+
+      // Update with new paths
+      await FieldEncryption.updateMetadata(['activeInstance.secrets', 'config.apiKey']);
+
+      const file = Bun.file(metadataFile);
+      const metadata = await file.json();
+
+      // Should combine paths (no duplicates)
+      expect(metadata.encryptedFields).toContain('config.apiKey');
+      expect(metadata.encryptedFields).toContain('activeInstance.secrets');
+      expect(metadata.encryptedFields.length).toBe(2);
+    });
+
+  });
+
+  describe('rotateKey', () => {
+    it('should validate the method exists and accepts correct parameters', () => {
+      // The rotateKey method exists and is properly typed
+      expect(typeof FieldEncryption.rotateKey).toBe('function');
+
+      // Can be called with proper function signatures
+      const decryptFn = async () => ({ test: 'data' });
+      const encryptFn = async (data: unknown) => {};
+
+      expect(() => FieldEncryption.rotateKey(decryptFn, encryptFn)).not.toThrow();
+    });
+  });
+
+  describe('encryptSensitiveFields instance method', () => {
+    let instance: FieldEncryption;
+
+    beforeEach(async () => {
+      await FieldEncryption.initializeKey();
+      instance = new FieldEncryption();
+    });
+
+    it('should encrypt fields with sensitive names', async () => {
+      const data = {
+        username: 'user123',
+        password: 'secret123',
+        apiKey: 'api-secret',
+        token: 'auth-token',
+        secret: 'my-secret',
+        privateKey: 'private-key-data',
+        normalField: 'not-sensitive',
+      };
+
+      const result = await instance.encryptSensitiveFields(data) as any;
+
+      // Sensitive fields should be encrypted
+      expect(result.password).toHaveProperty('encrypted', true);
+      expect(result.apiKey).toHaveProperty('encrypted', true);
+      expect(result.token).toHaveProperty('encrypted', true);
+      expect(result.secret).toHaveProperty('encrypted', true);
+      expect(result.privateKey).toHaveProperty('encrypted', true);
+
+      // Non-sensitive fields should remain unchanged
+      expect(result.username).toBe('user123');
+      expect(result.normalField).toBe('not-sensitive');
+    });
+
+    it('should handle nested objects with sensitive fields', async () => {
+      const data = {
+        user: {
+          name: 'John',
+          credentials: {
+            password: 'secret123',
+            apiKey: 'api-secret',
+          },
+        },
+        config: {
+          theme: 'dark',
+          authToken: 'token123',
+        },
+      };
+
+      const result = await instance.encryptSensitiveFields(data) as any;
+
+      // Check nested sensitive fields
+      expect(result.user.credentials.password).toHaveProperty('encrypted', true);
+      expect(result.user.credentials.apiKey).toHaveProperty('encrypted', true);
+      expect(result.config.authToken).toHaveProperty('encrypted', true);
+
+      // Non-sensitive fields should remain unchanged
+      expect(result.user.name).toBe('John');
+      expect(result.config.theme).toBe('dark');
+    });
+
+    it('should only encrypt string values', async () => {
+      const data = {
+        password: 'secret-string',
+        passwordNumber: 12345,
+        passwordObject: { key: 'value' },
+        passwordArray: ['item1', 'item2'],
+        passwordNull: null,
+        passwordUndefined: undefined,
+      };
+
+      const result = await instance.encryptSensitiveFields(data) as any;
+
+      // Only string should be encrypted
+      expect(result.password).toHaveProperty('encrypted', true);
+
+      // Non-string values should remain unchanged
+      expect(result.passwordNumber).toBe(12345);
+      expect(result.passwordObject).toEqual({ key: 'value' });
+      expect(result.passwordArray).toEqual(['item1', 'item2']);
+      expect(result.passwordNull).toBe(null);
+      expect(result.passwordUndefined).toBe(undefined);
+    });
+
+    it('should handle non-object input', async () => {
+      expect(await instance.encryptSensitiveFields(null)).toBe(null);
+      expect(await instance.encryptSensitiveFields(undefined)).toBe(undefined);
+      expect(await instance.encryptSensitiveFields('string')).toBe('string');
+      expect(await instance.encryptSensitiveFields(123)).toBe(123);
+      expect(await instance.encryptSensitiveFields(true)).toBe(true);
+    });
+
+    it('should handle empty objects', async () => {
+      const result = await instance.encryptSensitiveFields({});
+      expect(result).toEqual({});
+    });
+
+    it('should case-insensitive match sensitive field names', async () => {
+      const data = {
+        PASSWORD: 'secret1',
+        ApiKey: 'secret2',
+        mySecretField: 'secret3',
+        tokenData: 'secret4',
+        PrivateKeyValue: 'secret5',
+      };
+
+      const result = await instance.encryptSensitiveFields(data) as any;
+
+      expect(result.PASSWORD).toHaveProperty('encrypted', true);
+      expect(result.ApiKey).toHaveProperty('encrypted', true);
+      expect(result.mySecretField).toHaveProperty('encrypted', true);
+      expect(result.tokenData).toHaveProperty('encrypted', true);
+      expect(result.PrivateKeyValue).toHaveProperty('encrypted', true);
     });
   });
 });
