@@ -1,209 +1,199 @@
-import { DataProcessor } from './helpers/DataProcessor';
+import { StatePreservationCompressionManager } from './StatePreservationCompressionManager';
+import { StatePreservationDiskManager } from './StatePreservationDiskManager';
+import { StatePreservationEventManager } from './StatePreservationEventManager';
+import { StatePreservationProcessor } from './StatePreservationProcessor';
+import { StatePreservationTimerManager } from './StatePreservationTimerManager';
+import { SerializerManager, StateSerializer } from './StateSerializer';
 import {
-  SnapshotManager,
+  StateStorageManager,
   PreservedState,
   StateSnapshot,
-} from './helpers/SnapshotManager';
-import {
-  StateSerializerManager,
-  StateSerializer,
-} from './helpers/StateSerializerManager';
-import {
-  StorageManager,
-  StatePreservationMetrics,
-} from './helpers/StorageManager';
+  StatePreservationConfig,
+  PreservationOptions,
+} from './StateStorage';
 
+// Re-export types from helper classes
 export {
   PreservedState,
   StateSnapshot,
+  StatePreservationConfig,
+  PreservationOptions,
   StateSerializer,
-  StatePreservationMetrics,
 };
-
-export interface StatePreservationConfig {
-  maxStorageSize: number;
-  compressionThreshold: number;
-  defaultTTL: number;
-  enableCompression: boolean;
-  enableEncryption: boolean;
-  storageBackend: 'memory' | 'disk';
-  persistPath?: string;
-}
 
 export class StatePreservation {
   private config: StatePreservationConfig;
-  private states = new Map<string, PreservedState>();
-  private eventHandlers = new Map<string, Set<Function>>();
-
-  private dataProcessor: DataProcessor;
-  private serializerManager: StateSerializerManager;
-  private snapshotManager: SnapshotManager;
-  private storageManager: StorageManager;
+  private eventManager: StatePreservationEventManager;
+  private timerManager: StatePreservationTimerManager;
+  private compressionManager: StatePreservationCompressionManager;
+  private processor: StatePreservationProcessor;
+  private diskManager: StatePreservationDiskManager;
+  private serializerManager = new SerializerManager();
+  private storageManager = new StateStorageManager();
 
   constructor(config: Partial<StatePreservationConfig> = {}) {
+    this.initializeConfig(config);
+    this.initializeManagers();
+    this.initializeProcessors();
+    this.setupTimers();
+  }
+
+  private initializeConfig(config: Partial<StatePreservationConfig>): void {
     this.config = {
-      maxStorageSize: 50 * 1024 * 1024, // 50MB
-      compressionThreshold: 1024, // 1KB
-      defaultTTL: 3600000, // 1 hour
+      maxStorageSize: 50 * 1024 * 1024,
+      compressionThreshold: 1024,
+      defaultTTL: 3600000,
       enableCompression: true,
       enableEncryption: false,
       storageBackend: 'memory',
       ...config,
     };
+  }
 
-    this.dataProcessor = new DataProcessor(
-      this.config.enableCompression,
-      this.config.compressionThreshold
+  private initializeManagers(): void {
+    this.eventManager = new StatePreservationEventManager();
+    this.timerManager = new StatePreservationTimerManager();
+    this.compressionManager = new StatePreservationCompressionManager(
+      this.config.compressionThreshold,
+      this.config.enableCompression
     );
+  }
 
-    this.serializerManager = new StateSerializerManager();
-    this.snapshotManager = new SnapshotManager();
-    this.storageManager = new StorageManager(
-      this.config.maxStorageSize,
-      this.config.persistPath,
-      (key, state) => this.emit('stateExpired', { key, state })
+  private initializeProcessors(): void {
+    this.processor = new StatePreservationProcessor(
+      this.serializerManager,
+      this.compressionManager,
+      this.config.defaultTTL
     );
+    this.diskManager = new StatePreservationDiskManager(
+      {
+        persistPath: this.config.persistPath,
+        storageBackend: this.config.storageBackend,
+      },
+      (data) => this.eventManager.emit('persistedToDisk', data),
+      (data) => this.eventManager.emit('persistError', data)
+    );
+    this.serializerManager.setupDefaultSerializers();
+  }
 
-    this.storageManager.startCleanupTimer(60000, () => this.performCleanup()); // Every minute
-
+  private setupTimers(): void {
+    this.startCleanupTimer();
     if (this.config.storageBackend === 'disk') {
-      this.storageManager.startPersistTimer(300000, () => this.persistToDisk()); // Every 5 minutes
+      this.startPersistTimer();
     }
   }
 
   public preserve(
     key: string,
     data: unknown,
-    options: {
-      ttl?: number;
-      source?: string;
-      version?: string;
-    } = {}
-  ): void {
+    options: PreservationOptions = {}
+  ): string {
     try {
-      const preserved = this.createPreservedState(data, options);
-      this.storePreservedState(key, preserved);
-    } catch (error) {
-      this.emit('preservationError', {
+      const preserved = this.processor.createPreservedState(key, data, options);
+      const estimatedSize = this.storageManager.estimateSize(preserved);
+
+      this.checkStorageLimits(estimatedSize);
+      this.storageManager.preserveState(key, preserved, estimatedSize);
+
+      this.eventManager.emit('statePreserved', {
         key,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        id: preserved.id,
+        size: estimatedSize,
       });
-      throw error;
-    }
-  }
-
-  public restore<T = unknown>(key: string): T | null {
-    const preserved = this.states.get(key);
-    if (preserved == null) {
-      return null;
-    }
-
-    // Check expiration
-    if (preserved.expiresAt != null && Date.now() > preserved.expiresAt) {
-      this.delete(key);
-      return null;
-    }
-
-    try {
-      const processed = this.dataProcessor.deprocessData(
-        preserved.data as string
+      return preserved.id;
+    } catch (error) {
+      this.eventManager.emit('preservationError', { key, error });
+      throw new Error(
+        `Failed to preserve state for key '${key}': ${(error as Error).message}`
       );
-      const restored = this.serializerManager.deserializeData(processed);
-
-      this.emit('stateRestored', { key, state: preserved });
-      return restored as T;
-    } catch (error) {
-      this.emit('restorationError', {
-        key,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
     }
   }
 
-  public createSnapshot(name: string, keys?: string[]): string {
-    return this.snapshotManager.createSnapshot(
-      name,
-      this.states,
-      keys,
-      (state) => this.dataProcessor.estimateSize(JSON.stringify(state))
-    );
-  }
-
-  public restoreFromSnapshot(name: string, selective?: string[]): boolean {
-    const restored = this.snapshotManager.restoreFromSnapshot(
-      name,
-      this.states,
-      selective
-    );
-    if (restored) {
-      this.updateStorageSize();
-      this.emit('snapshotRestored', { name, selective });
-    }
-    return restored;
-  }
-
-  private createPreservedState(
-    data: unknown,
-    options: { ttl?: number; source?: string; version?: string }
-  ): PreservedState {
-    const serialized = this.serializerManager.serializeData(data);
-    const processed = this.dataProcessor.processData(serialized);
-    const checksum = this.dataProcessor.calculateChecksum(processed);
-
-    const expiresAt =
-      options.ttl != null
-        ? Date.now() + options.ttl
-        : Date.now() + this.config.defaultTTL;
-
-    return {
-      id: `preserved-${Date.now()}-${Math.random()}`,
-      timestamp: Date.now(),
-      data: processed,
-      metadata: {
-        source: options.source ?? 'unknown',
-        version: options.version ?? '1.0.0',
-        checksum,
-      },
-      expiresAt,
-    };
-  }
-
-  private storePreservedState(key: string, preserved: PreservedState): void {
-    this.states.set(key, preserved);
-    this.updateStorageSize();
-    this.emit('statePreserved', { key, state: preserved });
-
-    if (this.storageManager.isOverLimit()) {
+  private checkStorageLimits(estimatedSize: number): void {
+    if (
+      this.storageManager.getCurrentStorageSize() + estimatedSize >
+      this.config.maxStorageSize
+    ) {
       this.performCleanup();
     }
   }
 
-  private updateStorageSize(): void {
-    this.storageManager.recalculateStorageSize(this.states, (state) =>
-      this.dataProcessor.estimateSize(JSON.stringify(state))
-    );
+  public restore<T = unknown>(key: string): T | null {
+    const preserved = this.storageManager.getState(key);
+    if (!preserved) return null;
+
+    if (this.processor.isExpired(preserved)) {
+      this.storageManager.deleteState(key);
+      this.eventManager.emit('stateExpired', { key });
+      return null;
+    }
+
+    try {
+      const data = this.processor.restoreStateData(preserved);
+      this.eventManager.emit('stateRestored', { key, id: preserved.id });
+      return data as T;
+    } catch (error) {
+      this.eventManager.emit('restorationError', { key, error });
+      throw new Error(
+        `Failed to restore state for key '${key}': ${(error as Error).message}`
+      );
+    }
+  }
+
+  public createSnapshot(name: string, keys?: string[]): string {
+    const snapshot = this.storageManager.createSnapshot(name, keys);
+
+    this.eventManager.emit('snapshotCreated', {
+      name,
+      id: snapshot.id,
+      stateCount: snapshot.states.size,
+      totalSize: snapshot.totalSize,
+    });
+
+    return snapshot.id;
+  }
+
+  public restoreFromSnapshot(name: string, selective?: string[]): boolean {
+    const snapshot = this.storageManager.getSnapshot(name);
+    if (!snapshot) return false;
+
+    try {
+      const restoredCount = this.storageManager.restoreFromSnapshot(
+        snapshot,
+        selective
+      );
+      this.eventManager.emit('snapshotRestored', { name, restoredCount });
+      return true;
+    } catch (error) {
+      this.eventManager.emit('snapshotRestorationError', { name, error });
+      return false;
+    }
   }
 
   private performCleanup(): void {
-    const result = this.storageManager.performCleanup(this.states, (state) =>
-      this.dataProcessor.estimateSize(JSON.stringify(state))
+    const { cleanedCount, cleanedSize } = this.storageManager.performCleanup(
+      this.config
     );
 
-    if (result.cleaned > 0) {
-      this.emit('cleanupPerformed', result);
+    if (cleanedCount > 0) {
+      this.eventManager.emit('cleanupPerformed', { cleanedCount, cleanedSize });
     }
   }
 
+  private startCleanupTimer(): void {
+    this.timerManager.startCleanupTimer(() => {
+      this.performCleanup();
+    }, 60000); // Every minute
+  }
+
+  private startPersistTimer(): void {
+    this.timerManager.startPersistTimer(() => {
+      this.persistToDisk();
+    }, 300000); // Every 5 minutes
+  }
+
   private async persistToDisk(): Promise<void> {
-    try {
-      await this.storageManager.persistToDisk(this.states);
-      this.emit('statePersisted', { count: this.states.size });
-    } catch (error) {
-      this.emit('persistenceError', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    await this.diskManager.persistToDisk(this.storageManager);
   }
 
   public addSerializer(serializer: StateSerializer): void {
@@ -215,11 +205,11 @@ export class StatePreservation {
   }
 
   public exists(key: string): boolean {
-    const state = this.states.get(key);
-    if (state == null) return false;
+    const state = this.storageManager.getState(key);
+    if (!state) return false;
 
-    if (state.expiresAt != null && Date.now() > state.expiresAt) {
-      this.delete(key);
+    if (this.processor.isExpired(state)) {
+      this.storageManager.deleteState(key);
       return false;
     }
 
@@ -227,47 +217,70 @@ export class StatePreservation {
   }
 
   public delete(key: string): boolean {
-    const deleted = this.states.delete(key);
+    const deleted = this.storageManager.deleteState(key);
     if (deleted) {
-      this.updateStorageSize();
-      this.emit('stateDeleted', { key });
+      this.eventManager.emit('stateDeleted', { key });
     }
     return deleted;
   }
 
   public clear(): void {
-    this.states.clear();
-    this.snapshotManager.clear();
-    this.storageManager.trackStorageSize(0);
-    this.emit('allStatesCleared');
+    const count = this.storageManager.getStatesSize();
+    this.storageManager.clear();
+    this.eventManager.emit('cleared', { count });
   }
 
   public getKeys(): string[] {
-    return Array.from(this.states.keys());
+    return this.storageManager.getValidKeys();
   }
 
   public getSnapshots(): string[] {
-    return this.snapshotManager.getSnapshotNames();
+    return this.storageManager.getSnapshotKeys();
   }
 
   public getMetrics(): StatePreservationMetrics {
-    return this.storageManager.getMetrics(this.states);
+    return {
+      totalStates: this.storageManager.getStatesSize(),
+      totalSnapshots: this.storageManager.getSnapshotsSize(),
+      currentStorageSize: this.storageManager.getCurrentStorageSize(),
+      maxStorageSize: this.config.maxStorageSize,
+      utilizationPercent:
+        (this.storageManager.getCurrentStorageSize() /
+          this.config.maxStorageSize) *
+        100,
+      expiredStates: 0,
+      serializerCount: this.serializerManager.size(),
+      compressionEnabled: this.config.enableCompression,
+      storageBackend: this.config.storageBackend,
+    };
   }
 
   public updateConfig(newConfig: Partial<StatePreservationConfig>): void {
     this.config = { ...this.config, ...newConfig };
 
-    this.dataProcessor.updateConfig(
-      this.config.enableCompression,
-      this.config.compressionThreshold
-    );
+    // Update processors with new config
+    if (newConfig.defaultTTL) {
+      this.processor.updateDefaultTTL(newConfig.defaultTTL);
+    }
 
-    this.storageManager.updateConfig(
-      this.config.maxStorageSize,
-      this.config.persistPath
-    );
+    // Update disk manager config
+    this.diskManager.updateConfig({
+      persistPath: this.config.persistPath,
+      storageBackend: this.config.storageBackend,
+    });
 
-    this.emit('configUpdated', this.config);
+    // Restart timers if needed
+    if (
+      newConfig.storageBackend === 'disk' &&
+      !this.timerManager.hasPersistTimer()
+    ) {
+      this.startPersistTimer();
+    } else if (
+      newConfig.storageBackend === 'memory' &&
+      this.timerManager.hasPersistTimer()
+    ) {
+      this.timerManager.stopPersistTimer();
+    }
   }
 
   public getConfig(): StatePreservationConfig {
@@ -275,42 +288,29 @@ export class StatePreservation {
   }
 
   public destroy(): void {
-    this.storageManager.destroy();
-    this.clear();
-    this.eventHandlers.clear();
-    this.emit('destroyed');
+    this.timerManager.destroy();
+    this.storageManager.clear();
+    this.serializerManager.clear();
+    this.eventManager.clear();
   }
 
   public on(event: string, handler: Function): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.add(handler);
-    }
+    this.eventManager.on(event, handler);
   }
 
   public off(event: string, handler: Function): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.delete(handler);
-    }
+    this.eventManager.off(event, handler);
   }
+}
 
-  private emit(event: string, data?: unknown): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
-      handlers.forEach((handler) => {
-        try {
-          handler(data);
-        } catch (error) {
-          console.error(
-            `Error in state preservation event handler for '${event}':`,
-            error
-          );
-        }
-      });
-    }
-  }
+export interface StatePreservationMetrics {
+  totalStates: number;
+  totalSnapshots: number;
+  currentStorageSize: number;
+  maxStorageSize: number;
+  utilizationPercent: number;
+  expiredStates: number;
+  serializerCount: number;
+  compressionEnabled: boolean;
+  storageBackend: string;
 }
