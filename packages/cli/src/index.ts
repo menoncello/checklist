@@ -1,98 +1,124 @@
 #!/usr/bin/env bun
 
-import { MigrateCommand, MigrateOptions } from './commands/migrate';
+/**
+ * CLI Core Interface - Main Entry Point
+ * Implements Story 2.1: CLI Core Interface with argument parsing,
+ * command registry, and Unix-standard error handling
+ */
 
-export const version = '0.0.1';
+// Import all commands
+import { AddCommand } from './commands/add';
+import { HelpCommand } from './commands/help';
+import { InitCommand } from './commands/init';
+import { ListCommand } from './commands/list';
+import { MigrateCommand } from './commands/migrate';
+import { ResetCommand } from './commands/reset';
+import { RunCommand } from './commands/run';
+import { StatusCommand } from './commands/status';
+import { ErrorHandler, CommandNotFoundError } from './errors';
+import { CommandParser } from './parser';
+import { CommandRegistry } from './registry';
+import { ExitCode, type ParsedArgs } from './types';
 
-const args = Bun.argv.slice(2);
-const command = args[0];
+class CLIApplication {
+  private registry = new CommandRegistry();
 
-function showVersion(): void {
-  console.log(`checklist version ${version}`);
-}
-
-function showHelp(): void {
-  console.log(`
-Checklist CLI - Manage your checklists and workflows
-
-Usage: checklist [command] [options]
-
-Commands:
-  migrate              Run state file migrations
-    --check            Check current state version
-    --dry-run          Show what would change without applying
-    --backup-only      Create backup without migrating
-    --list-backups     List available backups
-    --restore <path>   Restore from specific backup
-    --verbose, -v      Show detailed output
-
-  --version, -v        Show version
-  --help, -h           Show this help message
-
-Examples:
-  checklist migrate --check
-  checklist migrate --dry-run
-  checklist migrate --backup-only
-  checklist migrate --restore ~/.checklist/backups/backup-20240101.yaml
-`);
-}
-
-function handleRestoreOption(args: string[], index: number): string | null {
-  if (index + 1 < args.length) {
-    return args[index + 1];
+  constructor() {
+    this.registerCommands();
   }
-  console.error('--restore requires a backup path');
-  process.exit(1);
-}
 
-function parseMigrateOptions(args: string[]): MigrateOptions {
-  const options: MigrateOptions = {};
-  const optionMap: Record<string, keyof MigrateOptions> = {
-    '--check': 'check',
-    '--dry-run': 'dryRun',
-    '--backup-only': 'backupOnly',
-    '--list-backups': 'listBackups',
-    '--verbose': 'verbose',
-    '-v': 'verbose',
-  };
+  private registerCommands(): void {
+    // Register all commands
+    this.registry.register(new InitCommand());
+    this.registry.register(new RunCommand());
+    this.registry.register(new AddCommand());
+    this.registry.register(new StatusCommand());
+    this.registry.register(new ResetCommand());
+    this.registry.register(new ListCommand());
+    this.registry.register(new MigrateCommand());
 
-  for (let i = 1; i < args.length; i++) {
-    const arg = args[i];
+    // Help command needs registry reference
+    this.registry.register(new HelpCommand(this.registry));
+  }
 
-    if (arg === '--restore') {
-      const value = handleRestoreOption(args, i);
-      if (value != null && value !== '') {
-        options.restore = value;
-        i++; // Skip next arg since it's the value
+  async run(): Promise<void> {
+    try {
+      // Parse arguments using Bun.argv for performance
+      const parsedArgs = CommandParser.parse();
+
+      // Validate input for security
+      CommandParser.validateInput(parsedArgs);
+
+      // Handle global flags first
+      if (this.handleGlobalFlags(parsedArgs)) {
+        return;
       }
-    } else if (arg.startsWith('--restore=')) {
-      options.restore = arg.substring('--restore='.length);
-    } else if (optionMap[arg]) {
-      const key = optionMap[arg];
-      options[key] = true as never;
+
+      // Find and execute command
+      const command = this.registry.get(parsedArgs.command);
+      if (!command) {
+        const suggestions = this.registry.getSuggestions(parsedArgs.command);
+        throw new CommandNotFoundError(parsedArgs.command, suggestions);
+      }
+
+      // Execute the command
+      await command.action(parsedArgs.options);
+    } catch (error) {
+      const debug = this.hasDebugFlag();
+      ErrorHandler.handle(error, debug);
     }
   }
 
-  return options;
-}
+  private handleGlobalFlags(parsedArgs: ParsedArgs): boolean {
+    const { options, command } = parsedArgs;
 
-async function handleMigrateCommand(): Promise<void> {
-  const options = parseMigrateOptions(args);
-  const migrateCommand = new MigrateCommand();
-  await migrateCommand.execute(options);
-}
+    // Version flag (can be command or option)
+    if (
+      Boolean(options.version) ||
+      Boolean(options.v) ||
+      command === '--version' ||
+      command === '-v'
+    ) {
+      console.log('checklist version 0.0.1');
+      process.exit(ExitCode.SUCCESS);
+    }
 
-async function main() {
-  if (command === 'migrate') {
-    await handleMigrateCommand();
-  } else if (command === '--version' || command === '-v') {
-    showVersion();
-  } else {
-    showHelp();
+    // Help flag (can be command or option)
+    if (
+      Boolean(options.help) ||
+      Boolean(options.h) ||
+      command === '--help' ||
+      command === '-h'
+    ) {
+      const helpCommand = new HelpCommand(this.registry);
+      void helpCommand.action({ _: [] });
+      process.exit(ExitCode.SUCCESS);
+    }
+
+    return false;
+  }
+
+  private hasDebugFlag(): boolean {
+    return Bun.argv.includes('--debug');
   }
 }
 
-main().catch((error) => {
-  console.error('Error:', error);
-  process.exit(1);
+// Main execution
+async function main(): Promise<void> {
+  // Handle uncaught exceptions gracefully
+  process.on('uncaughtException', (error) => {
+    ErrorHandler.handle(error, Bun.argv.includes('--debug'));
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    ErrorHandler.handle(reason, Bun.argv.includes('--debug'));
+  });
+
+  const app = new CLIApplication();
+  await app.run();
+}
+
+// Execute main function
+void main().catch((error) => {
+  ErrorHandler.handle(error, Bun.argv.includes('--debug'));
 });
