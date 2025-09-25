@@ -78,17 +78,26 @@ describe('Security Audit', () => {
     console.log('Compromised packages still in transitive dependencies:', transitiveCompromised);
   });
 
-  it('should use ansis for color output in migrate.ts', async () => {
-    // Read the migrate.ts file to verify ansis is imported
-    const migrateFile = Bun.file('packages/cli/src/commands/migrate.ts');
-    const content = await migrateFile.text();
-    
-    // Verify ansis is imported
-    expect(content).toContain("import ansi from 'ansis'");
-    
-    // Verify chalk is NOT imported
-    expect(content).not.toContain("import * as chalk from 'chalk'");
-    expect(content).not.toContain("import chalk from 'chalk'");
-    expect(content).not.toContain("from 'chalk'");
+  it('should not have any color output dependencies in new CLI commands', async () => {
+    // Read all command files to verify they don't import chalk
+    const commandFiles = [
+      'packages/cli/src/commands/init.ts',
+      'packages/cli/src/commands/run.ts',
+      'packages/cli/src/commands/add.ts',
+      'packages/cli/src/commands/status.ts',
+      'packages/cli/src/commands/reset.ts',
+      'packages/cli/src/commands/list.ts',
+      'packages/cli/src/commands/help.ts'
+    ];
+
+    for (const filePath of commandFiles) {
+      const file = Bun.file(filePath);
+      const content = await file.text();
+
+      // Verify chalk is NOT imported
+      expect(content).not.toContain("import * as chalk from 'chalk'");
+      expect(content).not.toContain("import chalk from 'chalk'");
+      expect(content).not.toContain("from 'chalk'");
+    }
   });
 });

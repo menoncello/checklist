@@ -10,6 +10,7 @@
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
+    "check-types": "tsc --noEmit",
     "type-check": "tsc --noEmit"
   }
 }

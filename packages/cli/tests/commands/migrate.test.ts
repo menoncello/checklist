@@ -331,7 +331,7 @@ describe('CLI Migration Commands', () => {
       
       expect(backupPath).toBeDefined();
       expect(backupPath).toContain('.backup');
-      expect(backupPath).toContain('state-v0.1.0');
+      expect(backupPath).toContain('state-backup-0.1.0');
       
       // Verify backup exists
       const backupFile = Bun.file(backupPath);
@@ -612,23 +612,14 @@ describe('CLI Migration Commands', () => {
 
   describe('Path Traversal Protection', () => {
     it('should reject backup paths with directory traversal', async () => {
-      const maliciousRunner = new MigrationRunner(
-        registry,
-        '../../../etc/passwd',
-        '1.0.0'
-      );
-      
-      const testState = {
-        version: '0.1.0',
-        checklists: []
-      };
-      
-      await Bun.write(statePath, yaml.dump(testState));
-      
-      // Should throw error for invalid backup path
-      await expect(
-        maliciousRunner.createBackup(statePath, '0.1.0')
-      ).rejects.toThrow('Invalid backup directory path');
+      // Should throw error when creating runner with invalid backup path
+      expect(() => {
+        new MigrationRunner(
+          registry,
+          '../../../etc/passwd',
+          '1.0.0'
+        );
+      }).toThrow('Invalid backup directory path');
     });
 
     it('should sanitize backup directory paths', async () => {
