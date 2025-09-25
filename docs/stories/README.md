@@ -21,9 +21,10 @@ stories/
 **Total: 49 user stories + 1 setup story across 5 epics**
 
 ### 📊 Current Progress
-- **Completed**: 19 stories (37.3%)
-- **Remaining**: 31 stories (62.7%)
+- **Completed**: 20 stories (39.2%)
+- **Remaining**: 30 stories (60.8%)
 - **Epic 1**: 19/19 stories complete (100%) ✅ **EPIC 1 COMPLETE!**
+- **Epic 2**: 1/7 stories complete (14.3%)
 
 ## Implementation Order
 
@@ -65,7 +66,7 @@ stories/
 **Timeline: Weeks 4-5** (adjusted for Epic 1 extension)
 
 - [ ] [Epic 2: User Interface & Interaction](epic-2/epic-2-overview.md)
-  - [ ] [Story 2.1: CLI Core Interface](epic-2/story-2.1-cli-core-interface.md)
+  - [x] [Story 2.1: CLI Core Interface](epic-2/story-2.1-cli-core-interface.md) ✅ **COMPLETE**
   - [ ] [Story 2.2: Interactive Selection System](epic-2/story-2.2-interactive-selection.md)
   - [ ] [Story 2.3: Progress Visualization](epic-2/story-2.3-progress-visualization.md)
   - [ ] [Story 2.4: State Operations Interface](epic-2/story-2.4-state-operations.md)
