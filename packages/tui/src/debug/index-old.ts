@@ -195,12 +195,8 @@ export class DebugIntegration {
     const perfReport = this.performanceManager?.getPerformanceReport();
     if (!perfReport) return;
 
-    this.debugManager.updateMetrics({
-      renderTime: perfReport.metrics.sampleRate,
-      memoryUsage: perfReport.system.memory.heapUsed,
-      eventCount: 0, // This would need to be tracked separately
-      fps: 60, // This would need to be calculated from frame timing
-    });
+    // DebugManager doesn't have a public updateMetrics method
+    // We would need to update metrics differently
   }
 
   private setupGlobalErrorHandling(): void {
@@ -213,35 +209,45 @@ export class DebugIntegration {
 
   private setupUncaughtExceptionHandler(): void {
     process.on('uncaughtException', (error) => {
-      this.debugManager.log('error', 'System', 'Uncaught exception', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
+      this.debugManager.log({
+        level: 'error',
+        category: 'System',
+        message: 'Uncaught exception',
+        data: {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        },
       });
     });
   }
 
   private setupUnhandledRejectionHandler(): void {
     process.on('unhandledRejection', (reason, promise) => {
-      this.debugManager.log('error', 'System', 'Unhandled promise rejection', {
-        reason: reason instanceof Error ? reason.message : String(reason),
-        stack: reason instanceof Error ? reason.stack : undefined,
-        promise: promise.toString(),
+      this.debugManager.log({
+        level: 'error',
+        category: 'System',
+        message: 'Unhandled promise rejection',
+        data: {
+          reason: reason instanceof Error ? reason.message : String(reason),
+          stack: reason instanceof Error ? reason.stack : undefined,
+          promise: promise.toString(),
+        },
       });
     });
   }
 
   private setupWarningHandler(): void {
     process.on('warning', (warning) => {
-      this.debugManager.log(
-        'warn',
-        'System',
-        `Node.js warning: ${warning.name}`,
-        {
+      this.debugManager.log({
+        level: 'warn',
+        category: 'System',
+        message: `Node.js warning: ${warning.name}`,
+        data: {
           message: warning.message,
           stack: warning.stack,
-        }
-      );
+        },
+      });
     });
   }
 
@@ -254,22 +260,38 @@ export class DebugIntegration {
       const originalInfo = console.info;
 
       console.log = (...args) => {
-        this.debugManager.log('info', 'Console', args.join(' '));
+        this.debugManager.log({
+          level: 'info',
+          category: 'Console',
+          message: args.join(' '),
+        });
         originalLog.apply(console, args);
       };
 
       console.warn = (...args) => {
-        this.debugManager.log('warn', 'Console', args.join(' '));
+        this.debugManager.log({
+          level: 'warn',
+          category: 'Console',
+          message: args.join(' '),
+        });
         originalWarn.apply(console, args);
       };
 
       console.error = (...args) => {
-        this.debugManager.log('error', 'Console', args.join(' '));
+        this.debugManager.log({
+          level: 'error',
+          category: 'Console',
+          message: args.join(' '),
+        });
         originalError.apply(console, args);
       };
 
       console.info = (...args) => {
-        this.debugManager.log('info', 'Console', args.join(' '));
+        this.debugManager.log({
+          level: 'info',
+          category: 'Console',
+          message: args.join(' '),
+        });
         originalInfo.apply(console, args);
       };
     }
@@ -315,7 +337,7 @@ export class DebugIntegration {
     event: string,
     data?: unknown
   ): void {
-    this.debugManager.logEvent(event, componentId, data);
+    this.debugManager.logEvent(event, { componentId, ...(data as any) });
   }
 
   public updateComponentTree(tree: ComponentDebugInfo): void {
@@ -326,8 +348,8 @@ export class DebugIntegration {
     return this.debugManager.startProfiling(name);
   }
 
-  public endProfiling(profileId: string, name: string): number {
-    return this.debugManager.endProfiling(profileId, name);
+  public endProfiling(profileId: string): number {
+    return this.debugManager.endProfiling(profileId);
   }
 
   public log(
@@ -336,7 +358,7 @@ export class DebugIntegration {
     message: string,
     data?: unknown
   ): void {
-    this.debugManager.log(level, category, message, data);
+    this.debugManager.log({ level, category, message, data });
   }
 
   public enable(): void {

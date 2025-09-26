@@ -12,7 +12,7 @@ import {
   type CrashRecoveryConfig,
   type RecoveryStrategy,
   type CrashState,
-} from './CrashRecovery';
+} from '../../src/errors/CrashRecovery';
 
 describe('CrashRecovery', () => {
   let crashRecovery: CrashRecovery;

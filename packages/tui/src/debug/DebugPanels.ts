@@ -35,7 +35,7 @@ export class DebugPanelRenderer {
       `🎯 Events: ${m.eventCount}`,
       `💾 Memory: ${(m.memoryUsage / 1024 / 1024).toFixed(2)}MB`,
       `📈 FPS: ${m.fps.toFixed(1)}`,
-      `🕐 Last Update: ${new Date(m.lastUpdate).toLocaleTimeString()}`,
+      `🕐 Last Update: ${m.lastUpdate !== undefined && m.lastUpdate !== null ? new Date(m.lastUpdate).toLocaleTimeString() : 'N/A'}`,
     ];
 
     if (typeof process !== 'undefined') {
@@ -58,9 +58,9 @@ export class DebugPanelRenderer {
     const tree = this.debugManager.getComponentTree();
     const lines: string[] = [];
 
-    if (tree) {
+    if (tree !== null && tree !== undefined) {
       lines.push('🧩 Component Tree', '');
-      this.addComponentTree(tree, lines, 0, width);
+      this.addComponentTree(tree as ComponentDebugInfo, lines, 0, width);
     } else {
       lines.push('No component tree available');
     }
@@ -124,14 +124,14 @@ export class DebugPanelRenderer {
   ): void {
     const indent = '  '.repeat(depth);
     const prefix = depth > 0 ? '├─ ' : '';
-    const icon = comp.state === 'mounted' ? '✅' : '⏸️';
+    const icon = (comp.state as unknown as string) === 'mounted' ? '✅' : '⏸️';
     lines.push(
       this.truncateLine(
         `${icon} ${indent}${prefix}${comp.type} (${comp.id})`,
         width
       )
     );
-    comp.children.forEach((child) =>
+    (comp.children ?? []).forEach((child) =>
       this.addComponentTree(child, lines, depth + 1, width)
     );
   }

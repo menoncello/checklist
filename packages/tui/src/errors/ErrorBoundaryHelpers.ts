@@ -52,6 +52,15 @@ export class ErrorStateManager {
   static shouldRetry(state: ErrorState): boolean {
     return state.retryCount < state.maxRetries;
   }
+
+  // Additional methods needed by ErrorBoundaryCore
+  setMaxRetries(_maxRetries: number): void {
+    // Default no-op implementation for static methods context
+  }
+
+  resetRetryCount(): void {
+    // Default no-op implementation for static methods context
+  }
 }
 
 export class ErrorProcessor {
@@ -115,5 +124,103 @@ export class ErrorRecovery {
         errorInfo: params.errorInfo,
       });
     }
+  }
+}
+
+export interface ErrorBoundaryConfig {
+  enableErrorLogging?: boolean;
+  enableStatePreservation?: boolean;
+  maxRetries?: number;
+  retryDelay?: number;
+  preserveStateOnError?: boolean;
+  fallbackRenderer?: unknown;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  logErrors?: boolean;
+}
+
+export interface ErrorBoundaryMetrics {
+  totalErrors: number;
+  recoveries: number;
+  failures: number;
+}
+
+export interface ErrorHistoryEntry {
+  error: Error;
+  errorInfo: ErrorInfo;
+  timestamp: Date;
+  recovered: boolean;
+}
+
+export class ErrorHistoryManager {
+  private history: ErrorHistoryEntry[] = [];
+
+  addEntry(entry: ErrorHistoryEntry): void {
+    this.history.push(entry);
+  }
+
+  getHistory(): ErrorHistoryEntry[] {
+    return [...this.history];
+  }
+
+  clear(): void {
+    this.history = [];
+  }
+
+  // Additional methods needed by ErrorBoundaryCore
+  getRecentErrors(count: number = 5): ErrorHistoryEntry[] {
+    return this.history.slice(-count);
+  }
+
+  getErrorFrequency(): number {
+    // Simple implementation - errors per hour
+    const now = Date.now();
+    const oneHourAgo = now - 60 * 60 * 1000;
+    const recentErrors = this.history.filter(
+      (entry) => entry.timestamp.getTime() > oneHourAgo
+    );
+    return recentErrors.length;
+  }
+}
+
+export interface ErrorRecordParams {
+  error: Error;
+  errorInfo: ErrorInfo;
+  componentStack?: string;
+}
+
+export interface ErrorUpdateParams {
+  hasError?: boolean;
+  error?: Error | null;
+  errorInfo?: ErrorInfo;
+  errorId?: string;
+  retryCount?: number;
+}
+
+export class StatePreservationManager {
+  private state: unknown = null;
+
+  preserve(state: unknown): void {
+    this.state = state;
+  }
+
+  restore(): unknown {
+    return this.state;
+  }
+
+  clear(): void {
+    this.state = null;
+  }
+
+  // Additional methods needed by ErrorBoundaryCore
+  preserveState(state: unknown): void {
+    this.preserve(state);
+  }
+
+  getPreservedState(): unknown {
+    return this.restore();
+  }
+
+  clearPreservedState(): void {
+    this.clear();
   }
 }

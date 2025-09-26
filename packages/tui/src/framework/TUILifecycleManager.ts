@@ -1,5 +1,22 @@
 import type { TUIFrameworkState } from '../TUIFramework';
-import type { TUIComponents } from './TUIInitializer';
+import type { DebugIntegrationCore as DebugIntegration } from '../debug/DebugIntegrationCore';
+import type { ErrorBoundary } from '../errors/ErrorBoundary';
+import type { ApplicationLoop } from '../framework/ApplicationLoop';
+import type { PerformanceManager } from '../performance/PerformanceManager';
+
+interface TUIComponents {
+  canvas?: unknown;
+  applicationLoop?: ApplicationLoop;
+  lifecycle?: unknown;
+  screenManager?: unknown;
+  componentRegistry?: unknown;
+  eventManager?: unknown;
+  keyboardHandler?: unknown;
+  capabilityDetector?: unknown;
+  errorBoundary?: ErrorBoundary;
+  performanceManager?: PerformanceManager;
+  debugIntegration?: DebugIntegration;
+}
 
 export class TUILifecycleManager {
   private isShuttingDown = false;
@@ -35,24 +52,23 @@ export class TUILifecycleManager {
 
   private startPerformanceProfiling(): void {
     if (this.components.performanceManager != null) {
-      this.components.performanceManager.startStartupPhase(
+      this.components.performanceManager.startBenchmark(
         'application_start',
-        {
-          description: 'Application startup',
-        }
+        'Application startup'
       );
     }
   }
 
   private async startApplicationLoop(): Promise<void> {
-    await this.components.applicationLoop.start();
+    if (this.components.applicationLoop) {
+      await this.components.applicationLoop.start();
+    }
     this.state.isRunning = true;
   }
 
   private completeStartup(): void {
     if (this.components.performanceManager != null) {
-      this.components.performanceManager.endStartupPhase('application_start');
-      this.components.performanceManager.completeStartup();
+      this.components.performanceManager.endBenchmark('application_start');
     }
 
     this.components.debugIntegration?.log(
@@ -73,7 +89,9 @@ export class TUILifecycleManager {
     );
 
     this.state.isRunning = false;
-    await this.components.applicationLoop.stop();
+    if (this.components.applicationLoop) {
+      await this.components.applicationLoop.stop();
+    }
 
     this.components.debugIntegration?.log(
       'info',
@@ -122,11 +140,13 @@ export class TUILifecycleManager {
 
   private destroyComponent(component: unknown): void {
     if (
-      component &&
-      'destroy' in (component as any) &&
-      typeof (component as any).destroy === 'function'
+      component !== null &&
+      component !== undefined &&
+      typeof component === 'object' &&
+      'destroy' in component &&
+      typeof (component as Record<string, unknown>).destroy === 'function'
     ) {
-      (component as any).destroy();
+      ((component as Record<string, unknown>).destroy as () => void)();
     }
   }
 

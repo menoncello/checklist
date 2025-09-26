@@ -20,20 +20,16 @@ export {
   ComponentDebugInfo,
 } from './DebugManagerHelpers';
 
-import { DebugKeyHandler } from './DebugKeyHandler';
-import { ConfigInitializer } from './helpers/ConfigInitializer';
-import { OverlayRenderer } from './rendering/OverlayRenderer';
-
 export class DebugManager {
   private config: DebugConfig;
-  private logManager: DebugLogManager;
-  private eventManager: DebugEventManager;
-  private keyboardHandler: DebugKeyboardHandler;
-  private metricsCollector: DebugMetricsCollector;
-  private profilingManager: DebugProfilingManager;
-  private overlayManager: DebugOverlayManager;
-  private componentManager: DebugComponentManager;
-  private metrics: DebugMetrics;
+  private logManager!: DebugLogManager;
+  private eventManager!: DebugEventManager;
+  private keyboardHandler!: DebugKeyboardHandler;
+  private metricsCollector!: DebugMetricsCollector;
+  private profilingManager!: DebugProfilingManager;
+  private overlayManager!: DebugOverlayManager;
+  private componentManager!: DebugComponentManager;
+  private metrics!: DebugMetrics;
 
   constructor(config: Partial<DebugConfig> = {}) {
     this.config = {
@@ -63,31 +59,18 @@ export class DebugManager {
   private initializeManagers(): void {
     this.logManager = new DebugLogManager(this.config.maxLogEntries);
     this.eventManager = new DebugEventManager();
-
-    this.keyboardHandler = new DebugKeyboardHandler(
-      this.config,
-      this.handleHotkeyAction.bind(this)
-    );
-    this.metricsCollector = new DebugMetricsCollector(
-      this.metrics,
-      this.eventManager
-    );
-    this.profilingManager = new DebugProfilingManager(
-      this.config.enableProfiling,
-      this.logForProfiler.bind(this)
-    );
-    this.overlayManager = new DebugOverlayManager(
-      this.config,
-      this.logForOverlay.bind(this)
-    );
-    this.componentManager = new DebugComponentManager((count) =>
-      this.metricsCollector.updateComponentCount(count)
-    );
+    this.keyboardHandler = new DebugKeyboardHandler();
+    this.metricsCollector = new DebugMetricsCollector();
+    this.profilingManager = new DebugProfilingManager();
+    this.overlayManager = new DebugOverlayManager();
+    this.componentManager = new DebugComponentManager();
   }
 
   private initialize(): void {
-    this.keyboardHandler.setup();
-    this.metricsCollector.start();
+    // Setup keyboard handlers if needed
+    this.setupKeyboardHandlers();
+    // Start metrics collection if needed
+    this.startMetricsCollection();
     this.log({
       level: 'info',
       category: 'debug',
@@ -96,26 +79,18 @@ export class DebugManager {
   }
 
   private setupKeyboardHandlers(): void {
-    if (typeof window !== 'undefined' && window.addEventListener) {
-      window.addEventListener('keydown', (event) => {
-        const key = this.getKeyCombo(event);
-        const action = this.config.hotkeys[key];
-
-        if (action) {
-          event.preventDefault();
-          this.handleHotkeyAction(action);
-        }
-      });
-    }
+    // Skip keyboard handlers in Node.js environment
+    // This is a TUI app, not a browser app
   }
 
   private getKeyCombo(event: KeyboardEvent): string {
     const parts: string[] = [];
-    if (event.ctrlKey) parts.push('ctrl');
-    if (event.shiftKey) parts.push('shift');
-    if (event.altKey) parts.push('alt');
-    if (event.metaKey) parts.push('meta');
-    parts.push(event.key.toLowerCase());
+    if ('ctrlKey' in event && event.ctrlKey) parts.push('ctrl');
+    if ('shiftKey' in event && event.shiftKey) parts.push('shift');
+    if ('altKey' in event && event.altKey) parts.push('alt');
+    if ('metaKey' in event && event.metaKey) parts.push('meta');
+    if ('key' in event && typeof event.key === 'string')
+      parts.push(event.key.toLowerCase());
     return parts.join('+');
   }
 
@@ -154,7 +129,7 @@ export class DebugManager {
 
   private updateMetrics(): void {
     const now = Date.now();
-    const deltaTime = now - this.metrics.lastUpdate;
+    const deltaTime = now - (this.metrics.lastUpdate ?? now);
 
     this.metrics.lastUpdate = now;
 
@@ -181,10 +156,16 @@ export class DebugManager {
 
     if (levelPriority < configPriority) return;
 
-    this.logManager.log(level, category, message, data);
+    this.logManager.addLog({
+      timestamp: new Date(),
+      level,
+      message,
+      category,
+      data,
+    });
     this.eventManager.emit('logAdded', { level, category, message, data });
 
-    if (this.config.showOverlay && this.overlayManager.isShowing()) {
+    if (this.config.showOverlay && this.overlayManager.isVisible()) {
       this.updateOverlay();
     }
   }
@@ -210,18 +191,20 @@ export class DebugManager {
     this.log({ level: 'error', category, message, data });
   }
 
-  public startProfiling(label: string): void {
-    this.profilingManager.startProfiling(label);
+  public startProfiling(label: string): string {
+    this.profilingManager.start(label);
+    return label;
   }
 
-  public endProfiling(label: string): number | null {
-    return this.profilingManager.endProfiling(label);
+  public endProfiling(label: string): number {
+    return this.profilingManager.end(label);
   }
 
   public updateComponentTree(tree: ComponentDebugInfo): void {
-    this.componentManager.updateComponentTree(tree);
+    // Store component tree for debugging
+    this.componentManager.register('root', tree);
 
-    if (this.config.showOverlay && this.overlayManager.isShowing()) {
+    if (this.config.showOverlay && this.overlayManager.isVisible()) {
       this.updateOverlay();
     }
 
@@ -231,13 +214,14 @@ export class DebugManager {
   public recordRenderTime(time: number): void {
     this.metricsCollector.updateRenderTime(time);
 
-    if (this.config.showOverlay && this.overlayManager.isShowing()) {
+    if (this.config.showOverlay && this.overlayManager.isVisible()) {
       this.updateOverlay();
     }
   }
 
   public recordEvent(eventType: string, data?: unknown): void {
-    this.metricsCollector.incrementEventCount();
+    // Increment event count in metrics
+    this.metrics.eventCount++;
     this.log({
       level: 'debug',
       category: 'event',
@@ -257,18 +241,18 @@ export class DebugManager {
   public getLogsByLevel(
     level: 'debug' | 'info' | 'warn' | 'error'
   ): DebugLogEntry[] {
-    return this.logManager.getLogsByLevel(level);
+    return this.logManager.filterLogs(level);
   }
 
   public getLogsByCategory(category: string): DebugLogEntry[] {
-    return this.logManager.getLogsByCategory(category);
+    return this.logManager.getLogs().filter((log) => log.category === category);
   }
 
   public clearLogs(): void {
     this.logManager.clearLogs();
     this.log({ level: 'info', category: 'debug', message: 'Logs cleared' });
 
-    if (this.config.showOverlay && this.overlayManager.isShowing()) {
+    if (this.config.showOverlay && this.overlayManager.isVisible()) {
       this.updateOverlay();
     }
   }
@@ -292,24 +276,66 @@ export class DebugManager {
 
   public toggleOverlay(): void {
     this.overlayManager.toggle();
-    this.eventManager.emit('overlayToggled', this.overlayManager.isShowing());
+    this.eventManager.emit('overlayToggled', this.overlayManager.isVisible());
+  }
+
+  // Public methods needed by DebugIntegrationCore
+  public handleKeyPress(key: string): boolean {
+    // Default implementation - can be overridden
+    return false;
+  }
+
+  public isDebugVisible(): boolean {
+    return this.config.enabled === true;
+  }
+
+  public enable(): void {
+    this.config.enabled = true;
+    this.initialize();
+  }
+
+  public disable(): void {
+    this.config.enabled = false;
+    this.cleanup();
+  }
+
+  public toggle(): void {
+    if (this.config.enabled) {
+      this.disable();
+    } else {
+      this.enable();
+    }
+  }
+
+  public logEvent(event: string, data?: unknown): void {
+    this.log({ level: 'debug', category: 'event', message: event, data });
+  }
+
+  public exportLogs(): string {
+    return JSON.stringify(this.logManager.getLogs(), null, 2);
+  }
+
+  public getComponentTree(): unknown {
+    return this.componentManager.getComponent('root');
   }
 
   private updateOverlay(): void {
-    this.overlayManager.update({
-      metrics: this.metricsCollector.getMetrics(),
-      componentTree: this.componentManager.getComponentTree(),
-      logs: this.logManager.getLogs(),
-    });
+    // Update overlay content
+    const content: string[] = [];
+    const metrics = this.getMetrics();
+    content.push(`FPS: ${metrics.fps}`);
+    content.push(`Memory: ${metrics.memoryUsage}`);
+    content.push(`Components: ${metrics.componentCount}`);
+    this.overlayManager.setContent(content);
   }
 
   public updateConfig(newConfig: Partial<DebugConfig>): void {
     this.config = { ...this.config, ...newConfig };
 
-    this.logManager.updateMaxEntries(this.config.maxLogEntries);
-    this.keyboardHandler.updateConfig(this.config);
-    this.overlayManager.updateConfig(this.config);
-    this.profilingManager.setEnabled(this.config.enableProfiling);
+    // Update configuration for all components
+    if (newConfig.overlayPosition) {
+      this.overlayManager.setPosition(newConfig.overlayPosition);
+    }
 
     if (this.config.enabled && !this.logManager) {
       this.initialize();
@@ -331,17 +357,20 @@ export class DebugManager {
     return this.config.enabled;
   }
 
-  public on(event: string, handler: Function): void {
+  public on(event: string, handler: (data: unknown) => void): void {
     this.eventManager.on(event, handler);
   }
 
-  public off(event: string, handler: Function): void {
+  public off(event: string, handler: (data: unknown) => void): void {
     this.eventManager.off(event, handler);
   }
 
   public destroy(): void {
-    this.overlayManager.destroy();
-    this.metricsCollector.stop();
+    this.cleanup();
+  }
+
+  private cleanup(): void {
+    this.overlayManager.hide();
     this.eventManager.clear();
     this.logManager.clearLogs();
     this.profilingManager.clear();

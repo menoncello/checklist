@@ -1,6 +1,6 @@
 # Epic 2: TUI Core with Performance
 
-## Status: 📝 READY TO START (0% Complete - 0/7 stories)
+## Status: 🚧 IN PROGRESS (28.6% Complete - 2/7 stories)
 
 ## Goal
 
@@ -14,11 +14,13 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 - ✅ Keyboard navigation fully functional
 - ✅ Works across major terminal emulators
 
-## Stories (7 total, 0 complete)
+## Stories (7 total, 2 complete)
+
+### ✅ Completed
+1. [Story 2.1: CLI Core Interface](story-2.1-cli-core-interface.md) ✅ **COMPLETE**
+2. [Story 2.2: Interactive Selection System](story-2.2-interactive-selection.md) ✅ **COMPLETE**
 
 ### 📝 Ready to Start
-1. [Story 2.1: CLI Core Interface](story-2.1-cli-core-interface.md) 📝 **READY**
-2. [Story 2.2: Interactive Selection System](story-2.2-interactive-selection.md) 📝 **READY**
 3. [Story 2.3: Progress Visualization](story-2.3-progress-visualization.md) 📝 **READY**
 4. [Story 2.4: State Operations Interface](story-2.4-state-operations.md) 📝 **READY**
 5. [Story 2.5: Help & Documentation System](story-2.5-help-documentation.md) 📝 **READY**
@@ -27,7 +29,7 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 
 ## Dependencies
 
-- Epic 1 must be substantially complete (currently 65%)
+- Epic 1 must be substantially complete (currently 100%) ✅ **COMPLETE**
 - ✅ Story 1.4 (TUI Spike) **PASSED** - Proceeding with TUI implementation
 - Core infrastructure from Epic 1 is ready (state, workflow, logging, DI)
 
@@ -44,8 +46,8 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 
 ## Definition of Done
 
-- [ ] CLI interface operational
-- [ ] Interactive selection working
+- [x] CLI interface operational
+- [x] Interactive selection working
 - [ ] Progress visualization implemented
 - [ ] State operations accessible via UI
 - [ ] Help system integrated

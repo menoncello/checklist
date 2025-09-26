@@ -11,12 +11,15 @@ export class PerformanceIntegrationSetup {
       (data: unknown) => {
         const metricData = extractMetricData(data);
         if (metricData != null) {
-          debugManager.log(
-            'debug',
-            'Performance',
-            `Metric recorded: ${metricData.metric.name}`,
-            { value: metricData.metric.value, tags: metricData.metric.tags }
-          );
+          debugManager.log({
+            level: 'debug',
+            category: 'Performance',
+            message: `Metric recorded: ${metricData.metric.name}`,
+            data: {
+              value: metricData.metric.value,
+              tags: metricData.metric.tags,
+            },
+          });
         }
       }
     );
@@ -38,12 +41,12 @@ export class PerformanceIntegrationSetup {
     pm.addPerformanceListener('performanceAlert', (data: unknown) => {
       const alertData = extractAlertData(data);
       if (alertData != null) {
-        dm.log(
-          'warn',
-          'Performance',
-          `Performance alert: ${alertData.metric} ${alertData.condition} threshold`,
-          { value: alertData.value, threshold: alertData.threshold }
-        );
+        dm.log({
+          level: 'warn',
+          category: 'Performance',
+          message: `Performance alert: ${alertData.metric} ${alertData.condition} threshold`,
+          data: { value: alertData.value, threshold: alertData.threshold },
+        });
       }
     });
   }
@@ -55,12 +58,12 @@ export class PerformanceIntegrationSetup {
     pm.addPerformanceListener('memoryAlert', (data: unknown) => {
       const memoryData = extractMemoryAlertData(data);
       if (memoryData != null) {
-        dm.log(
-          'warn',
-          'Memory',
-          `Memory usage: ${(memoryData.used / 1024 / 1024).toFixed(2)}MB`,
-          { total: memoryData.total, percentage: memoryData.percentage }
-        );
+        dm.log({
+          level: 'warn',
+          category: 'Memory',
+          message: `Memory usage: ${(memoryData.used / 1024 / 1024).toFixed(2)}MB`,
+          data: { total: memoryData.total, percentage: memoryData.percentage },
+        });
       }
     });
   }
@@ -72,9 +75,14 @@ export class PerformanceIntegrationSetup {
     pm.addPerformanceListener('memoryLeak', (data: unknown) => {
       const leakData = extractMemoryLeakData(data);
       if (leakData != null) {
-        dm.log('error', 'Memory', 'Potential memory leak detected', {
-          growth: leakData.growth,
-          duration: leakData.duration,
+        dm.log({
+          level: 'error',
+          category: 'Memory',
+          message: 'Potential memory leak detected',
+          data: {
+            growth: leakData.growth,
+            duration: leakData.duration,
+          },
         });
       }
     });
@@ -104,31 +112,28 @@ export class ConsoleIntegrationSetup {
     debug: console.debug,
   };
 
+  private static wrapConsoleMethod(
+    methodName: 'log' | 'error' | 'warn' | 'info' | 'debug',
+    level: 'debug' | 'info' | 'warn' | 'error',
+    debugManager: DebugManager
+  ): (...args: unknown[]) => void {
+    const originalMethod = this.originalMethods[methodName];
+    return (...args: unknown[]) => {
+      originalMethod.apply(console, args);
+      debugManager.log({
+        level,
+        category: 'Console',
+        message: args.join(' '),
+      });
+    };
+  }
+
   public static setup(debugManager: DebugManager): void {
-    console.log = (...args) => {
-      this.originalMethods.log.apply(console, args);
-      debugManager.log('info', 'Console', args.join(' '));
-    };
-
-    console.error = (...args) => {
-      this.originalMethods.error.apply(console, args);
-      debugManager.log('error', 'Console', args.join(' '));
-    };
-
-    console.warn = (...args) => {
-      this.originalMethods.warn.apply(console, args);
-      debugManager.log('warn', 'Console', args.join(' '));
-    };
-
-    console.info = (...args) => {
-      this.originalMethods.info.apply(console, args);
-      debugManager.log('info', 'Console', args.join(' '));
-    };
-
-    console.debug = (...args) => {
-      this.originalMethods.debug.apply(console, args);
-      debugManager.log('debug', 'Console', args.join(' '));
-    };
+    console.log = this.wrapConsoleMethod('log', 'info', debugManager);
+    console.error = this.wrapConsoleMethod('error', 'error', debugManager);
+    console.warn = this.wrapConsoleMethod('warn', 'warn', debugManager);
+    console.info = this.wrapConsoleMethod('info', 'info', debugManager);
+    console.debug = this.wrapConsoleMethod('debug', 'debug', debugManager);
   }
 
   public static restore(): void {

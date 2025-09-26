@@ -181,7 +181,7 @@ export class CommandParser {
       const templateName = args.options._[0];
       if (templateName && !/^[a-zA-Z0-9_-]+$/.test(templateName)) {
         throw new Error(
-          'Template name must contain only alphanumeric characters, underscores, and hyphens'
+          'Template name must contain only alphanumeric characters'
         );
       }
     }

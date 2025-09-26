@@ -26,7 +26,7 @@ export class LargeListOptimizer<T> {
   private metrics: OptimizationMetrics;
   private eventHandlers = new Map<string, Set<Function>>();
   private lastFrameTime = performance.now();
-  private debounceTimer: Timer | null = null;
+  private debounceTimer: NodeJS.Timeout | null = null;
   private frameTimeHistory: number[] = [];
 
   constructor(

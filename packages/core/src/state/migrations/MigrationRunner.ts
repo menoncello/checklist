@@ -41,6 +41,12 @@ export class MigrationRunner extends EventEmitter {
     currentVersion: string = '1.0.0'
   ) {
     super();
+
+    // Validate backup directory for path traversal
+    if (backupDir.includes('..') || backupDir.includes('~')) {
+      throw new Error('Invalid backup directory path');
+    }
+
     this.registry = registry;
     this.currentVersion = currentVersion;
 

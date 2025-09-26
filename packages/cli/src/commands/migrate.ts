@@ -1,39 +1,116 @@
+/**
+ * Migrate Command
+ * Migrate state files between versions
+ */
+
 import { StateManager } from '@checklist/core/state/StateManager';
 import ansi from 'ansis';
+import type { CommandOption, ParsedOptions } from '../types';
+import { BaseCommand } from './base';
 
-export interface MigrateOptions {
-  check?: boolean;
-  dryRun?: boolean;
-  backupOnly?: boolean;
-  listBackups?: boolean;
-  restore?: string;
-  verbose?: boolean;
-}
+export class MigrateCommand extends BaseCommand {
+  name = 'migrate';
+  description = 'Migrate state files between versions';
+  aliases = ['m'];
+  options: CommandOption[] = [
+    {
+      flag: 'check',
+      description: 'Check migration status without running',
+    },
+    {
+      flag: 'dry-run',
+      description: 'Show what would be migrated without applying',
+    },
+    {
+      flag: 'backup-only',
+      description: 'Create backup without running migration',
+    },
+    {
+      flag: 'list-backups',
+      description: 'List available backups',
+    },
+    {
+      flag: 'restore',
+      description: 'Restore from specific backup file',
+    },
+    {
+      flag: 'verbose',
+      description: 'Show detailed migration information',
+    },
+  ];
 
-export class MigrateCommand {
   private stateManager: StateManager;
 
   constructor(baseDir: string = '.checklist') {
+    super();
     this.stateManager = new StateManager(baseDir);
   }
 
-  async execute(options: MigrateOptions = {}): Promise<void> {
+  async execute(options?: ParsedOptions): Promise<void> {
+    return this.action(options ?? { _: [] });
+  }
+
+  async action(options: ParsedOptions): Promise<void> {
+    const normalizedOptions = this.normalizeOptions(options);
+    const migrateOptions = this.parseOptions(normalizedOptions);
+
     try {
-      if (options.check === true) {
-        await this.checkMigrationStatus();
-      } else if (options.listBackups === true) {
-        await this.listBackups();
-      } else if (options.restore !== undefined && options.restore !== '') {
-        await this.restoreBackup(options.restore);
-      } else if (options.backupOnly === true) {
-        await this.createBackupOnly();
-      } else {
-        await this.runMigration(options);
-      }
+      await this.executeMigrationCommand(migrateOptions);
     } catch (error) {
       console.error(ansi.red('Migration error:'), error);
       process.exit(1);
     }
+  }
+
+  private normalizeOptions(options: ParsedOptions | null): ParsedOptions {
+    return options ?? { _: [] };
+  }
+
+  private parseOptions(options: ParsedOptions) {
+    return {
+      check: this.getOption(options, 'check', false),
+      dryRun:
+        this.getOption(options, 'dry-run', false) ||
+        this.getOption(options, 'dryRun', false),
+      backupOnly:
+        this.getOption(options, 'backup-only', false) ||
+        this.getOption(options, 'backupOnly', false),
+      listBackups:
+        this.getOption(options, 'list-backups', false) ||
+        this.getOption(options, 'listBackups', false),
+      restore: this.getOption(options, 'restore') as
+        | string
+        | boolean
+        | undefined,
+      verbose: this.getOption(options, 'verbose', false),
+    };
+  }
+
+  private async executeMigrationCommand(migrateOptions: {
+    check: boolean;
+    listBackups: boolean;
+    restore?: string | boolean;
+    backupOnly: boolean;
+  }): Promise<void> {
+    if (migrateOptions.check === true) {
+      await this.checkMigrationStatus();
+    } else if (migrateOptions.listBackups === true) {
+      await this.listBackups();
+    } else if (this.hasRestoreOption(migrateOptions)) {
+      await this.restoreBackup(migrateOptions.restore as string);
+    } else if (migrateOptions.backupOnly === true) {
+      await this.createBackupOnly();
+    } else {
+      await this.runMigration(migrateOptions);
+    }
+  }
+
+  private hasRestoreOption(migrateOptions: {
+    restore?: string | boolean;
+  }): boolean {
+    return (
+      migrateOptions.restore !== undefined && migrateOptions.restore !== ''
+    );
   }
 
   private async checkMigrationStatus(): Promise<void> {
@@ -107,7 +184,14 @@ export class MigrateCommand {
     }
   }
 
-  private async runMigration(options: MigrateOptions): Promise<void> {
+  private async runMigration(options: {
+    check?: boolean;
+    dryRun?: boolean;
+    backupOnly?: boolean;
+    listBackups?: boolean;
+    restore?: string | boolean;
+    verbose?: boolean;
+  }): Promise<void> {
     const status = await this.stateManager.checkMigrationStatus();
 
     if (!status.needsMigration) {

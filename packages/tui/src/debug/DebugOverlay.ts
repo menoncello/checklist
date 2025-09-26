@@ -34,7 +34,7 @@ export class DebugOverlay extends BaseComponent {
   private isResizing = false;
   private isMoving = false;
   private lastInteraction = Date.now();
-  private autoHideTimer: Timer | null = null;
+  private autoHideTimer: NodeJS.Timeout | null = null;
   private panelRenderer!: DebugPanelRenderer;
 
   constructor(
@@ -218,11 +218,11 @@ export class DebugOverlay extends BaseComponent {
       this.config.size.width - 4,
       this.config.size.height - 6
     );
-    this.debugManager.log(
-      'info',
-      'Debug',
-      `Exported ${panel.title} panel data`
-    );
+    this.debugManager.log({
+      level: 'info',
+      category: 'Debug',
+      message: `Exported ${panel.title} panel data`,
+    });
   }
 
   private getOverlayBounds(): {
@@ -249,7 +249,10 @@ export class DebugOverlay extends BaseComponent {
 
   public render(props: unknown): string {
     const context = props as RenderContext;
-    if (!this.debugManager.isEnabled() || !this.debugManager.isDebugVisible())
+    if (
+      !this.debugManager.isEnabled() ||
+      this.debugManager.isDebugVisible?.() !== true
+    )
       return '';
     const selectedPanel = this.panels.get(this.selectedPanelId);
     if (!selectedPanel) return '';
@@ -297,7 +300,7 @@ export class DebugOverlay extends BaseComponent {
     this.markDirty();
   }
   public toggle(): void {
-    this.debugManager.isDebugVisible() ? this.hide() : this.show();
+    this.debugManager.isDebugVisible?.() === true ? this.hide() : this.show();
   }
   public updateConfig(cfg: Partial<DebugOverlayConfig>): void {
     this.config = { ...this.config, ...cfg };
