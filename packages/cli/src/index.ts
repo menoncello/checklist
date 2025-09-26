@@ -6,6 +6,8 @@
  * command registry, and Unix-standard error handling
  */
 
+export const version = '0.0.1';
+
 // Import all commands
 import { AddCommand } from './commands/add';
 import { HelpCommand } from './commands/help';
@@ -63,6 +65,9 @@ class CLIApplication {
 
       // Execute the command
       await command.action(parsedArgs.options);
+
+      // Exit successfully after command completion
+      process.exit(ExitCode.SUCCESS);
     } catch (error) {
       const debug = this.hasDebugFlag();
       ErrorHandler.handle(error, debug);

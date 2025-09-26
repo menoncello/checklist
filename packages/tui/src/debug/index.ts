@@ -117,8 +117,8 @@ export class DebugIntegration {
     return this.core.startProfiling(name);
   }
 
-  public endProfiling(profileId: string, name: string): number {
-    return this.core.endProfiling(profileId, name);
+  public endProfiling(profileId: string): number {
+    return this.core.endProfiling(profileId);
   }
 
   public log(

@@ -13,7 +13,7 @@ import {
   type ErrorInfo,
   type ErrorState,
   type ErrorHistoryEntry,
-} from './ErrorBoundary';
+} from '../../src/errors/ErrorBoundary';
 
 describe('ErrorBoundary', () => {
   let errorBoundary: ErrorBoundary;

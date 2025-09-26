@@ -58,7 +58,7 @@ describe('MigrateCommand Class', () => {
       };
       await Bun.write(statePath, yaml.dump(testState));
 
-      await command.execute({ check: true });
+      await command.execute({ check: true, _: [] });
 
       expect(consoleLogSpy).toHaveBeenCalledWith(ansi.cyan('Checking migration status...'));
       // State manager will determine no migration is needed
@@ -74,7 +74,7 @@ describe('MigrateCommand Class', () => {
       };
       await Bun.write(statePath, yaml.dump(testState));
 
-      await command.execute({ check: true, verbose: true });
+      await command.execute({ check: true, verbose: true, _: [] });
 
       expect(consoleLogSpy).toHaveBeenCalledWith(ansi.cyan('Checking migration status...'));
     });
@@ -89,7 +89,7 @@ describe('MigrateCommand Class', () => {
       await Bun.write(statePath, 'invalid: yaml: content: that: will: cause: error');
 
       try {
-        await command.execute({ check: true });
+        await command.execute({ check: true, _: [] });
       } catch (e: any) {
         // Either process.exit was called or an error was thrown
         expect(processExitSpy).toHaveBeenCalledWith(1);
@@ -331,7 +331,7 @@ describe('CLI Migration Commands', () => {
       
       expect(backupPath).toBeDefined();
       expect(backupPath).toContain('.backup');
-      expect(backupPath).toContain('state-backup-0.1.0');
+      expect(backupPath).toContain('state-v0.1.0');
       
       // Verify backup exists
       const backupFile = Bun.file(backupPath);
@@ -512,7 +512,7 @@ describe('CLI Migration Commands', () => {
       const logSpy = spyOn(console, 'log').mockImplementation(() => {});
 
       // Execute dry run
-      await command.execute({ dryRun: true });
+      await command.execute({ dryRun: true, _: [] });
 
       // Verify dry run messages
       expect(logSpy).toHaveBeenCalled();
@@ -542,7 +542,7 @@ describe('CLI Migration Commands', () => {
       const logSpy = spyOn(console, 'log').mockImplementation(() => {});
 
       // List backups
-      await command.execute({ listBackups: true });
+      await command.execute({ listBackups: true, _: [] });
 
       expect(logSpy).toHaveBeenCalledWith(ansi.cyan('Available backups:'));
 
@@ -564,7 +564,7 @@ describe('CLI Migration Commands', () => {
       const logSpy = spyOn(console, 'log').mockImplementation(() => {});
 
       // Create backup
-      await command.execute({ backupOnly: true });
+      await command.execute({ backupOnly: true, _: [] });
 
       expect(logSpy).toHaveBeenCalledWith(ansi.cyan('Creating backup...'));
 

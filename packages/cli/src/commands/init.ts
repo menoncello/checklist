@@ -26,9 +26,9 @@ export class InitCommand extends BaseCommand {
     this.validateOptions(options);
 
     const force = this.getOption(options, 'force', false);
-    const template = this.getOption(options, 'template', 'default');
+    const _template = this.getOption(options, 'template', 'default');
 
-    console.log(`Initializing checklist project with template: ${template}`);
+    console.log('Initializing checklist project');
 
     if (force) {
       console.log('Force flag enabled - will overwrite existing project');

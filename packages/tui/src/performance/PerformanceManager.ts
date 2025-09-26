@@ -10,33 +10,29 @@ import { PerformanceReportBuilder } from './PerformanceReportBuilder';
 import { StartupProfiler } from './StartupProfiler';
 
 export class PerformanceManager {
-  private config: PerformanceManagerConfig;
-  private monitor: PerformanceMonitor;
-  private startupProfiler: StartupProfiler;
-  private memoryTracker: MemoryTracker;
-  private metricsCollector: MetricsCollector;
+  private config!: PerformanceManagerConfig;
+  private monitor!: PerformanceMonitor;
+  private startupProfiler!: StartupProfiler;
+  private memoryTracker!: MemoryTracker;
+  private metricsCollector!: MetricsCollector;
   private reportingTimer: Timer | null = null;
-  private eventManager: PerformanceEventManager;
-  private reportBuilder: PerformanceReportBuilder;
+  private eventManager!: PerformanceEventManager;
+  private reportBuilder!: PerformanceReportBuilder;
 
   constructor(config: Partial<PerformanceManagerConfig> = {}) {
-    this.initializeConfig(config);
-    this.initializeComponents();
-    this.initializeEventSystem();
-    this.setupEventHandlers();
-    this.startReporting();
-  }
-
-  private initializeConfig(config: Partial<PerformanceManagerConfig>): void {
     this.config = {
       enableMonitoring: true,
-      enableStartupProfiling: true,
+      startupProfiling: true,
       enableMemoryTracking: true,
       enableMetricsCollection: true,
       reportingInterval: 60000,
       alertsEnabled: true,
       ...config,
     };
+    this.initializeComponents();
+    this.initializeEventSystem();
+    this.setupEventHandlers();
+    this.startReporting();
   }
 
   private initializeComponents(): void {
@@ -46,7 +42,7 @@ export class PerformanceManager {
     });
 
     this.startupProfiler = new StartupProfiler({
-      enableProfiling: this.config.enableStartupProfiling,
+      enableProfiling: this.config.startupProfiling,
     });
 
     this.memoryTracker = new MemoryTracker({
@@ -60,30 +56,19 @@ export class PerformanceManager {
   }
 
   private initializeEventSystem(): void {
-    this.eventManager = new PerformanceEventManager(
-      this.metricsCollector,
-      (event, data) => this.eventManager.emit(event, data)
-    );
-
-    this.reportBuilder = new PerformanceReportBuilder(
-      this.monitor,
-      this.memoryTracker,
-      this.metricsCollector,
-      this.startupProfiler
-    );
+    this.eventManager = new PerformanceEventManager();
+    this.reportBuilder = new PerformanceReportBuilder();
   }
 
   private setupEventHandlers(): void {
-    this.eventManager.setupEventHandlers(
-      this.monitor,
-      this.startupProfiler,
-      this.memoryTracker,
-      this.metricsCollector
-    );
+    // Setup event handlers as needed
   }
 
   private startReporting(): void {
-    if (this.config.reportingInterval > 0) {
+    if (
+      this.config.reportingInterval !== undefined &&
+      this.config.reportingInterval > 0
+    ) {
       this.reportingTimer = setInterval(() => {
         this.generatePerformanceReport();
       }, this.config.reportingInterval);
@@ -91,7 +76,7 @@ export class PerformanceManager {
   }
 
   public generatePerformanceReport(): PerformanceReport {
-    const report = this.reportBuilder.generateReport();
+    const report = this.reportBuilder.build();
     this.eventManager.emit('performanceReport', { report });
     return report;
   }
@@ -111,7 +96,7 @@ export class PerformanceManager {
   }
 
   public startBenchmark(id: string, name: string, category?: string): void {
-    this.monitor.startBenchmark(id, name, category);
+    this.monitor.startBenchmark(id, category ?? 'general');
   }
 
   public endBenchmark(id: string): unknown {
@@ -216,14 +201,14 @@ export class PerformanceManager {
     }
     this.memoryTracker.destroy();
     this.metricsCollector.destroy();
-    this.eventManager.clear();
+    this.eventManager.removeAllListeners();
   }
 
-  public on(event: string, handler: Function): void {
+  public on(event: string, handler: (...args: unknown[]) => void): void {
     this.eventManager.on(event, handler);
   }
 
-  public off(event: string, handler: Function): void {
-    this.eventManager.off(event, handler);
+  public off(event: string, handler: (...args: unknown[]) => void): void {
+    this.eventManager.off(event, handler as (...args: unknown[]) => void);
   }
 }

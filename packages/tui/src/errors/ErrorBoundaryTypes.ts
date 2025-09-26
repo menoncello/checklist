@@ -2,6 +2,8 @@ export interface ErrorInfo {
   componentStack?: string;
   errorBoundary?: string;
   errorBoundaryStack?: string;
+  eventType?: string;
+  [key: string]: unknown;
 }
 
 export interface ErrorState {

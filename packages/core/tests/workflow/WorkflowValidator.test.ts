@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, mock } from 'bun:test';
+import { join } from 'path';
 import { WorkflowValidator } from '../../src/workflow/WorkflowValidator';
 import { ValidationError, ConditionEvaluationError } from '../../src/workflow/errors';
 import {
@@ -72,7 +73,7 @@ describe('WorkflowValidator', () => {
         validation: [
           {
             type: 'file_exists',
-            check: '/Users/eduardomenoncello/Projects/dev-tools/checklist/code-quality/packages/core/tests/workflow/WorkflowValidator.test.ts', // Use this test file which we know exists
+            check: join(import.meta.dir, 'WorkflowValidator.test.ts'), // Use this test file which we know exists
             errorMessage: 'File does not exist',
           },
         ],

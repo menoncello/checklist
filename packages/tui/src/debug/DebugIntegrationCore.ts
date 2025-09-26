@@ -11,11 +11,11 @@ export class DebugIntegrationCore {
   public handleKeyPress(key: string, enableShortcuts: boolean): boolean {
     if (!enableShortcuts) return false;
 
-    if (this.debugManager.handleKeyPress(key)) {
+    if (this.debugManager.handleKeyPress?.(key) === true) {
       return true;
     }
 
-    if (this.debugManager.isDebugVisible()) {
+    if (this.debugManager.isDebugVisible?.() === true) {
       return this.debugOverlay.handleKeyPress(key);
     }
 
@@ -28,7 +28,7 @@ export class DebugIntegrationCore {
     button: 'left' | 'right' | 'wheel',
     delta?: number
   ): boolean {
-    if (this.debugManager.isDebugVisible()) {
+    if (this.debugManager.isDebugVisible?.() === true) {
       return this.debugOverlay.handleMouseEvent(x, y, button, delta);
     }
     return false;
@@ -39,7 +39,10 @@ export class DebugIntegrationCore {
     event: string,
     data?: unknown
   ): void {
-    this.debugManager.logEvent(event, componentId, data);
+    this.debugManager.logEvent(event, {
+      componentId,
+      ...(data as Record<string, unknown>),
+    });
   }
 
   public updateComponentTree(tree: ComponentDebugInfo): void {
@@ -50,8 +53,8 @@ export class DebugIntegrationCore {
     return this.debugManager.startProfiling(name);
   }
 
-  public endProfiling(profileId: string, name: string): number {
-    return this.debugManager.endProfiling(profileId, name);
+  public endProfiling(profileId: string): number {
+    return this.debugManager.endProfiling(profileId);
   }
 
   public log(
@@ -60,7 +63,7 @@ export class DebugIntegrationCore {
     message: string,
     data?: unknown
   ): void {
-    this.debugManager.log(level, category, message, data);
+    this.debugManager.log({ level, category, message, data });
   }
 
   public enable(): void {
@@ -96,26 +99,55 @@ export class GlobalErrorHandlerSetup {
   }
 
   private static setupNodeHandlers(debugManager: DebugManager): void {
+    this.setupUncaughtExceptionHandler(debugManager);
+    this.setupUnhandledRejectionHandler(debugManager);
+    this.setupWarningHandler(debugManager);
+  }
+
+  private static setupUncaughtExceptionHandler(
+    debugManager: DebugManager
+  ): void {
     process.on('uncaughtException', (error) => {
-      debugManager.log('error', 'System', 'Uncaught exception', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
+      debugManager.log({
+        level: 'error',
+        category: 'System',
+        message: 'Uncaught exception',
+        data: {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        },
       });
     });
+  }
 
+  private static setupUnhandledRejectionHandler(
+    debugManager: DebugManager
+  ): void {
     process.on('unhandledRejection', (reason, promise) => {
-      debugManager.log('error', 'System', 'Unhandled promise rejection', {
-        reason: reason instanceof Error ? reason.message : String(reason),
-        stack: reason instanceof Error ? reason.stack : undefined,
-        promise: promise.toString(),
+      debugManager.log({
+        level: 'error',
+        category: 'System',
+        message: 'Unhandled promise rejection',
+        data: {
+          reason: reason instanceof Error ? reason.message : String(reason),
+          stack: reason instanceof Error ? reason.stack : undefined,
+          promise: promise.toString(),
+        },
       });
     });
+  }
 
+  private static setupWarningHandler(debugManager: DebugManager): void {
     process.on('warning', (warning) => {
-      debugManager.log('warn', 'System', `Node.js warning: ${warning.name}`, {
-        message: warning.message,
-        stack: warning.stack,
+      debugManager.log({
+        level: 'warn',
+        category: 'System',
+        message: `Node.js warning: ${warning.name}`,
+        data: {
+          message: warning.message,
+          stack: warning.stack,
+        },
       });
     });
   }
@@ -161,12 +193,17 @@ export class GlobalErrorHandlerSetup {
         colno?: number;
         error?: Error;
       };
-      debugManager.log('error', 'Browser', 'Uncaught error', {
-        message: e.message,
-        filename: e.filename,
-        line: e.lineno,
-        column: e.colno,
-        stack: e.error?.stack,
+      debugManager.log({
+        level: 'error',
+        category: 'Browser',
+        message: 'Uncaught error',
+        data: {
+          message: e.message,
+          filename: e.filename,
+          line: e.lineno,
+          column: e.colno,
+          stack: e.error?.stack,
+        },
       });
     });
   }
@@ -182,9 +219,14 @@ export class GlobalErrorHandlerSetup {
       const reason =
         e.reason instanceof Error ? e.reason.message : String(e.reason);
       const stack = e.reason instanceof Error ? e.reason.stack : undefined;
-      debugManager.log('error', 'Browser', 'Unhandled promise rejection', {
-        reason,
-        stack,
+      debugManager.log({
+        level: 'error',
+        category: 'Browser',
+        message: 'Unhandled promise rejection',
+        data: {
+          reason,
+          stack,
+        },
       });
     });
   }

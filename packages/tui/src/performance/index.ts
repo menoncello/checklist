@@ -103,6 +103,14 @@ export class PerformanceManager extends PerformanceManagerBase {
     return this.generatePerformanceReport();
   }
 
+  public startBenchmark(id: string, name: string, category?: string): void {
+    this.monitor.startBenchmark(id, category ?? 'general');
+  }
+
+  public endBenchmark(id: string): unknown {
+    return this.monitor.endBenchmark(id);
+  }
+
   public addPerformanceListener(
     event: string,
     handler: (data: unknown) => void

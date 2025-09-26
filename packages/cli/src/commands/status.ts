@@ -31,7 +31,7 @@ export class StatusCommand extends BaseCommand {
     console.log('Checklist Status:');
 
     if (verbose) {
-      console.log('Verbose mode enabled - showing detailed information');
+      console.log('Verbose mode enabled');
     }
 
     console.log(`Output format: ${format}`);

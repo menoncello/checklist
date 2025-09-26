@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'bun:test';
-import { ErrorBoundary } from './ErrorBoundary';
-import { CrashRecovery } from './CrashRecovery';
-import { StatePreservation } from './StatePreservation';
+import { ErrorBoundary } from '../../src/errors/ErrorBoundary';
+import { CrashRecovery } from '../../src/errors/CrashRecovery';
+import { StatePreservation } from '../../src/errors/StatePreservation';
 
 describe('Error Handling and Recovery - Simple Tests', () => {
   describe('Error Boundary', () => {

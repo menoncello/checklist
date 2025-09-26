@@ -79,14 +79,15 @@ export class TUIFrameworkInitializer {
 
     this.performanceManager = new PerformanceManager({
       enableMonitoring: true,
-      enableStartupProfiling: true,
+      startupProfiling: true,
       enableMemoryTracking: true,
       enableMetricsCollection: true,
     });
 
-    this.performanceManager.startStartupPhase('framework_init', {
-      description: 'TUI Framework initialization',
-    });
+    this.performanceManager.startBenchmark(
+      'framework_init',
+      'TUI Framework initialization'
+    );
   }
 
   private initializeDebugIntegration(): void {
@@ -177,11 +178,7 @@ export class TUIFrameworkInitializer {
     this.state.startupTime = performance.now() - startTime;
 
     if (this.performanceManager != null) {
-      this.performanceManager.endStartupPhase('framework_init');
-      this.performanceManager.addStartupMilestone(
-        'framework_initialized',
-        'Framework initialization completed'
-      );
+      this.performanceManager.endBenchmark('framework_init');
     }
 
     this.debugIntegration?.log(

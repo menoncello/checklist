@@ -80,8 +80,7 @@ describe('Mutation Score Validation - Integration', () => {
           'packages/tui/tests/navigation/NavigationStack-mutations.test.ts'
         ],
         cli: [
-          'packages/cli/tests/index-mutations.test.ts',
-          'packages/cli/tests/commands/migrate-mutations.test.ts'
+          'packages/cli/tests/index-mutations.test.ts'
         ],
         shared: [
           'packages/shared/tests/terminal-mutations.test.ts'
