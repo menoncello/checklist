@@ -14,9 +14,16 @@ describe('PerformanceCircuitBreaker', () => {
   });
 
   afterEach(async () => {
-    // Add a small delay to ensure any pending timeouts complete
-    await new Promise(resolve => setTimeout(resolve, 150));
-    circuitBreaker.destroy();
+    // Add a delay to ensure all pending timeouts and intervals complete
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Ensure circuit breaker is destroyed
+    if (circuitBreaker) {
+      circuitBreaker.destroy();
+    }
+
+    // Additional delay to ensure cleanup completes
+    await new Promise(resolve => setTimeout(resolve, 50));
   });
 
   describe('constructor', () => {
@@ -196,6 +203,33 @@ describe('PerformanceCircuitBreaker', () => {
       expect(overhead).toBeGreaterThanOrEqual(0);
 
       cb.destroy();
+    });
+
+    it('should not hang when destroyed immediately', () => {
+      const cb = new PerformanceCircuitBreaker({
+        enabled: true,
+      });
+
+      // Destroy immediately after creation
+      cb.destroy();
+
+      // Should not hang and should handle gracefully
+      const overhead = cb.measureOverhead(() => Math.random());
+      expect(overhead).toBe(0); // Returns 0 when destroyed/disabled
+    });
+
+    it('should handle multiple rapid destroy calls', () => {
+      const cb = new PerformanceCircuitBreaker({
+        enabled: true,
+      });
+
+      // Call destroy multiple times
+      cb.destroy();
+      cb.destroy();
+      cb.destroy();
+
+      // Should not throw or hang
+      expect(() => cb.destroy()).not.toThrow();
     });
   });
 });

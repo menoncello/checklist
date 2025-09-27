@@ -21,6 +21,8 @@ export class PerformanceCircuitBreaker {
   private measurements: { overhead: number; timestamp: number }[] = [];
   private checkTimer?: NodeJS.Timeout;
   private baseMeasurements: number[] = [];
+  private isDestroyed: boolean = false;
+  private initializationTimeout?: NodeJS.Timeout;
 
   constructor(config?: Partial<PerformanceCircuitBreakerConfig>) {
     this.config = {
@@ -40,11 +42,22 @@ export class PerformanceCircuitBreaker {
     };
 
     this.initializeBaseMeasurement();
+
+    // Safety timeout to prevent infinite initialization
+    this.initializationTimeout = setTimeout(() => {
+      if (this.baseMeasurements.length < 3) {
+        // If we don't have enough measurements after timeout, use what we have
+        console.warn(
+          '[PerformanceCircuitBreaker] Initialization timeout - using limited baseline measurements'
+        );
+        this.config.enabled = false; // Disable to prevent issues
+      }
+    }, 2000);
   }
 
   private initializeBaseMeasurement(): void {
-    // Check if still enabled before taking measurements
-    if (!this.config.enabled) return;
+    // Check if still enabled and not destroyed before taking measurements
+    if (!this.config.enabled || this.isDestroyed) return;
 
     // Measure baseline performance without monitoring
     const start = performance.now();
@@ -55,8 +68,12 @@ export class PerformanceCircuitBreaker {
     const duration = performance.now() - start;
     this.baseMeasurements.push(duration);
 
-    // Take multiple measurements for accuracy
-    if (this.baseMeasurements.length < 10 && this.config.enabled) {
+    // Take multiple measurements for accuracy, but with a safety limit
+    if (
+      this.baseMeasurements.length < 10 &&
+      this.config.enabled &&
+      !this.isDestroyed
+    ) {
       setTimeout(() => this.initializeBaseMeasurement(), 100);
     }
   }
@@ -247,7 +264,18 @@ export class PerformanceCircuitBreaker {
   }
 
   public destroy(): void {
+    // Mark as destroyed first to prevent any further operations
+    this.isDestroyed = true;
+
+    // Clear all timeouts and intervals
     this.stopMonitoring();
+
+    if (this.initializationTimeout) {
+      clearTimeout(this.initializationTimeout);
+      this.initializationTimeout = undefined;
+    }
+
+    // Clean up data
     this.config.enabled = false;
     this.measurements = [];
     this.baseMeasurements = [];
