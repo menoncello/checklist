@@ -54,7 +54,9 @@ const excludeDirs = [
   "out",
   "tmp",
   "temp",
-  ".cache"
+  ".cache",
+  ".bun",
+  "metronic-react"
 ];
 
 // Files to exclude
@@ -215,6 +217,13 @@ function getChangedFiles() {
       .filter(file => {
         // Only include files that exist and are code files
         if (!fs.existsSync(file)) return false;
+
+        // Check if file is in excluded directory
+        const relativePath = path.relative(projectRoot, file);
+        const pathSegments = relativePath.split(path.sep);
+        const inExcludedDir = excludeDirs.some(excl => pathSegments.includes(excl));
+        if (inExcludedDir) return false;
+
         const ext = path.extname(file);
         return codeExtensions.includes(ext) && !excludeFiles.some(excl => file.includes(excl));
       });
@@ -235,8 +244,8 @@ function getCoverageData() {
   console.log("Generating coverage report...");
 
   try {
-    // Run bun test with coverage
-    const output = execSync("export NODE_ENV=test && bun test --coverage 2>&1 || true", {
+    // Run bun test with coverage and filter to just the table, strip ANSI codes
+    const output = execSync("bun test --coverage 2>&1 | grep -A 200 'File.*% Funcs.*% Lines' | sed 's/\\x1b\\[[0-9;]*m//g' || true", {
       cwd: projectRoot,
       encoding: "utf-8",
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer
@@ -262,8 +271,8 @@ function getCoverageData() {
         continue;
       }
 
-      // Check for coverage table end
-      if (tableStarted && line.includes("---") && !line.includes("|")) {
+      // Check for coverage table end (empty line or line without pipe)
+      if (tableStarted && (!line.includes("|") || line.trim() === "")) {
         inCoverageTable = false;
         break;
       }

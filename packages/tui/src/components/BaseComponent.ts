@@ -105,7 +105,7 @@ export abstract class BaseComponent implements Component {
     return { ...this.state };
   }
 
-  protected setProps(newProps: Partial<typeof this.props>): void {
+  public setProps(newProps: Partial<typeof this.props>): void {
     const previousProps = { ...this.props };
     this.props = { ...this.props, ...newProps };
 
