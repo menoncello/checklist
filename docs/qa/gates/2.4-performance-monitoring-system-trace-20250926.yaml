@@ -1,0 +1,23 @@
+# <!-- Powered by BMAD™ Core -->
+trace:
+  totals:
+    requirements: 8
+    full: 5
+    partial: 2
+    none: 1
+  planning_ref: 'docs/qa/assessments/2.4-performance-monitoring-test-design-20250925.md'
+  uncovered:
+    - ac: 'AC5'
+      reason: 'No CI integration tests found for performance regression detection'
+    - ac: 'AC2'
+      reason: 'Missing test for overlay toggle functionality (Ctrl+Shift+D)'
+    - ac: 'AC6'
+      reason: 'Missing tests for JSON/CSV export formats and file rotation'
+  notes: 'See docs/qa/assessments/2.4-performance-monitoring-trace-20250926.md'
+  coverage_percentage: 62.5
+  risk_level: 'Medium'
+  critical_gaps: 3
+  recommendations:
+    - 'Implement CI integration tests for performance regression detection'
+    - Add keyboard shortcut integration tests for debug overlay
+    - Add comprehensive export format validation tests
