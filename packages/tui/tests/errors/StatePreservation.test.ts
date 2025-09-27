@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, test, mock, afterEach } from 'bun:test';
-import {
-  StatePreservation,
+import { StatePreservation } from '../../src/errors/StatePreservation';
+import type {
   StatePreservationConfig,
   PreservedState,
   StateSnapshot,
-  StateSerializer,
   StatePreservationMetrics,
+  StateSerializer,
 } from '../../src/errors/StatePreservation';
 
 describe('StatePreservation', () => {
@@ -340,6 +340,7 @@ describe('StatePreservation', () => {
     test('should add custom serializers', () => {
       const customSerializer: StateSerializer = {
         type: 'custom',
+        canSerialize: (data: unknown) => typeof data === 'object' && data !== null && (data as Record<string, unknown>).customType === true,
         canHandle: (data: unknown) => typeof data === 'object' && data !== null && (data as Record<string, unknown>).customType === true,
         serialize: (data: unknown) => JSON.stringify({ custom: true, data }),
         deserialize: (data: string) => JSON.parse(data),
@@ -351,6 +352,7 @@ describe('StatePreservation', () => {
     test('should remove serializers', () => {
       const customSerializer: StateSerializer = {
         type: 'removable',
+        canSerialize: (data: unknown) => false,
         canHandle: (data: unknown) => false,
         serialize: (data: unknown) => JSON.stringify(data),
         deserialize: (data: string) => JSON.parse(data),

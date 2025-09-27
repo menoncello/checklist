@@ -254,6 +254,10 @@ export class PerformanceCircuitBreaker {
     };
   }
 
+  public isActive(): boolean {
+    return this.state.isTripped;
+  }
+
   public reset(): void {
     this.state.isTripped = false;
     this.state.overhead = 0;

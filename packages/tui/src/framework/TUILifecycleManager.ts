@@ -20,6 +20,7 @@ interface TUIComponents {
 
 export class TUILifecycleManager {
   private isShuttingDown = false;
+  private startupBenchmarkId?: string;
 
   constructor(
     private components: TUIComponents,
@@ -52,10 +53,11 @@ export class TUILifecycleManager {
 
   private startPerformanceProfiling(): void {
     if (this.components.performanceManager != null) {
-      this.components.performanceManager.startBenchmark(
-        'application_start',
-        'Application startup'
-      );
+      this.startupBenchmarkId =
+        this.components.performanceManager.startBenchmark(
+          'application_start',
+          'startup'
+        );
     }
   }
 
@@ -67,8 +69,12 @@ export class TUILifecycleManager {
   }
 
   private completeStartup(): void {
-    if (this.components.performanceManager != null) {
-      this.components.performanceManager.endBenchmark('application_start');
+    if (
+      this.components.performanceManager != null &&
+      this.startupBenchmarkId != null &&
+      this.startupBenchmarkId !== ''
+    ) {
+      this.components.performanceManager.endBenchmark(this.startupBenchmarkId);
     }
 
     this.components.debugIntegration?.log(
@@ -140,13 +146,11 @@ export class TUILifecycleManager {
 
   private destroyComponent(component: unknown): void {
     if (
-      component !== null &&
-      component !== undefined &&
-      typeof component === 'object' &&
-      'destroy' in component &&
+      component != null &&
+      'destroy' in (component as Record<string, unknown>) &&
       typeof (component as Record<string, unknown>).destroy === 'function'
     ) {
-      ((component as Record<string, unknown>).destroy as () => void)();
+      (component as { destroy(): void }).destroy();
     }
   }
 

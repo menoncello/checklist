@@ -1,29 +1,48 @@
 export class ErrorBoundaryRenderer {
-  renderError(error: Error, _errorInfo?: unknown): string {
-    return `Error: ${error.message}\n${error.stack ?? ''}`;
+  renderError(error: Error, errorInfo: Record<string, unknown>): string {
+    return ErrorBoundaryRenderer.defaultFallbackRenderer(error, errorInfo);
   }
 
-  renderRecoveryMessage(message: string): string {
-    return `Recovery: ${message}`;
+  static defaultFallbackRenderer(
+    error: Error,
+    _errorInfo: Record<string, unknown>
+  ): string {
+    return `
+╭─────────────────────────────────────╮
+│        Error Boundary               │
+├─────────────────────────────────────┤
+│ ${error.message.padEnd(35)} │
+│                                     │
+│ Stack trace available in debug mode │
+╰─────────────────────────────────────╯
+    `.trim();
   }
 
-  renderRetryPrompt(attempts: number, maxAttempts: number): string {
-    return `Retry attempt ${attempts}/${maxAttempts}. Press R to retry, Q to quit.`;
-  }
-
-  renderStateSnapshot(state: unknown): string {
-    try {
-      return JSON.stringify(state, null, 2);
-    } catch {
-      return 'Unable to render state snapshot';
+  static renderError(
+    error: Error,
+    errorInfo: Record<string, unknown>,
+    customRenderer?: (
+      error: Error,
+      errorInfo: Record<string, unknown>
+    ) => string
+  ): string {
+    if (customRenderer != null) {
+      try {
+        return customRenderer(error, errorInfo);
+      } catch (renderError) {
+        // Emergency fallback if custom renderer fails
+        return `
+╭─────────────────────────────────────╮
+│    ERROR BOUNDARY FAILURE           │
+├─────────────────────────────────────┤
+│ Original error: ${error.message.substring(0, 20)}
+│ Renderer error: ${(renderError as Error).message.substring(0, 20)}
+│                                     │
+│ Using emergency fallback            │
+╰─────────────────────────────────────╯
+        `.trim();
+      }
     }
-  }
-
-  renderMetrics(metrics: Record<string, unknown>): string {
-    const lines: string[] = ['=== Error Metrics ==='];
-    for (const [key, value] of Object.entries(metrics)) {
-      lines.push(`${key}: ${value}`);
-    }
-    return lines.join('\n');
+    return this.defaultFallbackRenderer(error, errorInfo);
   }
 }

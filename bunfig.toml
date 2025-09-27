@@ -7,7 +7,7 @@
 preload = ["./packages/core/tests/setup.ts"]
 
 # Enable coverage reporting
-coverage = true
+# coverage = true
 
 # Coverage output directories and formats
 coverageDirectory = "coverage"

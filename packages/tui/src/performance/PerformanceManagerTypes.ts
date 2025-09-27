@@ -1,21 +1,31 @@
 export interface PerformanceManagerConfig {
-  enableMonitoring?: boolean;
+  enableMonitoring: boolean;
+  enableStartupProfiling: boolean;
+  enableMemoryTracking: boolean;
+  enableMetricsCollection: boolean;
+  reportingInterval: number;
+  alertsEnabled: boolean;
   startupProfiling?: boolean;
-  enableMemoryTracking?: boolean;
-  enableMetricsCollection?: boolean;
-  reportingInterval?: number;
-  alertsEnabled?: boolean;
-  enableStartupProfiling?: boolean;
 }
 
 export interface PerformanceReport {
   timestamp: number;
-  metrics: Record<string, unknown>;
-  memory: {
-    used: number;
-    total: number;
-    percentage: number;
+  metrics: {
+    sampleRate: number;
+    [key: string]: unknown;
   };
-  benchmarks: Record<string, unknown>;
-  alerts: unknown[];
+  system: {
+    memory: {
+      heapUsed: number;
+      heapTotal: number;
+      external: number;
+      [key: string]: unknown;
+    };
+    cpu?: {
+      usage: number;
+      [key: string]: unknown;
+    };
+  };
+  benchmarks?: unknown[];
+  startup?: unknown;
 }

@@ -16,6 +16,7 @@ export class TUIFrameworkInitializer {
   private debugIntegration?: DebugIntegration;
   private errorBoundary?: ErrorBoundary;
   private capabilityDetector?: CapabilityDetector;
+  private benchmarkId?: string;
   private canvas!: TerminalCanvas;
   private componentRegistry!: ComponentRegistry;
   private eventManager!: EventManager;
@@ -84,9 +85,9 @@ export class TUIFrameworkInitializer {
       enableMetricsCollection: true,
     });
 
-    this.performanceManager.startBenchmark(
+    this.benchmarkId = this.performanceManager.startBenchmark(
       'framework_init',
-      'TUI Framework initialization'
+      'initialization'
     );
   }
 
@@ -177,8 +178,17 @@ export class TUIFrameworkInitializer {
     this.state.isInitialized = true;
     this.state.startupTime = performance.now() - startTime;
 
-    if (this.performanceManager != null) {
-      this.performanceManager.endBenchmark('framework_init');
+    if (
+      this.performanceManager != null &&
+      this.benchmarkId != null &&
+      this.benchmarkId !== ''
+    ) {
+      this.performanceManager.endBenchmark(this.benchmarkId);
+      // Record the startup time as a metric
+      this.performanceManager.recordMetric(
+        'framework_startup_time',
+        this.state.startupTime
+      );
     }
 
     this.debugIntegration?.log(

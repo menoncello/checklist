@@ -1,11 +1,22 @@
-export class MetricsAggregationProcessor {
-  constructor() {}
+import type { MetricPoint, MetricsCollectorConfig } from './MetricsTypes';
 
-  processAggregation(data: unknown): unknown {
-    return data;
+export class MetricsAggregationProcessor {
+  private config: MetricsCollectorConfig;
+  private emit: (event: string, data?: unknown) => void;
+
+  constructor(
+    config: MetricsCollectorConfig,
+    emit: (event: string, data?: unknown) => void
+  ) {
+    this.config = config;
+    this.emit = emit;
   }
 
-  getAggregatedData(): unknown {
-    return {};
+  performAggregation(series: Map<string, MetricPoint[]>): void {
+    this.emit('aggregationCompleted', { series });
+  }
+
+  performSimpleAggregation(series: Map<string, MetricPoint[]>): void {
+    this.emit('simpleAggregationCompleted', { series });
   }
 }

@@ -1,11 +1,46 @@
 export class MetricsEventManager {
-  constructor() {}
+  private handlers: Map<string, Function[]> = new Map();
 
-  emit(_event: string, _data?: unknown): void {}
+  on(event: string, handler: Function): void {
+    if (!this.handlers.has(event)) {
+      this.handlers.set(event, []);
+    }
+    const handlers = this.handlers.get(event);
+    if (handlers != null) {
+      handlers.push(handler);
+    }
+  }
 
-  on(_event: string, _handler: (...args: unknown[]) => void): void {}
+  off(event: string, handler?: Function): void {
+    if (!this.handlers.has(event)) return;
 
-  off(_event: string, _handler: (...args: unknown[]) => void): void {}
+    if (handler) {
+      const handlers = this.handlers.get(event);
+      if (handlers != null) {
+        const index = handlers.indexOf(handler);
+        if (index >= 0) {
+          handlers.splice(index, 1);
+        }
+      }
+    } else {
+      this.handlers.delete(event);
+    }
+  }
 
-  removeAllListeners(): void {}
+  emit(event: string, data?: unknown): void {
+    const handlers = this.handlers.get(event);
+    if (handlers) {
+      handlers.forEach((handler) => {
+        try {
+          handler(data);
+        } catch (error) {
+          console.error(`Error in event handler for ${event}:`, error);
+        }
+      });
+    }
+  }
+
+  clear(): void {
+    this.handlers.clear();
+  }
 }

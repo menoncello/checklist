@@ -13,7 +13,7 @@ import {
   type MemorySnapshot,
   type MemoryTrend,
   type MemoryLeak,
-} from './MemoryTracker';
+} from '../../src/performance/MemoryTracker';
 
 // Mock process.memoryUsage for predictable tests
 const mockMemoryUsage = {

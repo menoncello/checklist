@@ -92,7 +92,7 @@ export class PerformanceIntegrationSetup {
     performanceManager: PerformanceManager,
     debugManager: DebugManager,
     interval: number = 10000
-  ): NodeJS.Timer {
+  ): ReturnType<typeof setInterval> {
     return setInterval(() => {
       const _report = performanceManager.getPerformanceReport();
       // Note: getMetrics() only gets current metrics, not sets them

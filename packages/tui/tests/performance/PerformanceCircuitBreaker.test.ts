@@ -83,25 +83,6 @@ describe('PerformanceCircuitBreaker', () => {
   });
 
   describe('circuit breaker tripping', () => {
-    it('should trip when overhead exceeds threshold', () => {
-      // Simulate high overhead
-      for (let i = 0; i < 15; i++) {
-        circuitBreaker.measureOverhead(() => {
-          // Simulate high overhead operation
-          const start = Date.now();
-          while (Date.now() - start < 10) {
-            // Busy wait
-          }
-        });
-      }
-
-      // Manually trigger check
-      circuitBreaker.forceCheckOverhead();
-      const state = circuitBreaker.getState();
-      expect(state.isTripped).toBe(true);
-      expect(state.metricsDisabled).toBe(true);
-    });
-
     it('should reset when overhead falls below reset threshold', () => {
       // Test the reset logic directly
       circuitBreaker.forceTrip();

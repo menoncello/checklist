@@ -15,18 +15,19 @@ export class PerformanceManager {
   private startupProfiler!: StartupProfiler;
   private memoryTracker!: MemoryTracker;
   private metricsCollector!: MetricsCollector;
-  private reportingTimer: Timer | null = null;
+  private reportingTimer: ReturnType<typeof setInterval> | null = null;
   private eventManager!: PerformanceEventManager;
   private reportBuilder!: PerformanceReportBuilder;
 
   constructor(config: Partial<PerformanceManagerConfig> = {}) {
     this.config = {
       enableMonitoring: true,
-      startupProfiling: true,
+      enableStartupProfiling: true,
       enableMemoryTracking: true,
       enableMetricsCollection: true,
       reportingInterval: 60000,
       alertsEnabled: true,
+      startupProfiling: true,
       ...config,
     };
     this.initializeComponents();
@@ -56,8 +57,19 @@ export class PerformanceManager {
   }
 
   private initializeEventSystem(): void {
-    this.eventManager = new PerformanceEventManager();
-    this.reportBuilder = new PerformanceReportBuilder();
+    this.eventManager = new PerformanceEventManager(
+      this.metricsCollector,
+      (event: string, data: unknown) => {
+        // Default emit callback for performance events
+        console.debug(`Performance event: ${event}`, data);
+      }
+    );
+    this.reportBuilder = new PerformanceReportBuilder(
+      this.monitor,
+      this.memoryTracker,
+      this.metricsCollector,
+      this.startupProfiler
+    );
   }
 
   private setupEventHandlers(): void {
@@ -95,8 +107,8 @@ export class PerformanceManager {
     });
   }
 
-  public startBenchmark(id: string, name: string, category?: string): void {
-    this.monitor.startBenchmark(id, category ?? 'general');
+  public startBenchmark(name: string, category?: string): string {
+    return this.monitor.startBenchmark(name, category ?? 'general');
   }
 
   public endBenchmark(id: string): unknown {
@@ -210,5 +222,12 @@ export class PerformanceManager {
 
   public off(event: string, handler: (...args: unknown[]) => void): void {
     this.eventManager.off(event, handler as (...args: unknown[]) => void);
+  }
+
+  public addPerformanceListener(
+    event: string,
+    handler: (...args: unknown[]) => void
+  ): void {
+    this.on(event, handler);
   }
 }

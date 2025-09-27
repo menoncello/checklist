@@ -1,88 +1,56 @@
-export interface RetryOptions {
-  maxAttempts?: number;
-  delay?: number;
-  backoff?: boolean;
-  onRetry?: (attempt: number) => void;
-}
-
 export class ErrorBoundaryRetryManager {
-  private attempts = 0;
-  private maxAttempts = 3;
-  private baseDelay = 1000;
-  private retryTimer: Timer | null = null;
+  private retryTimer: NodeJS.Timeout | null = null;
+  private attemptRetryCallback: (() => void) | null = null;
 
-  async retry<T>(
-    operation: () => Promise<T>,
-    options: RetryOptions = {}
-  ): Promise<T> {
-    const {
-      maxAttempts = this.maxAttempts,
-      delay = this.baseDelay,
-      backoff = true,
-      onRetry,
-    } = options;
-
-    this.attempts = 0;
-
-    while (this.attempts < maxAttempts) {
-      try {
-        this.attempts++;
-        return await operation();
-      } catch (error) {
-        if (this.attempts >= maxAttempts) {
-          throw error;
-        }
-
-        if (onRetry) {
-          onRetry(this.attempts);
-        }
-
-        const waitTime = backoff
-          ? delay * Math.pow(2, this.attempts - 1)
-          : delay;
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-    }
-
-    throw new Error('Max retry attempts reached');
+  constructor(attemptRetryCallback: () => void) {
+    this.attemptRetryCallback = attemptRetryCallback;
   }
 
-  getAttempts(): number {
-    return this.attempts;
-  }
-
-  reset(): void {
-    this.attempts = 0;
-  }
-
-  // Additional methods needed by ErrorBoundaryCore
   scheduleRetry(delay: number): void {
-    if (this.retryTimer) {
-      clearTimeout(this.retryTimer);
-    }
-
-    this.retryTimer = setTimeout(() => {
-      // Default implementation - could trigger retry callback
-      this.retryTimer = null;
-    }, delay);
-  }
-
-  clearRetryTimer(): void {
-    if (this.retryTimer) {
-      clearTimeout(this.retryTimer);
-      this.retryTimer = null;
+    this.cancelRetry();
+    if (this.attemptRetryCallback != null) {
+      this.retryTimer = setTimeout(() => {
+        if (this.attemptRetryCallback != null) {
+          this.attemptRetryCallback();
+        }
+      }, delay);
     }
   }
 
   cancelRetry(): void {
-    this.clearRetryTimer();
+    if (this.retryTimer != null) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
   }
 
-  retryOperation<T>(operation?: () => T | Promise<T>): Promise<T> {
-    // Default implementation
-    if (!operation) {
-      return Promise.resolve(undefined as unknown as T);
+  async retryOperation<T>(
+    operation: () => T,
+    maxRetries: number,
+    delay: number
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await Promise.resolve(operation());
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
     }
-    return Promise.resolve(operation());
+
+    throw lastError ?? new Error('Operation failed after retries');
+  }
+
+  destroy(): void {
+    this.cancelRetry();
+    this.attemptRetryCallback = null;
+  }
+
+  clearRetryTimer(): void {
+    this.cancelRetry();
   }
 }

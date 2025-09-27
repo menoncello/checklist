@@ -1,27 +1,70 @@
-import { EventEmitter } from 'events';
+export type StateEventType =
+  | 'save'
+  | 'load'
+  | 'restore'
+  | 'clear'
+  | 'error'
+  | 'statePreserved'
+  | 'stateRestored'
+  | 'stateExpired'
+  | 'stateDeleted'
+  | 'preservationError'
+  | 'restorationError'
+  | 'snapshotCreated'
+  | 'snapshotRestored'
+  | 'snapshotRestorationError'
+  | 'snapshotDeleted'
+  | 'cleanupPerformed'
+  | 'persistedToDisk'
+  | 'persistError'
+  | 'cleared';
 
-export class StatePreservationEventManager extends EventEmitter {
-  emitStateChange(state: unknown): void {
-    this.emit('stateChange', state);
+export interface StateEvent {
+  type: StateEventType;
+  timestamp: number;
+  data?: unknown;
+}
+
+export class StatePreservationEventManager {
+  private handlers: Map<string, Set<Function>> = new Map();
+
+  on(type: string, handler: Function): void {
+    if (!this.handlers.has(type)) {
+      this.handlers.set(type, new Set());
+    }
+    const eventHandlers = this.handlers.get(type);
+    if (eventHandlers) {
+      eventHandlers.add(handler);
+    }
   }
 
-  emitError(error: Error): void {
-    this.emit('error', error);
+  off(type: string, handler: Function): void {
+    const eventHandlers = this.handlers.get(type);
+    if (eventHandlers) {
+      eventHandlers.delete(handler);
+    }
   }
 
-  emitRecovery(recoveredState: unknown): void {
-    this.emit('recovery', recoveredState);
+  emit(type: string, data?: unknown): void {
+    const eventHandlers = this.handlers.get(type);
+    if (eventHandlers) {
+      eventHandlers.forEach((handler) => {
+        try {
+          // Pass only the data to the handler, not the full event object
+          handler(data);
+        } catch (_error) {
+          // Silently handle errors in event handlers to prevent cascade failures
+          // Could optionally log this error
+        }
+      });
+    }
   }
 
-  onStateChange(callback: (state: unknown) => void): void {
-    this.on('stateChange', callback);
+  clear(): void {
+    this.handlers.clear();
   }
 
-  onError(callback: (error: Error) => void): void {
-    this.on('error', callback);
-  }
-
-  onRecovery(callback: (recoveredState: unknown) => void): void {
-    this.on('recovery', callback);
+  removeAllListeners(): void {
+    this.clear();
   }
 }

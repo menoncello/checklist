@@ -91,7 +91,7 @@ describe('PerformanceMonitor', () => {
     test('should record metric objects', () => {
       const metric: PerformanceMetric = {
         id: 'test-metric-1',
-        name: 'custom-metric',
+        name: 'render-time', // Use a critical metric name to ensure it's not filtered out
         value: 100,
         timestamp: Date.now(),
         tags: { category: 'test' },
@@ -103,7 +103,7 @@ describe('PerformanceMonitor', () => {
       const metrics = performanceMonitor.getMetrics();
       const recordedMetric = metrics.find(m => m.id === 'test-metric-1');
       expect(recordedMetric).toBeDefined();
-      expect(recordedMetric!.name).toBe('custom-metric');
+      expect(recordedMetric!.name).toBe('render-time');
       expect(recordedMetric!.value).toBe(100);
     });
 
@@ -302,7 +302,7 @@ describe('PerformanceMonitor', () => {
       performanceMonitor.on('alert', alertHandler);
 
       const threshold: PerformanceThreshold = {
-        metric: 'test-metric',
+        metric: 'render-time',
         warningValue: 50,
         criticalValue: 80,
         direction: 'above',
@@ -313,7 +313,7 @@ describe('PerformanceMonitor', () => {
       // Record metric that should trigger alert
       performanceMonitor.recordMetric({
         id: 'alert-trigger',
-        name: 'test-metric',
+        name: 'render-time', // Use critical metric name
         value: 75,
         timestamp: Date.now(),
       });
@@ -367,14 +367,14 @@ describe('PerformanceMonitor', () => {
 
     test('should get alerts by level', () => {
       const warningThreshold: PerformanceThreshold = {
-        metric: 'warning-metric',
+        metric: 'render-time',
         warningValue: 30,
         criticalValue: 50,
         direction: 'above',
       };
 
       const criticalThreshold: PerformanceThreshold = {
-        metric: 'critical-metric',
+        metric: 'memory-usage',
         warningValue: 70,
         criticalValue: 80,
         direction: 'above',
@@ -386,7 +386,7 @@ describe('PerformanceMonitor', () => {
       // Trigger warning alert
       performanceMonitor.recordMetric({
         id: 'warning-trigger',
-        name: 'warning-metric',
+        name: 'render-time',
         value: 40,
         timestamp: Date.now(),
       });
@@ -394,7 +394,7 @@ describe('PerformanceMonitor', () => {
       // Trigger critical alert
       performanceMonitor.recordMetric({
         id: 'critical-trigger',
-        name: 'critical-metric',
+        name: 'memory-usage',
         value: 90,
         timestamp: Date.now(),
       });
@@ -410,7 +410,7 @@ describe('PerformanceMonitor', () => {
 
     test('should clear alerts', () => {
       const threshold: PerformanceThreshold = {
-        metric: 'clear-test',
+        metric: 'render-time',
         warningValue: 10,
         criticalValue: 20,
         direction: 'above',
@@ -419,7 +419,7 @@ describe('PerformanceMonitor', () => {
       performanceMonitor.addThreshold(threshold);
       performanceMonitor.recordMetric({
         id: 'clear-alert',
-        name: 'clear-test',
+        name: 'render-time',
         value: 25,
         timestamp: Date.now(),
       });
@@ -493,7 +493,7 @@ describe('PerformanceMonitor', () => {
 
       // Trigger alert event
       const threshold: PerformanceThreshold = {
-        metric: 'event-test',
+        metric: 'render-time',
         warningValue: 10,
         criticalValue: 30,
         direction: 'above',
@@ -502,7 +502,7 @@ describe('PerformanceMonitor', () => {
       performanceMonitor.addThreshold(threshold);
       performanceMonitor.recordMetric({
         id: 'event-trigger',
-        name: 'event-test',
+        name: 'render-time',
         value: 20,
         timestamp: Date.now(),
       });

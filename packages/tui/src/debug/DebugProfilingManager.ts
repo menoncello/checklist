@@ -1,58 +1,41 @@
-export interface ProfileMeasurement {
-  name: string;
-  startTime: number;
-  endTime?: number;
-  duration?: number;
-}
-
 export class DebugProfilingManager {
-  private measurements: Map<string, ProfileMeasurement> = new Map();
-  private history: ProfileMeasurement[] = [];
-  private maxHistorySize = 100;
+  private profiles: Map<string, number> = new Map();
+  private enabled: boolean;
+  private logCallback: (message: string) => void;
 
-  start(name: string): void {
-    this.measurements.set(name, {
-      name,
-      startTime: performance.now(),
-    });
+  constructor(enabled: boolean, logCallback: (message: string) => void) {
+    this.enabled = enabled;
+    this.logCallback = logCallback;
   }
 
-  end(name: string): number {
-    const measurement = this.measurements.get(name);
-    if (!measurement) {
-      return 0;
-    }
-
-    measurement.endTime = performance.now();
-    measurement.duration = measurement.endTime - measurement.startTime;
-
-    this.history.push({ ...measurement });
-    if (this.history.length > this.maxHistorySize) {
-      this.history.shift();
-    }
-
-    this.measurements.delete(name);
-    return measurement.duration;
+  startProfiling(label: string): void {
+    if (!this.enabled) return;
+    this.profiles.set(label, performance.now());
+    this.logCallback(`Profiling started: ${label}`);
   }
 
-  getMeasurement(name: string): ProfileMeasurement | undefined {
-    return this.measurements.get(name);
+  endProfiling(label: string): number | null {
+    if (!this.enabled) return null;
+
+    const startTime = this.profiles.get(label);
+    if (startTime === undefined) return null;
+
+    const duration = performance.now() - startTime;
+    this.profiles.delete(label);
+    this.logCallback(`Profiling ended: ${label} - ${duration}ms`);
+
+    return duration;
   }
 
-  getHistory(): ProfileMeasurement[] {
-    return [...this.history];
+  start(label: string): void {
+    this.startProfiling(label);
   }
 
-  getAverageDuration(name: string): number {
-    const measurements = this.history.filter((m) => m.name === name);
-    if (measurements.length === 0) return 0;
-
-    const total = measurements.reduce((sum, m) => sum + (m.duration ?? 0), 0);
-    return total / measurements.length;
+  end(label: string): number | null {
+    return this.endProfiling(label);
   }
 
   clear(): void {
-    this.measurements.clear();
-    this.history = [];
+    this.profiles.clear();
   }
 }

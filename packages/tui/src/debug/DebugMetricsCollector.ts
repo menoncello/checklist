@@ -1,4 +1,4 @@
-import { DebugMetrics } from './DebugManagerHelpers';
+import type { DebugMetrics } from './helpers/ConfigInitializer';
 
 export class DebugMetricsCollector {
   private metrics: DebugMetrics = {
@@ -7,6 +7,7 @@ export class DebugMetricsCollector {
     renderTime: 0,
     componentCount: 0,
     eventCount: 0,
+    lastUpdate: Date.now(),
   };
 
   private frameCount = 0;
@@ -57,6 +58,7 @@ export class DebugMetricsCollector {
       renderTime: 0,
       componentCount: 0,
       eventCount: 0,
+      lastUpdate: Date.now(),
     };
     this.frameCount = 0;
     this.lastTime = performance.now();
