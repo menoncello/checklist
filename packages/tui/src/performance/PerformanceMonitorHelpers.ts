@@ -19,7 +19,11 @@ export interface PerformanceMonitorHelpersConfig {
       checkMetric: (metric: PerformanceMetric) => PerformanceAlert | null;
     };
   };
-  config: { enableAlerts: boolean };
+  config: {
+    enableAlerts: boolean;
+    enableMetrics: boolean;
+    enableAutoSampling: boolean;
+  };
 }
 
 export class PerformanceMonitorHelpers {
@@ -76,7 +80,7 @@ export class PerformanceMonitorHelpers {
 
   public shouldCollectMetrics(): boolean {
     return (
-      this.config.config.enableAlerts === true &&
+      this.config.config.enableMetrics === true &&
       this.config.circuitBreaker.shouldCollectMetrics()
     );
   }
@@ -90,6 +94,11 @@ export class PerformanceMonitorHelpers {
     ];
 
     if (criticalMetrics.includes(name)) {
+      return true;
+    }
+
+    // If auto sampling is disabled, record all metrics
+    if (!this.config.config.enableAutoSampling) {
       return true;
     }
 
