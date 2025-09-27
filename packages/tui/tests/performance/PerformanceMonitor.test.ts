@@ -654,6 +654,231 @@ describe('PerformanceMonitor', () => {
     });
   });
 
+  describe('command execution tracking', () => {
+    test('should record command execution with performance monitoring', () => {
+      performanceMonitor.recordCommandExecution('test-command', 25);
+
+      const metrics = performanceMonitor.getMetrics();
+      const commandMetric = metrics.find(m => m.name === 'command_execution_time');
+      expect(commandMetric).toBeDefined();
+      expect(commandMetric!.value).toBe(25);
+      expect(commandMetric!.tags?.commandId).toBe('test-command');
+    });
+
+    test('should trigger alert for slow commands', () => {
+      const alertHandler = jest.fn();
+      performanceMonitor.on('alert', alertHandler);
+
+      // Record slow command (>50ms)
+      performanceMonitor.recordCommandExecution('slow-command', 75);
+
+      expect(alertHandler).toHaveBeenCalled();
+      const alerts = performanceMonitor.getAlerts();
+      const slowCommandAlert = alerts.find(a => a.metric === 'command_execution_time');
+      expect(slowCommandAlert).toBeDefined();
+      expect(slowCommandAlert!.level).toBe('warning');
+      expect(slowCommandAlert!.message).toContain('slow-command');
+    });
+
+    test('should not trigger alert for fast commands', () => {
+      const alertHandler = jest.fn();
+      performanceMonitor.on('alert', alertHandler);
+
+      // Record fast command (<50ms)
+      performanceMonitor.recordCommandExecution('fast-command', 25);
+
+      expect(alertHandler).not.toHaveBeenCalled();
+    });
+
+    test('should include timestamp in command execution metrics', () => {
+      const beforeTime = Date.now();
+      performanceMonitor.recordCommandExecution('timestamp-test', 30);
+      const afterTime = Date.now();
+
+      const metrics = performanceMonitor.getMetrics();
+      const commandMetric = metrics.find(m => m.name === 'command_execution_time' && m.tags?.commandId === 'timestamp-test');
+      expect(commandMetric).toBeDefined();
+      expect(commandMetric!.timestamp).toBeGreaterThanOrEqual(beforeTime);
+      expect(commandMetric!.timestamp).toBeLessThanOrEqual(afterTime);
+    });
+  });
+
+  describe('delegation method coverage', () => {
+    test('should delegate mark method to metricsTracker', () => {
+      const markSpy = jest.spyOn(performanceMonitor['metricsTracker'], 'mark');
+      const result = performanceMonitor.mark('test-mark');
+
+      expect(markSpy).toHaveBeenCalledWith('test-mark');
+      expect(typeof result).toBe('number');
+    });
+
+    test('should delegate measure method to metricsTracker', () => {
+      const measureSpy = jest.spyOn(performanceMonitor['metricsTracker'], 'measure');
+      performanceMonitor.mark('start');
+      performanceMonitor.mark('end');
+      const result = performanceMonitor.measure('test-measure', 'start', 'end');
+
+      expect(measureSpy).toHaveBeenCalledWith('test-measure', 'start', 'end');
+      expect(typeof result).toBe('number');
+    });
+
+    test('should delegate addThreshold to alertManager', () => {
+      const addThresholdSpy = jest.spyOn(performanceMonitor['alertManager'], 'addThreshold');
+      const threshold = { metric: 'test', warningValue: 10, criticalValue: 20, direction: 'above' as const };
+
+      performanceMonitor.addThreshold(threshold);
+
+      expect(addThresholdSpy).toHaveBeenCalledWith(threshold);
+    });
+
+    test('should delegate removeThreshold to alertManager', () => {
+      const removeThresholdSpy = jest.spyOn(performanceMonitor['alertManager'], 'removeThreshold');
+
+      const result = performanceMonitor.removeThreshold('test-metric');
+
+      expect(removeThresholdSpy).toHaveBeenCalledWith('test-metric');
+      expect(typeof result).toBe('boolean');
+    });
+
+    test('should delegate getMetrics to metricsTracker with filter', () => {
+      const getMetricsSpy = jest.spyOn(performanceMonitor['metricsTracker'], 'getMetrics');
+      const filter = { tags: { category: 'test' } };
+
+      performanceMonitor.getMetrics(filter);
+
+      expect(getMetricsSpy).toHaveBeenCalledWith(filter);
+    });
+
+    test('should delegate getBenchmarks to benchmarkManager with filter', () => {
+      const getBenchmarksSpy = jest.spyOn(performanceMonitor['benchmarkManager'], 'getBenchmarks');
+      const filter = { category: 'test' };
+
+      performanceMonitor.getBenchmarks(filter);
+
+      expect(getBenchmarksSpy).toHaveBeenCalledWith(filter);
+    });
+
+    test('should delegate getAlerts to alertManager with level', () => {
+      const getAlertsSpy = jest.spyOn(performanceMonitor['alertManager'], 'getAlerts');
+
+      performanceMonitor.getAlerts('warning');
+
+      expect(getAlertsSpy).toHaveBeenCalledWith('warning');
+    });
+
+    test('should delegate getStatistics to metricsTracker', () => {
+      const getStatisticsSpy = jest.spyOn(performanceMonitor['metricsTracker'], 'getStatistics');
+
+      performanceMonitor.getStatistics('test-metric');
+
+      expect(getStatisticsSpy).toHaveBeenCalledWith('test-metric');
+    });
+
+    test('should delegate getSystemSnapshot to systemProfiler', () => {
+      const getSystemSnapshotSpy = jest.spyOn(performanceMonitor['systemProfiler'], 'getSystemSnapshot');
+
+      performanceMonitor.getSystemSnapshot();
+
+      expect(getSystemSnapshotSpy).toHaveBeenCalled();
+    });
+
+    test('should delegate clearMetrics to metricsTracker', () => {
+      const clearSpy = jest.spyOn(performanceMonitor['metricsTracker'], 'clear');
+
+      performanceMonitor.clearMetrics();
+
+      expect(clearSpy).toHaveBeenCalled();
+    });
+
+    test('should delegate clearBenchmarks to benchmarkManager', () => {
+      const clearSpy = jest.spyOn(performanceMonitor['benchmarkManager'], 'clear');
+
+      performanceMonitor.clearBenchmarks();
+
+      expect(clearSpy).toHaveBeenCalled();
+    });
+
+    test('should delegate clearAlerts to alertManager', () => {
+      const clearSpy = jest.spyOn(performanceMonitor['alertManager'], 'clear');
+
+      performanceMonitor.clearAlerts();
+
+      expect(clearSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('configuration update edge cases', () => {
+    test('should handle config update with empty object', () => {
+      const originalConfig = performanceMonitor.getConfig();
+
+      performanceMonitor.updateConfig({});
+
+      const updatedConfig = performanceMonitor.getConfig();
+      expect(updatedConfig).toEqual(originalConfig);
+    });
+
+    test('should emit configUpdated event on partial update', () => {
+      const configHandler = jest.fn();
+      performanceMonitor.on('configUpdated', configHandler);
+
+      performanceMonitor.updateConfig({ metricsBufferSize: 2000 });
+
+      expect(configHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ metricsBufferSize: 2000 })
+      );
+    });
+  });
+
+  describe('metric recording with alerts disabled', () => {
+    test('should record metric but not check alerts when alerts disabled', () => {
+      const alertManagerSpy = jest.spyOn(performanceMonitor['alertManager'], 'checkMetric');
+      const disabledMonitor = new PerformanceMonitor({
+        enableAlerts: false,
+        enableAutoSampling: false,
+      });
+
+      const metric: PerformanceMetric = {
+        id: 'test-no-alert',
+        name: 'test-metric',
+        value: 100,
+        timestamp: Date.now(),
+      };
+
+      disabledMonitor.recordMetric(metric);
+
+      const metrics = disabledMonitor.getMetrics();
+      expect(metrics.length).toBe(1);
+      expect(alertManagerSpy).not.toHaveBeenCalled();
+
+      disabledMonitor.destroy();
+    });
+  });
+
+  describe('destruction behavior', () => {
+    test('should stop system profiler on destruction', () => {
+      const stopSpy = jest.spyOn(performanceMonitor['systemProfiler'], 'stop');
+
+      performanceMonitor.destroy();
+
+      expect(stopSpy).toHaveBeenCalled();
+    });
+
+    test('should clear event handlers on destruction', () => {
+      const handler = jest.fn();
+      performanceMonitor.on('test-event', handler);
+
+      performanceMonitor.destroy();
+
+      // Event should not trigger after destruction
+      (performanceMonitor as any).emit('test-event', { data: 'test' });
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    test('should handle destruction without errors', () => {
+      expect(() => performanceMonitor.destroy()).not.toThrow();
+    });
+  });
+
   describe('edge cases and error handling', () => {
     test('should handle empty metric names', () => {
       expect(() => performanceMonitor.recordMetricValue('', 10)).not.toThrow();
@@ -700,6 +925,82 @@ describe('PerformanceMonitor', () => {
       const benchmarks = performanceMonitor.getBenchmarks();
       const throwingBenchmark = benchmarks.find(b => b.name === 'throwing-function');
       expect(throwingBenchmark).toBeDefined();
+    });
+
+    test('should handle recordMetric when metrics disabled', () => {
+      const disabledMonitor = new PerformanceMonitor({
+        enableMetrics: false,
+        enableAutoSampling: false,
+      });
+
+      const metric: PerformanceMetric = {
+        id: 'disabled-test',
+        name: 'test-metric',
+        value: 100,
+        timestamp: Date.now(),
+      };
+
+      disabledMonitor.recordMetric(metric);
+
+      expect(disabledMonitor.getMetrics().length).toBe(0);
+
+      disabledMonitor.destroy();
+    });
+
+    test('should handle startBenchmark when benchmarks disabled', () => {
+      const disabledMonitor = new PerformanceMonitor({
+        enableBenchmarks: false,
+        enableAutoSampling: false,
+      });
+
+      const result = disabledMonitor.startBenchmark('disabled-benchmark');
+      expect(result).toBe('');
+
+      disabledMonitor.destroy();
+    });
+
+    test('should handle endBenchmark when benchmarks disabled', () => {
+      const disabledMonitor = new PerformanceMonitor({
+        enableBenchmarks: false,
+        enableAutoSampling: false,
+      });
+
+      const result = disabledMonitor.endBenchmark('any-id');
+      expect(result).toBe(null);
+
+      disabledMonitor.destroy();
+    });
+
+    test('should handle measureFunction when benchmarks disabled', () => {
+      const disabledMonitor = new PerformanceMonitor({
+        enableBenchmarks: false,
+        enableAutoSampling: false,
+      });
+
+      const testFunction = jest.fn(() => 42);
+      const measuredFunction = disabledMonitor.measureFunction(testFunction, 'test');
+
+      // Should return original function when disabled
+      expect(measuredFunction).toBe(testFunction);
+      const result = measuredFunction();
+      expect(result).toBe(42);
+
+      disabledMonitor.destroy();
+    });
+
+    test('should handle measureAsync when benchmarks disabled', async () => {
+      const disabledMonitor = new PerformanceMonitor({
+        enableBenchmarks: false,
+        enableAutoSampling: false,
+      });
+
+      const promise = Promise.resolve(42);
+      const result = await disabledMonitor.measureAsync(promise, 'test');
+
+      // Should return original promise when disabled
+      expect(result).toBe(42);
+
+      disabledMonitor.destroy();
     });
   });
 });

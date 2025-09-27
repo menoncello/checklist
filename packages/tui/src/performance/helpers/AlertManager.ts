@@ -12,7 +12,7 @@ export class PerformanceAlert {
   timestamp!: number;
   metric!: string;
   value!: number;
-  threshold!: PerformanceThreshold;
+  threshold!: PerformanceThreshold | number;
   level!: 'warning' | 'critical';
   message!: string;
 }
@@ -138,6 +138,14 @@ export class AlertManager {
 
   public getThreshold(metric: string): PerformanceThreshold | null {
     return this.thresholds.get(metric) ?? null;
+  }
+
+  public recordAlert(alert: PerformanceAlert): void {
+    this.alerts.push(alert);
+
+    if (this.alerts.length > this.bufferSize) {
+      this.alerts = this.alerts.slice(-this.bufferSize);
+    }
   }
 
   public clear(): void {

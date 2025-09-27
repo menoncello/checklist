@@ -163,6 +163,33 @@ export class PerformanceMonitor {
     return this.benchmarkManager.measureAsync(promise, name, category);
   }
 
+  public recordCommandExecution(commandId: string, duration: number): void {
+    this.recordMetricValue(
+      'command_execution_time',
+      duration,
+      { commandId },
+      { timestamp: Date.now() }
+    );
+
+    // Check if command execution exceeds performance threshold
+    if (duration > 50) {
+      const alert: PerformanceAlert = {
+        id: `command-perf-${Date.now()}`,
+        metric: 'command_execution_time',
+        value: duration,
+        threshold: 50,
+        level: 'warning',
+        message: `Command '${commandId}' execution time ${duration.toFixed(
+          2
+        )}ms exceeds 50ms threshold`,
+        timestamp: Date.now(),
+      };
+
+      this.alertManager.recordAlert(alert);
+      this.emit('alert', alert);
+    }
+  }
+
   public generateReport(): {
     metrics: PerformanceMetric[];
     benchmarks: PerformanceBenchmark[];
