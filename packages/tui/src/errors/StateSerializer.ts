@@ -1,40 +1,77 @@
+export interface SerializedState {
+  timestamp: number;
+  data: unknown;
+  metadata?: Record<string, unknown>;
+}
+
 export interface StateSerializer {
-  serialize(state: unknown): string;
-  deserialize(data: string): unknown;
+  type: string;
+  canSerialize: (data: unknown) => boolean;
+  canHandle?: (data: unknown) => boolean;
+  serialize: (data: unknown) => string;
+  deserialize: (serialized: string) => unknown;
 }
 
 export class SerializerManager {
   private serializers: Map<string, StateSerializer> = new Map();
 
-  constructor() {
+  setupDefaultSerializers(): void {
     // Add default JSON serializer
-    this.serializers.set('json', {
-      serialize: (state) => JSON.stringify(state),
-      deserialize: (data) => JSON.parse(data),
+    this.addSerializer({
+      type: 'json',
+      canSerialize: () => true,
+      serialize: (data) => JSON.stringify(data),
+      deserialize: (serialized) => JSON.parse(serialized),
     });
   }
 
-  addSerializer(name: string, serializer: StateSerializer): void {
-    this.serializers.set(name, serializer);
+  addSerializer(serializer: StateSerializer): void {
+    this.serializers.set(serializer.type, serializer);
   }
 
-  getSerializer(name: string): StateSerializer | undefined {
-    return this.serializers.get(name);
+  removeSerializer(type: string): boolean {
+    return this.serializers.delete(type);
   }
 
-  serialize(state: unknown, serializerName = 'json'): string {
-    const serializer = this.getSerializer(serializerName);
-    if (!serializer) {
-      throw new Error(`Serializer '${serializerName}' not found`);
+  serialize(data: unknown): string {
+    const serializers = Array.from(this.serializers.values());
+    for (const serializer of serializers) {
+      if (serializer.canSerialize(data)) {
+        return serializer.serialize(data);
+      }
     }
-    return serializer.serialize(state);
+    // Fallback to JSON
+    return JSON.stringify(data);
   }
 
-  deserialize(data: string, serializerName = 'json'): unknown {
-    const serializer = this.getSerializer(serializerName);
-    if (!serializer) {
-      throw new Error(`Serializer '${serializerName}' not found`);
+  deserialize(serialized: string, type?: string): unknown {
+    if (type != null) {
+      const serializer = this.serializers.get(type);
+      if (serializer != null) {
+        return serializer.deserialize(serialized);
+      }
     }
-    return serializer.deserialize(data);
+    // Fallback to JSON
+    return JSON.parse(serialized);
+  }
+
+  size(): number {
+    return this.serializers.size;
+  }
+
+  clear(): void {
+    this.serializers.clear();
+  }
+
+  getSerializer(type: string): StateSerializer | null {
+    return this.serializers.get(type) ?? null;
+  }
+
+  listSerializers(): string[] {
+    return Array.from(this.serializers.keys());
+  }
+
+  hasSerializer(type: string): boolean {
+    return this.serializers.has(type);
   }
 }

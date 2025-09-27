@@ -1,47 +1,71 @@
+import type { MemoryTracker } from './MemoryTracker';
+import type { MetricsCollector } from './MetricsCollector';
 import type { PerformanceReport } from './PerformanceManagerTypes';
+import type { PerformanceMonitor } from './PerformanceMonitor';
+import type { StartupProfiler } from './StartupProfiler';
 
 export class PerformanceReportBuilder {
-  private report: Partial<PerformanceReport> = {};
+  constructor(
+    private monitor: PerformanceMonitor,
+    private memoryTracker: MemoryTracker,
+    private metricsCollector: MetricsCollector,
+    private startupProfiler: StartupProfiler
+  ) {}
 
-  constructor() {
-    this.reset();
-  }
-
-  reset(): void {
-    this.report = {
+  generateReport(): PerformanceReport {
+    return {
       timestamp: Date.now(),
-      metrics: {},
-      memory: {
-        used: 0,
-        total: 0,
-        percentage: 0,
-      },
-      benchmarks: {},
-      alerts: [],
+      metrics: this.getMetrics(),
+      system: this.getSystemInfo(),
+      benchmarks: this.getBenchmarks(),
+      startup: this.getStartupProfile(),
     };
   }
 
-  setMetrics(metrics: Record<string, unknown>): this {
-    this.report.metrics = metrics;
-    return this;
-  }
-
-  setMemory(memory: { used: number; total: number; percentage: number }): this {
-    this.report.memory = memory;
-    return this;
-  }
-
-  setBenchmarks(benchmarks: Record<string, unknown>): this {
-    this.report.benchmarks = benchmarks;
-    return this;
-  }
-
-  setAlerts(alerts: unknown[]): this {
-    this.report.alerts = alerts;
-    return this;
-  }
-
   build(): PerformanceReport {
-    return this.report as PerformanceReport;
+    return this.generateReport();
+  }
+
+  private getMetrics(): PerformanceReport['metrics'] {
+    return {
+      sampleRate: 0,
+      ...this.metricsCollector.getMetrics(),
+    };
+  }
+
+  private getSystemInfo(): PerformanceReport['system'] {
+    const memorySnapshot = this.memoryTracker.getCurrentSnapshot() as {
+      heapUsed: number;
+      heapTotal: number;
+      external: number;
+    } | null;
+
+    return {
+      memory: {
+        heapUsed: memorySnapshot?.heapUsed ?? 0,
+        heapTotal: memorySnapshot?.heapTotal ?? 0,
+        external: memorySnapshot?.external ?? 0,
+      },
+    };
+  }
+
+  private getBenchmarks(): unknown[] {
+    if (
+      'getBenchmarks' in this.monitor &&
+      typeof this.monitor.getBenchmarks === 'function'
+    ) {
+      return this.monitor.getBenchmarks();
+    }
+    return [];
+  }
+
+  private getStartupProfile(): unknown {
+    if (
+      'getProfile' in this.startupProfiler &&
+      typeof this.startupProfiler.getProfile === 'function'
+    ) {
+      return this.startupProfiler.getProfile();
+    }
+    return undefined;
   }
 }

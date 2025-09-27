@@ -23,7 +23,7 @@ export class MetricsCollectorCore {
   protected cleanupManager!: MetricsCleanupManager;
   protected collectionStartTime = Date.now();
   protected totalPointsCollected = 0;
-  protected aggregationTimer?: Timer;
+  protected aggregationTimer?: ReturnType<typeof setInterval>;
   protected seriesManager!: SeriesManager;
   protected series = new Map<string, MetricPoint[]>();
 
@@ -41,138 +41,145 @@ export class MetricsCollectorCore {
     this.config = {
       enableCollection: true,
       bufferSize: 10000,
+      flushInterval: 5000,
+      compressionThreshold: 1000,
       retentionPeriod: 24 * 60 * 60 * 1000,
+      enableAggregation: true,
       aggregationInterval: 60000,
       enableAlerts: true,
+      exportFormat: 'json',
+      persistMetrics: false,
       ...config,
     };
   }
 
   private initializeManagers(): void {
     this.eventManager = new MetricsEventManager();
-    this.bufferManager = new MetricsBufferManager();
-    this.alertManager = new MetricsAlertManager();
-    this.aggregationProcessor = new MetricsAggregationProcessor();
-    this.cleanupManager = new MetricsCleanupManager();
-    this.seriesManager = new SeriesManager();
+    this.bufferManager = new MetricsBufferManager(this.config, () => {});
+    this.alertManager = new MetricsAlertManager(this.config, () => {});
+    this.aggregationProcessor = new MetricsAggregationProcessor(
+      this.config,
+      () => {}
+    );
+    this.cleanupManager = new MetricsCleanupManager(this.config, () => {});
+    this.seriesManager = new SeriesManager(this.config);
   }
 
   private initializeCollectionManager(): void {
-    this.collectionManager = new CollectionManager();
+    this.collectionManager = new CollectionManager({
+      config: this.config,
+      flushCallback: () => this.flush(),
+      aggregationCallback: () => this.aggregate(),
+      cleanupCallback: () => this.cleanup(),
+    });
   }
 
   private startCollection(): void {
-    this.startAggregationTimer();
+    this.bufferManager.startPeriodicFlush();
+    this.cleanupManager.startPeriodicCleanup();
+
+    if (this.config.enableAggregation === true) {
+      this.aggregationTimer = setInterval(() => {
+        this.performAggregation();
+      }, this.config.aggregationInterval);
+    }
   }
 
   public record(params: RecordOptions | ProcessMetricParams): void {
     if ('name' in params && 'value' in params) {
-      // RecordOptions
-      const point: MetricPoint = {
-        timestamp: Date.now(),
-        value: params.value,
-      };
-
-      const seriesKey = params.name;
-      if (!this.series.has(seriesKey)) {
-        this.series.set(seriesKey, []);
-      }
-      this.series.get(seriesKey)?.push(point);
-      this.totalPointsCollected++;
-    } else {
-      // ProcessMetricParams
+      // RecordOptions or ProcessMetricParams - both have same interface
       this.processMetric(params as ProcessMetricParams);
     }
   }
 
   private processMetric(params: ProcessMetricParams): void {
-    const point: MetricPoint = {
-      timestamp: params.timestamp ?? Date.now(),
-      value: params.value,
-    };
-
-    const seriesKey = params.name;
-    if (!this.series.has(seriesKey)) {
-      this.series.set(seriesKey, []);
-    }
-    this.series.get(seriesKey)?.push(point);
-    this.totalPointsCollected++;
-
-    // Check alerts if threshold is defined
-    // this.alertManager.checkAlerts(params.value, threshold);
-
-    if (this.shouldFlush()) {
-      this.flush();
-    }
-  }
-
-  private createMetricPoint(
-    value: number,
-    tags?: Record<string, string>
-  ): MetricPoint {
-    const basePoint: MetricPoint = {
-      timestamp: Date.now(),
-      value,
-    };
-
-    // Store tags separately if needed
-    if (tags) {
-      // Handle tags as needed by the application
-    }
-
-    return basePoint;
+    const point = this.createMetricPoint(
+      params.value,
+      params.tags,
+      params.metadata
+    );
+    this.bufferManager.addPoint(params.name, point);
+    this.seriesManager.updateLocalSeries(params.name, point);
+    this.processPoint(params.name, point);
   }
 
   private shouldFlush(): boolean {
     return this.totalPointsCollected % 1000 === 0;
   }
 
-  private startAggregationTimer(): void {
-    this.aggregationTimer = setInterval(() => {
-      this.performAggregation();
-    }, this.config.aggregationInterval ?? 60000);
+  protected createMetricPoint(
+    value: number,
+    tags?: Record<string, string>,
+    metadata?: Record<string, unknown>
+  ): MetricPoint {
+    return {
+      timestamp: Date.now(),
+      value,
+      tags,
+      metadata,
+    };
   }
 
-  private performAggregation(): void {
-    // Simple aggregation logic
-    for (const [key, points] of this.series) {
-      if (points.length > 100) {
-        // Keep only recent points
-        this.series.set(key, points.slice(-100));
-      }
+  protected processPoint(name: string, point: MetricPoint): void {
+    this.totalPointsCollected++;
+
+    this.alertManager.checkAlerts(name, point);
+
+    if (this.bufferManager.shouldFlush(name) === true) {
+      this.bufferManager.flushBuffer();
+    }
+
+    this.eventManager.emit('metricCollected', { name, point });
+  }
+
+  protected performAggregation(): void {
+    this.aggregationProcessor.performAggregation(
+      this.bufferManager.getSeries()
+    );
+  }
+
+  protected cleanup(): void {
+    const _cleanedPoints = this.cleanupManager.performCleanup(
+      this.bufferManager.getSeries()
+    );
+    const cutoff = this.cleanupManager.getCutoffTime();
+    this.alertManager.cleanupOldAlerts(cutoff);
+  }
+
+  public addAlertRule(rule: MetricAlert): void {
+    // Add alert rule implementation
+    if (
+      'addRule' in this.alertManager &&
+      typeof this.alertManager.addRule === 'function'
+    ) {
+      this.alertManager.addRule(rule);
     }
   }
 
-  public addAlertRule(
-    name: string,
-    threshold: number,
-    condition: 'above' | 'below'
-  ): void {
-    this.alertManager.addAlert({
-      id: `${name}-${Date.now()}`,
-      metricName: name,
-      condition,
-      threshold,
-      triggered: false,
-      lastChecked: Date.now(),
-    });
+  public removeAlertRule(id: string): boolean {
+    // Remove alert rule implementation
+    if (
+      'removeRule' in this.alertManager &&
+      typeof this.alertManager.removeRule === 'function'
+    ) {
+      return this.alertManager.removeRule(id);
+    }
+    return false;
   }
 
-  public removeAlertRule(_name: string): void {
-    // Alert removal would be implemented here
+  protected flush(): void {
+    this.bufferManager.flush();
   }
 
-  public flush(): void {
-    // Flush logic
-    this.eventManager.emit('flush', { count: this.totalPointsCollected });
+  protected aggregate(): void {
+    this.aggregationProcessor.performSimpleAggregation(this.series);
   }
 
-  public getAggregatedMetrics(): Map<string, MetricPoint[]> {
-    return this.series;
-  }
-
-  public stop(): void {
-    if (this.aggregationTimer) {
+  public destroy(): void {
+    this.collectionManager.destroy();
+    this.bufferManager.cleanup();
+    this.cleanupManager.cleanup();
+    if (this.aggregationTimer != null) {
       clearInterval(this.aggregationTimer);
     }
     this.flush();

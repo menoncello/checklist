@@ -1,49 +1,44 @@
-import { EventEmitter } from 'events';
+export class ErrorBoundaryEventManager {
+  private eventHandlers = new Map<string, Set<Function>>();
 
-export interface ErrorEvent {
-  error: Error;
-  timestamp: Date;
-  context?: unknown;
-}
-
-export interface RecoveryEvent {
-  previousError: Error;
-  recoveryMethod: string;
-  timestamp: Date;
-}
-
-export class ErrorBoundaryEventManager extends EventEmitter {
-  emitError(error: Error, context?: unknown): void {
-    const event: ErrorEvent = {
-      error,
-      timestamp: new Date(),
-      context,
-    };
-    this.emit('error', event);
+  on(event: string, handler: Function): void {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, new Set());
+    }
+    const handlers = this.eventHandlers.get(event);
+    if (handlers != null) {
+      handlers.add(handler);
+    }
   }
 
-  emitRecovery(previousError: Error, recoveryMethod: string): void {
-    const event: RecoveryEvent = {
-      previousError,
-      recoveryMethod,
-      timestamp: new Date(),
-    };
-    this.emit('recovery', event);
+  off(event: string, handler: Function): void {
+    const handlers = this.eventHandlers.get(event);
+    if (handlers != null) {
+      handlers.delete(handler);
+    }
   }
 
-  emitReset(): void {
-    this.emit('reset');
+  emit(event: string, data?: unknown): void {
+    const handlers = this.eventHandlers.get(event);
+    if (handlers != null) {
+      handlers.forEach((handler) => {
+        try {
+          handler(data);
+        } catch (error) {
+          console.error(
+            `Error in ErrorBoundary event handler for '${event}':`,
+            error
+          );
+        }
+      });
+    }
   }
 
-  onError(callback: (event: ErrorEvent) => void): void {
-    this.on('error', callback);
+  clear(): void {
+    this.eventHandlers.clear();
   }
 
-  onRecovery(callback: (event: RecoveryEvent) => void): void {
-    this.on('recovery', callback);
-  }
-
-  onReset(callback: () => void): void {
-    this.on('reset', callback);
+  removeAllListeners(): void {
+    this.clear();
   }
 }

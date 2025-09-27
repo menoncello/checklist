@@ -9,6 +9,7 @@ export interface DebugConfig {
   maxLogEntries: number;
   enableProfiling: boolean;
   hotkeys: Record<string, string>;
+  overlayPosition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 }
 
 export interface DebugMetrics {

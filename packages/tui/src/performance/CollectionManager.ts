@@ -1,12 +1,20 @@
-export class CollectionManager {
-  constructor() {}
+import type { MetricsCollectorConfig } from './MetricsTypes';
 
-  startCollection(): void {}
-  stopCollection(): void {}
-  isCollecting(): boolean {
-    return false;
+export interface CollectionManagerConfig {
+  config: MetricsCollectorConfig;
+  flushCallback: () => void;
+  aggregationCallback: () => void;
+  cleanupCallback: () => void;
+}
+
+export class CollectionManager {
+  private config: CollectionManagerConfig;
+
+  constructor(config: CollectionManagerConfig) {
+    this.config = config;
   }
-  getCollectionStats(): unknown {
-    return {};
+
+  destroy(): void {
+    // Cleanup implementation
   }
 }

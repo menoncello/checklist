@@ -14,6 +14,7 @@ import { HelpCommand } from './commands/help';
 import { InitCommand } from './commands/init';
 import { ListCommand } from './commands/list';
 import { MigrateCommand } from './commands/migrate';
+import { PerformanceCommand } from './commands/performance';
 import { ResetCommand } from './commands/reset';
 import { RunCommand } from './commands/run';
 import { StatusCommand } from './commands/status';
@@ -38,6 +39,7 @@ class CLIApplication {
     this.registry.register(new ResetCommand());
     this.registry.register(new ListCommand());
     this.registry.register(new MigrateCommand());
+    this.registry.register(new PerformanceCommand());
 
     // Help command needs registry reference
     this.registry.register(new HelpCommand(this.registry));
@@ -66,7 +68,7 @@ class CLIApplication {
       // Execute the command
       await command.action(parsedArgs.options);
 
-      // Exit successfully after command completion
+      // Exit successfully after command execution
       process.exit(ExitCode.SUCCESS);
     } catch (error) {
       const debug = this.hasDebugFlag();

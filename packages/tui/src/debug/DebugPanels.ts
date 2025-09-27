@@ -127,7 +127,7 @@ export class DebugPanelRenderer {
     const icon = (comp.state as unknown as string) === 'mounted' ? '✅' : '⏸️';
     lines.push(
       this.truncateLine(
-        `${icon} ${indent}${prefix}${comp.type} (${comp.id})`,
+        `${icon} ${indent}${prefix}${comp.name} (${comp.id})`,
         width
       )
     );

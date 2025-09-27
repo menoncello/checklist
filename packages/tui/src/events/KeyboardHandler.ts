@@ -264,6 +264,10 @@ export class KeyboardHandler {
     this.setupDefaultBindings();
   }
 
+  public testHandleKeyEvent(keyEvent: KeyEvent): Promise<boolean> {
+    return this.handleKeyEvent(keyEvent);
+  }
+
   public destroy(): void {
     this.clearActiveSequence();
     this.bindingManager.clear();

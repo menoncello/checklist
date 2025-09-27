@@ -1,25 +1,42 @@
+import type { MetricPoint, MetricsCollectorConfig } from './MetricsTypes';
+
 export class SeriesManager {
-  private series = new Map<string, unknown[]>();
+  private config: MetricsCollectorConfig;
+  private localSeries: Map<string, MetricPoint[]> = new Map();
 
-  constructor() {}
-
-  addSeries(name: string, data: unknown[]): void {
-    this.series.set(name, data);
+  constructor(config: MetricsCollectorConfig) {
+    this.config = config;
   }
 
-  getSeries(name: string): unknown[] | undefined {
-    return this.series.get(name);
-  }
-
-  getAllSeries(): Map<string, unknown[]> {
-    return new Map(this.series);
-  }
-
-  clearSeries(name?: string): void {
-    if (name !== undefined && name !== null && name !== '') {
-      this.series.delete(name);
-    } else {
-      this.series.clear();
+  updateLocalSeries(name: string, point: MetricPoint): void {
+    if (!this.localSeries.has(name)) {
+      this.localSeries.set(name, []);
     }
+    const series = this.localSeries.get(name);
+    if (series != null) {
+      series.push(point);
+
+      // Keep only recent points to prevent memory issues
+      if (series.length > this.config.bufferSize) {
+        series.splice(0, series.length - this.config.bufferSize);
+      }
+    }
+  }
+
+  getSeries(
+    name?: string
+  ): Map<string, MetricPoint[]> | MetricPoint[] | undefined {
+    if (name != null && name !== '') {
+      return this.localSeries.get(name);
+    }
+    return new Map(this.localSeries);
+  }
+
+  clear(): void {
+    this.localSeries.clear();
+  }
+
+  clearSeries(name: string): void {
+    this.localSeries.delete(name);
   }
 }

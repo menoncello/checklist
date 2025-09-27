@@ -1,40 +1,51 @@
 export interface MetricPoint {
   timestamp: number;
   value: number;
+  tags?: Record<string, string>;
   metadata?: Record<string, unknown>;
 }
 
 export interface AlertRule {
-  name: string;
+  id: string;
+  metricName: string;
+  condition: 'greater_than' | 'less_than' | 'equals';
   threshold: number;
-  condition: 'above' | 'below' | 'equal';
   enabled: boolean;
 }
 
 export interface MetricAlert {
-  rule: AlertRule;
-  triggeredAt: number;
+  id: string;
+  ruleId: string;
+  metricName: string;
   value: number;
+  threshold: number;
+  timestamp: number;
   resolved: boolean;
 }
 
 export interface MetricsCollectorConfig {
-  enableCollection?: boolean;
-  bufferSize?: number;
-  aggregationInterval?: number;
-  retentionPeriod?: number;
-  enableAlerts?: boolean;
+  enableCollection: boolean;
+  bufferSize: number;
+  flushInterval: number;
+  compressionThreshold: number;
+  retentionPeriod: number;
+  enableAggregation: boolean;
+  aggregationInterval: number;
+  enableAlerts: boolean;
+  exportFormat: string;
+  persistMetrics: boolean;
+}
+
+export interface RecordOptions {
+  name: string;
+  value: number;
+  tags?: Record<string, string>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ProcessMetricParams {
   name: string;
   value: number;
-  timestamp?: number;
-  metadata?: Record<string, unknown>;
-}
-
-export interface RecordOptions {
-  aggregate?: boolean;
-  alert?: boolean;
+  tags?: Record<string, string>;
   metadata?: Record<string, unknown>;
 }

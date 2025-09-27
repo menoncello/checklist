@@ -13,6 +13,7 @@ export class BackupManager {
     backupDir: string = '.checklist/.backup',
     maxBackups: number = 10
   ) {
+    this.validateBackupDir(backupDir);
     this.backupDir = backupDir;
     this.maxBackups = maxBackups;
   }

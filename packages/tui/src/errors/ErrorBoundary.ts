@@ -1,5 +1,4 @@
 import { ErrorBoundaryCheckpointManager } from './ErrorBoundaryCheckpointManager';
-import { ErrorBoundaryCore } from './ErrorBoundaryCore';
 import { ErrorBoundaryEventManager } from './ErrorBoundaryEventManager';
 import {
   ErrorBoundaryConfig,
@@ -7,10 +6,8 @@ import {
   ErrorHistoryEntry,
   ErrorHistoryManager,
   ErrorInfo,
-  ErrorRecordParams,
   ErrorState,
   ErrorStateManager,
-  ErrorUpdateParams,
   StatePreservationManager,
 } from './ErrorBoundaryHelpers';
 import { ErrorBoundaryMetricsCollector } from './ErrorBoundaryMetricsCollector';
@@ -18,10 +15,14 @@ import { ErrorBoundaryOperations } from './ErrorBoundaryOperations';
 import { ErrorBoundaryRenderer } from './ErrorBoundaryRenderer';
 import { ErrorBoundaryRetryManager } from './ErrorBoundaryRetryManager';
 import { ErrorBoundaryStateHandler } from './ErrorBoundaryStateHandler';
-import { ErrorBoundaryUtils } from './ErrorBoundaryUtils';
 import { ErrorBoundaryWrapper } from './ErrorBoundaryWrapper';
+import { ErrorBoundaryCheckpointAPI } from './helpers/ErrorBoundaryCheckpointAPI';
+import { ErrorBoundaryConfigurationAPI } from './helpers/ErrorBoundaryConfigurationAPI';
+import { ErrorBoundaryErrorHandler } from './helpers/ErrorBoundaryErrorHandler';
+import { ErrorBoundaryOperationAPI } from './helpers/ErrorBoundaryOperationAPI';
+import { ErrorBoundaryPublicAPI } from './helpers/ErrorBoundaryPublicAPI';
 
-export {
+export type {
   ErrorBoundaryConfig,
   ErrorBoundaryMetrics,
   ErrorHistoryEntry,
@@ -41,7 +42,11 @@ export class ErrorBoundary {
   private metricsCollector!: ErrorBoundaryMetricsCollector;
   private operations!: ErrorBoundaryOperations;
   private stateHandler!: ErrorBoundaryStateHandler;
-  private core!: ErrorBoundaryCore;
+  private publicAPI!: ErrorBoundaryPublicAPI;
+  private checkpointAPI!: ErrorBoundaryCheckpointAPI;
+  private configurationAPI!: ErrorBoundaryConfigurationAPI;
+  private operationAPI!: ErrorBoundaryOperationAPI;
+  private errorHandler!: ErrorBoundaryErrorHandler;
 
   constructor(config: Partial<ErrorBoundaryConfig> = {}) {
     this.initializeConfig(config);
@@ -49,12 +54,18 @@ export class ErrorBoundary {
     this.initializeHandlers();
   }
 
+  private attemptRetry(): void {
+    this.errorHandler.handleRetry();
+  }
+
   private initializeConfig(config: Partial<ErrorBoundaryConfig>): void {
+    const renderer = new ErrorBoundaryRenderer();
     this.config = {
       maxRetries: 3,
       retryDelay: 1000,
       logErrors: true,
-      fallbackRenderer: new ErrorBoundaryRenderer(),
+      fallbackRenderer: (error: Error, errorInfo: Record<string, unknown>) =>
+        renderer.renderError(error, errorInfo),
       enableStatePreservation: true,
       ...config,
     };
@@ -65,128 +76,133 @@ export class ErrorBoundary {
     this.historyManager = new ErrorHistoryManager();
     this.preservationManager = new StatePreservationManager();
     this.eventManager = new ErrorBoundaryEventManager();
-    this.checkpointManager = new ErrorBoundaryCheckpointManager();
-    this.retryManager = new ErrorBoundaryRetryManager();
+    this.checkpointManager = new ErrorBoundaryCheckpointManager(
+      this.preservationManager
+    );
+    this.retryManager = new ErrorBoundaryRetryManager(() =>
+      this.attemptRetry()
+    );
   }
 
   private initializeHandlers(): void {
-    this.wrapper = new ErrorBoundaryWrapper();
-    this.metricsCollector = new ErrorBoundaryMetricsCollector();
-    this.operations = new ErrorBoundaryOperations();
-    this.stateHandler = new ErrorBoundaryStateHandler();
-    this.core = new ErrorBoundaryCore(this.config, {
+    this.initializeCoreHandlers();
+    this.initializeAPIHandlers();
+  }
+
+  private initializeCoreHandlers(): void {
+    this.wrapper = new ErrorBoundaryWrapper(
+      (error: Error, errorInfo: ErrorInfo) => this.handleError(error, errorInfo)
+    );
+    this.metricsCollector = new ErrorBoundaryMetricsCollector(
+      this.historyManager,
+      this.preservationManager
+    );
+    this.operations = new ErrorBoundaryOperations(this.config);
+    this.stateHandler = new ErrorBoundaryStateHandler(
+      this.stateManager,
+      this.historyManager,
+      this.preservationManager,
+      this.config.enableStatePreservation
+    );
+  }
+
+  private initializeAPIHandlers(): void {
+    this.publicAPI = new ErrorBoundaryPublicAPI(
+      {
+        stateManager: this.stateManager,
+        historyManager: this.historyManager,
+        preservationManager: this.preservationManager,
+        checkpointManager: this.checkpointManager,
+        eventManager: this.eventManager,
+        metricsCollector: this.metricsCollector,
+        operations: this.operations,
+        stateHandler: this.stateHandler,
+      },
+      this.config
+    );
+    this.checkpointAPI = new ErrorBoundaryCheckpointAPI(
+      this.checkpointManager,
+      this.stateManager,
+      this.stateHandler,
+      this.eventManager
+    );
+    this.initializeConfigAndOperationAPIs();
+  }
+
+  private initializeConfigAndOperationAPIs(): void {
+    this.initializeConfigurationAPI();
+    this.initializeOperationAndErrorAPIs();
+  }
+
+  private initializeConfigurationAPI(): void {
+    this.configurationAPI = new ErrorBoundaryConfigurationAPI(this.config, {
+      stateManager: this.stateManager,
+      historyManager: this.historyManager,
+      preservationManager: this.preservationManager,
+      retryManager: this.retryManager,
+      operations: this.operations,
+      stateHandler: this.stateHandler,
+    });
+  }
+
+  private initializeOperationAndErrorAPIs(): void {
+    this.operationAPI = new ErrorBoundaryOperationAPI(
+      this.config,
+      {
+        wrapper: this.wrapper,
+        retryManager: this.retryManager,
+        eventManager: this.eventManager,
+      },
+      (config) => new ErrorBoundary(config)
+    );
+    this.errorHandler = new ErrorBoundaryErrorHandler(this.config, {
       stateHandler: this.stateHandler,
       operations: this.operations,
       retryManager: this.retryManager,
       eventManager: this.eventManager,
-      metricsCollector: this.metricsCollector,
-      checkpointManager: this.checkpointManager,
-      statePreservation: this.preservationManager,
     });
   }
 
   public wrap<T extends (...args: unknown[]) => unknown>(fn: T): T {
-    return ErrorBoundaryWrapper.wrap(fn, (error, errorInfo) =>
-      this.handleError(error, errorInfo)
-    );
+    return this.operationAPI.wrap(fn);
   }
 
   public async wrapAsync<T extends (...args: unknown[]) => Promise<unknown>>(
     fn: T
   ): Promise<T> {
-    return ErrorBoundaryWrapper.wrapAsync(fn, (error, errorInfo) =>
-      this.handleError(error, errorInfo)
-    );
+    return this.operationAPI.wrapAsync(fn);
   }
 
   public handleError(error: Error, errorInfo: ErrorInfo = {}): void {
-    const errorId = ErrorBoundaryUtils.generateErrorId();
-    const timestamp = Date.now();
-    const params = { error, errorInfo, errorId, timestamp };
-
-    this.updateErrorState(params);
-    this.recordError(params);
-    this.performErrorHandlingTasks(error, errorInfo);
-    this.eventManager.emit('error', { error, errorInfo, errorId, timestamp });
-    this.handleRetryLogic(error, errorInfo);
-  }
-
-  private updateErrorState(params: ErrorUpdateParams): void {
-    this.stateHandler.updateErrorState(params.error ?? new Error('Unknown error'), params.errorInfo);
-  }
-
-  private recordError(params: ErrorRecordParams): void {
-    this.stateHandler.recordError(params.error, params.errorInfo);
-  }
-
-  private performErrorHandlingTasks(error: Error, errorInfo: ErrorInfo): void {
-    this.operations.logError(
-      error,
-      errorInfo,
-      this.stateHandler.getRetryCount(),
-      this.config.maxRetries ?? 3
-    );
-    this.stateHandler.preserveCurrentState();
-    this.operations.executeErrorCallback(error, errorInfo);
-  }
-
-  private handleRetryLogic(error: Error, errorInfo: ErrorInfo): void {
-    if (this.operations.canRetry?.(this.stateHandler.getRetryCount()) === true) {
-      this.retryManager.scheduleRetry(this.config.retryDelay ?? 1000);
-    } else {
-      this.eventManager.emit('errorBoundaryExhausted', { error, errorInfo });
-    }
-  }
-
-  private attemptRetry(): void {
-    this.stateHandler.incrementRetryCount();
-
-    this.operations.executeRetryCallback(
-      this.stateHandler.getRetryCount(),
-      this.config.maxRetries ?? 3
-    );
-
-    this.eventManager.emit('retry', {
-      attempt: this.stateHandler.getRetryCount(),
-      maxRetries: this.config.maxRetries,
-    });
-
-    const restoredState = this.stateHandler.restorePreservedState();
-    if (restoredState !== null && restoredState !== undefined) {
-      this.eventManager.emit('stateRestored', restoredState);
-    }
-
-    this.clearError();
+    this.errorHandler.handleError(error, errorInfo);
   }
 
   public retry(): boolean {
-    if (!this.canRetry()) {
-      return false;
-    }
-    this.attemptRetry();
-    return true;
+    return this.errorHandler.retry();
   }
 
   public clearError(): void {
-    this.retryManager.cancelRetry();
-    this.stateHandler.reset();
-    const hadError = this.stateHandler.hasError();
-
-    if (hadError === true) {
-      this.operations.executeRecoveryCallback();
-      this.eventManager.emit('recovery');
-    }
+    this.errorHandler.clearError();
   }
 
   public render(): string {
     const state = this.stateHandler.getState();
-    if (!state.hasError || !state.error) {
+    if (state.hasError !== true || state.error == null) {
       return '';
     }
     const renderer = this.config.fallbackRenderer;
-    if (renderer !== undefined && renderer !== null && typeof renderer === 'object' && 'renderError' in renderer) {
-      const renderableRenderer = renderer as { renderError: (error: Error, errorInfo: unknown) => string };
-      return renderableRenderer.renderError(state.error, state.errorInfo ?? {});
+    if (renderer !== undefined && renderer !== null) {
+      if (typeof renderer === 'function') {
+        return renderer(state.error, state.errorInfo ?? {});
+      } else if (typeof renderer === 'object' && 'renderError' in renderer) {
+        const renderableRenderer = renderer as {
+          renderError: (error: Error, errorInfo: unknown) => string;
+        };
+        return renderableRenderer.renderError(
+          state.error,
+          state.errorInfo ?? {}
+        );
+      }
     }
     return `Error: ${state.error.message}`;
   }
@@ -197,148 +213,131 @@ export class ErrorBoundary {
 
   public async retryOperation<T>(
     operation: () => T,
-    _maxRetries: number,
-    _delay: number
+    maxRetries: number,
+    delay: number
   ): Promise<T> {
-    return this.retryManager.retryOperation(() => operation());
+    return this.operationAPI.retryOperation(operation, maxRetries, delay);
   }
 
   public runWithBoundary(fn: () => void): void {
-    try {
-      fn();
-    } catch (error) {
-      this.handleError(error as Error, {});
-      throw error;
-    }
+    this.operationAPI.runWithBoundary(fn);
   }
 
   public async runAsyncWithBoundary(fn: () => Promise<void>): Promise<void> {
-    try {
-      await fn();
-    } catch (error) {
-      this.handleError(error as Error, {});
-      throw error;
-    }
+    return this.operationAPI.runAsyncWithBoundary(fn);
   }
 
   public createComponentBoundary(name: string): ErrorBoundary {
-    const boundary = new ErrorBoundary({ ...this.config });
-    boundary.on('error', (data: unknown) => {
-      const errorData = data as { error: Error; errorInfo: ErrorInfo };
-      this.eventManager.emit('componentError', {
-        component: name,
-        ...errorData,
-      });
-    });
-    return boundary;
+    return this.operationAPI.createComponentBoundary(
+      name
+    ) as unknown as ErrorBoundary;
   }
 
   public preserveCurrentState(): void {
-    this.stateHandler.preserveCurrentState();
+    this.publicAPI.preserveCurrentState();
   }
 
-  // Delegated methods to core
-  public restorePreservedState(): unknown {
-    return this.core.restorePreservedState();
+  public restorePreservedState(): void {
+    this.publicAPI.restorePreservedState();
   }
 
   public preserveState(key: string, value: unknown): void {
-    return this.core.preserveState(key, value);
+    this.publicAPI.preserveState(key, value);
   }
 
   public getPreservedState<T>(key: string): T | null {
-    return this.core.getPreservedState<T>(key);
+    return this.publicAPI.getPreservedState<T>(key);
   }
 
   public clearPreservedState(key?: string): void {
-    return this.core.clearPreservedState(key);
+    this.publicAPI.clearPreservedState(key);
   }
 
   public createCheckpoint(): string {
-    return this.core.createCheckpoint();
+    return this.checkpointAPI.createCheckpoint();
   }
 
   public restoreFromCheckpoint(checkpointId: string): boolean {
-    return this.core.restoreFromCheckpoint(checkpointId);
+    return this.checkpointAPI.restoreFromCheckpoint(checkpointId);
   }
 
+  // Getter methods - delegated to public API
   public hasError(): boolean {
-    return this.core.hasError();
+    return this.publicAPI.hasError();
+  }
+
+  public getError(): Error | null {
+    return this.publicAPI.getError();
+  }
+
+  public getErrorInfo(): ErrorInfo | null {
+    return this.publicAPI.getErrorInfo();
   }
 
   public getErrorState(): ErrorState {
-    return this.core.getErrorState();
+    return this.publicAPI.getErrorState();
   }
 
   public canRetry(): boolean {
-    return this.operations.canRetry(this.stateHandler.getRetryCount());
+    return this.publicAPI.canRetry();
   }
 
   public getRemainingRetries(): number {
-    return this.operations.getRemainingRetries(
-      this.stateHandler.getRetryCount()
-    );
+    return this.publicAPI.getRemainingRetries();
   }
 
-  // History methods - delegated to history manager
+  // History methods - delegated to public API
   public getErrorHistory(): ErrorHistoryEntry[] {
-    return this.historyManager.getHistory();
+    return this.publicAPI.getErrorHistory();
   }
 
   public getRecentErrors(limit: number = 10): ErrorHistoryEntry[] {
-    return this.historyManager.getRecentErrors(limit);
+    return this.publicAPI.getRecentErrors(limit);
   }
 
   public getErrorFrequency(): number {
-    return this.historyManager.getErrorFrequency();
+    return this.publicAPI.getErrorFrequency();
   }
 
   public getMetrics(): ErrorBoundaryMetrics {
-    return this.metricsCollector.collectMetrics();
+    return this.publicAPI.getMetrics();
   }
 
   // Configuration and reset methods
   public updateConfig(newConfig: Partial<ErrorBoundaryConfig>): void {
-    this.core.updateConfig(newConfig);
-    this.stateManager.setMaxRetries(this.config.maxRetries ?? 3);
-    this.operations.updateConfig(this.config);
+    this.configurationAPI.updateConfig(newConfig);
   }
 
   public getConfig(): ErrorBoundaryConfig {
-    return this.core.getConfig();
+    return this.publicAPI.getConfig();
   }
 
   public reset(): void {
-    this.core.reset();
-    this.historyManager.clear();
+    this.configurationAPI.reset();
   }
 
   public resetRetryCount(): void {
-    this.stateManager.resetRetryCount();
+    this.publicAPI.resetRetryCount();
   }
 
   public getState(): ErrorState {
-    return this.core.getErrorState();
+    return this.publicAPI.getState();
   }
 
   public destroy(): void {
-    this.core.destroy();
-    this.historyManager.clear();
+    this.configurationAPI.destroy();
+    this.eventManager.clear();
   }
 
   public onError(handler: (error: Error, errorInfo: ErrorInfo) => void): void {
-    this.eventManager.on(
-      'error',
-      ({ error, errorInfo }: { error: Error; errorInfo: ErrorInfo }) =>
-        handler(error, errorInfo)
-    );
+    this.publicAPI.onError(handler);
   }
 
-  public on(event: string, handler: (...args: unknown[]) => void): void {
-    this.eventManager.on(event, handler);
+  public on(event: string, handler: Function): void {
+    this.publicAPI.on(event, handler);
   }
 
-  public off(event: string, handler: (...args: unknown[]) => void): void {
-    this.eventManager.off(event, handler);
+  public off(event: string, handler: Function): void {
+    this.publicAPI.off(event, handler);
   }
 }

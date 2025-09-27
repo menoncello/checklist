@@ -1,57 +1,57 @@
-export interface DebugConfig {
-  enabled: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
-  overlayPosition: 'top' | 'bottom' | 'left' | 'right';
-  showMetrics: boolean;
-  showLogs: boolean;
-  maxLogEntries: number;
-  enableProfiling?: boolean;
-  hotkeys?: Record<string, string>;
-  showEventLog?: boolean;
-  showOverlay?: boolean;
-}
-
-export interface DebugLogEntry {
-  timestamp: Date;
+export type DebugLogEntry = {
+  timestamp: number;
   level: 'debug' | 'info' | 'warn' | 'error';
+  category: string;
   message: string;
   data?: unknown;
-  source?: string;
-  category?: string;
-}
+};
 
-export interface DebugMetrics {
-  fps: number;
-  memoryUsage: number;
-  renderTime: number;
-  componentCount: number;
-  eventCount: number;
-  lastUpdate?: number;
-}
-
-export interface ComponentDebugInfo {
+export type ComponentDebugInfo = {
   id: string;
   name: string;
-  renderCount: number;
-  lastRenderTime: number;
-  props: Record<string, unknown>;
-  state: Record<string, unknown>;
-  type?: string;
+  props?: Record<string, unknown>;
+  state?: Record<string, unknown>;
   children?: ComponentDebugInfo[];
-}
+};
+
+export type DebugConfig = {
+  enabled: boolean;
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  showOverlay: boolean;
+  showMetrics: boolean;
+  showComponentTree: boolean;
+  showEventLog: boolean;
+  showPerformanceMetrics: boolean;
+  maxLogEntries: number;
+  enableProfiling: boolean;
+  hotkeys: Record<string, string>;
+  overlayPosition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+};
 
 export class DebugLogManager {
   private logs: DebugLogEntry[] = [];
-  private maxEntries = 100;
+  private maxEntries: number;
 
-  constructor(maxEntries?: number) {
-    if (maxEntries !== undefined && maxEntries > 0) {
-      this.maxEntries = maxEntries;
-    }
+  constructor(maxEntries: number = 1000) {
+    this.maxEntries = maxEntries;
   }
 
-  addLog(entry: DebugLogEntry): void {
+  log(
+    level: 'debug' | 'info' | 'warn' | 'error',
+    category: string,
+    message: string,
+    data?: unknown
+  ): void {
+    const entry: DebugLogEntry = {
+      timestamp: Date.now(),
+      level,
+      category,
+      message,
+      data,
+    };
+
     this.logs.push(entry);
+
     if (this.logs.length > this.maxEntries) {
       this.logs.shift();
     }
@@ -61,37 +61,83 @@ export class DebugLogManager {
     return [...this.logs];
   }
 
-  clearLogs(): void {
+  getLogsByLevel(level: string): DebugLogEntry[] {
+    return this.logs.filter((log) => log.level === level);
+  }
+
+  getLogsByCategory(category: string): DebugLogEntry[] {
+    return this.logs.filter((log) => log.category === category);
+  }
+
+  clear(): void {
     this.logs = [];
   }
 
-  filterLogs(level: string): DebugLogEntry[] {
-    return this.logs.filter((log) => log.level === level);
+  clearLogs(): void {
+    this.clear();
+  }
+
+  private isValidFilterValue(value: string | number | undefined): boolean {
+    return (
+      value !== undefined &&
+      value !== null &&
+      (typeof value === 'number' ? value > 0 : value.trim() !== '')
+    );
+  }
+
+  filterLogs(filter: {
+    level?: string;
+    category?: string;
+    limit?: number;
+  }): DebugLogEntry[] {
+    let filteredLogs = [...this.logs];
+
+    if (this.isValidFilterValue(filter.level)) {
+      filteredLogs = filteredLogs.filter((log) => log.level === filter.level);
+    }
+
+    if (this.isValidFilterValue(filter.category)) {
+      filteredLogs = filteredLogs.filter(
+        (log) => log.category === filter.category
+      );
+    }
+
+    if (this.isValidFilterValue(filter.limit)) {
+      filteredLogs = filteredLogs.slice(-(filter.limit as number));
+    }
+
+    return filteredLogs;
   }
 }
 
 export class DebugEventManager {
-  private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
+  private handlers: Map<string, Set<Function>> = new Map();
 
-  on(event: string, callback: (data: unknown) => void): void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    const eventListeners = this.listeners.get(event);
-    if (eventListeners) {
-      eventListeners.add(callback);
+  emit(event: string, data?: unknown): void {
+    const eventHandlers = this.handlers.get(event);
+    if (eventHandlers) {
+      eventHandlers.forEach((handler) => handler(data));
     }
   }
 
-  off(event: string, callback: (data: unknown) => void): void {
-    this.listeners.get(event)?.delete(callback);
+  on(event: string, handler: Function): void {
+    if (!this.handlers.has(event)) {
+      this.handlers.set(event, new Set());
+    }
+    const eventHandlers = this.handlers.get(event);
+    if (eventHandlers) {
+      eventHandlers.add(handler);
+    }
   }
 
-  emit(event: string, data: unknown): void {
-    this.listeners.get(event)?.forEach((callback) => callback(data));
+  off(event: string, handler: Function): void {
+    const eventHandlers = this.handlers.get(event);
+    if (eventHandlers) {
+      eventHandlers.delete(handler);
+    }
   }
 
   clear(): void {
-    this.listeners.clear();
+    this.handlers.clear();
   }
 }

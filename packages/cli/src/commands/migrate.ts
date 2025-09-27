@@ -10,35 +10,34 @@ import { BaseCommand } from './base';
 
 export class MigrateCommand extends BaseCommand {
   name = 'migrate';
-  description = 'Migrate state files between versions';
+  description = 'Run database migrations or manage backups';
   aliases = ['m'];
   options: CommandOption[] = [
     {
       flag: 'check',
-      description: 'Check migration status without running',
+      description: 'Check migration status without running migrations',
     },
     {
       flag: 'dry-run',
-      description: 'Show what would be migrated without applying',
+      description: 'Preview migrations without applying them',
     },
     {
       flag: 'backup-only',
-      description: 'Create backup without running migration',
+      description: 'Create a backup without running migrations',
     },
     {
       flag: 'list-backups',
-      description: 'List available backups',
+      description: 'List all available backups',
     },
     {
       flag: 'restore',
-      description: 'Restore from specific backup file',
+      description: 'Restore from a specific backup',
     },
     {
       flag: 'verbose',
       description: 'Show detailed migration information',
     },
   ];
-
   private stateManager: StateManager;
 
   constructor(baseDir: string = '.checklist') {
@@ -46,14 +45,9 @@ export class MigrateCommand extends BaseCommand {
     this.stateManager = new StateManager(baseDir);
   }
 
-  async execute(options?: ParsedOptions): Promise<void> {
-    return this.action(options ?? { _: [] });
-  }
-
   async action(options: ParsedOptions): Promise<void> {
     const normalizedOptions = this.normalizeOptions(options);
     const migrateOptions = this.parseOptions(normalizedOptions);
-
     try {
       await this.executeMigrationCommand(migrateOptions);
     } catch (error) {

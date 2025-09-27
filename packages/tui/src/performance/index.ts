@@ -2,8 +2,24 @@ export { PerformanceMonitor } from './PerformanceMonitor';
 export { StartupProfiler } from './StartupProfiler';
 export { MemoryTracker } from './MemoryTracker';
 export { MetricsCollector } from './MetricsCollector';
+export { DataSanitizer } from './DataSanitizer';
+export { PerformanceCircuitBreaker } from './PerformanceCircuitBreaker';
+export { CircularBuffer } from './CircularBuffer';
+export { MetricsBuffer } from './MetricsBuffer';
+export {
+  profile,
+  setPerformanceMonitor,
+  getProfileStats,
+  clearProfileResults,
+} from './ProfileDecorator';
+export {
+  ChromeDevToolsIntegration,
+  chromeDevTools,
+} from './ChromeDevToolsIntegration';
 export type { PerformanceReport } from './ReportBuilder';
 export type { PerformanceManagerConfig } from './PerformanceManagerBase';
+export type { PerformanceMonitorConfig } from './PerformanceMonitorConfig';
+export { defaultPerformanceMonitorConfig } from './PerformanceMonitorConfig';
 
 import { EventEmitter } from 'events';
 import { PerformanceManagerBase } from './PerformanceManagerBase';
@@ -32,7 +48,7 @@ export type {
 } from './MetricsCollector';
 
 export class PerformanceManager extends PerformanceManagerBase {
-  private reportingTimer: Timer | null = null;
+  private reportingTimer: ReturnType<typeof setInterval> | null = null;
   private reportBuilder = new ReportBuilder();
   private eventEmitter = new EventEmitter();
 
@@ -103,8 +119,12 @@ export class PerformanceManager extends PerformanceManagerBase {
     return this.generatePerformanceReport();
   }
 
-  public startBenchmark(id: string, name: string, category?: string): void {
-    this.monitor.startBenchmark(id, category ?? 'general');
+  public startBenchmark(
+    name: string,
+    category: string = 'general',
+    metadata?: Record<string, unknown>
+  ): string {
+    return this.monitor.startBenchmark(name, category, metadata);
   }
 
   public endBenchmark(id: string): unknown {
@@ -125,9 +145,14 @@ export class PerformanceManager extends PerformanceManagerBase {
     this.eventEmitter.off(event, handler);
   }
 
+  public destroy(): void {
+    this.dispose();
+  }
+
   public dispose(): void {
     this.stopReporting();
     this.stop();
+    this.monitor.destroy();
     this.eventEmitter.removeAllListeners();
   }
 }

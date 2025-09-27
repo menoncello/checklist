@@ -50,7 +50,6 @@ describe('Decorators', () => {
   describe('@Timed decorator', () => {
     test('should time synchronous method execution', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         syncMethod(value: number): number {
           return value * 2;
@@ -67,7 +66,6 @@ describe('Decorators', () => {
 
     test('should time asynchronous method execution', async () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         async asyncMethod(value: number): Promise<number> {
           return new Promise(resolve => setTimeout(() => resolve(value * 2), 1));
@@ -84,7 +82,6 @@ describe('Decorators', () => {
 
     test('should use custom operation name', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ operationName: 'custom-operation', monitor: mockMonitor })
         testMethod(): void {}
       }
@@ -97,7 +94,6 @@ describe('Decorators', () => {
 
     test('should exclude class name when includeClassName is false', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ includeClassName: false, monitor: mockMonitor })
         testMethod(): void {}
       }
@@ -110,7 +106,6 @@ describe('Decorators', () => {
 
     test('should set budget when budgetMs is provided', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ budgetMs: 100, severity: 'critical', monitor: mockMonitor })
         budgetedMethod(): void {}
       }
@@ -127,7 +122,6 @@ describe('Decorators', () => {
 
     test('should handle method that throws error', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         errorMethod(): void {
           throw new Error('Test error');
@@ -143,7 +137,6 @@ describe('Decorators', () => {
 
     test('should handle async method that throws error', async () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         async asyncErrorMethod(): Promise<void> {
           throw new Error('Async error');
@@ -161,7 +154,6 @@ describe('Decorators', () => {
       (mockMonitor.isEnabled as ReturnType<typeof mock>).mockReturnValue(false);
 
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         testMethod(): number {
           return 42;
@@ -178,7 +170,6 @@ describe('Decorators', () => {
 
     test('should skip timing when monitor is null', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: null as unknown as IPerformanceMonitor })
         testMethod(): number {
           return 42;
@@ -195,7 +186,6 @@ describe('Decorators', () => {
       const symbolKey = Symbol('testMethod');
 
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         [symbolKey](): void {}
       }
@@ -217,7 +207,6 @@ describe('Decorators', () => {
       class TestClass {
         value = 42;
 
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         getThisValue(): number {
           return this.value;
@@ -232,7 +221,6 @@ describe('Decorators', () => {
 
     test('should handle methods with complex parameters', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         complexMethod(
           str: string,
@@ -283,7 +271,7 @@ describe('Decorators', () => {
     });
 
     test('should not apply timing to constructor', () => {
-      // @ts-expect-error - TypeScript decorator type checking limitation
+      // @ts-expect-error - Class decorator with constructor parameters
       @TimedClass({ monitor: mockMonitor })
       class TestClass {
         constructor(public value: number) {}
@@ -586,7 +574,6 @@ describe('Decorators', () => {
   describe('integration scenarios', () => {
     test('should work with class inheritance and method overriding', () => {
       class BaseClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         baseMethod(): string {
           return 'base';
@@ -594,13 +581,11 @@ describe('Decorators', () => {
       }
 
       class DerivedClass extends BaseClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         override baseMethod(): string {
           return 'derived';
         }
 
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         derivedMethod(): string {
           return 'new';
@@ -619,7 +604,6 @@ describe('Decorators', () => {
 
     test('should work with static methods', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         static staticMethod(): string {
           return 'static';
@@ -634,14 +618,12 @@ describe('Decorators', () => {
 
     test('should handle complex async workflows', async () => {
       class WorkflowClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ budgetMs: 100, monitor: mockMonitor })
         async step1(): Promise<string> {
           await new Promise(resolve => setTimeout(resolve, 1));
           return 'step1-complete';
         }
 
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ budgetMs: 50, monitor: mockMonitor })
         async step2(input: string): Promise<string> {
           await new Promise(resolve => setTimeout(resolve, 1));
@@ -683,7 +665,6 @@ describe('Decorators', () => {
   describe('edge cases', () => {
     test('should handle very short operations', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         instantMethod(): number {
           return 42;
@@ -702,7 +683,6 @@ describe('Decorators', () => {
       class TestClass {
         sideEffectValue = 0;
 
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         voidMethod(): void {
           this.sideEffectValue = 42;
@@ -719,7 +699,6 @@ describe('Decorators', () => {
 
     test('should handle methods that return functions', () => {
       class TestClass {
-        // @ts-expect-error - Testing decorator functionality
         @Timed({ monitor: mockMonitor })
         createFunction(): () => number {
           return () => 42;

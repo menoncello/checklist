@@ -1,66 +1,61 @@
-export interface ErrorMetrics {
-  totalErrors: number;
-  recoveries: number;
-  failures: number;
-  averageRecoveryTime: number;
-  lastError?: Error;
-  lastRecoveryTime?: Date;
-}
+import type {
+  ErrorBoundaryMetrics,
+  ErrorHistoryManager,
+  ErrorState,
+  StatePreservationManager,
+} from './ErrorBoundaryHelpers';
 
 export class ErrorBoundaryMetricsCollector {
-  private metrics: ErrorMetrics = {
-    totalErrors: 0,
-    recoveries: 0,
-    failures: 0,
-    averageRecoveryTime: 0,
-  };
+  constructor(
+    private historyManager: ErrorHistoryManager,
+    private preservationManager: StatePreservationManager
+  ) {}
 
-  private recoveryTimes: number[] = [];
+  collectMetrics(state: ErrorState, _maxRetries: number): ErrorBoundaryMetrics {
+    const history = this.historyManager.getHistory();
+    const totalErrors = history.length;
+    const retryAttempts = state.retryCount;
+    const successfulRecoveries = history.filter((e) => e.recovered).length;
+    const failedRecoveries = totalErrors - successfulRecoveries;
+
+    // Calculate average retry time
+    let averageRetryTime = 0;
+    if (history.length > 1) {
+      const times = history.map((e) => e.timestamp);
+      const deltas = [];
+      for (let i = 1; i < times.length; i++) {
+        deltas.push(times[i] - times[i - 1]);
+      }
+      if (deltas.length > 0) {
+        averageRetryTime = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+      }
+    }
+
+    return {
+      totalErrors,
+      retryAttempts,
+      successfulRecoveries,
+      failedRecoveries,
+      averageRetryTime,
+      currentRetryCount: state.retryCount,
+      hasActiveError: state.hasError,
+      errorFrequency: this.historyManager.getErrorFrequency(),
+      maxRetries: state.maxRetries,
+    };
+  }
 
   recordError(error: Error): void {
-    this.metrics.totalErrors++;
-    this.metrics.lastError = error;
+    // Record error metrics
+    console.log('Recording error metrics for:', error.message);
   }
 
-  recordRecovery(recoveryTime: number): void {
-    this.metrics.recoveries++;
-    this.metrics.lastRecoveryTime = new Date();
-    this.recoveryTimes.push(recoveryTime);
-
-    // Calculate average recovery time
-    const total = this.recoveryTimes.reduce((sum, time) => sum + time, 0);
-    this.metrics.averageRecoveryTime = total / this.recoveryTimes.length;
-  }
-
-  recordFailure(): void {
-    this.metrics.failures++;
-  }
-
-  getMetrics(): ErrorMetrics {
-    return { ...this.metrics };
-  }
-
-  reset(): void {
-    this.metrics = {
-      totalErrors: 0,
-      recoveries: 0,
-      failures: 0,
-      averageRecoveryTime: 0,
-    };
-    this.recoveryTimes = [];
-  }
-
-  // Additional methods needed by ErrorBoundaryCore
-  updateErrorMetrics(_retryCount: number): void {
-    // Default implementation for updating error metrics
-    this.metrics.totalErrors++;
+  updateErrorMetrics(retryCount: number): void {
+    // Update error metrics
+    console.log('Updating error metrics, retry count:', retryCount);
   }
 
   resetMetrics(): void {
-    this.reset();
-  }
-
-  collectMetrics(): ErrorMetrics {
-    return this.getMetrics();
+    // Reset metrics
+    this.historyManager.clear();
   }
 }

@@ -1,24 +1,23 @@
 import { DebugComponentManager } from './DebugComponentManager';
 import { DebugConfigDefaults } from './DebugConfigDefaults';
 import { DebugKeyboardHandler } from './DebugKeyboardHandler';
-import {
+import type {
   DebugConfig,
   DebugLogEntry,
-  DebugMetrics,
   ComponentDebugInfo,
-  DebugLogManager,
-  DebugEventManager,
 } from './DebugManagerHelpers';
+import { DebugLogManager, DebugEventManager } from './DebugManagerHelpers';
+import type { DebugMetrics } from './helpers/ConfigInitializer';
 import { DebugMetricsCollector } from './DebugMetricsCollector';
 import { DebugOverlayManager } from './DebugOverlayManager';
 import { DebugProfilingManager } from './DebugProfilingManager';
 
-export {
+export type {
   DebugConfig,
   DebugLogEntry,
-  DebugMetrics,
   ComponentDebugInfo,
 } from './DebugManagerHelpers';
+export type { DebugMetrics } from './helpers/ConfigInitializer';
 
 export class DebugManager {
   private config: DebugConfig;
@@ -59,10 +58,29 @@ export class DebugManager {
   private initializeManagers(): void {
     this.logManager = new DebugLogManager(this.config.maxLogEntries);
     this.eventManager = new DebugEventManager();
-    this.keyboardHandler = new DebugKeyboardHandler();
+    this.keyboardHandler = new DebugKeyboardHandler(
+      this.config,
+      (action: string) => {
+        this.log({
+          level: 'debug',
+          category: 'keyboard',
+          message: `Action triggered: ${action}`,
+        });
+      }
+    );
     this.metricsCollector = new DebugMetricsCollector();
-    this.profilingManager = new DebugProfilingManager();
-    this.overlayManager = new DebugOverlayManager();
+    this.profilingManager = new DebugProfilingManager(
+      this.config.enableProfiling,
+      (message: string) => {
+        this.log({ level: 'debug', category: 'profiling', message });
+      }
+    );
+    this.overlayManager = new DebugOverlayManager(
+      this.config,
+      (message: string) => {
+        this.log({ level: 'info', category: 'overlay', message });
+      }
+    );
     this.componentManager = new DebugComponentManager();
   }
 
@@ -156,13 +174,7 @@ export class DebugManager {
 
     if (levelPriority < configPriority) return;
 
-    this.logManager.addLog({
-      timestamp: new Date(),
-      level,
-      message,
-      category,
-      data,
-    });
+    this.logManager.log(level, category, message, data);
     this.eventManager.emit('logAdded', { level, category, message, data });
 
     if (this.config.showOverlay && this.overlayManager.isVisible()) {
@@ -197,7 +209,8 @@ export class DebugManager {
   }
 
   public endProfiling(label: string): number {
-    return this.profilingManager.end(label);
+    const result = this.profilingManager.end(label);
+    return result || 0;
   }
 
   public updateComponentTree(tree: ComponentDebugInfo): void {
@@ -241,7 +254,7 @@ export class DebugManager {
   public getLogsByLevel(
     level: 'debug' | 'info' | 'warn' | 'error'
   ): DebugLogEntry[] {
-    return this.logManager.filterLogs(level);
+    return this.logManager.filterLogs({ level });
   }
 
   public getLogsByCategory(category: string): DebugLogEntry[] {
