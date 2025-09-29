@@ -1,9 +1,9 @@
-export interface TTYInfo {
+export type TTYInfo = {
   isTTY: boolean;
   columns: number;
   rows: number;
   colorDepth?: number;
-}
+};
 
 export class TTYInfoProvider {
   static gatherTTYInfo(): TTYInfo {

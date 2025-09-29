@@ -13,9 +13,10 @@ export class ColorSupport {
   private cacheTTL = 30000; // 30 seconds
 
   public detectBasicColor(): boolean | null {
-    // Check environment variables first
-    const envResult = this.checkEnvironmentVariables();
-    if (envResult !== null) return envResult;
+    // Check NO_COLOR first (https://no-color.org/)
+    if (Bun.env.NO_COLOR !== undefined && Bun.env.NO_COLOR.length > 0) {
+      return false;
+    }
 
     // Check FORCE_COLOR
     if (Bun.env.FORCE_COLOR !== undefined && Bun.env.FORCE_COLOR.length > 0) {
@@ -24,14 +25,19 @@ export class ColorSupport {
       if (value === '1' || value === 'true') return true;
     }
 
-    // Check NO_COLOR (https://no-color.org/)
-    if (Bun.env.NO_COLOR !== undefined && Bun.env.NO_COLOR.length > 0)
-      return false;
+    // Check environment variables
+    const envResult = this.checkEnvironmentVariables();
+    if (envResult !== null) return envResult;
 
     return null; // Unknown, needs further detection
   }
 
   public detect256Color(): boolean | null {
+    // Check NO_COLOR first
+    if (Bun.env.NO_COLOR !== undefined && Bun.env.NO_COLOR.length > 0) {
+      return false;
+    }
+
     // Check for explicit 256 color support
     const term = Bun.env.TERM ?? '';
     if (term.includes('256color')) return true;
@@ -46,13 +52,32 @@ export class ColorSupport {
       return true;
 
     // Check terminal capabilities
-    return this.checkTerminalColorSupport(256);
+    const result = this.checkTerminalColorSupport(256);
+    if (result !== null) return result;
+
+    // If term is xterm (without 256), return false
+    if (term === 'xterm') return false;
+
+    return null;
   }
 
   public detectTrueColor(): boolean | null {
+    // Check NO_COLOR first
+    if (Bun.env.NO_COLOR !== undefined && Bun.env.NO_COLOR.length > 0) {
+      return false;
+    }
+
     // Check COLORTERM for true color indicators
     const colorTerm = Bun.env.COLORTERM;
     if (colorTerm === 'truecolor' || colorTerm === '24bit') return true;
+    if (
+      colorTerm !== undefined &&
+      colorTerm !== 'truecolor' &&
+      colorTerm !== '24bit'
+    ) {
+      // If COLORTERM is set but not to truecolor/24bit, return false
+      return false;
+    }
 
     // Check for terminals known to support true color
     const term = Bun.env.TERM ?? '';
@@ -71,6 +96,11 @@ export class ColorSupport {
 
       if (trueColorTerminals.some((t) => termProgram.includes(t))) {
         return true;
+      }
+
+      // If TERM_PROGRAM is set to "terminal" (macOS Terminal), it doesn't support true color
+      if (termProgram === 'terminal') {
+        return false;
       }
     }
 
@@ -144,7 +174,7 @@ export class ColorSupport {
     { basic: boolean; '256': boolean; truecolor: boolean }
   > {
     return {
-      xterm: { basic: true, '256': true, truecolor: false },
+      xterm: { basic: true, '256': false, truecolor: false },
       'xterm-256color': { basic: true, '256': true, truecolor: false },
       'xterm-color': { basic: true, '256': false, truecolor: false },
       screen: { basic: true, '256': false, truecolor: false },
@@ -527,6 +557,47 @@ export class ColorSupport {
     this.detectionCache = null;
     this.supportCache.clear();
     this.cacheTimestamp = 0;
+  }
+
+  // Backward compatibility method
+  public detect(): ColorSupportInfo & { colors16?: boolean } {
+    const info: ColorSupportInfo & { colors16?: boolean } = {
+      basic: this.supportsBasicColor(),
+      colors16: this.supportsBasicColor(), // Alias for basic
+      color256: this.supports256Color(),
+      trueColor: this.supportsTrueColor(),
+      method: this.detectionCache?.method ?? 'env',
+      confidence: this.detectionCache?.confidence ?? 'high',
+    };
+    return info;
+  }
+
+  // Get basic colors palette
+  public getBasicColors(): string[] {
+    if (!this.supportsBasicColor()) {
+      return [];
+    }
+
+    const colors = [
+      '\x1b[30m', // Black
+      '\x1b[31m', // Red
+      '\x1b[32m', // Green
+      '\x1b[33m', // Yellow
+      '\x1b[34m', // Blue
+      '\x1b[35m', // Magenta
+      '\x1b[36m', // Cyan
+      '\x1b[37m', // White
+      '\x1b[90m', // Bright Black
+      '\x1b[91m', // Bright Red
+      '\x1b[92m', // Bright Green
+      '\x1b[93m', // Bright Yellow
+      '\x1b[94m', // Bright Blue
+      '\x1b[95m', // Bright Magenta
+      '\x1b[96m', // Bright Cyan
+      '\x1b[97m', // Bright White
+    ];
+
+    return colors;
   }
 }
 

@@ -1,12 +1,11 @@
-import {
-  EnvironmentDetector,
-  EnvironmentInfo,
-} from './helpers/EnvironmentDetector';
-import { TTYInfoProvider, TTYInfo } from './helpers/TTYInfoProvider';
+import { EnvironmentDetector } from './helpers/EnvironmentDetector';
+import type { EnvironmentInfo } from './helpers/EnvironmentDetector';
+import { TTYInfoProvider } from './helpers/TTYInfoProvider';
+import type { TTYInfo } from './helpers/TTYInfoProvider';
 import { TerminalCapabilitiesDetector } from './helpers/TerminalCapabilitiesDetector';
 import { TerminalVersionDetector } from './helpers/TerminalVersionDetector';
 
-export { TTYInfo, EnvironmentInfo };
+export type { TTYInfo, EnvironmentInfo };
 
 export class TerminalInfo {
   private environmentInfo: EnvironmentInfo;
