@@ -1,12 +1,12 @@
 import { createDefaultFallbacks } from './DefaultFallbacks';
-import {
+import type {
   FallbackOptions,
   RenderFallback,
   CompatibilityReport,
 } from './FallbackTypes';
 import { FallbackUtils } from './FallbackUtils';
 
-export { FallbackOptions, RenderFallback, CompatibilityReport };
+export type { FallbackOptions, RenderFallback, CompatibilityReport };
 
 export class FallbackRenderer {
   private fallbacks: RenderFallback[] = [];
@@ -15,8 +15,8 @@ export class FallbackRenderer {
   constructor(options: Partial<FallbackOptions> = {}) {
     this.options = {
       useAsciiOnly: false,
-      maxWidth: 120,
-      maxHeight: 50,
+      maxWidth: Infinity,
+      maxHeight: Infinity,
       stripColors: false,
       simplifyBoxDrawing: false,
       preserveLayout: true,
@@ -29,25 +29,21 @@ export class FallbackRenderer {
   private setupDefaultFallbacks(): void {
     const defaultFallbacks = createDefaultFallbacks();
 
-    // Apply user preferences to filter fallbacks
-    const filteredFallbacks = defaultFallbacks.filter((fallback) => {
-      switch (fallback.name) {
-        case 'stripColors':
-          return this.options.stripColors;
-        case 'asciiOnly':
-          return this.options.useAsciiOnly;
-        case 'simplifyBoxDrawing':
-          return this.options.simplifyBoxDrawing;
-        case 'limitDimensions':
-          return (
-            this.options.maxWidth < Infinity ||
-            this.options.maxHeight < Infinity
-          );
-        case 'simplifyLayout':
-          return !this.options.preserveLayout;
-        default:
-          return true;
+    // Keep all capability-based fallbacks, but filter option-based ones
+    const filteredFallbacks = defaultFallbacks.map((fallback) => {
+      // For limitDimensions, modify condition based on options
+      if (fallback.name === 'limitDimensions') {
+        const shouldApply =
+          this.options.maxWidth < Infinity || this.options.maxHeight < Infinity;
+
+        return {
+          ...fallback,
+          condition: () => shouldApply,
+        };
       }
+
+      // All other fallbacks keep their original conditions
+      return fallback;
     });
 
     this.fallbacks = filteredFallbacks;
@@ -67,19 +63,82 @@ export class FallbackRenderer {
     return false;
   }
 
-  public render(content: string, capabilities: unknown): string {
+  public render(content: string, capabilitiesOrMode: unknown): string {
+    // Support both capabilities object and mode string
+    if (typeof capabilitiesOrMode === 'string') {
+      return this.renderWithMode(content, capabilitiesOrMode);
+    }
+
     let result = content;
     const applicableFallbacks: string[] = [];
 
     // Apply fallbacks in priority order
     for (const fallback of this.fallbacks) {
-      if (fallback.condition(capabilities)) {
+      if (fallback.condition(capabilitiesOrMode)) {
         result = fallback.transform(result, this.options);
         applicableFallbacks.push(fallback.name);
       }
     }
 
     return result;
+  }
+
+  private renderWithMode(content: string, mode: string): string {
+    const modeOptions = this.getModeOptions(mode);
+    const tempOptions = this.options;
+    this.options = { ...this.options, ...modeOptions };
+    this.setupDefaultFallbacks();
+
+    const result = this.render(content, this.createCapabilitiesForMode(mode));
+
+    this.options = tempOptions;
+    this.setupDefaultFallbacks();
+    return result;
+  }
+
+  private getModeOptions(mode: string): Partial<FallbackOptions> {
+    switch (mode) {
+      case 'ascii':
+        return {
+          useAsciiOnly: true,
+          simplifyBoxDrawing: true,
+          stripColors: false,
+        };
+      case 'monochrome':
+        return {
+          useAsciiOnly: false,
+          stripColors: true,
+        };
+      case 'minimal':
+        return {
+          useAsciiOnly: true,
+          stripColors: true,
+          simplifyBoxDrawing: true,
+        };
+      case 'unicode':
+        return {
+          useAsciiOnly: false,
+          stripColors: false,
+          simplifyBoxDrawing: false,
+        };
+      default:
+        return {};
+    }
+  }
+
+  private createCapabilitiesForMode(mode: string): unknown {
+    switch (mode) {
+      case 'ascii':
+        return { unicode: false, color: true };
+      case 'monochrome':
+        return { unicode: true, color: false };
+      case 'minimal':
+        return { unicode: false, color: false };
+      case 'unicode':
+        return { unicode: true, color: true };
+      default:
+        return { unicode: true, color: true };
+    }
   }
 
   public updateOptions(newOptions: Partial<FallbackOptions>): void {
@@ -180,5 +239,54 @@ export class FallbackRenderer {
       simplifyBoxDrawing: false,
       preserveLayout: true,
     });
+  }
+
+  public getCompatibilityWarnings(capabilities: unknown): string[] {
+    const warnings: string[] = [];
+    const capsObj = capabilities as Record<string, unknown> | null | undefined;
+
+    this.addCapabilityWarnings(warnings, capsObj);
+    this.addFeatureWarnings(warnings, capsObj);
+
+    return warnings;
+  }
+
+  private addCapabilityWarnings(
+    warnings: string[],
+    capsObj: Record<string, unknown> | null | undefined
+  ): void {
+    if (!FallbackUtils.hasColorSupport(capsObj)) {
+      warnings.push(
+        '⚠️  Limited color support: Interface may appear in monochrome'
+      );
+    }
+    if (!FallbackUtils.hasUnicodeSupport(capsObj)) {
+      warnings.push(
+        '⚠️  Limited Unicode support: Box drawing characters will be simplified'
+      );
+    }
+    if (FallbackUtils.isMinimalTerminal(capsObj)) {
+      warnings.push(
+        '⚠️  Critical: Terminal has minimal capabilities - degraded experience'
+      );
+    }
+  }
+
+  private addFeatureWarnings(
+    warnings: string[],
+    capsObj: Record<string, unknown> | null | undefined
+  ): void {
+    const capRecord = capsObj as Record<string, unknown> | null;
+    if (capRecord?.mouse === false) {
+      warnings.push('⚠️  Mouse input unavailable: Use keyboard navigation');
+    }
+    if (capRecord?.altScreen === false) {
+      warnings.push(
+        '⚠️  Alternate screen buffer unavailable: May affect display'
+      );
+    }
+    if (capRecord?.cursorShape === false) {
+      warnings.push('⚠️  Cursor shape control unavailable');
+    }
   }
 }

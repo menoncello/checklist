@@ -1,4 +1,6 @@
-export interface EnvironmentInfo {
+import { InputSanitizer } from './InputSanitizer';
+
+export type EnvironmentInfo = {
   term: string;
   termProgram?: string;
   colorTerm?: string;
@@ -7,14 +9,27 @@ export interface EnvironmentInfo {
   ssh?: boolean;
   tmux?: boolean;
   screen?: boolean;
-}
+};
 
 export class EnvironmentDetector {
+  // Instance method for backward compatibility
+  detect(): EnvironmentInfo {
+    return EnvironmentDetector.gatherEnvironmentInfo();
+  }
+
   static gatherEnvironmentInfo(): EnvironmentInfo {
+    // Sanitize environment variables for security
+    const sanitizedEnv = InputSanitizer.sanitizeEnvironment({
+      TERM: Bun.env.TERM,
+      COLORTERM: Bun.env.COLORTERM,
+      TERM_PROGRAM: Bun.env.TERM_PROGRAM,
+      LC_TERMINAL: Bun.env.LC_TERMINAL,
+    });
+
     return {
-      term: Bun.env.TERM ?? 'unknown',
-      termProgram: Bun.env.TERM_PROGRAM,
-      colorTerm: Bun.env.COLORTERM,
+      term: sanitizedEnv.TERM ?? 'unknown',
+      termProgram: sanitizedEnv.TERM_PROGRAM,
+      colorTerm: sanitizedEnv.COLORTERM,
       lang: Bun.env.LANG,
       lc_all: Bun.env.LC_ALL,
       ssh: Boolean(

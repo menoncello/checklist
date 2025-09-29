@@ -34,8 +34,8 @@ export class ResizeHandler {
     this.config = {
       debounceMs: 150,
       throttleMs: 50,
-      minWidth: 20,
-      minHeight: 5,
+      minWidth: 80, // Minimum terminal width
+      minHeight: 24, // Minimum terminal height
       maxWidth: 500,
       maxHeight: 200,
       enableLogging: false,
