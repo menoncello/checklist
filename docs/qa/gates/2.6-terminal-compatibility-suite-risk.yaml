@@ -1,0 +1,30 @@
+# Risk Summary: Story 2.6 - Terminal Compatibility Suite
+# Generated: 2025-09-27
+# Reviewer: Quinn (Test Architect)
+
+risk_summary:
+  totals:
+    critical: 1
+    high: 3
+    medium: 6
+    low: 3
+  highest:
+    id: TECH-001
+    score: 9
+    title: Cross-platform terminal behavior differences
+  recommendations:
+    must_fix:
+      - Implement comprehensive testing matrix across all target terminals
+      - Create terminal-specific behavior normalization layer
+      - Validate capability detection meets <5ms performance budget
+      - Establish robust visual regression testing framework
+    monitor:
+      - Capability detection timing and memory usage
+      - Cross-terminal compatibility issues in production
+      - Visual regression test pass rates
+      - User-reported terminal problems
+    considerations:
+      - Leverage existing capability detection system (70% complete)
+      - Focus testing efforts on cross-platform compatibility
+      - Implement performance optimization early in development
+      - Create comprehensive documentation for supported terminals

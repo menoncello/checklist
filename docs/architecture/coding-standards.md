@@ -434,3 +434,197 @@ When code exceeds thresholds:
 4. **Document trade-offs**: Explain why certain patterns are necessary
 
 **Quality is not optional - these standards protect the long-term health of the codebase.**
+
+## Async/Await Pattern Standards
+
+**MUST follow these patterns for asynchronous operations:**
+
+```typescript
+// ALWAYS await Promises before accessing properties
+// ❌ WRONG: Accessing properties on Promise
+const size = detector.detectCapabilities().size; // Error: Property 'size' does not exist on type 'Promise<DetectionResult>'
+
+// ✅ CORRECT: Await the Promise first
+const result = await detector.detectCapabilities();
+const size = result.size; // Now works correctly
+
+// ALWAYS handle Promise results properly in assignments
+// ❌ WRONG: Assigning Promise to expected result type
+const capabilities: TerminalCapabilities = detector.detectCapabilities(); // Type mismatch
+
+// ✅ CORRECT: Await and ensure type compatibility
+const capabilities = await detector.detectCapabilities();
+
+// ALWAYS use proper typing for async operations
+interface DetectionResult {
+  size: TerminalSize;
+  color: ColorSupport;
+  unicode: UnicodeSupport;
+  mouse: MouseSupport;
+}
+
+async function detectCapabilities(): Promise<DetectionResult> {
+  // Implementation
+}
+```
+
+## Type Export and Import Standards
+
+**MUST export all types that are used across modules:**
+
+```typescript
+// ❌ WRONG: Type declared but not exported
+class CapabilityDetector {
+  interface TerminalCapabilities { // Not exported!
+    color: boolean;
+    unicode: boolean;
+  }
+}
+
+// ✅ CORRECT: Export all shared types
+export interface TerminalCapabilities {
+  color: boolean;
+  unicode: boolean;
+  mouse: boolean;
+  size: TerminalSize;
+}
+
+export class CapabilityDetector {
+  // Implementation using exported types
+}
+```
+
+## Type Safety in Test Files
+
+**MUST ensure types are properly exported and imported for tests:**
+
+```typescript
+// In source file - export all types needed for testing
+export interface FallbackOptions {
+  useAsciiOnly: boolean;
+  stripColors: boolean;
+  simplifyBoxDrawing: boolean;
+  preserveLayout: boolean;
+  maxWidth: number;
+  maxHeight: number;
+}
+
+// In test file - import types properly
+import type { FallbackOptions } from '../src/FallbackRenderer';
+
+// ✅ CORRECT: Provide complete option objects
+const options: FallbackOptions = {
+  useAsciiOnly: false,
+  stripColors: false,
+  simplifyBoxDrawing: false,
+  preserveLayout: true,
+  maxWidth: 80,
+  maxHeight: 24
+};
+```
+
+## Mathematical Calculation Standards
+
+**MUST be careful with percentage calculations:**
+
+```typescript
+// ❌ WRONG: Incorrect percentage calculation
+percentageIncrease: ((minWidth - currentWidth) / currentWidth) * 100 // Can be negative
+
+// ✅ CORRECT: Use absolute values and proper formula
+percentageIncrease: Math.abs(((minWidth - currentWidth) / currentWidth) * 100)
+
+// ✅ CORRECT: Always ensure percentage is positive for "increase" scenarios
+percentageIncrease: Math.max(0, ((minWidth - currentWidth) / currentWidth) * 100)
+```
+
+## Test Message Format Standards
+
+**MUST ensure test expectations match actual implementation output:**
+
+```typescript
+// ❌ WRONG: Test expecting exact string that doesn't match
+expect(message).toContain('TERMINAL SIZE ERROR');
+
+// ✅ CORRECT: Test matches actual implementation format
+expect(message).toContain('Terminal size too small');
+expect(message).toContain('minimum:');
+
+// ✅ CORRECT: Test for multiple parts of the message
+expect(message).toMatch(/Terminal size too small: \d+x\d+ \(minimum: \d+x\d+\)/);
+```
+
+## Missing Type Declarations
+
+**MUST add proper type declarations for external dependencies:**
+
+```typescript
+// Add to global.d.ts or appropriate type definitions file
+declare module 'child_process' {
+  export interface ChildProcess {
+    // Add ChildProcess type definitions
+  }
+}
+
+// For custom types used across files
+export interface SizeValidationResult {
+  isValid: boolean;
+  adjustments?: SizeAdjustment;
+  errors?: string[];
+}
+```
+
+## Common Anti-Patterns to Avoid
+
+### Promise Property Access
+```typescript
+// ❌ NEVER access properties on Promise objects
+const size = asyncFunction().property;
+
+// ✅ ALWAYS await first
+const result = await asyncFunction();
+const size = result.property;
+```
+
+### Missing Type Exports
+```typescript
+// ❌ NEVER forget to export shared types
+interface InternalType { /* ... */ } // Not exported
+
+// ✅ ALWAYS export types used across modules
+export interface SharedType { /* ... */ }
+```
+
+### Incomplete Object Properties
+```typescript
+// ❌ NEVER provide incomplete option objects
+const options = { maxWidth: 80 }; // Missing required properties
+
+// ✅ ALWAYS provide complete objects or use defaults
+const options: CompleteOptions = {
+  maxWidth: 80,
+  maxHeight: 24,
+  useAsciiOnly: false,
+  // ... all required properties
+};
+```
+
+### Incorrect Percentage Calculations
+```typescript
+// ❌ NEVER calculate percentage without ensuring correct sign
+const percentage = ((smaller - larger) / larger) * 100; // Negative result
+
+// ✅ ALWAYS use absolute values or ensure proper calculation direction
+const percentage = Math.abs(((required - current) / current) * 100);
+```
+
+## Error Prevention Checklist
+
+Before committing code, verify:
+
+1. **Async Operations**: All Promises are properly awaited before property access
+2. **Type Exports**: All types used across modules are properly exported
+3. **Complete Objects**: All required properties are provided in option objects
+4. **Math Operations**: Percentage calculations are mathematically correct
+5. **Test Messages**: Test expectations match actual implementation output
+6. **Type Declarations**: All external dependencies have proper type declarations
