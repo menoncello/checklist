@@ -81,6 +81,6 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "ansis": "^4.1.0",
-    "clipboardy": "^4.0.0"
+    "clipboardy": "^5.0.0"
   }
 }
