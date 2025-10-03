@@ -35,8 +35,15 @@ describe('NavigationCommandHandler', () => {
     );
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     handler.onUnmount();
+    await new Promise(resolve => setTimeout(resolve, 50)); // Allow async cleanup
+    eventBus.destroy();
+    viewSystem.destroy?.();
+    performanceMonitor.destroy?.();
+
+    // Clear any remaining timeouts
+    await new Promise(resolve => setTimeout(resolve, 10));
   });
 
   describe('Command Registration', () => {

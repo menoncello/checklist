@@ -12,22 +12,36 @@ import {
 } from '../../src/performance/PerformanceMonitor';
 
 describe('PerformanceMonitor', () => {
-  let performanceMonitor: PerformanceMonitor;
+  let performanceMonitor: PerformanceMonitor | null = null;
+  const testMonitors: PerformanceMonitor[] = [];
 
   beforeEach(() => {
     performanceMonitor = new PerformanceMonitor({
       enableAutoSampling: false, // Disable auto-sampling for predictable tests
       samplingInterval: 100,
     });
+    testMonitors.push(performanceMonitor);
   });
 
   afterEach(() => {
-    performanceMonitor.destroy();
+    // Clean up all monitors created during the test
+    for (const monitor of testMonitors) {
+      if (monitor && typeof monitor.destroy === 'function') {
+        try {
+          monitor.destroy();
+        } catch (error) {
+          // Ignore cleanup errors
+        }
+      }
+    }
+    testMonitors.length = 0;
+    performanceMonitor = null;
   });
 
   describe('constructor and initialization', () => {
     test('should initialize with default config', () => {
       const defaultMonitor = new PerformanceMonitor();
+      testMonitors.push(defaultMonitor);
       const config = defaultMonitor.getConfig();
 
       expect(config.enableMetrics).toBe(true);
@@ -41,7 +55,6 @@ describe('PerformanceMonitor', () => {
       expect(config.enableMemoryProfiling).toBe(true);
       expect(config.enableCPUProfiling).toBe(false);
 
-      defaultMonitor.destroy();
     });
 
     test('should initialize with custom config', () => {
@@ -59,6 +72,7 @@ describe('PerformanceMonitor', () => {
       };
 
       const customMonitor = new PerformanceMonitor(customConfig);
+      testMonitors.push(customMonitor);
       const config = customMonitor.getConfig();
 
       expect(config.enableMetrics).toBe(false);
@@ -72,7 +86,6 @@ describe('PerformanceMonitor', () => {
       expect(config.enableMemoryProfiling).toBe(false);
       expect(config.enableCPUProfiling).toBe(true);
 
-      customMonitor.destroy();
     });
   });
 
@@ -112,13 +125,13 @@ describe('PerformanceMonitor', () => {
         enableMetrics: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       disabledMonitor.recordMetricValue('disabled-metric', 50);
 
       const metrics = disabledMonitor.getMetrics();
       expect(metrics.length).toBe(0);
 
-      disabledMonitor.destroy();
     });
 
     test('should create marks and measures', () => {
@@ -191,11 +204,11 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const benchmarkId = disabledMonitor.startBenchmark('disabled-benchmark');
       expect(benchmarkId).toBe('');
 
-      disabledMonitor.destroy();
     });
 
     test('should not end benchmarks when disabled', () => {
@@ -203,11 +216,11 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const result = disabledMonitor.endBenchmark('fake-id');
       expect(result).toBe(null);
 
-      disabledMonitor.destroy();
     });
 
     test('should measure functions', () => {
@@ -229,13 +242,13 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const testFunction = jest.fn(() => 42);
       const measuredFunction = disabledMonitor.measureFunction(testFunction, 'disabled-function');
 
       expect(measuredFunction).toBe(testFunction);
 
-      disabledMonitor.destroy();
     });
 
     test('should measure async operations', async () => {
@@ -258,13 +271,13 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const asyncOperation = Promise.resolve(200);
       const result = await disabledMonitor.measureAsync(asyncOperation, 'disabled-async');
 
       expect(result).toBe(200);
 
-      disabledMonitor.destroy();
     });
 
     test('should get benchmarks with filter', () => {
@@ -328,6 +341,7 @@ describe('PerformanceMonitor', () => {
         enableAlerts: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const alertHandler = jest.fn();
       disabledMonitor.on('alert', alertHandler);
@@ -349,7 +363,6 @@ describe('PerformanceMonitor', () => {
 
       expect(alertHandler).not.toHaveBeenCalled();
 
-      disabledMonitor.destroy();
     });
 
     test('should remove thresholds', () => {
@@ -462,6 +475,7 @@ describe('PerformanceMonitor', () => {
         enableMetrics: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const initialCount = disabledMonitor.getMetrics().length;
 
@@ -471,7 +485,6 @@ describe('PerformanceMonitor', () => {
       const finalCount = disabledMonitor.getMetrics().length;
       expect(finalCount).toBe(initialCount);
 
-      disabledMonitor.destroy();
     });
   });
 
@@ -556,6 +569,7 @@ describe('PerformanceMonitor', () => {
       const monitor = new PerformanceMonitor({
         enableAutoSampling: false,
       });
+      testMonitors.push(monitor);
 
       // Enable auto-sampling
       monitor.updateConfig({ enableAutoSampling: true });
@@ -565,7 +579,6 @@ describe('PerformanceMonitor', () => {
       monitor.updateConfig({ enableAutoSampling: false });
       expect(monitor.getConfig().enableAutoSampling).toBe(false);
 
-      monitor.destroy();
     });
 
     test('should return immutable config copy', () => {
@@ -836,6 +849,7 @@ describe('PerformanceMonitor', () => {
         enableAlerts: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const metric: PerformanceMetric = {
         id: 'test-no-alert',
@@ -850,7 +864,6 @@ describe('PerformanceMonitor', () => {
       expect(metrics.length).toBe(1);
       expect(alertManagerSpy).not.toHaveBeenCalled();
 
-      disabledMonitor.destroy();
     });
   });
 
@@ -932,6 +945,7 @@ describe('PerformanceMonitor', () => {
         enableMetrics: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const metric: PerformanceMetric = {
         id: 'disabled-test',
@@ -944,7 +958,6 @@ describe('PerformanceMonitor', () => {
 
       expect(disabledMonitor.getMetrics().length).toBe(0);
 
-      disabledMonitor.destroy();
     });
 
     test('should handle startBenchmark when benchmarks disabled', () => {
@@ -952,11 +965,11 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const result = disabledMonitor.startBenchmark('disabled-benchmark');
       expect(result).toBe('');
 
-      disabledMonitor.destroy();
     });
 
     test('should handle endBenchmark when benchmarks disabled', () => {
@@ -964,11 +977,11 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const result = disabledMonitor.endBenchmark('any-id');
       expect(result).toBe(null);
 
-      disabledMonitor.destroy();
     });
 
     test('should handle measureFunction when benchmarks disabled', () => {
@@ -976,6 +989,7 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const testFunction = jest.fn(() => 42);
       const measuredFunction = disabledMonitor.measureFunction(testFunction, 'test');
@@ -985,7 +999,6 @@ describe('PerformanceMonitor', () => {
       const result = measuredFunction();
       expect(result).toBe(42);
 
-      disabledMonitor.destroy();
     });
 
     test('should handle measureAsync when benchmarks disabled', async () => {
@@ -993,6 +1006,7 @@ describe('PerformanceMonitor', () => {
         enableBenchmarks: false,
         enableAutoSampling: false,
       });
+      testMonitors.push(disabledMonitor);
 
       const promise = Promise.resolve(42);
       const result = await disabledMonitor.measureAsync(promise, 'test');
@@ -1000,7 +1014,6 @@ describe('PerformanceMonitor', () => {
       // Should return original promise when disabled
       expect(result).toBe(42);
 
-      disabledMonitor.destroy();
     });
   });
 });

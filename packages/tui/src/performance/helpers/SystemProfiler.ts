@@ -1,22 +1,22 @@
-export class SystemSnapshot {
-  timestamp!: number;
-  memory!: {
+export interface SystemSnapshot {
+  timestamp: number;
+  memory: {
     heapUsed: number;
     heapTotal: number;
     external: number;
     arrayBuffers: number;
   };
-  cpu!: {
+  cpu: {
     usage: number;
     loadAverage: number[];
   };
-  gc!: {
+  gc: {
     count: number;
     duration: number;
     type: string;
   };
-  uptime!: number;
-  eventLoop!: {
+  uptime: number;
+  eventLoop: {
     delay: number;
   };
 }

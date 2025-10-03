@@ -1,6 +1,5 @@
 import { CollectionManager } from './CollectionManager';
 import { MetricsAggregationProcessor } from './MetricsAggregationProcessor';
-import { MetricsAlertManager } from './MetricsAlertManager';
 import { MetricsBufferManager } from './MetricsBufferManager';
 import { MetricsCleanupManager } from './MetricsCleanupManager';
 import { MetricsEventManager } from './MetricsEventManager';
@@ -12,6 +11,7 @@ import type {
   RecordOptions,
 } from './MetricsTypes';
 import { SeriesManager } from './SeriesManager';
+import { AlertManager as MetricsAlertManager } from './metrics/AlertManager';
 
 export class MetricsCollectorCore {
   protected config!: MetricsCollectorConfig;

@@ -40,9 +40,11 @@ describe('Navigation Integration Tests', () => {
 
   afterEach(async () => {
     handler.onUnmount();
+    await new Promise(resolve => setTimeout(resolve, 100)); // Allow async cleanup
     await viewSystem.destroy();
-    performanceMonitor.destroy();
+    performanceMonitor.destroy?.();
     eventBus.destroy();
+    await new Promise(resolve => setTimeout(resolve, 50)); // Final cleanup
   });
 
   describe('End-to-End Navigation Flow', () => {
@@ -355,8 +357,10 @@ describe('Navigation Integration Tests', () => {
       // Destroy event bus while handler is still active
       eventBus.destroy();
 
-      // Try to trigger navigation - should not crash
-      await eventBus.publish('keyboard', { key: 'n' }, { source: 'KeyboardHandler' }); // Should resolve normally
+      // Try to trigger navigation - should throw error now that we have proper destruction checks
+      await expect(
+        eventBus.publish('keyboard', { key: 'n' }, { source: 'KeyboardHandler' })
+      ).rejects.toThrow('EventBus has been destroyed');
 
       consoleErrorSpy.mockRestore();
     });

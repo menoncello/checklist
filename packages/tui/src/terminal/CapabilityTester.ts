@@ -1,4 +1,3 @@
-import { TerminalHelpers } from './CapabilityTestUtils';
 import { ColorSupport } from './ColorSupport';
 import { TerminalInfo } from './TerminalInfo';
 import { CapabilityTest } from './types';
@@ -6,15 +5,10 @@ import { CapabilityTest } from './types';
 export class CapabilityTester {
   private terminalInfo: TerminalInfo;
   private colorSupport: ColorSupport;
-  private testTimeoutMultiplier: number = 1;
 
   constructor(terminalInfo: TerminalInfo, colorSupport: ColorSupport) {
     this.terminalInfo = terminalInfo;
     this.colorSupport = colorSupport;
-    // In test environment, use minimal timeouts
-    if (Bun.env.NODE_ENV === 'test' || Bun.env.BUN_ENV === 'test') {
-      this.testTimeoutMultiplier = 0.01; // 1% of normal timeout in tests
-    }
   }
 
   public createCapabilityTests(): CapabilityTest[] {
@@ -104,12 +98,8 @@ export class CapabilityTester {
   }
 
   public async runTestWithTimeout(test: CapabilityTest): Promise<boolean> {
-    const adjustedTimeout = Math.max(
-      1,
-      (test.timeout ?? 1000) * this.testTimeoutMultiplier
-    );
-    const timeoutPromise = new Promise<boolean>((_, reject) => {
-      setTimeout(() => reject(new Error('Test timeout')), adjustedTimeout);
+    const timeoutPromise = new Promise<boolean>((resolve) => {
+      setTimeout(() => resolve(false), test.timeout ?? 1000);
     });
 
     return Promise.race([test.test(), timeoutPromise]);
@@ -140,10 +130,7 @@ export class CapabilityTester {
       return trueColorSupport;
     }
 
-    return this.queryTerminalCapability(
-      '\x1b[48;2;1;2;3m\x1b[0m',
-      1000 * this.testTimeoutMultiplier
-    );
+    return this.queryTerminalCapability('\x1b[48;2;1;2;3m\x1b[0m', 1000);
   }
 
   private async testUnicodeSupport(): Promise<boolean> {
@@ -174,10 +161,7 @@ export class CapabilityTester {
     const term = this.terminalInfo.getTerminalType();
 
     if (this.isMouseCapableTerminal(term)) {
-      return this.queryTerminalCapability(
-        '\x1b[?1000h\x1b[?1000l',
-        500 * this.testTimeoutMultiplier
-      );
+      return this.queryTerminalCapability('\x1b[?1000h\x1b[?1000l', 500);
     }
 
     return false;
@@ -202,10 +186,7 @@ export class CapabilityTester {
       return true;
     }
 
-    return this.queryTerminalCapability(
-      '\x1b[?1049h\x1b[?1049l',
-      500 * this.testTimeoutMultiplier
-    );
+    return this.queryTerminalCapability('\x1b[?1049h\x1b[?1049l', 500);
   }
 
   private isAlternateScreenCapable(term: string): boolean {
@@ -216,32 +197,66 @@ export class CapabilityTester {
 
   private async testCursorShapeSupport(): Promise<boolean> {
     const term = this.terminalInfo.getTerminalType();
-    return TerminalHelpers.isCursorShapeCapable(term);
+    const cursorShapeTerminals = [
+      'xterm',
+      'gnome-terminal',
+      'alacritty',
+      'kitty',
+    ];
+
+    return cursorShapeTerminals.some((t) => term.includes(t));
   }
 
   private async testWindowTitleSupport(): Promise<boolean> {
-    if (TerminalHelpers.isSSHSession()) {
+    if (this.isSSHSession()) {
       return false;
     }
 
     const term = this.terminalInfo.getTerminalType();
-    return TerminalHelpers.isWindowTitleCapable(term);
+    return this.isWindowTitleCapable(term);
+  }
+
+  private isSSHSession(): boolean {
+    return (
+      (Bun.env.SSH_TTY !== undefined && Bun.env.SSH_TTY.length > 0) ||
+      (Bun.env.SSH_CONNECTION !== undefined &&
+        Bun.env.SSH_CONNECTION.length > 0)
+    );
+  }
+
+  private isWindowTitleCapable(term: string): boolean {
+    return (
+      term.includes('xterm') ||
+      term.includes('gnome') ||
+      term.includes('alacritty')
+    );
   }
 
   private async testClipboardSupport(): Promise<boolean> {
     const term = this.terminalInfo.getTerminalType();
-    return TerminalHelpers.isClipboardCapable(term);
+    const clipboardCapableTerminals = [
+      'xterm',
+      'alacritty',
+      'kitty',
+      'wezterm',
+    ];
+
+    return clipboardCapableTerminals.some((t) => term.includes(t));
   }
 
   private async queryTerminalCapability(
     sequence: string,
     timeout: number
   ): Promise<boolean> {
-    if (!TerminalHelpers.isTTYAvailable()) {
+    if (!this.isTTYAvailable()) {
       return false;
     }
 
     return this.performTerminalQuery(sequence, timeout);
+  }
+
+  private isTTYAvailable(): boolean {
+    return process.stdin.isTTY === true && process.stdout.isTTY === true;
   }
 
   private async performTerminalQuery(
@@ -249,24 +264,24 @@ export class CapabilityTester {
     timeout: number
   ): Promise<boolean> {
     return new Promise((resolve) => {
-      let responded = false;
-
-      const responseHandler = this.createResponseHandler(resolve, () => {
-        responded = true;
-      });
-
+      const responded = { value: false };
+      const cleanup = () => {
+        if (!responded.value) {
+          responded.value = true;
+          if (timeoutHandle !== undefined && timeoutHandle !== null)
+            clearTimeout(timeoutHandle);
+        }
+      };
+      const responseHandler = this.createResponseHandler(resolve, cleanup);
       const timeoutHandle = this.setupQueryTimeout(
         timeout,
         responseHandler,
         resolve,
-        () => {
-          responded = true;
-        }
+        cleanup
       );
 
-      if (!responded) {
-        this.executeQuery(sequence, responseHandler, timeoutHandle);
-      }
+      if (!responded.value)
+        this.executeQuery(sequence, responseHandler, timeoutHandle, cleanup);
     });
   }
 
@@ -274,15 +289,11 @@ export class CapabilityTester {
     resolve: (value: boolean) => void,
     onResponse: () => void
   ): (data: Buffer) => void {
-    let cleaned = false;
     const handler = (_data: Buffer) => {
-      if (!cleaned) {
-        cleaned = true;
-        this.cleanupQuery(handler, () => {
-          resolve(true);
-          onResponse();
-        });
-      }
+      this.cleanupQuery(handler, () => {
+        resolve(true);
+        onResponse();
+      });
     };
     return handler;
   }
@@ -293,48 +304,30 @@ export class CapabilityTester {
     resolve: (value: boolean) => void,
     onTimeout: () => void
   ): NodeJS.Timeout {
-    let cleaned = false;
     return setTimeout(() => {
-      if (!cleaned) {
-        cleaned = true;
-        this.cleanupQuery(responseHandler, () => {
-          resolve(false);
-          onTimeout();
-        });
-      }
+      this.cleanupQuery(responseHandler, () => {
+        resolve(false);
+        onTimeout();
+      });
     }, timeout);
+  }
+
+  private cleanupQuery(
+    responseHandler: (data: Buffer) => void,
+    callback: () => void
+  ): void {
+    process.stdin.off('data', responseHandler);
+    callback();
   }
 
   private executeQuery(
     sequence: string,
     responseHandler: (data: Buffer) => void,
-    timeoutHandle: NodeJS.Timeout
+    _timeoutHandle: NodeJS.Timeout,
+    _cleanup: () => void
   ): void {
-    // Add the listener only if stdin is available and is a TTY
-    if (process.stdin?.isTTY) {
-      process.stdin.on('data', responseHandler);
-      process.stdout.write(sequence);
-    } else {
-      // If not a TTY, immediately clean up and resolve as false
-      clearTimeout(timeoutHandle);
-      this.cleanupQuery(responseHandler, () => {});
-    }
-  }
-
-  private cleanupQuery(
-    handler: (data: Buffer) => void,
-    callback: () => void
-  ): void {
-    // Remove the listener if stdin exists
-    if (process.stdin !== null && process.stdin !== undefined) {
-      process.stdin.removeListener('data', handler);
-      // Also try using off for better compatibility
-      try {
-        process.stdin.off('data', handler);
-      } catch {
-        // Ignore if off is not available
-      }
-    }
-    callback();
+    process.stdin.on('data', responseHandler);
+    process.stdout.write(sequence);
+    // Cleanup will be handled by response or timeout handlers
   }
 }

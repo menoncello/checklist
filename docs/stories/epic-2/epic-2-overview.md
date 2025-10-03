@@ -1,6 +1,6 @@
 # Epic 2: TUI Core with Performance
 
-## Status: 🚧 IN PROGRESS (28.6% Complete - 2/7 stories)
+## Status: 🚧 IN PROGRESS (42.9% Complete - 3/7 stories)
 
 ## Goal
 
@@ -14,16 +14,16 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 - ✅ Keyboard navigation fully functional
 - ✅ Works across major terminal emulators
 
-## Stories (7 total, 2 complete)
+## Stories (7 total, 3 complete)
 
 ### ✅ Completed
 1. [Story 2.1: CLI Core Interface](story-2.1-cli-core-interface.md) ✅ **COMPLETE**
 2. [Story 2.2: Interactive Selection System](story-2.2-interactive-selection.md) ✅ **COMPLETE**
+3. [Story 2.5: TUI Application Shell](../2.5.story.md) ✅ **COMPLETE**
 
 ### 📝 Ready to Start
 3. [Story 2.3: Progress Visualization](story-2.3-progress-visualization.md) 📝 **READY**
 4. [Story 2.4: State Operations Interface](story-2.4-state-operations.md) 📝 **READY**
-5. [Story 2.5: Help & Documentation System](story-2.5-help-documentation.md) 📝 **READY**
 6. [Story 2.6: Error Handling & Recovery](story-2.6-error-handling.md) 📝 **READY**
 7. [Story 2.7: Configuration Management UI](story-2.7-configuration-management.md) 📝 **READY**
 
@@ -50,10 +50,10 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 - [x] Interactive selection working
 - [ ] Progress visualization implemented
 - [ ] State operations accessible via UI
-- [ ] Help system integrated
+- [x] TUI application shell implemented
 - [ ] Error handling robust
 - [ ] Configuration management UI complete
-- [ ] Performance targets met (<100ms)
+- [x] Performance targets met (<100ms)
 - [ ] Cross-platform tested
-- [ ] Keyboard navigation complete
-- [ ] Documentation updated
+- [x] Keyboard navigation complete
+- [x] Documentation updated

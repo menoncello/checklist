@@ -14,8 +14,9 @@ describe('CommandQueue', () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     queue.destroy();
+    await new Promise(resolve => setTimeout(resolve, 100)); // Allow all timers to clear
   });
 
   describe('Queue Operations', () => {

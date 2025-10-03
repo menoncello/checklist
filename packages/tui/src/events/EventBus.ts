@@ -28,6 +28,7 @@ export class EventBus {
   private subscriberManager: SubscriberManager;
   private busMetrics: BusMetrics;
   private messageIdCounter = 0;
+  private destroyed = false;
 
   constructor(
     options: {
@@ -50,6 +51,9 @@ export class EventBus {
     handler: (message: BusMessage) => void | Promise<void>,
     filter?: MessageFilter
   ): string {
+    if (this.destroyed) {
+      throw new Error('EventBus has been destroyed');
+    }
     return this.subscriberManager.subscribe(name, handler, filter);
   }
 
@@ -68,6 +72,9 @@ export class EventBus {
       metadata?: Record<string, unknown>;
     } = {}
   ): Promise<void> {
+    if (this.destroyed) {
+      throw new Error('EventBus has been destroyed');
+    }
     const message = this.createMessage(type, data, options);
     return this.publishMessage(message);
   }
@@ -82,6 +89,9 @@ export class EventBus {
       metadata?: Record<string, unknown>;
     } = {}
   ): void {
+    if (this.destroyed) {
+      throw new Error('EventBus has been destroyed');
+    }
     const message = this.createMessage(type, data, options);
     this.deliverMessageSync(message);
   }
@@ -310,9 +320,22 @@ export class EventBus {
   }
 
   public destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+
+    // Clear all pending messages first
+    this.clearQueue();
+    this.clearHistory();
+
+    // Destroy components
     this.messageQueue.destroy();
     this.subscriberManager.clear();
     this.busMetrics.reset();
+
+    // Reset message counter to avoid conflicts
+    this.messageIdCounter = 0;
+    this.destroyed = true;
   }
 }
 

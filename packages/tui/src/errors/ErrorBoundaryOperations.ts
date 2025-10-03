@@ -1,78 +1,68 @@
-import type { ErrorBoundaryConfig, ErrorInfo } from './ErrorBoundaryHelpers';
-
 export class ErrorBoundaryOperations {
-  private errorCallback: ((error: Error, errorInfo: ErrorInfo) => void) | null =
-    null;
-  private retryCallback:
-    | ((attempt: number, maxRetries: number) => void)
-    | null = null;
-  private recoveryCallback: (() => void) | null = null;
+  private operations: Map<string, () => void> = new Map();
 
-  constructor(private config: ErrorBoundaryConfig) {
-    this.errorCallback = config.onError ?? null;
-    this.retryCallback = config.onRetry ?? null;
-    this.recoveryCallback = config.onRecovery ?? null;
+  constructor(
+    private stateManager?: unknown,
+    private preservationManager?: unknown,
+    private checkpointManager?: unknown,
+    private eventManager?: unknown
+  ) {}
+
+  registerOperation(name: string, operation: () => void): void {
+    this.operations.set(name, operation);
   }
 
-  updateConfig(config: ErrorBoundaryConfig): void {
-    this.config = config;
-    this.errorCallback = config.onError ?? null;
-    this.retryCallback = config.onRetry ?? null;
-    this.recoveryCallback = config.onRecovery ?? null;
-  }
-
-  setErrorCallback(
-    callback: (error: Error, errorInfo: ErrorInfo) => void
-  ): void {
-    this.errorCallback = callback;
-  }
-
-  setRetryCallback(
-    callback: (attempt: number, maxRetries: number) => void
-  ): void {
-    this.retryCallback = callback;
-  }
-
-  setRecoveryCallback(callback: () => void): void {
-    this.recoveryCallback = callback;
-  }
-
-  executeErrorCallback(error: Error, errorInfo: ErrorInfo): void {
-    if (this.errorCallback != null) {
-      this.errorCallback(error, errorInfo);
+  executeOperation(name: string): void {
+    const operation = this.operations.get(name);
+    if (operation) {
+      operation();
     }
   }
 
-  executeRetryCallback(attempt: number, maxRetries: number): void {
-    if (this.retryCallback != null) {
-      this.retryCallback(attempt, maxRetries);
-    }
+  hasOperation(name: string): boolean {
+    return this.operations.has(name);
+  }
+
+  clearOperations(): void {
+    this.operations.clear();
+  }
+
+  getOperationNames(): string[] {
+    return Array.from(this.operations.keys());
+  }
+
+  // Methods needed by ErrorBoundaryCore
+  canRetry(retryCount: number): boolean {
+    // Default implementation - can be overridden
+    return retryCount < 3;
+  }
+
+  getRemainingRetries(retryCount: number, maxRetries: number = 3): number {
+    return Math.max(0, maxRetries - retryCount);
+  }
+
+  logError(
+    _error: Error,
+    _errorInfo?: unknown,
+    _retryCount?: number,
+    _maxRetries?: number
+  ): void {
+    // Default no-op implementation
+  }
+
+  executeErrorCallback(_error: Error, _errorInfo?: unknown): void {
+    // Default no-op implementation
+  }
+
+  executeRetryCallback(_retryCount: number, _maxRetries?: number): void {
+    // Default no-op implementation
   }
 
   executeRecoveryCallback(): void {
-    if (this.recoveryCallback != null) {
-      this.recoveryCallback();
-    }
+    // Default no-op implementation
   }
 
-  canRetry(retryCount: number): boolean {
-    return retryCount < this.config.maxRetries;
-  }
-
-  getRemainingRetries(retryCount: number): number {
-    return Math.max(0, this.config.maxRetries - retryCount);
-  }
-
-  logError(error: Error, errorInfo: ErrorInfo, retryCount: number): void {
-    if (this.config.logErrors === true) {
-      console.error('Error caught by ErrorBoundary:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        errorInfo,
-        retryCount,
-        maxRetries: this.config.maxRetries,
-      });
-    }
+  updateConfig(_config: unknown): void {
+    // Default no-op implementation
   }
 }

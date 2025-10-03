@@ -1,245 +1,244 @@
-import { DataSanitizer } from './DataSanitizer';
-import { MetricsBuffer } from './MetricsBuffer';
-import { PerformanceCircuitBreaker } from './PerformanceCircuitBreaker';
-import { PerformanceMonitorAdvanced } from './PerformanceMonitorAdvanced';
-import { PerformanceMonitorAsync } from './PerformanceMonitorAsync';
-import { PerformanceMonitorCommands } from './PerformanceMonitorCommands';
-import {
-  defaultPerformanceMonitorConfig,
-  PerformanceMonitorConfig,
-} from './PerformanceMonitorConfig';
-import { PerformanceMonitorConfigManager } from './PerformanceMonitorConfigManager';
-import { PerformanceMonitorCore } from './PerformanceMonitorCore';
-import { PerformanceMonitorDelegations } from './PerformanceMonitorDelegations';
-import { PerformanceMonitorEventManagerWrapper } from './PerformanceMonitorEventManager';
-import { PerformanceMonitorHelpers } from './PerformanceMonitorHelpers';
-import { PerformanceMonitorLifecycle } from './PerformanceMonitorLifecycle';
-import { PerformanceMonitorMethods } from './PerformanceMonitorMethods';
-import { PerformanceMonitorOperations } from './PerformanceMonitorOperations';
-import { PerformanceMonitorReporting } from './PerformanceMonitorReporting';
-import { PerformanceMonitorSettings } from './PerformanceMonitorSettings';
-import { PerformanceMonitorSystemMetrics } from './PerformanceMonitorSystemMetrics';
-import { PerformanceAlert, PerformanceThreshold } from './helpers/AlertManager';
-import {
-  PerformanceBenchmark,
-  BenchmarkFilter,
-} from './helpers/BenchmarkManager';
-import { PerformanceMetric, MetricFilter } from './helpers/MetricsTracker';
-import { PerformanceMonitorEventManager } from './helpers/PerformanceMonitorEventManager';
-import {
-  PerformanceMonitorComponents,
-  PerformanceMonitorFactory,
-} from './helpers/PerformanceMonitorFactory';
-import { SystemSnapshot } from './helpers/SystemProfiler';
-
-export {
-  BenchmarkFilter,
-  MetricFilter,
-  PerformanceAlert,
-  PerformanceBenchmark,
+import { AlertManager } from './helpers/AlertManager';
+import { BenchmarkManager } from './helpers/BenchmarkManager';
+import { MetricsTracker } from './helpers/MetricsTracker';
+import { SystemProfiler } from './helpers/SystemProfiler';
+import type {
   PerformanceMetric,
+  PerformanceBenchmark,
+  PerformanceAlert,
   PerformanceThreshold,
+  MetricFilter,
+  BenchmarkFilter,
   SystemSnapshot,
-};
-export type { PerformanceMonitorConfig } from './PerformanceMonitorConfig';
+} from './types';
+
+export interface PerformanceMonitorConfig {
+  enableMetrics: boolean;
+  enableBenchmarks: boolean;
+  enableAlerts: boolean;
+  metricsBufferSize: number;
+  benchmarksBufferSize: number;
+  alertsBufferSize: number;
+  samplingInterval: number;
+  enableAutoSampling: boolean;
+  enableMemoryProfiling: boolean;
+  enableCPUProfiling: boolean;
+}
 
 export class PerformanceMonitor {
-  public config!: PerformanceMonitorConfig;
-  public components!: PerformanceMonitorComponents;
-  public eventManager = new PerformanceMonitorEventManager();
-  public circuitBreaker!: PerformanceCircuitBreaker;
-  public dataSanitizer!: DataSanitizer;
-  public metricsBuffer!: MetricsBuffer;
-  public helpers!: PerformanceMonitorHelpers;
-  public asyncProcessor!: PerformanceMonitorAsync;
-  public configManager!: PerformanceMonitorConfigManager;
-  public core!: PerformanceMonitorCore;
-  public delegations!: PerformanceMonitorDelegations;
-  public operations!: PerformanceMonitorOperations;
-  public advanced!: PerformanceMonitorAdvanced;
-  public systemMetrics!: PerformanceMonitorSystemMetrics;
-  public eventManagerWrapper!: PerformanceMonitorEventManagerWrapper;
-  public commands!: PerformanceMonitorCommands;
-  public reporting!: PerformanceMonitorReporting;
-  public lifecycle!: PerformanceMonitorLifecycle;
-  public settings!: PerformanceMonitorSettings;
-  public methods!: PerformanceMonitorMethods;
+  private config: PerformanceMonitorConfig;
+  public metricsTracker: MetricsTracker;
+  public benchmarkManager: BenchmarkManager;
+  public alertManager: AlertManager;
+  public systemProfiler: SystemProfiler;
+  private eventHandlers = new Map<string, Set<Function>>();
+  private startTime = performance.now();
 
   constructor(config?: Partial<PerformanceMonitorConfig>) {
-    this.initializeComponents(config);
-    this.commands = new PerformanceMonitorCommands(this);
-    this.reporting = new PerformanceMonitorReporting(this);
-    this.lifecycle = new PerformanceMonitorLifecycle(this);
-    this.settings = new PerformanceMonitorSettings(this);
-    this.methods = new PerformanceMonitorMethods(this);
+    this.config = {
+      enableMetrics: true,
+      enableBenchmarks: true,
+      enableAlerts: true,
+      metricsBufferSize: 1000,
+      benchmarksBufferSize: 500,
+      alertsBufferSize: 100,
+      samplingInterval: 5000,
+      enableAutoSampling: true,
+      enableMemoryProfiling: true,
+      enableCPUProfiling: false,
+      ...config,
+    };
+
+    this.metricsTracker = new MetricsTracker(this.config.metricsBufferSize);
+    this.benchmarkManager = new BenchmarkManager(
+      this.config.benchmarksBufferSize
+    );
+    this.alertManager = new AlertManager(this.config.alertsBufferSize);
+    this.systemProfiler = new SystemProfiler(
+      this.config.samplingInterval,
+      (name, value, metadata) => this.handleSystemMetric(name, value, metadata)
+    );
+
+    if (this.config.enableAutoSampling) {
+      this.systemProfiler.start();
+    }
   }
 
-  private initializeComponents(
-    config?: Partial<PerformanceMonitorConfig>
+  public handleSystemMetric(
+    name: string,
+    value: number,
+    metadata?: Record<string, unknown>
   ): void {
-    this.config = { ...defaultPerformanceMonitorConfig, ...config };
-    this.initializeCore();
-    this.initializeHelpers();
-    this.initializeManagers();
-    this.initializeProcessors();
-  }
+    if (!this.config.enableMetrics) return;
 
-  private initializeCore(): void {
-    this.dataSanitizer = new DataSanitizer();
-    this.metricsBuffer = new MetricsBuffer({
-      capacity: this.config.metricsBufferSize,
-    });
-    this.components = PerformanceMonitorFactory.createComponents(
-      this.config,
-      (name: string, value: number, metadata?: Record<string, unknown>) => {
-        this.eventManager.emit('systemMetric', { name, value, metadata });
+    const metric: PerformanceMetric = {
+      id: `system-${Date.now()}-${Math.random()}`,
+      name,
+      value,
+      timestamp: Date.now(),
+      metadata,
+    };
+
+    this.metricsTracker.recordMetric(metric);
+
+    if (this.config.enableAlerts) {
+      const alert = this.alertManager.checkMetric(metric);
+      if (alert != null) {
+        this.emit('alert', alert);
       }
-    );
-    this.circuitBreaker = new PerformanceCircuitBreaker();
+    }
   }
 
-  private initializeHelpers(): void {
-    this.helpers = new PerformanceMonitorHelpers({
-      dataSanitizer: this.dataSanitizer,
-      metricsBuffer: this.metricsBuffer,
-      circuitBreaker: this.circuitBreaker,
-      eventManager: this.eventManager,
-      components: {
-        performanceBudget: this.components.performanceBudget,
-        alertManager: this.components.alertManager,
-      },
-      config: {
-        enableAlerts: this.config.enableAlerts,
-        enableMetrics: this.config.enableMetrics,
-        enableAutoSampling: this.config.enableAutoSampling,
-      },
-    });
-    this.delegations = new PerformanceMonitorDelegations(
-      this.components,
-      this.config
-    );
-  }
-
-  private initializeManagers(): void {
-    this.eventManagerWrapper = new PerformanceMonitorEventManagerWrapper(
-      this.eventManager
-    );
-    this.systemMetrics = new PerformanceMonitorSystemMetrics(
-      this.helpers,
-      this.circuitBreaker
-    );
-    this.configManager = new PerformanceMonitorConfigManager(
-      this.config,
-      this.components,
-      this.eventManager
-    );
-  }
-
-  private initializeProcessors(): void {
-    this.asyncProcessor = new PerformanceMonitorAsync(
-      this.eventManager,
-      {
-        performanceBudget: { checkMetric: () => null },
-        alertManager: { checkMetric: () => null },
-      },
-      { enableAlerts: this.config.enableAlerts }
-    );
-    this.core = new PerformanceMonitorCore({
-      delegations: this.delegations,
-      helpers: this.helpers,
-      dataSanitizer: this.dataSanitizer,
-      metricsBuffer: this.metricsBuffer,
-      asyncProcessor: this.asyncProcessor,
-    });
-    this.operations = new PerformanceMonitorOperations({
-      circuitBreaker: this.circuitBreaker,
-      dataSanitizer: this.dataSanitizer,
-      metricsBuffer: this.metricsBuffer,
-      components: this.components,
-      config: this.config,
-      asyncProcessor: this.asyncProcessor,
-    });
-    this.advanced = new PerformanceMonitorAdvanced(
-      this.operations,
-      this.systemMetrics
-    );
-  }
-
-  // Core methods - delegated to methods helper
+  // Delegation methods to maintain API compatibility
   public mark(name: string): number {
-    return this.methods.mark(name);
+    return this.metricsTracker.mark(name);
   }
+
   public measure(name: string, startMark: string, endMark: string): number {
-    return this.methods.measure(name, startMark, endMark);
+    return this.metricsTracker.measure(name, startMark, endMark);
   }
+
   public recordMetricValue(
     name: string,
     value: number,
     tags?: Record<string, string>,
     metadata?: Record<string, unknown>
   ): void {
-    this.methods.recordMetricValue(name, value, tags, metadata);
+    if (!this.config.enableMetrics) return;
+
+    const metric: PerformanceMetric = {
+      id: `metric-${Date.now()}-${Math.random()}`,
+      name,
+      value,
+      timestamp: Date.now(),
+      tags,
+      metadata,
+    };
+
+    this.metricsTracker.recordMetric(metric);
+
+    if (this.config.enableAlerts) {
+      const alert = this.alertManager.checkMetric(metric);
+      if (alert != null) {
+        this.emit('alert', alert);
+      }
+    }
   }
+
   public recordMetric(metric: PerformanceMetric): void {
-    this.methods.recordMetric(metric);
+    if (!this.config.enableMetrics) return;
+
+    this.metricsTracker.recordMetric(metric);
+
+    if (this.config.enableAlerts) {
+      const alert = this.alertManager.checkMetric(metric);
+      if (alert != null) {
+        this.emit('alert', alert);
+      }
+    }
   }
+
   public startBenchmark(
     name: string,
     category: string = 'general',
     metadata?: Record<string, unknown>
   ): string {
-    return this.methods.startBenchmark(name, category, metadata);
+    if (!this.config.enableBenchmarks) return '';
+
+    return this.benchmarkManager.startBenchmark(name, category, metadata);
   }
+
   public endBenchmark(id: string): PerformanceBenchmark | null {
-    return this.methods.endBenchmark(id);
+    if (!this.config.enableBenchmarks) return null;
+
+    const benchmark = this.benchmarkManager.endBenchmark(id);
+    if (benchmark != null && this.config.enableAlerts) {
+      // Check for performance thresholds
+      const threshold: PerformanceThreshold = {
+        metric: 'benchmark.duration',
+        operator: '>',
+        value: 1000, // 1 second threshold
+        level: 'warning',
+      };
+
+      const alert = this.alertManager.checkThreshold(
+        threshold,
+        benchmark.duration
+      );
+      if (alert != null) {
+        this.emit('alert', alert);
+      }
+    }
+
+    return benchmark;
   }
+
   public measureFunction<T extends (...args: unknown[]) => unknown>(
     fn: T,
     name: string,
     category: string = 'function'
   ): T {
-    return this.methods.measureFunction(fn, name, category);
+    if (!this.config.enableBenchmarks) return fn;
+
+    return this.benchmarkManager.measureFunction(fn, name, category);
   }
+
   public async measureAsync<T>(
     promise: Promise<T>,
     name: string,
     category: string = 'async'
   ): Promise<T> {
-    return this.methods.measureAsync(promise, name, category);
+    if (!this.config.enableBenchmarks) return promise;
+
+    return this.benchmarkManager.measureAsync(promise, name, category);
   }
 
   public recordCommandExecution(commandId: string, duration: number): void {
-    this.commands.recordCommandExecution(commandId, duration);
+    this.recordMetricValue('command.execution', duration, {
+      commandId,
+    });
   }
+
   // Configuration methods
-  public updateConfig(config: Partial<PerformanceMonitorConfig>): void {
-    this.settings.updateConfig(config);
+  public updateConfig(newConfig: Partial<PerformanceMonitorConfig>): void {
+    const wasAutoSampling = this.config.enableAutoSampling;
+    this.config = { ...this.config, ...newConfig };
+
+    if (wasAutoSampling !== this.config.enableAutoSampling) {
+      if (this.config.enableAutoSampling) {
+        this.systemProfiler.start();
+      } else {
+        this.systemProfiler.stop();
+      }
+    }
+
+    this.emit('configUpdated', this.config);
   }
 
   public getConfig(): PerformanceMonitorConfig {
-    return this.settings.getConfig();
+    return { ...this.config };
   }
 
   // Alert management
   public addThreshold(threshold: PerformanceThreshold): void {
-    this.settings.addThreshold(threshold);
+    this.alertManager.addThreshold(threshold);
   }
 
   public removeThreshold(metric: string): boolean {
-    return this.settings.removeThreshold(metric);
+    return this.alertManager.removeThreshold(metric);
   }
 
   public getAlerts(level?: 'warning' | 'critical'): PerformanceAlert[] {
-    return this.settings.getAlerts(level);
+    return this.alertManager.getAlerts(level);
   }
 
   // Data access
   public getMetrics(filter?: MetricFilter): PerformanceMetric[] {
-    return this.reporting.getMetrics(filter);
+    return this.metricsTracker.getMetrics(filter);
   }
 
   public getBenchmarks(filter?: BenchmarkFilter): PerformanceBenchmark[] {
-    return this.reporting.getBenchmarks(filter);
+    return this.benchmarkManager.getBenchmarks(filter);
   }
 
   public getStatistics(metricName: string): {
@@ -250,77 +249,112 @@ export class PerformanceMonitor {
     median: number;
     p95: number;
   } {
-    return this.reporting.getStatistics(metricName);
-  }
-  // Report generation - delegated to both commands and reporting
-  public generateReport(): {
-    metrics: PerformanceMetric[];
-    benchmarks: PerformanceBenchmark[];
-    alerts: PerformanceAlert[];
-    systemSnapshot: SystemSnapshot;
-  } {
-    // Use commands.generateReport for the full structure
-    return this.commands.generateReport();
+    return this.metricsTracker.getStatistics(metricName);
   }
 
-  // Circuit breaker
-  public isCircuitBreakerActive(): boolean {
-    return this.lifecycle.isCircuitBreakerActive();
+  public getSystemSnapshot(): SystemSnapshot {
+    return this.systemProfiler.getSystemSnapshot();
   }
 
-  public resetCircuitBreaker(): void {
-    this.lifecycle.resetCircuitBreaker();
+  public clearMetrics(): void {
+    this.metricsTracker.clear();
+  }
+
+  public clearBenchmarks(): void {
+    this.benchmarkManager.clear();
+  }
+
+  public clearAlerts(): void {
+    this.alertManager.clear();
+  }
+
+  public clearAll(): void {
+    this.clearMetrics();
+    this.clearBenchmarks();
+    this.clearAlerts();
+  }
+
+  public destroy(): void {
+    this.systemProfiler.stop();
+    this.clearAll();
+
+    // Emit destroyed event before clearing handlers
+    this.emit('destroyed');
+
+    // Clear all event handlers to prevent memory leaks
+    this.eventHandlers.clear();
   }
 
   // Event management
   public on(event: string, handler: Function): void {
-    this.eventManagerWrapper.on(event, handler);
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, new Set());
+    }
+    const handlers = this.eventHandlers.get(event);
+    if (handlers != null) {
+      handlers.add(handler);
+    }
   }
 
   public off(event: string, handler: Function): void {
-    this.eventManagerWrapper.off(event, handler);
+    const handlers = this.eventHandlers.get(event);
+    if (handlers != null) {
+      handlers.delete(handler);
+    }
   }
 
   public emit(event: string, data?: unknown): void {
-    this.eventManagerWrapper.emit(event, data);
+    const handlers = this.eventHandlers.get(event);
+    if (handlers != null) {
+      handlers.forEach((handler) => {
+        try {
+          handler(data);
+        } catch (error) {
+          console.error(`Error in event handler for ${event}:`, error);
+        }
+      });
+    }
   }
 
-  // Cleanup
-  public clearAll(): void {
-    this.lifecycle.clearAll();
+  // Performance profiling methods
+  public startProfiling(name: string): void {
+    this.mark(`profile-${name}-start`);
   }
 
-  public clearMetrics(): void {
-    this.lifecycle.clearMetrics();
+  public endProfiling(name: string): number {
+    const startTime = this.metricsTracker
+      .getMarks()
+      .get(`profile-${name}-start`);
+    if (startTime == null) {
+      throw new Error(`No active profile found for: ${name}`);
+    }
+    const duration = performance.now() - startTime;
+    this.recordMetricValue(`profile.${name}`, duration, undefined, {
+      profile: name,
+    });
+    return duration;
   }
 
-  public clearBenchmarks(): void {
-    this.lifecycle.clearBenchmarks();
-  }
+  public getPerformanceReport(): {
+    uptime: number;
+    metricsCount: number;
+    benchmarksCount: number;
+    alertsCount: number;
+    memoryUsage: SystemSnapshot;
+    averageProcessingTime?: number;
+  } {
+    const uptime = performance.now() - this.startTime;
+    const metricsCount = this.metricsTracker.count();
+    const benchmarksCount = this.benchmarkManager.count();
+    const alertsCount = this.alertManager.getAlerts().length;
+    const memoryUsage = this.systemProfiler.getSystemSnapshot();
 
-  public clearAlerts(): void {
-    this.lifecycle.clearAlerts();
-  }
-
-  public destroy(): void {
-    this.lifecycle.destroy();
-  }
-
-  // Private method for testing purposes
-  private handleSystemMetric(
-    name: string,
-    value: number,
-    metadata?: Record<string, unknown>
-  ): void {
-    this.recordMetricValue(name, value, { system: 'true' }, metadata);
-  }
-
-  // Internal helpers for commands
-  public recordAlert(alert: PerformanceAlert): void {
-    this.components.alertManager.recordAlert(alert);
-  }
-
-  public getSystemSnapshot(): SystemSnapshot {
-    return this.components.systemProfiler.getSystemSnapshot();
+    return {
+      uptime,
+      metricsCount,
+      benchmarksCount,
+      alertsCount,
+      memoryUsage,
+    };
   }
 }

@@ -7,10 +7,10 @@ export type LifecyclePhase =
   | 'stopped';
 
 export interface LifecycleHooks {
-  onInitialize?: () => Promise<void> | void;
-  onStart?: () => Promise<void> | void;
-  onStop?: () => Promise<void> | void;
-  onShutdown?: () => Promise<void> | void;
+  onInitialize?: () => Promise<void | boolean> | void | boolean;
+  onStart?: () => Promise<void | boolean> | void | boolean;
+  onStop?: () => Promise<void | boolean> | void | boolean;
+  onShutdown?: () => Promise<void | boolean> | void | boolean;
   onError?: (error: Error) => Promise<void> | void;
 }
 
@@ -20,6 +20,13 @@ export class LifecycleManager {
   private shutdownHandlers: (() => Promise<void>)[] = [];
   private errorHandlers: ((error: Error) => void)[] = [];
   private stateChangeListeners: ((state: LifecycleState) => void)[] = [];
+  private sigintHandler?: () => void;
+  private sigtermHandler?: () => void;
+  private uncaughtExceptionHandler?: (error: Error) => void;
+  private unhandledRejectionHandler?: (
+    reason: unknown,
+    promise: Promise<unknown>
+  ) => void;
 
   constructor() {
     this.state = {
@@ -40,16 +47,17 @@ export class LifecycleManager {
       process.exit(0);
     };
 
-    process.once('SIGINT', () => gracefulShutdown('SIGINT'));
-    process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
-
-    process.on('uncaughtException', (error) => {
-      this.handleError(error);
-    });
-
-    process.on('unhandledRejection', (reason, _promise) => {
+    this.sigintHandler = () => gracefulShutdown('SIGINT');
+    this.sigtermHandler = () => gracefulShutdown('SIGTERM');
+    this.uncaughtExceptionHandler = (error) => this.handleError(error);
+    this.unhandledRejectionHandler = (reason, _promise) => {
       this.handleError(new Error(`Unhandled Promise Rejection: ${reason}`));
-    });
+    };
+
+    process.once('SIGINT', this.sigintHandler);
+    process.once('SIGTERM', this.sigtermHandler);
+    process.on('uncaughtException', this.uncaughtExceptionHandler);
+    process.on('unhandledRejection', this.unhandledRejectionHandler);
   }
 
   public async initialize(): Promise<void> {
@@ -64,18 +72,50 @@ export class LifecycleManager {
       // Execute initialize hooks
       for (const hook of this.hooks) {
         if (hook.onInitialize != null) {
-          await this.executeHook(hook.onInitialize);
+          await this.executeHook(hook.onInitialize.bind(hook));
+        }
+      }
+      // Stay in initializing phase - wait for explicit start call
+    } catch (error) {
+      this.handleError(error as Error);
+      throw error;
+    }
+  }
+
+  public async start(): Promise<void> {
+    if (this.state.phase !== 'initializing') {
+      throw new Error(`Cannot start from phase: ${this.state.phase}`);
+    }
+
+    try {
+      // Execute start hooks
+      for (const hook of this.hooks) {
+        if (hook.onStart != null) {
+          await this.executeHook(hook.onStart.bind(hook));
         }
       }
 
       this.updatePhase('running');
+    } catch (error) {
+      this.handleError(error as Error);
+      throw error;
+    }
+  }
 
-      // Execute start hooks
+  public async stop(): Promise<void> {
+    if (this.state.phase !== 'running') {
+      return; // Already stopped or stopping
+    }
+
+    try {
+      // Execute stop hooks
       for (const hook of this.hooks) {
-        if (hook.onStart != null) {
-          await this.executeHook(hook.onStart);
+        if (hook.onStop != null) {
+          await this.executeHook(hook.onStop.bind(hook));
         }
       }
+
+      this.updatePhase('stopped');
     } catch (error) {
       this.handleError(error as Error);
       throw error;
@@ -83,39 +123,18 @@ export class LifecycleManager {
   }
 
   public async shutdown(): Promise<void> {
-    if (
-      this.state.phase === 'stopped' ||
-      this.state.phase === 'shutting-down'
-    ) {
+    if (this.state.phase === 'stopped') {
       return;
     }
 
     this.updatePhase('shutting-down');
 
     try {
-      // Execute stop hooks
-      for (const hook of this.hooks) {
-        if (hook.onStop != null) {
-          await this.executeHook(hook.onStop);
-        }
-      }
-
-      // Execute shutdown handlers in reverse order
-      for (let i = this.shutdownHandlers.length - 1; i >= 0; i--) {
-        await this.executeHook(this.shutdownHandlers[i]);
-      }
-
-      // Execute shutdown hooks
-      for (const hook of this.hooks) {
-        if (hook.onShutdown != null) {
-          await this.executeHook(hook.onShutdown);
-        }
-      }
-
-      // Clear component registry
-      this.state.components.clear();
-      this.state.screens = [];
-
+      await this.executeStopHooksIfNeeded();
+      await this.executeShutdownHandlers();
+      await this.executeShutdownHooks();
+      this.clearComponentRegistry();
+      this.cleanupProcessHandlers();
       this.updatePhase('stopped');
     } catch (error) {
       this.handleError(error as Error);
@@ -124,7 +143,59 @@ export class LifecycleManager {
     }
   }
 
-  private async executeHook(hookFn: () => Promise<void> | void): Promise<void> {
+  private async executeStopHooksIfNeeded(): Promise<void> {
+    // Stop first if running
+    if (this.state.phase === 'shutting-down') {
+      // Execute stop hooks if we were running
+      for (const hook of this.hooks) {
+        if (hook.onStop != null) {
+          await this.executeHook(hook.onStop.bind(hook));
+        }
+      }
+    }
+  }
+
+  private async executeShutdownHandlers(): Promise<void> {
+    // Execute shutdown handlers in reverse order
+    for (let i = this.shutdownHandlers.length - 1; i >= 0; i--) {
+      await this.executeHook(this.shutdownHandlers[i]);
+    }
+  }
+
+  private async executeShutdownHooks(): Promise<void> {
+    // Execute shutdown hooks
+    for (const hook of this.hooks) {
+      if (hook.onShutdown != null) {
+        await this.executeHook(hook.onShutdown.bind(hook));
+      }
+    }
+  }
+
+  private cleanupProcessHandlers(): void {
+    if (this.uncaughtExceptionHandler) {
+      process.off('uncaughtException', this.uncaughtExceptionHandler);
+      this.uncaughtExceptionHandler = undefined;
+    }
+
+    if (this.unhandledRejectionHandler) {
+      process.off('unhandledRejection', this.unhandledRejectionHandler);
+      this.unhandledRejectionHandler = undefined;
+    }
+
+    // Note: SIGINT and SIGTERM use once() so they don't need explicit cleanup
+    this.sigintHandler = undefined;
+    this.sigtermHandler = undefined;
+  }
+
+  private clearComponentRegistry(): void {
+    // Clear component registry
+    this.state.components.clear();
+    this.state.screens = [];
+  }
+
+  private async executeHook(
+    hookFn: () => Promise<void | boolean> | void | boolean
+  ): Promise<void> {
     try {
       const result = hookFn();
       if (result instanceof Promise) {
@@ -143,7 +214,7 @@ export class LifecycleManager {
     this.hooks.forEach((hook) => {
       if (hook.onError) {
         try {
-          const result = hook.onError(error);
+          const result = hook.onError.bind(hook)(error);
           if (result instanceof Promise) {
             result.catch((hookError) => {
               console.error('Error in error hook:', hookError);
@@ -167,7 +238,7 @@ export class LifecycleManager {
     this.notifyStateChange();
   }
 
-  private updatePhase(phase: LifecyclePhase): void {
+  public updatePhase(phase: LifecyclePhase): void {
     this.state.phase = phase;
     this.notifyStateChange();
   }
@@ -304,5 +375,19 @@ export class LifecycleManager {
   public clearError(): void {
     this.state.errorState = undefined;
     this.notifyStateChange();
+  }
+
+  // ApplicationShell specific methods
+  public displaySplashScreen(): void {
+    // This method is called by ApplicationShell to display version information
+    // In a real implementation, this would render a splash screen
+    console.log('Application Shell - Version 1.0.0');
+  }
+
+  public async handleInitializationError(error: Error): Promise<void> {
+    // Handle initialization errors specifically
+    console.error('Initialization error:', error.message);
+    this.handleError(error);
+    throw error;
   }
 }

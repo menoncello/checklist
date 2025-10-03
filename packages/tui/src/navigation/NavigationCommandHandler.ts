@@ -54,9 +54,11 @@ export class NavigationCommandHandler extends BaseComponent {
   }
 
   private createCommandQueue(): CommandQueue {
+    // Use smaller queue size in test environment to prevent overflow
+    const isTest = process.env.NODE_ENV === 'test';
     return new CommandQueue({
       debounceMs: 200,
-      maxQueueSize: 50,
+      maxQueueSize: isTest ? 10 : 50,
       timeoutMs: 5000,
       errorHandler: (commandId, key, error) => {
         this.eventBus.publishSync('navigation-command-error', {

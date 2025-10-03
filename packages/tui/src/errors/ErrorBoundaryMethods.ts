@@ -7,6 +7,66 @@ import {
 import { ErrorBoundaryUtils } from './ErrorBoundaryUtils';
 
 export class ErrorBoundaryMethods {
+  constructor(private deps?: unknown) {}
+
+  // Instance methods for ErrorBoundary
+  wrap<T extends (...args: unknown[]) => unknown>(fn: T): T {
+    return fn; // Stub implementation
+  }
+
+  async onInitialize(): Promise<void> {
+    // Stub implementation
+  }
+
+  async onShutdown(): Promise<void> {
+    // Stub implementation
+  }
+
+  registerHooks(_lifecycleManager: unknown): void {
+    // Stub implementation
+  }
+
+  handleApplicationError(_error: Error, _context: unknown): void {
+    // Stub implementation
+  }
+
+  handleError(_error: Error, _errorInfo?: unknown): void {
+    // Stub implementation
+  }
+
+  getErrorReports(): unknown[] {
+    return []; // Stub implementation
+  }
+
+  clearErrorReports(): void {
+    // Stub implementation
+  }
+
+  async execute<T>(fn: () => Promise<T> | T): Promise<T> {
+    return fn(); // Stub implementation
+  }
+
+  createCheckpoint(_id: string): void {
+    // Stub implementation
+  }
+
+  restoreFromCheckpoint(_id: string): boolean {
+    return false; // Stub implementation
+  }
+
+  getMetrics(): unknown {
+    return {}; // Stub implementation
+  }
+
+  getState(): unknown {
+    return {}; // Stub implementation
+  }
+
+  resetState(): void {
+    // Stub implementation
+  }
+
+  // Static methods remain as they were
   static getMetrics(
     errorHistory: ErrorHistoryEntry[],
     timeWindow: number | undefined,

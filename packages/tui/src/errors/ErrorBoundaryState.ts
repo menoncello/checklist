@@ -1,4 +1,7 @@
-import { ErrorState, ErrorBoundaryConfig } from './ErrorBoundaryTypes';
+import {
+  type ErrorState,
+  type ErrorBoundaryConfig,
+} from './ErrorBoundaryTypes';
 import { ErrorBoundaryUtils } from './ErrorBoundaryUtils';
 
 export class ErrorBoundaryState {

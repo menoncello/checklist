@@ -1,13 +1,13 @@
-export class PerformanceMetric {
-  id!: string;
-  name!: string;
-  value!: number;
-  timestamp!: number;
+export interface PerformanceMetric {
+  id: string;
+  name: string;
+  value: number;
+  timestamp: number;
   tags?: Record<string, string>;
   metadata?: Record<string, unknown>;
 }
 
-export class MetricFilter {
+export interface MetricFilter {
   name?: string;
   tags?: Record<string, string>;
   startTime?: number;
@@ -148,5 +148,9 @@ export class MetricsTracker {
 
   public count(): number {
     return this.metrics.length;
+  }
+
+  public getMarks(): Map<string, number> {
+    return this.marks;
   }
 }

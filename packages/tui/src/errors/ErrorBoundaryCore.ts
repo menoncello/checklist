@@ -2,9 +2,9 @@ import { ErrorBoundaryCheckpointManager } from './ErrorBoundaryCheckpointManager
 import { ErrorBoundaryEventManager } from './ErrorBoundaryEventManager';
 import {
   ErrorBoundaryConfig,
-  ErrorInfo,
+  type ErrorInfo,
   ErrorRecordParams,
-  ErrorState,
+  type ErrorState,
   ErrorUpdateParams,
   StatePreservationManager,
 } from './ErrorBoundaryHelpers';
@@ -13,7 +13,7 @@ import { ErrorBoundaryOperations } from './ErrorBoundaryOperations';
 import { ErrorBoundaryRetryManager } from './ErrorBoundaryRetryManager';
 import { ErrorBoundaryStateHandler } from './ErrorBoundaryStateHandler';
 
-interface ErrorBoundaryCoreComponents {
+interface _ErrorBoundaryCoreComponents {
   stateHandler: ErrorBoundaryStateHandler;
   operations: ErrorBoundaryOperations;
   retryManager: ErrorBoundaryRetryManager;
@@ -34,15 +34,27 @@ export class ErrorBoundaryCore {
 
   constructor(
     private config: ErrorBoundaryConfig,
-    components: ErrorBoundaryCoreComponents
+    deps?: {
+      stateManager?: unknown;
+      historyManager?: unknown;
+      eventManager?: unknown;
+      checkpointManager?: unknown;
+    }
   ) {
-    this.stateHandler = components.stateHandler;
-    this.operations = components.operations;
-    this.retryManager = components.retryManager;
-    this.eventManager = components.eventManager;
-    this.metricsCollector = components.metricsCollector;
-    this.checkpointManager = components.checkpointManager;
-    this.statePreservation = components.statePreservation;
+    // Create stub components
+    this.stateHandler = new ErrorBoundaryStateHandler();
+    this.operations = new ErrorBoundaryOperations();
+    this.retryManager = new ErrorBoundaryRetryManager();
+    this.eventManager =
+      deps?.eventManager != null
+        ? (deps.eventManager as ErrorBoundaryEventManager)
+        : new ErrorBoundaryEventManager();
+    this.metricsCollector = new ErrorBoundaryMetricsCollector();
+    this.checkpointManager =
+      deps?.checkpointManager != null
+        ? (deps.checkpointManager as ErrorBoundaryCheckpointManager)
+        : new ErrorBoundaryCheckpointManager();
+    this.statePreservation = new StatePreservationManager();
   }
 
   public handleRetryLogic(error: Error, errorInfo: ErrorInfo): void {

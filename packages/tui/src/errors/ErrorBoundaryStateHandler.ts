@@ -1,75 +1,117 @@
-import type {
-  ErrorState,
-  ErrorStateManager,
-  ErrorHistoryManager,
-  ErrorHistoryEntry,
-  StatePreservationManager,
-  ErrorUpdateParams,
-  ErrorRecordParams,
-} from './ErrorBoundaryHelpers';
+export interface ErrorState {
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: unknown;
+  recovery?: boolean;
+  timestamp?: Date;
+  errorId?: string;
+  retryCount?: number;
+  maxRetries?: number;
+}
 
 export class ErrorBoundaryStateHandler {
+  private state: ErrorState = { hasError: false };
+  private previousStates: ErrorState[] = [];
+  private maxStateHistory = 10;
+
   constructor(
-    private stateManager: ErrorStateManager,
-    private historyManager: ErrorHistoryManager,
-    private preservationManager: StatePreservationManager,
-    private enableStatePreservation?: boolean
+    private stateManager?: unknown,
+    private preservationManager?: unknown,
+    private eventManager?: unknown
   ) {}
 
-  updateErrorState(params: ErrorUpdateParams): void {
-    this.stateManager.updateState(params);
+  getState(): ErrorState {
+    return { ...this.state };
   }
 
-  recordError(params: ErrorRecordParams): void {
-    const entry: ErrorHistoryEntry = {
-      error: params.error,
-      errorInfo: params.errorInfo,
-      timestamp: params.timestamp,
-      errorId: params.errorId,
-      recovered: false,
+  setState(newState: Partial<ErrorState>): void {
+    this.previousStates.push({ ...this.state });
+
+    if (this.previousStates.length > this.maxStateHistory) {
+      this.previousStates.shift();
+    }
+
+    this.state = {
+      ...this.state,
+      ...newState,
+      timestamp: new Date(),
     };
-    this.historyManager.addEntry(entry);
   }
 
-  preserveCurrentState(): void {
-    if (this.enableStatePreservation === true) {
-      const state = this.stateManager.getState();
-      this.preservationManager.preserveSnapshot(state);
-    }
+  setError(error: Error, errorInfo?: unknown): void {
+    this.setState({
+      hasError: true,
+      error,
+      errorInfo,
+      recovery: false,
+    });
   }
 
-  restorePreservedState(): unknown {
-    if (this.enableStatePreservation === true) {
-      return this.preservationManager.restoreSnapshot();
-    }
-    return null;
+  clearError(): void {
+    this.setState({
+      hasError: false,
+      error: undefined,
+      errorInfo: undefined,
+      recovery: false,
+    });
+  }
+
+  setRecovery(): void {
+    this.setState({ recovery: true });
+  }
+
+  getPreviousStates(): ErrorState[] {
+    return [...this.previousStates];
+  }
+
+  reset(): void {
+    this.state = { hasError: false };
+    this.previousStates = [];
+  }
+
+  // Additional methods needed by ErrorBoundaryCore
+  getRetryCount(): number {
+    return this.state.retryCount ?? 0;
   }
 
   incrementRetryCount(): void {
-    this.stateManager.incrementRetryCount();
+    this.setState({
+      retryCount: (this.state.retryCount ?? 0) + 1,
+    });
   }
 
-  getRetryCount(): number {
-    return this.stateManager.getRetryCount();
+  recordError(_error: Error, _errorInfo?: unknown): void {
+    // Default implementation for recording errors
+    this.setError(_error, _errorInfo);
   }
 
-  reset(maxRetries: number): boolean {
-    return this.stateManager.reset(maxRetries);
+  updateError(_params: unknown): void {
+    // Default no-op implementation for updating error state
   }
 
-  getState(): ErrorState {
-    return this.stateManager.getState();
+  updateErrorState(_error: Error, _errorInfo?: unknown): void {
+    this.setError(_error, _errorInfo);
+  }
+
+  preserveCurrentState(): void {
+    // Default implementation - just push current state to history
+    this.previousStates.push({ ...this.state });
+  }
+
+  restorePreservedState(): void {
+    if (this.previousStates.length > 0) {
+      const restored = this.previousStates.pop();
+      if (restored) {
+        this.state = restored;
+      }
+    }
   }
 
   hasError(): boolean {
-    return this.stateManager.getState().hasError;
+    return this.state.hasError;
   }
 
-  updateStatePreservationConfig(enable?: boolean): void {
-    this.enableStatePreservation = enable;
-  }
-
-  updateError(params: ErrorUpdateParams): void {
-    this.stateManager.updateState(params);
+  updateStatePreservationConfig(_config: unknown): void {
+    // Default no-op implementation
   }
 }

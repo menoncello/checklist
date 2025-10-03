@@ -44,6 +44,8 @@ export class ErrorBoundaryMetricsCollector {
     };
   }
 
+  constructor(private historyManager?: unknown) {}
+
   recordError(error: Error): void {
     // Record error metrics
     console.log('Recording error metrics for:', error.message);

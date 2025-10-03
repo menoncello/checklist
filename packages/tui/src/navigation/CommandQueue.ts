@@ -314,6 +314,10 @@ export class CommandQueue {
 
     this.destroyed = true;
     this.clear();
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = undefined;
+    }
 
     // Reset stats
     this.processingStats = {
@@ -322,5 +326,9 @@ export class CommandQueue {
       totalProcessingTime: 0,
       lastProcessingTime: 0,
     };
+
+    // Stop any processing
+    this.isProcessing = false;
+    this.isPaused = false;
   }
 }

@@ -162,7 +162,7 @@ describe('MockStateManagerService', () => {
     test('should create backup successfully', async () => {
       const backupId = await mockStateManager.backup();
 
-      expect(backupId).toMatch(/^backup-\d+$/);
+      expect(backupId).toMatch(/^backup-\d+-\d+$/);
       expect(mockStateManager.wasCalled('backup')).toBe(true);
     });
 
@@ -172,8 +172,8 @@ describe('MockStateManagerService', () => {
       const backup2 = await mockStateManager.backup();
 
       expect(backup1).not.toBe(backup2);
-      expect(backup1).toMatch(/^backup-\d+$/);
-      expect(backup2).toMatch(/^backup-\d+$/);
+      expect(backup1).toMatch(/^backup-\d+-\d+$/);
+      expect(backup2).toMatch(/^backup-\d+-\d+$/);
     });
 
     test('should backup current state', async () => {
@@ -614,8 +614,8 @@ describe('MockStateManagerService', () => {
 
       // Verify different backup IDs were created
       expect(backup1).not.toBe(backup2);
-      expect(backup1).toMatch(/^backup-\d+$/);
-      expect(backup2).toMatch(/^backup-\d+$/);
+      expect(backup1).toMatch(/^backup-\d+-\d+$/);
+      expect(backup2).toMatch(/^backup-\d+-\d+$/);
 
       // Verify we can restore the latest backup
       await testStateManager.restore(backup2);

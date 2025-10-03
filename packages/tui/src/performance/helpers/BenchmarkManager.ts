@@ -1,14 +1,14 @@
-export class PerformanceBenchmark {
-  id!: string;
-  name!: string;
-  category!: string;
-  startTime!: number;
+export interface PerformanceBenchmark {
+  id: string;
+  name: string;
+  category: string;
+  startTime: number;
   endTime?: number;
   duration?: number;
   metadata?: Record<string, unknown>;
 }
 
-export class BenchmarkFilter {
+export interface BenchmarkFilter {
   name?: string;
   category?: string;
   completed?: boolean;
