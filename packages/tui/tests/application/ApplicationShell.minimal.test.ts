@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
 import { ApplicationShell } from '../../src/application/ApplicationShell';
 import { ApplicationShellConfig } from '../../src/application/ApplicationShellConfig';
 import { createMockDependencies } from '../mocks/ApplicationShellMocks';
+import { isCIEnvironment } from '../helpers/CIEnvironmentDetector';
 
 // Test ID: 2.5-UNIT-001 - ApplicationShell constructor initializes
 describe('ApplicationShell Core Tests', () => {
@@ -43,6 +44,14 @@ describe('ApplicationShell Core Tests', () => {
 
       // Then: Application should be in initialized state
       expect(applicationShell).toBeDefined();
+
+      // In CI environments, add additional verification for initialization state
+      if (isCIEnvironment()) {
+        // CI may have different initialization timing, so we check more broadly
+        expect(applicationShell).toBeTruthy();
+        expect(typeof applicationShell.render).toBe('function');
+        expect(typeof applicationShell.initialize).toBe('function');
+      }
     });
 
     it('should support basic operations', () => {
