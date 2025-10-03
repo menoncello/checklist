@@ -31,9 +31,8 @@ describe('State Management Benchmarks', () => {
     performanceMonitor.recordMetric('memory-usage-baseline-kb', baselineKB);
     
     console.log(`Memory Baseline: ${baselineKB}KB (budget: 30,720KB)`);
-    
+
     expect(baselineKB).toBeLessThan(50000); // Allow some tolerance
-    return { memoryKB: baselineKB, withinBudget: isWithinBudget };
   });
 
   test('Memory Peak with 10 Checklists benchmark', () => {
@@ -70,12 +69,11 @@ describe('State Management Benchmarks', () => {
     performanceMonitor.recordMetric('memory-usage-peak-kb', peakKB);
     
     console.log(`Memory Peak: ${peakKB}KB (budget: 76,800KB)`);
-    
+
     // Clean up
     checklists.length = 0;
-    
+
     expect(peakKB).toBeLessThan(150000); // Allow some tolerance
-    return { memoryKB: peakKB, withinBudget: isWithinBudget, checklistCount: 10 };
   });
 
   // State serialization benchmarks
