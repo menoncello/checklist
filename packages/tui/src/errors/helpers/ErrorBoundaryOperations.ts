@@ -29,7 +29,7 @@ export class ErrorBoundaryOperations {
       retryCount: 0,
       errorId: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
-      maxRetries: this.config.maxRetries,
+      maxRetries: this.config.maxRetries ?? 3,
     };
   }
 
@@ -41,7 +41,7 @@ export class ErrorBoundaryOperations {
       retryCount: 0,
       errorId: '',
       timestamp: 0,
-      maxRetries: this.config.maxRetries,
+      maxRetries: this.config.maxRetries ?? 3,
     };
   }
 
@@ -57,10 +57,10 @@ export class ErrorBoundaryOperations {
   }
 
   getMaxRetries(): number {
-    return this.config.maxRetries;
+    return this.config.maxRetries ?? 3;
   }
 
   getRetryDelay(): number {
-    return this.config.retryDelay;
+    return this.config.retryDelay ?? 1000;
   }
 }

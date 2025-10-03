@@ -167,6 +167,23 @@ export class MessageQueue {
     this.messageQueue = [];
   }
 
+  public dequeue(): BusMessage | undefined {
+    return this.messageQueue.shift();
+  }
+
+  public isEmpty(): boolean {
+    return this.messageQueue.length === 0;
+  }
+
+  public size(): number {
+    return this.messageQueue.length;
+  }
+
+  public clear(): void {
+    this.clearQueue();
+    this.clearHistory();
+  }
+
   public setBatchSize(size: number): void {
     this.batchSize = Math.max(1, size);
   }

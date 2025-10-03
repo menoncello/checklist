@@ -148,6 +148,10 @@ export class AlertManager {
     }
   }
 
+  public addAlert(alert: PerformanceAlert): void {
+    this.recordAlert(alert);
+  }
+
   public clear(): void {
     this.alerts = [];
   }

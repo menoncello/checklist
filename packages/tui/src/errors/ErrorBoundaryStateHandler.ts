@@ -1,7 +1,9 @@
+import type { ErrorInfo } from './ErrorBoundaryHelpers';
+
 export interface ErrorState {
   hasError: boolean;
   error?: Error;
-  errorInfo?: unknown;
+  errorInfo?: ErrorInfo;
   recovery?: boolean;
   timestamp?: Date;
   errorId?: string;
@@ -38,7 +40,7 @@ export class ErrorBoundaryStateHandler {
     };
   }
 
-  setError(error: Error, errorInfo?: unknown): void {
+  setError(error: Error, errorInfo?: ErrorInfo): void {
     this.setState({
       hasError: true,
       error,
@@ -80,7 +82,7 @@ export class ErrorBoundaryStateHandler {
     });
   }
 
-  recordError(_error: Error, _errorInfo?: unknown): void {
+  recordError(_error: Error, _errorInfo?: ErrorInfo): void {
     // Default implementation for recording errors
     this.setError(_error, _errorInfo);
   }
@@ -89,7 +91,7 @@ export class ErrorBoundaryStateHandler {
     // Default no-op implementation for updating error state
   }
 
-  updateErrorState(_error: Error, _errorInfo?: unknown): void {
+  updateErrorState(_error: Error, _errorInfo?: ErrorInfo): void {
     this.setError(_error, _errorInfo);
   }
 

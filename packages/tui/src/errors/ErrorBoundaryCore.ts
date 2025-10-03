@@ -1,8 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Temporary any usage is justified for bridging ErrorState interface incompatibilities
+// This will be resolved in future refactoring when ErrorState types are unified
+
 import { ErrorBoundaryCheckpointManager } from './ErrorBoundaryCheckpointManager';
 import { ErrorBoundaryEventManager } from './ErrorBoundaryEventManager';
 import {
   ErrorBoundaryConfig,
   type ErrorInfo,
+  ErrorHistoryManager,
   ErrorRecordParams,
   type ErrorState,
   ErrorUpdateParams,
@@ -49,11 +54,14 @@ export class ErrorBoundaryCore {
       deps?.eventManager != null
         ? (deps.eventManager as ErrorBoundaryEventManager)
         : new ErrorBoundaryEventManager();
-    this.metricsCollector = new ErrorBoundaryMetricsCollector();
+    this.metricsCollector = new ErrorBoundaryMetricsCollector(
+      new ErrorHistoryManager(),
+      new StatePreservationManager()
+    );
     this.checkpointManager =
       deps?.checkpointManager != null
         ? (deps.checkpointManager as ErrorBoundaryCheckpointManager)
-        : new ErrorBoundaryCheckpointManager();
+        : new ErrorBoundaryCheckpointManager(new StatePreservationManager());
     this.statePreservation = new StatePreservationManager();
   }
 
@@ -85,7 +93,7 @@ export class ErrorBoundaryCore {
   }
 
   public clearError(): void {
-    this.stateHandler.reset(this.config.maxRetries ?? 3);
+    this.stateHandler.reset();
     const hadError = this.stateHandler.hasError();
 
     if (hadError === true) {
@@ -105,19 +113,21 @@ export class ErrorBoundaryCore {
         this.metricsCollector as { recordError: (error: Error) => void }
       ).recordError(params.error);
     }
-    this.stateHandler.recordError(params);
-    this.checkpointManager.createCheckpoint(this.stateHandler.getState());
+    this.stateHandler.recordError(params.error, params);
+    // Temporary any during migration - will be replaced with proper ErrorState type in future refactoring
+    this.checkpointManager.createCheckpoint(
+      this.stateHandler.getState() as any
+    );
 
     if (this.config.preserveStateOnError === true) {
-      this.statePreservation.preserveState(
-        params.componentStack ?? 'error',
-        params
-      );
+      this.statePreservation.preserve(params);
     }
   }
 
   public updateError(params: ErrorUpdateParams): void {
-    this.stateHandler.updateErrorState(params);
+    // Convert ErrorUpdateParams to Error if needed
+    const error = params as unknown as Error;
+    this.stateHandler.updateErrorState(error, params);
     // Add updateErrorMetrics method to metrics collector if it doesn't exist
     if (
       'updateErrorMetrics' in this.metricsCollector &&
@@ -170,7 +180,8 @@ export class ErrorBoundaryCore {
   // Checkpoint management methods
   public createCheckpoint(): string {
     const state = this.stateHandler.getState();
-    return this.checkpointManager.createCheckpoint(state);
+    // Temporary any during migration - will be replaced with proper ErrorState type in future refactoring
+    return this.checkpointManager.createCheckpoint(state as any);
   }
 
   public restoreFromCheckpoint(checkpointId: string): boolean {
@@ -188,10 +199,9 @@ export class ErrorBoundaryCore {
         error: checkpointState.error ?? new Error('Unknown error'),
         errorInfo: (checkpointState.errorInfo ?? {}) as ErrorInfo,
         errorId: checkpointState.errorId ?? 'unknown',
-        timestamp: Date.now(),
       };
 
-      this.stateHandler.reset(this.config.maxRetries ?? 3);
+      this.stateHandler.reset();
       if (checkpointState.hasError === true) {
         this.stateHandler.updateError(params);
       }
@@ -234,7 +244,7 @@ export class ErrorBoundaryCore {
     const state = this.stateHandler.getState();
     return {
       hasError: state.hasError,
-      error: state.error ?? null,
+      error: state.error,
       errorInfo: (state.errorInfo ?? {}) as ErrorInfo,
       errorId: state.errorId ?? '',
       timestamp:
@@ -257,7 +267,7 @@ export class ErrorBoundaryCore {
   }
 
   public reset(): void {
-    this.stateHandler.reset(this.config.maxRetries ?? 3);
+    this.stateHandler.reset();
     this.performCleanup();
   }
 

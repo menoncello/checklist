@@ -75,9 +75,14 @@ function createSimplifyBoxDrawingFallback(): RenderFallback {
 function createLimitDimensionsFallback(): RenderFallback {
   return {
     name: 'limitDimensions',
-    condition: () => false, // This is controlled by FallbackRenderer options filtering
-    transform: (content, options) =>
-      FallbackUtils.limitDimensions(content, options),
+    condition: () => true, // Always check - transform will handle if limiting is needed based on options
+    transform: (content, options) => {
+      // Only limit if dimensions are finite
+      if (isFinite(options.maxWidth) || isFinite(options.maxHeight)) {
+        return FallbackUtils.limitDimensions(content, options);
+      }
+      return content;
+    },
     priority: 60,
   };
 }

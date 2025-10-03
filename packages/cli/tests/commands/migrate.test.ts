@@ -399,9 +399,9 @@ describe('CLI Migration Commands', () => {
       
       // Create several backups with delays to ensure different timestamps
       await runner.createBackup(statePath, '0.1.0');
-      await new Promise(resolve => trackedSetTimeout(resolve, 10));
+      await new Promise<void>(resolve => trackedSetTimeout(() => resolve(), 10));
       await runner.createBackup(statePath, '0.2.0');
-      await new Promise(resolve => trackedSetTimeout(resolve, 10));
+      await new Promise<void>(resolve => trackedSetTimeout(() => resolve(), 10));
       await runner.createBackup(statePath, '0.3.0');
       
       // List backups
@@ -434,7 +434,7 @@ describe('CLI Migration Commands', () => {
       // Create more than max backups
       for (let i = 0; i < 5; i++) {
         await runner.createBackup(statePath, `0.${i}.0`);
-        await new Promise(resolve => trackedSetTimeout(resolve, 10));
+        await new Promise<void>(resolve => trackedSetTimeout(() => resolve(), 10));
       }
       
       // List backups

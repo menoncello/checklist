@@ -49,4 +49,8 @@ export class EnvironmentDetector {
     if (env.term.includes('screen')) return true;
     return false;
   }
+
+  static detect(): EnvironmentInfo {
+    return EnvironmentDetector.gatherEnvironmentInfo();
+  }
 }

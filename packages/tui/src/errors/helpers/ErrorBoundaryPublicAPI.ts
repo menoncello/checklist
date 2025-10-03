@@ -6,13 +6,16 @@ import type {
   ErrorHistoryEntry,
   ErrorHistoryManager,
   ErrorInfo,
-  ErrorState,
-  ErrorStateManager,
   StatePreservationManager,
+} from '../ErrorBoundaryHelpers';
+import type {
+  ErrorState as ErrorStateFromHelpers,
+  ErrorStateManager,
 } from '../ErrorBoundaryHelpers';
 import type { ErrorBoundaryMetricsCollector } from '../ErrorBoundaryMetricsCollector';
 import type { ErrorBoundaryOperations } from '../ErrorBoundaryOperations';
 import type { ErrorBoundaryStateHandler } from '../ErrorBoundaryStateHandler';
+import type { ErrorState } from '../ErrorBoundaryStateHandler';
 
 interface ErrorBoundaryPublicAPIComponents {
   stateManager: ErrorStateManager;
@@ -37,11 +40,15 @@ export class ErrorBoundaryPublicAPI {
   }
 
   getError(): Error | null {
-    return this.components.stateManager.getError();
+    const state =
+      this.components.stateManager.getState() as ErrorStateFromHelpers;
+    return state.error ?? null;
   }
 
   getErrorInfo(): ErrorInfo | null {
-    return this.components.stateManager.getErrorInfo();
+    const state =
+      this.components.stateManager.getState() as ErrorStateFromHelpers;
+    return state.errorInfo;
   }
 
   getErrorState(): ErrorState {
@@ -83,16 +90,17 @@ export class ErrorBoundaryPublicAPI {
   }
 
   // State preservation methods
-  preserveState(key: string, value: unknown): void {
-    this.components.preservationManager.preserveState(key, value);
+  preserveState(value: unknown): void {
+    this.components.preservationManager.preserveState(value);
   }
 
-  getPreservedState<T>(key: string): T | null {
-    return this.components.preservationManager.getPreservedState<T>(key);
+  getPreservedState<T>(): T | null {
+    const result = this.components.preservationManager.getPreservedState();
+    return result as T | null;
   }
 
-  clearPreservedState(key?: string): void {
-    this.components.preservationManager.clearPreservedState(key);
+  clearPreservedState(): void {
+    this.components.preservationManager.clearPreservedState();
   }
 
   preserveCurrentState(): void {
@@ -108,9 +116,31 @@ export class ErrorBoundaryPublicAPI {
 
   // Metrics and configuration
   getMetrics(): ErrorBoundaryMetrics {
+    const state = this.components.stateHandler.getState();
+    const adaptedState = {
+      hasError: state.hasError ?? false,
+      error: state.error,
+      errorInfo:
+        state.errorInfo != null && typeof state.errorInfo === 'object'
+          ? ({
+              componentStack: '',
+              errorBoundary: '',
+              eventType: '',
+              ...(state.errorInfo as Record<string, unknown>),
+            } as ErrorInfo)
+          : ({
+              componentStack: '',
+              errorBoundary: '',
+              eventType: '',
+            } as ErrorInfo),
+      errorId: state.errorId ?? '',
+      timestamp: state.timestamp ? new Date(state.timestamp).getTime() : 0,
+      retryCount: state.retryCount ?? 0,
+      maxRetries: state.maxRetries ?? 3,
+    };
     return this.components.metricsCollector.collectMetrics(
-      this.components.stateHandler.getState(),
-      this.config.maxRetries
+      adaptedState,
+      this.config.maxRetries ?? 3
     );
   }
 

@@ -16,6 +16,7 @@
     "clean": "rm -rf dist coverage",
     "pretest": "bun run clean",
     "test": "bun test",
+    "test:sequential": "./run-sequential-tests.bash",
     "test:unit": "bun test packages/core/tests/*.test.ts packages/core/tests/container packages/core/tests/services packages/core/tests/state packages/core/tests/utils packages/core/tests/workflow packages/tui packages/cli packages/shared",
     "test:integration": "bun test packages/core/tests/integration",
     "test:monitoring": "bun test packages/core/tests/monitoring",

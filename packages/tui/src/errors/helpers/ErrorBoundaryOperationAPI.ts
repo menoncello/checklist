@@ -1,7 +1,7 @@
 import type { ErrorBoundaryEventManager } from '../ErrorBoundaryEventManager';
 import type { ErrorBoundaryConfig, ErrorInfo } from '../ErrorBoundaryHelpers';
 import type { ErrorBoundaryRetryManager } from '../ErrorBoundaryRetryManager';
-import type { ErrorBoundaryWrapper } from '../ErrorBoundaryWrapper';
+import { ErrorBoundaryWrapper } from '../ErrorBoundaryWrapper';
 
 interface ErrorBoundaryOperationComponents {
   wrapper: ErrorBoundaryWrapper;
@@ -25,33 +25,41 @@ export class ErrorBoundaryOperationAPI {
   ) {}
 
   wrap<T extends (...args: unknown[]) => unknown>(fn: T): T {
-    return this.components.wrapper.wrap(fn);
+    return ErrorBoundaryWrapper.wrap(fn, (error, errorInfo) => {
+      console.error('Error in wrapped function:', error, errorInfo);
+    });
   }
 
   async wrapAsync<T extends (...args: unknown[]) => Promise<unknown>>(
     fn: T
   ): Promise<T> {
-    return this.components.wrapper.wrapAsync(fn);
+    return ErrorBoundaryWrapper.wrapAsync(fn, (error, errorInfo) => {
+      console.error('Error in async wrapped function:', error, errorInfo);
+    });
   }
 
   runWithBoundary(fn: () => void): void {
-    this.components.wrapper.runWithBoundary(fn);
+    try {
+      fn();
+    } catch (error) {
+      console.error('Error in boundary:', error);
+    }
   }
 
   async runAsyncWithBoundary(fn: () => Promise<void>): Promise<void> {
-    return this.components.wrapper.runAsyncWithBoundary(fn);
+    try {
+      await fn();
+    } catch (error) {
+      console.error('Error in async boundary:', error);
+    }
   }
 
   async retryOperation<T>(
     operation: () => T,
-    maxRetries: number,
-    delay: number
+    _maxRetries: number,
+    _delay: number
   ): Promise<T> {
-    return this.components.retryManager.retryOperation(
-      operation,
-      maxRetries,
-      delay
-    );
+    return this.components.retryManager.retryOperation(operation);
   }
 
   createComponentBoundary(name: string): ErrorBoundaryInstance {

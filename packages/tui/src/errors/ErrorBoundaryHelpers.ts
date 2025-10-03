@@ -7,7 +7,7 @@ export type ErrorInfo = {
 
 export type ErrorState = {
   hasError: boolean;
-  error: Error | null;
+  error?: Error;
   errorInfo: ErrorInfo;
   errorId: string;
   timestamp: number;
@@ -42,7 +42,6 @@ export class ErrorStateManager {
   static createInitialState(): ErrorState {
     return {
       hasError: false,
-      error: null,
       errorInfo: {},
       errorId: '',
       timestamp: 0,
@@ -218,7 +217,7 @@ export type ErrorRecordParams = {
 
 export type ErrorUpdateParams = {
   hasError?: boolean;
-  error?: Error | null;
+  error?: Error;
   errorInfo?: ErrorInfo;
   errorId?: string;
   retryCount?: number;

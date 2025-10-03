@@ -15,8 +15,8 @@ export class FallbackRenderer {
   constructor(options: Partial<FallbackOptions> = {}) {
     this.options = {
       useAsciiOnly: false,
-      maxWidth: 120,
-      maxHeight: 50,
+      maxWidth: Infinity,
+      maxHeight: Infinity,
       stripColors: false,
       simplifyBoxDrawing: false,
       preserveLayout: true,
@@ -29,28 +29,8 @@ export class FallbackRenderer {
   private setupDefaultFallbacks(): void {
     const defaultFallbacks = createDefaultFallbacks();
 
-    // Apply user preferences to filter fallbacks
-    const filteredFallbacks = defaultFallbacks.filter((fallback) => {
-      switch (fallback.name) {
-        case 'stripColors':
-          return this.options.stripColors;
-        case 'stripAllAnsi':
-          return false; // Only apply when minimal terminal detected
-        case 'asciiOnly':
-          return this.options.useAsciiOnly;
-        case 'simplifyBoxDrawing':
-          return this.options.simplifyBoxDrawing;
-        case 'limitDimensions':
-          // Only apply if explicitly limiting dimensions below defaults
-          return this.options.maxWidth < 120 || this.options.maxHeight < 50;
-        case 'simplifyLayout':
-          return !this.options.preserveLayout;
-        default:
-          return false; // Don't include unknown fallbacks by default
-      }
-    });
-
-    this.fallbacks = filteredFallbacks;
+    // Add all default fallbacks - their conditions will determine when they apply
+    this.fallbacks = [...defaultFallbacks];
   }
 
   public addFallback(fallback: RenderFallback): void {
@@ -111,6 +91,9 @@ export class FallbackRenderer {
     const capsObj = capabilities as Record<string, unknown> | null | undefined;
 
     if (!capsObj) {
+      report.issues.push('No terminal capabilities provided');
+      report.recommendations.push('Provide terminal capability information');
+      report.compatible = false;
       return report;
     }
 
@@ -148,7 +131,8 @@ export class FallbackRenderer {
     for (const fallback of this.fallbacks) {
       try {
         if (fallback.condition(capabilities)) {
-          report.fallbacksUsed.push(fallback.name);
+          // Special handling for limitDimensions - only count if dimensions are finite
+          this.addFallbackToReport(fallback, report);
         }
       } catch (error) {
         console.warn(
@@ -185,6 +169,107 @@ export class FallbackRenderer {
       fallbacksApplied,
       compatibilityReport,
     };
+  }
+
+  public getCompatibilityWarnings(capabilities: unknown): string[] {
+    const report = this.checkCompatibility(capabilities);
+    const warnings: string[] = [];
+
+    this.addCapabilityWarnings(capabilities, warnings);
+    this.addReportWarnings(report, warnings);
+
+    return warnings;
+  }
+
+  private addFallbackToReport(
+    fallback: { name: string },
+    report: { fallbacksUsed: string[] }
+  ): void {
+    if (fallback.name === 'limitDimensions') {
+      if (isFinite(this.options.maxWidth) || isFinite(this.options.maxHeight)) {
+        report.fallbacksUsed.push(fallback.name);
+      }
+    } else {
+      report.fallbacksUsed.push(fallback.name);
+    }
+  }
+
+  private addCapabilityWarnings(
+    capabilities: unknown,
+    warnings: string[]
+  ): void {
+    const caps = capabilities as Record<string, unknown> | null | undefined;
+    if (!caps) return;
+
+    this.addColorWarning(caps, warnings);
+    this.addUnicodeWarning(caps, warnings);
+    this.addMouseWarning(caps, warnings);
+    this.addScreenWarning(caps, warnings);
+    this.addCursorWarning(caps, warnings);
+  }
+
+  private addColorWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.color === false) {
+      warnings.push('⚠ Limited color support detected');
+      warnings.push('Display will be in monochrome mode');
+    }
+  }
+
+  private addUnicodeWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.unicode === false) {
+      warnings.push('⚠ Limited Unicode support detected');
+      warnings.push('Box drawing characters may not display correctly');
+    }
+  }
+
+  private addMouseWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.mouse === false) {
+      warnings.push('⚠ Mouse input unavailable');
+      warnings.push('Use keyboard navigation instead');
+    }
+  }
+
+  private addScreenWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.altScreen === false) {
+      warnings.push('○ Alternate screen mode not available');
+    }
+  }
+
+  private addCursorWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.cursorShape === false) {
+      warnings.push('○ Cursor shape control not available');
+    }
+  }
+
+  private addReportWarnings(
+    report: {
+      issues: string[];
+      recommendations: string[];
+      fallbacksUsed: string[];
+    },
+    warnings: string[]
+  ): void {
+    warnings.push(...report.issues);
+    warnings.push(...report.recommendations);
+
+    if (report.fallbacksUsed.length > 0) {
+      warnings.push(`Using fallbacks: ${report.fallbacksUsed.join(', ')}`);
+    }
   }
 
   public static createMinimalRenderer(): FallbackRenderer {

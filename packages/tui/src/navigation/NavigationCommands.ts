@@ -34,7 +34,7 @@ export class NavigationCommandExecutor {
   ) {}
 
   public async advanceToNext(): Promise<void> {
-    this.eventBus.publishSync('navigation-advance-next', {
+    this.eventBus.publish('navigation-advance-next', {
       currentStepId: this.navigationState.currentStepId,
       timestamp: Date.now(),
     });
@@ -46,7 +46,7 @@ export class NavigationCommandExecutor {
     );
     this.navigationState.hasUnsavedChanges = true;
 
-    this.eventBus.publishSync('navigation-mark-done-advance', {
+    this.eventBus.publish('navigation-mark-done-advance', {
       completedStepId: this.navigationState.currentStepId,
       timestamp: Date.now(),
     });
@@ -58,7 +58,7 @@ export class NavigationCommandExecutor {
       throw new Error('No previous step available');
     }
 
-    this.eventBus.publishSync('navigation-go-back', {
+    this.eventBus.publish('navigation-go-back', {
       currentStepId: this.navigationState.currentStepId,
       targetStepId: previousStepId,
       timestamp: Date.now(),
@@ -70,7 +70,7 @@ export class NavigationCommandExecutor {
     this.navigationState.skippedSteps = [];
     this.navigationState.hasUnsavedChanges = true;
 
-    this.eventBus.publishSync('navigation-reset', {
+    this.eventBus.publish('navigation-reset', {
       timestamp: Date.now(),
     });
   }
@@ -79,7 +79,7 @@ export class NavigationCommandExecutor {
     this.navigationState.skippedSteps.push(this.navigationState.currentStepId);
     this.navigationState.hasUnsavedChanges = true;
 
-    this.eventBus.publishSync('navigation-skip-step', {
+    this.eventBus.publish('navigation-skip-step', {
       skippedStepId: this.navigationState.currentStepId,
       timestamp: Date.now(),
     });
@@ -90,21 +90,21 @@ export class NavigationCommandExecutor {
       this.navigationState.viewMode === 'list' ? 'detail' : 'list';
     this.navigationState.viewMode = newViewMode;
 
-    this.eventBus.publishSync('navigation-toggle-view', {
+    this.eventBus.publish('navigation-toggle-view', {
       viewMode: newViewMode,
       timestamp: Date.now(),
     });
   }
 
   public saveAndQuit(): void {
-    this.eventBus.publishSync('navigation-save-and-quit', {
+    this.eventBus.publish('navigation-save-and-quit', {
       state: this.navigationState,
       timestamp: Date.now(),
     });
   }
 
   public forceQuit(): void {
-    this.eventBus.publishSync('navigation-force-quit', {
+    this.eventBus.publish('navigation-force-quit', {
       timestamp: Date.now(),
     });
   }

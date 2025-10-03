@@ -50,20 +50,20 @@ export class ErrorBoundaryErrorHandler {
 
   clearError(): void {
     this.components.retryManager.cancelRetry();
-    const hadError = this.components.stateHandler.reset(this.config.maxRetries);
-
-    if (hadError === true) {
-      this.components.operations.executeRecoveryCallback();
-      this.components.eventManager.emit('recovery');
-    }
+    this.components.stateHandler.reset();
+    this.components.operations.executeRecoveryCallback();
+    this.components.eventManager.emit('recovery');
   }
 
   private updateErrorState(params: ErrorUpdateParams): void {
-    this.components.stateHandler.updateErrorState(params);
+    this.components.stateHandler.updateErrorState(
+      params.error ?? new Error('Unknown error'),
+      params.errorInfo
+    );
   }
 
   private recordError(params: ErrorRecordParams): void {
-    this.components.stateHandler.recordError(params);
+    this.components.stateHandler.recordError(params.error, params.errorInfo);
   }
 
   private performErrorHandlingTasks(error: Error, errorInfo: ErrorInfo): void {
@@ -82,7 +82,9 @@ export class ErrorBoundaryErrorHandler {
         this.components.stateHandler.getRetryCount()
       ) === true
     ) {
-      this.components.retryManager.scheduleRetry(this.config.retryDelay);
+      this.components.retryManager.scheduleRetry(
+        this.config.retryDelay ?? 1000
+      );
     } else {
       this.components.eventManager.emit('errorBoundaryExhausted', {
         error,

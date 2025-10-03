@@ -152,12 +152,12 @@ export class ErrorBoundary implements LifecycleHooks {
     return 0;
   }
 
-  public getErrorHistory(): any[] {
+  public getErrorHistory(): unknown[] {
     // Stub implementation
     return [];
   }
 
-  public getRecentErrors(limit: number = 10): any[] {
+  public getRecentErrors(): unknown[] {
     // Stub implementation
     return [];
   }
@@ -167,7 +167,7 @@ export class ErrorBoundary implements LifecycleHooks {
     return 0;
   }
 
-  public updateConfig(newConfig: Partial<ErrorBoundaryConfig>): void {
+  public updateConfig(): void {
     // Stub implementation
   }
 
@@ -186,7 +186,7 @@ export class ErrorBoundary implements LifecycleHooks {
 
   public getError(): Error | null {
     const state = this.getState();
-    return state.error || null;
+    return state.error ?? null;
   }
 
   public hasError(): boolean {
@@ -196,7 +196,7 @@ export class ErrorBoundary implements LifecycleHooks {
 
   public getErrorInfo(): ErrorInfo | null {
     const state = this.getState();
-    return state.errorInfo || null;
+    return state.errorInfo ?? null;
   }
 
   public render(): string {
@@ -213,8 +213,8 @@ export class ErrorBoundary implements LifecycleHooks {
 
   public async retryOperation<T>(
     operation: () => T,
-    maxRetries: number,
-    delay: number
+    _maxRetries: number,
+    _delay: number
   ): Promise<T> {
     // Stub implementation
     return operation();
@@ -238,21 +238,21 @@ export class ErrorBoundary implements LifecycleHooks {
     }
   }
 
-  public createComponentBoundary(name: string): ErrorBoundary {
+  public createComponentBoundary(): ErrorBoundary {
     // Stub implementation
     return new ErrorBoundary(this.deps.config);
   }
 
-  public preserveState(key: string, value: unknown): void {
+  public preserveState(): void {
     // Stub implementation
   }
 
-  public getPreservedState<T>(key: string): T | null {
+  public getPreservedState<T>(): T | null {
     // Stub implementation
     return null;
   }
 
-  public clearPreservedState(key?: string): void {
+  public clearPreservedState(): void {
     // Stub implementation
   }
 
@@ -260,8 +260,19 @@ export class ErrorBoundary implements LifecycleHooks {
     this.resetState();
   }
 
-  public onError(handler: (error: Error, errorInfo: ErrorInfo) => void): void {
-    // Stub implementation
-    this.on('error', handler);
+  public onError(error: Error): Promise<void> {
+    // Stub implementation - convert to lifecycle hook format
+    this.handleError(error);
+    return Promise.resolve();
+  }
+
+  public onErrorWithInfo(handler: (error: Error, errorInfo: ErrorInfo) => void): void {
+    // Keep the original signature for component-specific error handling
+    // Wrap the handler to match the expected event signature
+    this.on('error', (...args: unknown[]) => {
+      const error = args[0] as Error;
+      const errorInfo = args[1] as ErrorInfo;
+      handler(error, errorInfo);
+    });
   }
 }

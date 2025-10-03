@@ -628,3 +628,201 @@ Before committing code, verify:
 4. **Math Operations**: Percentage calculations are mathematically correct
 5. **Test Messages**: Test expectations match actual implementation output
 6. **Type Declarations**: All external dependencies have proper type declarations
+7. **Type Safety**: No `any` types used without explicit justification and documented alternatives
+8. **Constructor Parameters**: Maximum 4 parameters per constructor, use parameter objects for more
+9. **Function Size**: Functions under 30 lines, constructors under 30 lines
+10. **Nullish Coalescing**: Use `??` instead of `||` for nullish coalescing operations
+
+## TypeScript Type Safety Standards
+
+**MUST follow these type safety rules:**
+
+### No `any` Types Without Justification
+
+```typescript
+// ❌ WRONG: Using any without justification
+private alertManager: any;
+private metricsTracker: any;
+
+// ✅ CORRECT: Use proper types or interfaces
+import type { AlertManager } from './helpers/AlertManager';
+import type { MetricsTracker } from './helpers/MetricsTracker';
+
+private alertManager: AlertManager;
+private metricsTracker: MetricsTracker;
+
+// ✅ ACCEPTABLE: Only with explicit comment justification
+// Temporary any during migration - will be replaced with proper type in story X.X
+private legacyComponent: any;
+```
+
+### Constructor Parameter Limits
+
+```typescript
+// ❌ WRONG: Too many parameters (>4)
+constructor(
+  private config: PerformanceMonitorConfig,
+  private alertManager: any,
+  private systemProfiler: any,
+  private eventHandlers: any,
+  private handlers: any,
+  private bridge: PerformanceMonitorBridge,
+  private measurementMethods: MeasurementMethods
+) {}
+
+// ✅ CORRECT: Use parameter objects
+interface PerformanceMonitorDependencies {
+  config: PerformanceMonitorConfig;
+  alertManager: AlertManager;
+  systemProfiler: SystemProfiler;
+  eventHandlers: EventHandlers;
+  handlers: PerformanceMonitorHandlers;
+  bridge: PerformanceMonitorBridge;
+  measurementMethods: MeasurementMethods;
+}
+
+constructor(private deps: PerformanceMonitorDependencies) {}
+
+// ✅ CORRECT: Break into multiple smaller classes
+class PerformanceMonitorCore {
+  constructor(
+    private config: PerformanceMonitorConfig,
+    private metrics: MetricsTracker
+  ) {}
+}
+
+class PerformanceMonitorEvents {
+  constructor(
+    private config: PerformanceMonitorConfig,
+    private handlers: EventHandlers
+  ) {}
+}
+```
+
+### Function Size Management
+
+```typescript
+// ❌ WRONG: Function too long (>30 lines)
+constructor(config?: Partial<PerformanceMonitorConfig>) {
+  // 50+ lines of initialization logic
+  this.config = { /* ... */ };
+  this.metricsTracker = new MetricsTracker(this.config);
+  // ... many more lines
+}
+
+// ✅ CORRECT: Extract to separate methods
+constructor(config?: Partial<PerformanceMonitorConfig>) {
+  this.config = this.initializeConfig(config);
+  this.initializeManagers();
+  this.setupEventHandlers();
+}
+
+private initializeConfig(config?: Partial<PerformanceMonitorConfig>): PerformanceMonitorConfig {
+  return {
+    enableMetrics: true,
+    enableBenchmarks: true,
+    // ... rest of config
+  };
+}
+
+private initializeManagers(): void {
+  this.metricsTracker = new MetricsTracker(this.config);
+  this.benchmarkManager = new BenchmarkManager(this.config);
+}
+
+private setupEventHandlers(): void {
+  this.eventHandlers = new EventHandlers();
+}
+```
+
+### Nullish Coalescing Operator Usage
+
+```typescript
+// ❌ WRONG: Using logical OR for nullish coalescing
+const result = value || defaultValue; // Wrong for falsy values like 0, '', false
+
+// ✅ CORRECT: Use nullish coalescing operator
+const result = value ?? defaultValue; // Only null/undefined trigger default
+
+// ✅ CORRECT: When you specifically want falsy value handling
+const isActive = value || true; // Explicit intent to handle falsy values
+
+// ✅ CORRECT: Use with optional chaining
+const value = obj?.prop ?? defaultValue;
+```
+
+## Module Export Standards
+
+**MUST properly export types and interfaces:**
+
+### Type Export Requirements
+
+```typescript
+// ❌ WRONG: Types not exported from source file
+// types.ts
+interface PerformanceConfig {
+  enableMetrics: boolean;
+}
+
+// implementation.ts
+import { PerformanceConfig } from './types'; // Error: not exported
+
+// ✅ CORRECT: Export all shared types
+// types.ts
+export interface PerformanceConfig {
+  enableMetrics: boolean;
+  enableAlerts: boolean;
+}
+
+export interface PerformanceMetric {
+  id: string;
+  name: string;
+  value: number;
+  timestamp: number;
+}
+
+// ✅ CORRECT: Group related exports
+export type {
+  PerformanceConfig,
+  PerformanceMetric,
+  PerformanceAlert,
+} from './types';
+```
+
+### Index File Exports
+
+```typescript
+// ❌ WRONG: Missing exports in index.ts
+// index.ts
+export { PerformanceMonitor } from './PerformanceMonitor';
+
+// ✅ CORRECT: Export all public APIs
+// index.ts
+export { PerformanceMonitor } from './PerformanceMonitor';
+export type {
+  PerformanceConfig,
+  PerformanceMetric,
+  PerformanceBenchmark,
+  PerformanceAlert,
+} from './types';
+
+export { PerformanceMonitorInitializer } from './PerformanceMonitorInitializer';
+export { PerformanceMonitorBridge } from './PerformanceMonitorBridge';
+```
+
+## Error Prevention Checklist
+
+Before committing code, verify:
+
+1. **Async Operations**: All Promises are properly awaited before property access
+2. **Type Exports**: All types used across modules are properly exported
+3. **Complete Objects**: All required properties are provided in option objects
+4. **Math Operations**: Percentage calculations are mathematically correct
+5. **Test Messages**: Test expectations match actual implementation output
+6. **Type Declarations**: All external dependencies have proper type declarations
+7. **Type Safety**: No `any` types used without explicit justification and documented alternatives
+8. **Constructor Parameters**: Maximum 4 parameters per constructor, use parameter objects for more
+9. **Function Size**: Functions under 30 lines, constructors under 30 lines
+10. **Nullish Coalescing**: Use `??` instead of `||` for nullish coalescing operations
+11. **Module Exports**: All public types and interfaces properly exported from source and index files
+12. **Import Consistency**: Imports use proper type imports (`import type`) for type-only imports

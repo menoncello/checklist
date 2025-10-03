@@ -153,4 +153,14 @@ export class MetricsTracker {
   public getMarks(): Map<string, number> {
     return this.marks;
   }
+
+  public startAutoSampling(): void {
+    // Placeholder for starting auto-sampling if implemented
+    // Currently auto-sampling is handled by the PerformanceMonitor
+  }
+
+  public stopAutoSampling(): void {
+    // Placeholder for stopping auto-sampling if implemented
+    // Currently auto-sampling is handled by the PerformanceMonitor
+  }
 }
