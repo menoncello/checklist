@@ -45,7 +45,7 @@ jobs:
       
       - name: Download Previous Benchmark Results
         if: github.event_name == 'pull_request' || github.event_name == 'push'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: benchmark-baselines
           path: .performance/baselines
@@ -173,7 +173,7 @@ jobs:
     
     steps:
       - name: Download Current Results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: benchmark-results-${{ github.sha }}
           path: .performance/current
