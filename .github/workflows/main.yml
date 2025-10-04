@@ -62,7 +62,7 @@ jobs:
         run: rm -rf packages/*/dist
       
       - name: Run Tests with Coverage
-        run: bun test --coverage
+        run: bun run test:sequential
       
       - name: Upload Coverage Reports
         uses: actions/upload-artifact@v4

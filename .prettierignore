@@ -58,8 +58,12 @@ templates/
 *.yml
 *.xml
 *.sh
+*.bash
 coverage-analysis.csv
 *.csv
+
+# Script files
+run-sequential-tests.*
 
 # Temporarily ignore files with consolidated code for lint compliance
 packages/core/src/state/migrations/MigrationRunner.ts

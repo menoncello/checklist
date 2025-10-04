@@ -1,0 +1,202 @@
+# Traceability Gate for Story 2.5 - TUI Application Shell
+gate_type: trace
+story: "2.5"
+title: "TUI Application Shell"
+date: "2025-10-03"
+reviewer: "Quinn (Test Architect)"
+status: "PASS"
+
+trace:
+  totals:
+    requirements: 8
+    full: 8
+    partial: 0
+    none: 0
+  planning_ref: 'docs/qa/assessments/2.5-2.5-tui-application-shell-test-design-20250927.md'
+  uncovered: []
+  notes: 'See docs/qa/assessments/2.5-2.5-tui-application-shell-trace-20251003.md'
+
+acceptance_criteria:
+  AC1:
+    requirement: "Application starts with version splash"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should display version splash during startup"
+        type: "unit"
+      - file: "packages/tui/tests/application/ApplicationShell.performance.test.ts"
+        test_case: "should complete startup within 100ms including version splash"
+        type: "performance"
+      - file: "packages/tui/tests/application/ApplicationShell.performance.test.ts"
+        test_case: "should display version splash within startup budget"
+        type: "performance"
+
+  AC2:
+    requirement: "Split-pane layout with configurable ratios"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/layout/SplitPaneLayout.test.ts"
+        test_case: "should calculate dimensions correctly with default 70/30 split"
+        type: "unit"
+      - file: "packages/tui/tests/layout/SplitPaneLayout.test.ts"
+        test_case: "should calculate dimensions correctly with custom ratios"
+        type: "unit"
+      - file: "packages/tui/tests/layout/SplitPaneLayout.test.ts"
+        test_case: "should handle small terminal dimensions gracefully"
+        type: "unit"
+      - file: "packages/tui/tests/layout/SplitPaneLayout.test.ts"
+        test_case: "should validate ratio within 0.0 to 1.0 range"
+        type: "unit"
+
+  AC3:
+    requirement: "Input router handles focus correctly"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/input/InputRouter.test.ts"
+        test_case: "should validate focus transitions correctly"
+        type: "unit"
+      - file: "packages/tui/tests/input/InputRouter.test.ts"
+        test_case: "should prevent invalid focus transitions"
+        type: "unit"
+      - file: "packages/tui/tests/input/InputRouter.test.ts"
+        test_case: "should route keyboard events to focused component"
+        type: "unit"
+      - file: "packages/tui/tests/input/InputRouter.test.ts"
+        test_case: "should maintain focus history"
+        type: "unit"
+
+  AC4:
+    requirement: "Terminal properly initialized/restored"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/terminal/TerminalManager.test.ts"
+        test_case: "should set raw mode correctly when enabled"
+        type: "unit"
+      - file: "packages/tui/tests/terminal/TerminalManager.test.ts"
+        test_case: "should detect terminal capabilities during initialization"
+        type: "unit"
+      - file: "packages/tui/tests/terminal/TerminalManager.test.ts"
+        test_case: "should fall back to safe mode when TTY is not available"
+        type: "unit"
+      - file: "packages/tui/tests/terminal/TerminalManager.test.ts"
+        test_case: "should handle initialization errors gracefully"
+        type: "unit"
+      - file: "packages/tui/tests/terminal/TerminalManager.test.ts"
+        test_case: "should restore terminal state on shutdown"
+        type: "unit"
+
+  AC5:
+    requirement: "Graceful shutdown saves state"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/application/ShutdownManager.test.ts"
+        test_case: "should handle graceful shutdown without errors"
+        type: "unit"
+      - file: "packages/tui/tests/application/ShutdownManager.test.ts"
+        test_case: "should add and remove cleanup steps"
+        type: "unit"
+      - file: "packages/tui/tests/application/ShutdownManager.test.ts"
+        test_case: "should handle cleanup steps execution order"
+        type: "unit"
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should execute graceful shutdown sequence"
+        type: "unit"
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should handle shutdown errors with panic recovery"
+        type: "unit"
+
+  AC6:
+    requirement: "Resize handling reflows layout"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/application/ApplicationShell.performance.test.ts"
+        test_case: "should complete layout reflow within 50ms"
+        type: "performance"
+      - file: "packages/tui/tests/application/ApplicationShell.performance.test.ts"
+        test_case: "should handle rapid resize events efficiently"
+        type: "performance"
+      - file: "packages/tui/tests/application/ApplicationShell.performance.test.ts"
+        test_case: "should optimize layout reflow for unchanged dimensions"
+        type: "performance"
+      - file: "packages/tui/tests/application/ApplicationShell.performance.test.ts"
+        test_case: "should maintain layout reflow performance with complex layouts"
+        type: "performance"
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should handle resize events correctly"
+        type: "unit"
+
+  AC7:
+    requirement: "Error boundary prevents crashes"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should handle initialization errors gracefully"
+        type: "unit"
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should handle lifecycle errors without crashing"
+        type: "unit"
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should handle application errors without crashing"
+        type: "unit"
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should maintain state consistency during errors"
+        type: "unit"
+
+  AC8:
+    requirement: "Panic recovery with error reporting"
+    coverage: "FULL"
+    tests:
+      - file: "packages/tui/tests/application/ApplicationShell.test.ts"
+        test_case: "should handle shutdown errors with panic recovery"
+        type: "unit"
+      - file: "packages/tui/tests/errors/errors.test.ts"
+        test_case: "AC7: Error Boundary Implementation"
+        type: "unit"
+      - file: "packages/tui/tests/errors/errors.test.ts"
+        test_case: "AC9: Crash Recovery and State Preservation"
+        type: "unit"
+      - file: "packages/tui/tests/errors/errors.test.ts"
+        test_case: "Integration: Error Boundary + Crash Recovery"
+        type: "integration"
+
+quality_metrics:
+  total_test_files: 6
+  total_test_cases: 50
+  performance_tests: 15
+  error_scenario_tests: 10
+  coverage_percentage: 100
+
+assessment:
+  strength_areas:
+    - "100% requirements coverage - all ACs fully mapped to tests"
+    - "Performance requirements explicitly validated with timing tests"
+    - "Comprehensive error handling and panic recovery testing"
+    - "Proper component isolation with effective mocking strategies"
+    - "Real-world usage scenarios and edge cases covered"
+
+  recommendations:
+    - "Consider adding end-to-end integration tests for complete lifecycle validation"
+    - "Add visual regression tests for terminal output validation"
+    - "Consider load tests for sustained operation under stress"
+
+risk_assessment:
+  overall_risk: "LOW"
+  high_risk_items: []
+  medium_risk_items: []
+  low_risk_items:
+    - "All requirements have comprehensive test coverage"
+    - "Performance NFRs are explicitly validated"
+    - "Error scenarios are thoroughly tested"
+
+decision: "PASS"
+rationale: |
+  Story 2.5 demonstrates exceptional requirements traceability with 100% coverage of all acceptance criteria.
+  The test suite provides comprehensive validation of both functional and non-functional requirements,
+  with explicit performance benchmarking and thorough error scenario testing. All 8 acceptance criteria
+  are fully mapped to specific test cases using Given-When-Then patterns, providing complete confidence
+  that the TUI Application Shell implementation meets all requirements.
+
+next_steps:
+  - No immediate actions required for traceability
+  - Consider implementing recommended enhancement tests for future iterations
+  - Maintain current testing standards for subsequent stories

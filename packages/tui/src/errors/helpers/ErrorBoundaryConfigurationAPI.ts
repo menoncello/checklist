@@ -25,7 +25,7 @@ export class ErrorBoundaryConfigurationAPI {
 
   updateConfig(newConfig: Partial<ErrorBoundaryConfig>): void {
     Object.assign(this.config, newConfig);
-    this.components.stateManager.setMaxRetries(this.config.maxRetries);
+    this.components.stateManager.setMaxRetries(this.config.maxRetries ?? 3);
     this.components.operations.updateConfig(this.config);
     this.components.stateHandler.updateStatePreservationConfig(
       this.config.enableStatePreservation
@@ -33,15 +33,16 @@ export class ErrorBoundaryConfigurationAPI {
   }
 
   reset(): void {
-    this.components.stateManager.reset(this.config.maxRetries);
+    this.components.stateManager.resetState();
     this.components.historyManager.clear();
     this.components.preservationManager.clear();
   }
 
   destroy(): void {
-    this.components.retryManager.destroy();
+    // Use available cleanup methods - retryManager doesn't have destroy method
+    this.components.retryManager.reset();
     this.components.preservationManager.clear();
     this.components.historyManager.clear();
-    this.components.stateManager.reset(this.config.maxRetries);
+    this.components.stateManager.resetState();
   }
 }

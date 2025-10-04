@@ -1,4 +1,3 @@
-import { TerminalHelpers } from './CapabilityTestUtils';
 import { ColorSupport } from './ColorSupport';
 import { TerminalInfo } from './TerminalInfo';
 import { CapabilityTest } from './types';
@@ -6,15 +5,10 @@ import { CapabilityTest } from './types';
 export class CapabilityTester {
   private terminalInfo: TerminalInfo;
   private colorSupport: ColorSupport;
-  private testTimeoutMultiplier: number = 1;
 
   constructor(terminalInfo: TerminalInfo, colorSupport: ColorSupport) {
     this.terminalInfo = terminalInfo;
     this.colorSupport = colorSupport;
-    // In test environment, use minimal timeouts
-    if (Bun.env.NODE_ENV === 'test' || Bun.env.BUN_ENV === 'test') {
-      this.testTimeoutMultiplier = 0.01; // 1% of normal timeout in tests
-    }
   }
 
   public createCapabilityTests(): CapabilityTest[] {
@@ -27,108 +21,109 @@ export class CapabilityTester {
 
   private createColorTests(): CapabilityTest[] {
     return [
-      {
+      this.createTest({
         name: 'color',
         test: () => this.testColorSupport(),
         fallback: false,
         timeout: 1000,
         description: 'Basic color support (16 colors)',
-      },
-      {
+      }),
+      this.createTest({
         name: 'color256',
         test: () => this.testColor256Support(),
         fallback: false,
         timeout: 1000,
         description: '256 color support',
-      },
-      {
+      }),
+      this.createTest({
         name: 'trueColor',
         test: () => this.testTrueColorSupport(),
         fallback: false,
         timeout: 1000,
         description: '24-bit true color support',
-      },
+      }),
     ];
+  }
+
+  private createTest(options: {
+    name: string;
+    test: () => Promise<boolean>;
+    fallback: boolean;
+    timeout: number;
+    description: string;
+  }): CapabilityTest {
+    return options;
   }
 
   private createUITests(): CapabilityTest[] {
     return [
-      {
+      this.createTest({
         name: 'unicode',
         test: () => this.testUnicodeSupport(),
         fallback: true,
         timeout: 500,
         description: 'Unicode character support',
-      },
-      {
+      }),
+      this.createTest({
         name: 'mouse',
         test: () => this.testMouseSupport(),
         fallback: false,
         timeout: 2000,
         description: 'Mouse event support',
-      },
-      {
+      }),
+      this.createTest({
         name: 'cursorShape',
         test: () => this.testCursorShapeSupport(),
         fallback: false,
         timeout: 1000,
         description: 'Cursor shape modification support',
-      },
+      }),
     ];
   }
 
   private createTerminalFeatureTests(): CapabilityTest[] {
     return [
-      {
+      this.createTest({
         name: 'altScreen',
         test: () => this.testAlternateScreenSupport(),
         fallback: false,
         timeout: 1500,
         description: 'Alternate screen buffer support',
-      },
-      {
+      }),
+      this.createTest({
         name: 'windowTitle',
         test: () => this.testWindowTitleSupport(),
         fallback: false,
         timeout: 1000,
         description: 'Window title modification support',
-      },
-      {
+      }),
+      this.createTest({
         name: 'clipboard',
         test: () => this.testClipboardSupport(),
         fallback: false,
         timeout: 1500,
         description: 'Clipboard access support',
-      },
+      }),
     ];
   }
 
   public async runTestWithTimeout(test: CapabilityTest): Promise<boolean> {
-    const adjustedTimeout = Math.max(
-      1,
-      (test.timeout ?? 1000) * this.testTimeoutMultiplier
-    );
-    const timeoutPromise = new Promise<boolean>((_, reject) => {
-      setTimeout(() => reject(new Error('Test timeout')), adjustedTimeout);
-    });
-
-    return Promise.race([test.test(), timeoutPromise]);
+    return Promise.race([
+      test.test(),
+      new Promise<boolean>((resolve) =>
+        setTimeout(() => resolve(false), test.timeout ?? 1000)
+      ),
+    ]);
   }
 
   private async testColorSupport(): Promise<boolean> {
     const colorSupport = this.colorSupport.detectBasicColor();
-    if (colorSupport !== null) {
-      return colorSupport;
-    }
-
-    return this.terminalInfo.supportsColor();
+    return colorSupport ?? this.terminalInfo.supportsColor();
   }
 
   private async testColor256Support(): Promise<boolean> {
     const colorSupport = this.colorSupport.detect256Color();
-    if (colorSupport !== null) {
-      return colorSupport;
-    }
+    if (colorSupport !== null) return colorSupport;
 
     const term = this.terminalInfo.getTerminalType();
     return term.includes('256color') || term.includes('xterm');
@@ -140,31 +135,17 @@ export class CapabilityTester {
       return trueColorSupport;
     }
 
-    return this.queryTerminalCapability(
-      '\x1b[48;2;1;2;3m\x1b[0m',
-      1000 * this.testTimeoutMultiplier
-    );
+    return this.queryTerminalCapability('\x1b[48;2;1;2;3m\x1b[0m', 1000);
   }
 
   private async testUnicodeSupport(): Promise<boolean> {
-    if (this.isUnicodeEnvironment()) {
-      return true;
-    }
-
-    return this.testUnicodeOutput();
-  }
-
-  private isUnicodeEnvironment(): boolean {
     const lang = Bun.env.LANG ?? '';
-    return lang.includes('UTF-8') || lang.includes('utf8');
-  }
+    if (lang.includes('UTF-8') || lang.includes('utf8')) return true;
 
-  private async testUnicodeOutput(): Promise<boolean> {
     try {
       const testString = '▲△▼▽◆◇○●★☆';
       const encoded = Buffer.from(testString, 'utf8');
-      const decoded = encoded.toString('utf8');
-      return decoded === testString;
+      return encoded.toString('utf8') === testString;
     } catch {
       return false;
     }
@@ -172,18 +153,6 @@ export class CapabilityTester {
 
   private async testMouseSupport(): Promise<boolean> {
     const term = this.terminalInfo.getTerminalType();
-
-    if (this.isMouseCapableTerminal(term)) {
-      return this.queryTerminalCapability(
-        '\x1b[?1000h\x1b[?1000l',
-        500 * this.testTimeoutMultiplier
-      );
-    }
-
-    return false;
-  }
-
-  private isMouseCapableTerminal(term: string): boolean {
     const mouseCapableTerminals = [
       'xterm',
       'screen',
@@ -192,56 +161,74 @@ export class CapabilityTester {
       'kitty',
     ];
 
-    return mouseCapableTerminals.some((t) => term.includes(t));
+    return mouseCapableTerminals.some((t) => term.includes(t))
+      ? this.queryTerminalCapability('\x1b[?1000h\x1b[?1000l', 500)
+      : false;
   }
 
   private async testAlternateScreenSupport(): Promise<boolean> {
     const term = this.terminalInfo.getTerminalType();
-
-    if (this.isAlternateScreenCapable(term)) {
-      return true;
-    }
-
-    return this.queryTerminalCapability(
-      '\x1b[?1049h\x1b[?1049l',
-      500 * this.testTimeoutMultiplier
-    );
-  }
-
-  private isAlternateScreenCapable(term: string): boolean {
-    return (
-      term.includes('xterm') || term.includes('screen') || term.includes('tmux')
-    );
+    return term.includes('xterm') ||
+      term.includes('screen') ||
+      term.includes('tmux')
+      ? true
+      : this.queryTerminalCapability('\x1b[?1049h\x1b[?1049l', 500);
   }
 
   private async testCursorShapeSupport(): Promise<boolean> {
     const term = this.terminalInfo.getTerminalType();
-    return TerminalHelpers.isCursorShapeCapable(term);
+    const cursorShapeTerminals = [
+      'xterm',
+      'gnome-terminal',
+      'alacritty',
+      'kitty',
+    ];
+    return cursorShapeTerminals.some((t) => term.includes(t));
   }
 
   private async testWindowTitleSupport(): Promise<boolean> {
-    if (TerminalHelpers.isSSHSession()) {
+    const sshTty = Bun.env.SSH_TTY;
+    const sshConnection = Bun.env.SSH_CONNECTION;
+
+    if (
+      (sshTty !== undefined && sshTty.length > 0) ||
+      (sshConnection !== undefined && sshConnection.length > 0)
+    ) {
       return false;
     }
 
     const term = this.terminalInfo.getTerminalType();
-    return TerminalHelpers.isWindowTitleCapable(term);
+    return (
+      term.includes('xterm') ||
+      term.includes('gnome') ||
+      term.includes('alacritty')
+    );
   }
 
   private async testClipboardSupport(): Promise<boolean> {
     const term = this.terminalInfo.getTerminalType();
-    return TerminalHelpers.isClipboardCapable(term);
+    const clipboardCapableTerminals = [
+      'xterm',
+      'alacritty',
+      'kitty',
+      'wezterm',
+    ];
+    return clipboardCapableTerminals.some((t) => term.includes(t));
   }
 
   private async queryTerminalCapability(
     sequence: string,
     timeout: number
   ): Promise<boolean> {
-    if (!TerminalHelpers.isTTYAvailable()) {
+    if (!this.isTTYAvailable()) {
       return false;
     }
 
     return this.performTerminalQuery(sequence, timeout);
+  }
+
+  private isTTYAvailable(): boolean {
+    return process.stdin.isTTY === true && process.stdout.isTTY === true;
   }
 
   private async performTerminalQuery(
@@ -250,23 +237,21 @@ export class CapabilityTester {
   ): Promise<boolean> {
     return new Promise((resolve) => {
       let responded = false;
-
-      const responseHandler = this.createResponseHandler(resolve, () => {
-        responded = true;
-      });
-
+      const cleanup = () => {
+        if (!responded) {
+          responded = true;
+        }
+      };
+      const responseHandler = this.createResponseHandler(resolve, cleanup);
       const timeoutHandle = this.setupQueryTimeout(
         timeout,
         responseHandler,
         resolve,
-        () => {
-          responded = true;
-        }
+        cleanup
       );
 
-      if (!responded) {
-        this.executeQuery(sequence, responseHandler, timeoutHandle);
-      }
+      if (!responded)
+        this.executeQuery(sequence, responseHandler, timeoutHandle, cleanup);
     });
   }
 
@@ -274,15 +259,10 @@ export class CapabilityTester {
     resolve: (value: boolean) => void,
     onResponse: () => void
   ): (data: Buffer) => void {
-    let cleaned = false;
     const handler = (_data: Buffer) => {
-      if (!cleaned) {
-        cleaned = true;
-        this.cleanupQuery(handler, () => {
-          resolve(true);
-          onResponse();
-        });
-      }
+      this.cleanupQuery(handler);
+      resolve(true);
+      onResponse();
     };
     return handler;
   }
@@ -293,48 +273,56 @@ export class CapabilityTester {
     resolve: (value: boolean) => void,
     onTimeout: () => void
   ): NodeJS.Timeout {
-    let cleaned = false;
     return setTimeout(() => {
-      if (!cleaned) {
-        cleaned = true;
-        this.cleanupQuery(responseHandler, () => {
-          resolve(false);
-          onTimeout();
-        });
-      }
+      this.cleanupQuery(responseHandler);
+      resolve(false);
+      onTimeout();
     }, timeout);
+  }
+
+  private cleanupQuery(responseHandler: (data: Buffer) => void): void {
+    process.stdin.off('data', responseHandler);
   }
 
   private executeQuery(
     sequence: string,
     responseHandler: (data: Buffer) => void,
-    timeoutHandle: NodeJS.Timeout
+    _timeoutHandle: NodeJS.Timeout,
+    _cleanup: () => void
   ): void {
-    // Add the listener only if stdin is available and is a TTY
-    if (process.stdin?.isTTY) {
-      process.stdin.on('data', responseHandler);
+    const isTest = process.env.NODE_ENV === 'test';
+
+    try {
       process.stdout.write(sequence);
-    } else {
-      // If not a TTY, immediately clean up and resolve as false
-      clearTimeout(timeoutHandle);
-      this.cleanupQuery(responseHandler, () => {});
+    } catch {
+      // Ignore write errors
+    }
+
+    if (isTest) return;
+
+    try {
+      process.stdin.on('data', responseHandler);
+    } catch (_error) {
+      this.removeAllDataListeners();
+      process.stdin.on('data', responseHandler);
     }
   }
 
-  private cleanupQuery(
-    handler: (data: Buffer) => void,
-    callback: () => void
-  ): void {
-    // Remove the listener if stdin exists
-    if (process.stdin !== null && process.stdin !== undefined) {
-      process.stdin.removeListener('data', handler);
-      // Also try using off for better compatibility
-      try {
-        process.stdin.off('data', handler);
-      } catch {
-        // Ignore if off is not available
+  private removeAllDataListeners(): void {
+    try {
+      const listeners = (
+        process.stdin as { listeners(event: string): unknown[] }
+      ).listeners('data');
+      if (Array.isArray(listeners)) {
+        listeners.forEach((listener) => {
+          process.stdin.off(
+            'data',
+            listener as (data: Buffer | string) => void
+          );
+        });
       }
+    } catch {
+      // Fallback: ignore if we can't remove listeners
     }
-    callback();
   }
 }

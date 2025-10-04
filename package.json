@@ -16,6 +16,7 @@
     "clean": "rm -rf dist coverage",
     "pretest": "bun run clean",
     "test": "bun test",
+    "test:sequential": "./run-sequential-tests.bash",
     "test:unit": "bun test packages/core/tests/*.test.ts packages/core/tests/container packages/core/tests/services packages/core/tests/state packages/core/tests/utils packages/core/tests/workflow packages/tui packages/cli packages/shared",
     "test:integration": "bun test packages/core/tests/integration",
     "test:monitoring": "bun test packages/core/tests/monitoring",
@@ -81,6 +82,8 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "ansis": "^4.1.0",
-    "clipboardy": "^4.0.0"
+    "c8": "10.1.3",
+    "clipboardy": "^4.0.0",
+    "ts-morph": "27.0.0"
   }
 }

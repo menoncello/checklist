@@ -17,6 +17,21 @@ describe('MigrateCommand Class', () => {
   let consoleErrorSpy: any;
   let processExitSpy: any;
   let tempDir: string;
+  let activeTimers: NodeJS.Timeout[] = [];
+
+  // Helper function to create tracked timeouts
+  const trackedSetTimeout = (callback: () => void, ms: number): NodeJS.Timeout => {
+    const timer = setTimeout(() => {
+      // Remove timer from active list when it fires
+      const index = activeTimers.indexOf(timer);
+      if (index > -1) {
+        activeTimers.splice(index, 1);
+      }
+      callback();
+    }, ms);
+    activeTimers.push(timer);
+    return timer;
+  };
 
   beforeEach(async () => {
     // Create temp directory for tests
@@ -36,6 +51,12 @@ describe('MigrateCommand Class', () => {
   });
 
   afterEach(async () => {
+    // Clear all active timers to prevent execution after test completion
+    for (const timer of activeTimers) {
+      clearTimeout(timer);
+    }
+    activeTimers = [];
+
     // Cleanup temp directory
     const { rm } = await import('fs/promises');
     await rm(tempDir, { recursive: true, force: true });
@@ -105,6 +126,21 @@ describe('CLI Migration Commands', () => {
   let backupDir: string;
   let runner: MigrationRunner;
   let registry: MigrationRegistry;
+  let activeTimers: NodeJS.Timeout[] = [];
+
+  // Helper function to create tracked timeouts
+  const trackedSetTimeout = (callback: () => void, ms: number): NodeJS.Timeout => {
+    const timer = setTimeout(() => {
+      // Remove timer from active list when it fires
+      const index = activeTimers.indexOf(timer);
+      if (index > -1) {
+        activeTimers.splice(index, 1);
+      }
+      callback();
+    }, ms);
+    activeTimers.push(timer);
+    return timer;
+  };
 
   beforeEach(async () => {
     // Create temp directory for tests
@@ -170,6 +206,12 @@ describe('CLI Migration Commands', () => {
   });
 
   afterEach(async () => {
+    // Clear all active timers to prevent execution after test completion
+    for (const timer of activeTimers) {
+      clearTimeout(timer);
+    }
+    activeTimers = [];
+
     // Cleanup temp directory
     const { rm } = await import('fs/promises');
     await rm(tempDir, { recursive: true, force: true });
@@ -357,9 +399,9 @@ describe('CLI Migration Commands', () => {
       
       // Create several backups with delays to ensure different timestamps
       await runner.createBackup(statePath, '0.1.0');
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => trackedSetTimeout(() => resolve(), 10));
       await runner.createBackup(statePath, '0.2.0');
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => trackedSetTimeout(() => resolve(), 10));
       await runner.createBackup(statePath, '0.3.0');
       
       // List backups
@@ -392,7 +434,7 @@ describe('CLI Migration Commands', () => {
       // Create more than max backups
       for (let i = 0; i < 5; i++) {
         await runner.createBackup(statePath, `0.${i}.0`);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise<void>(resolve => trackedSetTimeout(() => resolve(), 10));
       }
       
       // List backups

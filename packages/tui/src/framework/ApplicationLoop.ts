@@ -21,6 +21,7 @@ export class ApplicationLoop {
   private inputCallback?: (input: Buffer) => void;
   private resizeCallback?: (width: number, height: number) => void;
   private errorCallback?: (error: Error) => void;
+  private inputHandler?: (data: Buffer) => void;
 
   private performanceMetrics = {
     totalFrames: 0,
@@ -39,17 +40,19 @@ export class ApplicationLoop {
   }
 
   private setupInputHandling(): void {
-    if (process.stdin.isTTY) {
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
       process.stdin.setRawMode(true);
       process.stdin.setEncoding('utf8');
 
-      process.stdin.on('data', (data: Buffer) => {
+      this.inputHandler = (data: Buffer) => {
         try {
           this.handleInput(data);
         } catch (error) {
           this.handleError(error as Error);
         }
-      });
+      };
+
+      process.stdin.on('data', this.inputHandler);
     }
   }
 
@@ -110,15 +113,17 @@ export class ApplicationLoop {
   }
 
   private parseInput(input: string): InputEvent {
+    const timestamp = Date.now();
+
     if (input.startsWith('\x1b[')) {
-      return this.parseEscapeSequence(input);
+      return { ...this.parseEscapeSequence(input), timestamp };
     }
 
     if (input.charCodeAt(0) < 32) {
-      return this.parseControlCharacter(input);
+      return { ...this.parseControlCharacter(input), timestamp };
     }
 
-    return { type: 'key', key: input, raw: input };
+    return { type: 'key', key: input, raw: input, timestamp };
   }
 
   private parseEscapeSequence(input: string): InputEvent {
@@ -128,14 +133,14 @@ export class ApplicationLoop {
 
     if (seq.match(/^\d+~$/)) {
       const code = parseInt(seq.slice(0, -1));
-      return { type: 'key', key: `f${code}`, raw: input };
+      return { type: 'key', key: `f${code}`, raw: input, timestamp: 0 };
     }
 
     if (seq.startsWith('M')) {
-      return { type: 'mouse', raw: input };
+      return { type: 'mouse', raw: input, timestamp: 0 };
     }
 
-    return { type: 'escape', sequence: seq, raw: input };
+    return { type: 'escape', sequence: seq, raw: input, timestamp: 0 };
   }
 
   private parseArrowKey(seq: string, input: string): InputEvent | null {
@@ -146,7 +151,7 @@ export class ApplicationLoop {
       D: 'left',
     };
     const key = arrowKeys[seq];
-    return key ? { type: 'key', key, raw: input } : null;
+    return key ? { type: 'key', key, raw: input, timestamp: 0 } : null;
   }
 
   private parseControlCharacter(input: string): InputEvent {
@@ -162,7 +167,7 @@ export class ApplicationLoop {
     const key =
       controlMap[input.charCodeAt(0)] ??
       `ctrl+${String.fromCharCode(input.charCodeAt(0) + 96)}`;
-    return { type: 'key', key, raw: input };
+    return { type: 'key', key, raw: input, timestamp: 0 };
   }
 
   private handleError(error: Error): void {
@@ -261,6 +266,10 @@ export class ApplicationLoop {
   private cleanup(): void {
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(false);
+      if (this.inputHandler) {
+        process.stdin.off('data', this.inputHandler);
+        this.inputHandler = undefined;
+      }
     }
   }
 
@@ -306,7 +315,7 @@ export class ApplicationLoop {
       this.eventHandlers.set(event, new Set());
     }
     const handlers = this.eventHandlers.get(event);
-    if (handlers != null) {
+    if (handlers) {
       handlers.add(handler);
     }
   }
@@ -340,6 +349,7 @@ export interface InputEvent {
   x?: number;
   y?: number;
   button?: number;
+  timestamp: number;
   modifiers?: {
     ctrl?: boolean;
     alt?: boolean;

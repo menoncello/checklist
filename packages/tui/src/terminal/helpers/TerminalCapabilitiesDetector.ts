@@ -1,4 +1,4 @@
-import type { EnvironmentInfo } from './EnvironmentDetector';
+import { type EnvironmentInfo } from './EnvironmentDetector';
 
 export class TerminalCapabilitiesDetector {
   static supportsColor(env: EnvironmentInfo): boolean {

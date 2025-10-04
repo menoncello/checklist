@@ -48,6 +48,28 @@ export class SubscriberManager {
     return this.subscribers.delete(subscriberId);
   }
 
+  public unsubscribeByNameAndHandler(
+    name: string,
+    handler: (message: BusMessage) => void | Promise<void>
+  ): boolean {
+    const subscribersToRemove: string[] = [];
+
+    for (const [id, subscriber] of this.subscribers.entries()) {
+      if (subscriber.name === name && subscriber.handler === handler) {
+        subscribersToRemove.push(id);
+      }
+    }
+
+    let removed = false;
+    for (const id of subscribersToRemove) {
+      if (this.subscribers.delete(id)) {
+        removed = true;
+      }
+    }
+
+    return removed;
+  }
+
   public getSubscriber(id: string): Subscriber | null {
     return this.subscribers.get(id) ?? null;
   }
@@ -208,5 +230,21 @@ export class SubscriberManager {
     }
 
     return exported;
+  }
+
+  public async deliverMessage(message: BusMessage): Promise<void> {
+    const subscribers = Array.from(this.subscribers.values()).filter(
+      (sub) => sub.active
+    );
+
+    for (const subscriber of subscribers) {
+      try {
+        await subscriber.handler(message);
+        this.updateSubscriberStats(subscriber.id);
+      } catch (error) {
+        // Log error but don't stop other subscribers
+        console.error(`Error in subscriber '${subscriber.name}':`, error);
+      }
+    }
   }
 }

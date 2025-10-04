@@ -65,7 +65,7 @@ export class MockStateManagerService implements IStateManager {
       throw new Error('Mock error: backup failed');
     }
 
-    const backupId = `backup-${Date.now()}`;
+    const backupId = `backup-${Date.now()}-${this.backups.size + 1}`;
     this.backups.set(backupId, { ...this.state });
     return backupId;
   }

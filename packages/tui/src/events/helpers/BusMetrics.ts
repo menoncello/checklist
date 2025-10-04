@@ -87,6 +87,18 @@ export class BusMetrics {
     return Math.round(healthScore);
   }
 
+  public recordSubscription(_messageType: string): void {
+    // Track subscription metrics if needed
+  }
+
+  public recordUnsubscription(_messageType: string): void {
+    // Track unsubscription metrics if needed
+  }
+
+  public recordPublication(_messageType: string): void {
+    this.recordMessage();
+  }
+
   public reset(): void {
     this.metrics = {
       totalMessages: 0,

@@ -56,7 +56,8 @@ const excludeDirs = [
   "temp",
   ".cache",
   ".bun",
-  "metronic-react"
+  "metronic-react",
+  "scripts" // Exclude scripts directory from coverage
 ];
 
 // Files to exclude
@@ -67,7 +68,19 @@ const excludeFiles = [
   ".spec.js",
   ".d.ts",
   "vite.config",
-  "webpack.config"
+  "webpack.config",
+  "test-setup",
+  "jest.setup"
+];
+
+// Paths to exclude (specific folders that contain only type definitions)
+const excludePaths = [
+  "src/interfaces/operations.ts",
+  "src/interfaces/schemas.ts",
+  "src/interfaces/paths.ts",
+  "src/interfaces/api.ts",
+  "src/interfaces/dto.ts",
+  "frontend/src/types/" // Exclude types directory
 ];
 
 /**
@@ -98,9 +111,19 @@ function getAllCodeFiles(dir = projectRoot, files = []) {
       // Check if it's a code file and not excluded
       const ext = path.extname(fullPath);
       const isCodeFile = codeExtensions.includes(ext);
-      const isExcluded = excludeFiles.some(excl => fullPath.includes(excl));
+      const isExcludedFile = excludeFiles.some(excl => fullPath.includes(excl));
 
-      if (isCodeFile && !isExcluded) {
+      // Check if the file path is in the excluded paths
+      const isExcludedPath = excludePaths.some(excl => {
+        const normalizedPath = relativePath.replace(/\\/g, "/");
+        const normalizedExcl = excl.replace(/\\/g, "/");
+        return (
+          normalizedPath === normalizedExcl ||
+          (normalizedExcl.endsWith("/") && normalizedPath.startsWith(normalizedExcl))
+        );
+      });
+
+      if (isCodeFile && !isExcludedFile && !isExcludedPath) {
         files.push(fullPath);
       }
     }
@@ -244,62 +267,78 @@ function getCoverageData() {
   console.log("Generating coverage report...");
 
   try {
-    // Run bun test with coverage and filter to just the table, strip ANSI codes
-    const output = execSync("bun test --coverage 2>&1 | grep -A 200 'File.*% Funcs.*% Lines' | sed 's/\\x1b\\[[0-9;]*m//g' || true", {
+    // Check if there are test failures first
+    const testOutput = execSync("bun test --coverage 2>&1 || true", {
       cwd: projectRoot,
       encoding: "utf-8",
-      maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+      maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large output
       shell: true
     });
 
-    const lines = output.split("\n");
+    // Check if tests passed by looking for successful completion
+    const testLines = testOutput.split('\n');
+    let hasValidCoverage = false;
+    let testFailed = false;
+    let coverageDataFound = false;
+
+    for (const line of testLines) {
+      if (line.includes('fail') && line.includes('test')) {
+        testFailed = true;
+      }
+      if (line.includes('Ran') && line.includes('tests') && line.includes('fail')) {
+        const failMatch = line.match(/(\d+) fail/);
+        if (failMatch && parseInt(failMatch[1]) > 0) {
+          testFailed = true;
+        }
+      }
+      if (line.includes('|') && line.includes('%') && line.includes('packages/')) {
+        coverageDataFound = true;
+      }
+    }
+
+    if (testFailed) {
+      console.log("⚠️  Warning: Tests are failing. Coverage data may be incomplete or inaccurate.");
+      console.log("   Consider fixing failing tests first for accurate coverage analysis.\n");
+    }
+
     const result = {};
-    let inCoverageTable = false;
-    let tableStarted = false;
 
-    for (const line of lines) {
-      // Check for coverage table start
-      if (line.includes("File") && line.includes("% Funcs") && line.includes("% Lines")) {
-        inCoverageTable = true;
-        tableStarted = false;
-        continue;
-      }
-
-      // Check for separator line after header
-      if (inCoverageTable && !tableStarted && line.includes("---")) {
-        tableStarted = true;
-        continue;
-      }
-
-      // Check for coverage table end (empty line or line without pipe)
-      if (tableStarted && (!line.includes("|") || line.trim() === "")) {
-        inCoverageTable = false;
-        break;
-      }
-
-      // Parse coverage data
-      if (inCoverageTable && tableStarted && line.includes("|")) {
+    for (const line of testLines) {
+      // Check for coverage line with pipes and percentages, looking for specific pattern
+      if (line.includes("|") && line.includes("%") && line.trim().startsWith("packages/")) {
+        // Split by | and trim each part
         const parts = line.split("|").map(p => p.trim());
-        if (parts.length >= 3 && parts[0] && parts[0] !== "All files") {
-          const filePath = parts[0];
+
+        // Expected format: "packages/tui/src/file.ts | 75.00 | 100.00 | uncovered-lines"
+        if (parts.length >= 3 && parts[0] && parts[0].startsWith("packages/")) {
+          const filePath = parts[0].trim();
+
+          // Parse function coverage (first percentage)
           const funcCoverage = parseFloat(parts[1]) || 0;
+
+          // Parse line coverage (second percentage)
           const lineCoverage = parseFloat(parts[2]) || 0;
 
-          // Get uncovered lines from the last column
-          const uncoveredLines = parts[3] || "";
-          const uncoveredCount = uncoveredLines ? uncoveredLines.split(",").length : 0;
+          // Get uncovered lines from the last column (if present)
+          const uncoveredLines = (parts[3] || "").trim();
+          const uncoveredCount = uncoveredLines ? uncoveredLines.split(",").filter(n => n.trim()).length : 0;
 
-          // Estimate total lines from coverage percentage
+          // Get actual line count for the file
+          const fullPath = path.resolve(projectRoot, filePath);
           let totalLines = 0;
-          if (lineCoverage > 0 && uncoveredCount > 0) {
-            totalLines = Math.round(uncoveredCount / ((100 - lineCoverage) / 100));
-          } else if (lineCoverage === 100) {
-            // For fully covered files, use actual line count
-            totalLines = countLines(path.resolve(projectRoot, filePath));
-          } else if (lineCoverage === 0 && uncoveredCount > 0) {
-            totalLines = uncoveredCount;
+
+          if (fs.existsSync(fullPath)) {
+            totalLines = countLines(fullPath);
+          } else {
+            // Fallback: if coverage shows data but file doesn't exist, estimate from coverage
+            if (lineCoverage > 0 && uncoveredCount > 0) {
+              totalLines = Math.round(uncoveredCount / ((100 - lineCoverage) / 100));
+            } else {
+              totalLines = Math.max(uncoveredCount, 50); // reasonable default
+            }
           }
 
+          // Calculate covered lines based on actual line count and percentage
           const coveredLines = Math.round(totalLines * (lineCoverage / 100));
 
           result[filePath] = {
@@ -307,17 +346,40 @@ function getCoverageData() {
             covered: coveredLines,
             uncovered: totalLines - coveredLines,
             percentage: lineCoverage,
-            funcPercentage: funcCoverage
+            funcPercentage: funcCoverage,
+            uncoveredLines: uncoveredLines
           };
+          hasValidCoverage = true;
         }
       }
     }
 
-    console.log(`Parsed coverage data for ${Object.keys(result).length} files from test output\n`);
+    if (Object.keys(result).length > 0) {
+      console.log(`✅ Successfully parsed coverage data for ${Object.keys(result).length} files`);
+      if (testFailed) {
+        console.log("   Note: Some coverage data was found despite test failures.\n");
+      } else {
+        console.log("\n");
+      }
+    } else if (coverageDataFound) {
+      console.log("⚠️  Coverage data was found in output but could not be parsed correctly.");
+      console.log("   This might indicate a format change in Bun's coverage output.\n");
+    } else if (testFailed) {
+      console.log("❌ No coverage data available due to test failures.");
+      console.log("   All files will be shown as having 0% coverage.\n");
+    } else {
+      console.log("❌ No coverage data found in test output.");
+      console.log("   This could indicate:\n");
+      console.log("   - No tests were run\n");
+      console.log("   - Coverage output format has changed\n");
+      console.log("   - Tests completed but didn't generate coverage\n");
+      console.log("\n");
+    }
+
     return result;
   } catch (e) {
-    console.log("Note: Could not generate full coverage report. Showing all files as uncovered.");
-    console.error("Error:", e.message);
+    console.log("❌ Error generating coverage report: " + e.message);
+    console.log("   All files will be shown as having 0% coverage.\n");
     return {};
   }
 }

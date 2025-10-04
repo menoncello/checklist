@@ -30,7 +30,8 @@ export type {
   PerformanceThreshold,
   PerformanceBenchmark,
   PerformanceAlert,
-} from './PerformanceMonitor';
+  SystemSnapshot,
+} from './types';
 
 export type { StartupPhase, StartupReport } from './StartupProfiler';
 

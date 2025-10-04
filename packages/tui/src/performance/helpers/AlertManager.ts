@@ -1,20 +1,20 @@
 import { PerformanceMetric } from './MetricsTracker';
 
-export class PerformanceThreshold {
-  metric!: string;
-  warningValue!: number;
-  criticalValue!: number;
-  direction!: 'above' | 'below';
+export interface PerformanceThreshold {
+  metric: string;
+  warningValue: number;
+  criticalValue: number;
+  direction: 'above' | 'below';
 }
 
-export class PerformanceAlert {
-  id!: string;
-  timestamp!: number;
-  metric!: string;
-  value!: number;
-  threshold!: PerformanceThreshold | number;
-  level!: 'warning' | 'critical';
-  message!: string;
+export interface PerformanceAlert {
+  id: string;
+  timestamp: number;
+  metric: string;
+  value: number;
+  threshold: PerformanceThreshold | number;
+  level: 'warning' | 'critical';
+  message: string;
 }
 
 export class AlertManager {
@@ -146,6 +146,10 @@ export class AlertManager {
     if (this.alerts.length > this.bufferSize) {
       this.alerts = this.alerts.slice(-this.bufferSize);
     }
+  }
+
+  public addAlert(alert: PerformanceAlert): void {
+    this.recordAlert(alert);
   }
 
   public clear(): void {

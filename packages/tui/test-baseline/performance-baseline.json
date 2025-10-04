@@ -1,0 +1,20 @@
+{
+  "timestamp": 1759339130958,
+  "commit": "baseline-commit",
+  "operations": [
+    {
+      "name": "startup",
+      "duration": 40,
+      "memory": 24
+    },
+    {
+      "name": "render",
+      "duration": 30,
+      "memory": 28
+    }
+  ],
+  "summary": {
+    "averageLatency": 35,
+    "maxMemory": 28
+  }
+}

@@ -1,12 +1,12 @@
 import { createDefaultFallbacks } from './DefaultFallbacks';
-import type {
-  FallbackOptions,
-  RenderFallback,
-  CompatibilityReport,
+import {
+  type FallbackOptions,
+  type RenderFallback,
+  type CompatibilityReport,
 } from './FallbackTypes';
 import { FallbackUtils } from './FallbackUtils';
 
-export type { FallbackOptions, RenderFallback, CompatibilityReport };
+export { type FallbackOptions, type RenderFallback, type CompatibilityReport };
 
 export class FallbackRenderer {
   private fallbacks: RenderFallback[] = [];
@@ -29,24 +29,8 @@ export class FallbackRenderer {
   private setupDefaultFallbacks(): void {
     const defaultFallbacks = createDefaultFallbacks();
 
-    // Keep all capability-based fallbacks, but filter option-based ones
-    const filteredFallbacks = defaultFallbacks.map((fallback) => {
-      // For limitDimensions, modify condition based on options
-      if (fallback.name === 'limitDimensions') {
-        const shouldApply =
-          this.options.maxWidth < Infinity || this.options.maxHeight < Infinity;
-
-        return {
-          ...fallback,
-          condition: () => shouldApply,
-        };
-      }
-
-      // All other fallbacks keep their original conditions
-      return fallback;
-    });
-
-    this.fallbacks = filteredFallbacks;
+    // Add all default fallbacks - their conditions will determine when they apply
+    this.fallbacks = [...defaultFallbacks];
   }
 
   public addFallback(fallback: RenderFallback): void {
@@ -63,82 +47,24 @@ export class FallbackRenderer {
     return false;
   }
 
-  public render(content: string, capabilitiesOrMode: unknown): string {
-    // Support both capabilities object and mode string
-    if (typeof capabilitiesOrMode === 'string') {
-      return this.renderWithMode(content, capabilitiesOrMode);
-    }
-
+  public render(content: string, capabilities: unknown): string {
     let result = content;
     const applicableFallbacks: string[] = [];
 
     // Apply fallbacks in priority order
     for (const fallback of this.fallbacks) {
-      if (fallback.condition(capabilitiesOrMode)) {
-        result = fallback.transform(result, this.options);
-        applicableFallbacks.push(fallback.name);
+      try {
+        if (fallback.condition(capabilities)) {
+          result = fallback.transform(result, this.options);
+          applicableFallbacks.push(fallback.name);
+        }
+      } catch (error) {
+        // Skip this fallback if it throws an error
+        console.warn(`Fallback '${fallback.name}' failed:`, error);
       }
     }
 
     return result;
-  }
-
-  private renderWithMode(content: string, mode: string): string {
-    const modeOptions = this.getModeOptions(mode);
-    const tempOptions = this.options;
-    this.options = { ...this.options, ...modeOptions };
-    this.setupDefaultFallbacks();
-
-    const result = this.render(content, this.createCapabilitiesForMode(mode));
-
-    this.options = tempOptions;
-    this.setupDefaultFallbacks();
-    return result;
-  }
-
-  private getModeOptions(mode: string): Partial<FallbackOptions> {
-    switch (mode) {
-      case 'ascii':
-        return {
-          useAsciiOnly: true,
-          simplifyBoxDrawing: true,
-          stripColors: false,
-        };
-      case 'monochrome':
-        return {
-          useAsciiOnly: false,
-          stripColors: true,
-        };
-      case 'minimal':
-        return {
-          useAsciiOnly: true,
-          stripColors: true,
-          simplifyBoxDrawing: true,
-        };
-      case 'unicode':
-        return {
-          useAsciiOnly: false,
-          stripColors: false,
-          simplifyBoxDrawing: false,
-        };
-      default:
-        return {};
-    }
-  }
-
-  private createCapabilitiesForMode(mode: string): unknown {
-    switch (mode) {
-      case 'ascii':
-        return { unicode: false, color: true };
-      case 'monochrome':
-        return { unicode: true, color: false };
-      case 'minimal':
-        return { unicode: false, color: false };
-      case 'unicode':
-        return { unicode: true, color: true };
-      default:
-        return { unicode: true, color: true };
-    }
   }
 
   public updateOptions(newOptions: Partial<FallbackOptions>): void {
@@ -164,7 +90,23 @@ export class FallbackRenderer {
 
     const capsObj = capabilities as Record<string, unknown> | null | undefined;
 
-    // Check for compatibility issues
+    if (!capsObj) {
+      report.issues.push('No terminal capabilities provided');
+      report.recommendations.push('Provide terminal capability information');
+      report.compatible = false;
+      return report;
+    }
+
+    this.checkCapabilitySupport(capsObj, report);
+    this.checkApplicableFallbacks(capabilities, report);
+
+    return report;
+  }
+
+  private checkCapabilitySupport(
+    capsObj: Record<string, unknown>,
+    report: CompatibilityReport
+  ): void {
     if (!FallbackUtils.hasColorSupport(capsObj)) {
       report.issues.push('Limited or no color support detected');
       report.recommendations.push('Consider enabling stripColors option');
@@ -180,15 +122,25 @@ export class FallbackRenderer {
       report.recommendations.push('Consider enabling simplifyLayout option');
       report.compatible = false;
     }
+  }
 
-    // Check which fallbacks would be applied
+  private checkApplicableFallbacks(
+    capabilities: unknown,
+    report: CompatibilityReport
+  ): void {
     for (const fallback of this.fallbacks) {
-      if (fallback.condition(capabilities)) {
-        report.fallbacksUsed.push(fallback.name);
+      try {
+        if (fallback.condition(capabilities)) {
+          // Special handling for limitDimensions - only count if dimensions are finite
+          this.addFallbackToReport(fallback, report);
+        }
+      } catch (error) {
+        console.warn(
+          `Fallback '${fallback.name}' condition check failed:`,
+          error
+        );
       }
     }
-
-    return report;
   }
 
   public testRender(
@@ -219,6 +171,107 @@ export class FallbackRenderer {
     };
   }
 
+  public getCompatibilityWarnings(capabilities: unknown): string[] {
+    const report = this.checkCompatibility(capabilities);
+    const warnings: string[] = [];
+
+    this.addCapabilityWarnings(capabilities, warnings);
+    this.addReportWarnings(report, warnings);
+
+    return warnings;
+  }
+
+  private addFallbackToReport(
+    fallback: { name: string },
+    report: { fallbacksUsed: string[] }
+  ): void {
+    if (fallback.name === 'limitDimensions') {
+      if (isFinite(this.options.maxWidth) || isFinite(this.options.maxHeight)) {
+        report.fallbacksUsed.push(fallback.name);
+      }
+    } else {
+      report.fallbacksUsed.push(fallback.name);
+    }
+  }
+
+  private addCapabilityWarnings(
+    capabilities: unknown,
+    warnings: string[]
+  ): void {
+    const caps = capabilities as Record<string, unknown> | null | undefined;
+    if (!caps) return;
+
+    this.addColorWarning(caps, warnings);
+    this.addUnicodeWarning(caps, warnings);
+    this.addMouseWarning(caps, warnings);
+    this.addScreenWarning(caps, warnings);
+    this.addCursorWarning(caps, warnings);
+  }
+
+  private addColorWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.color === false) {
+      warnings.push('⚠ Limited color support detected');
+      warnings.push('Display will be in monochrome mode');
+    }
+  }
+
+  private addUnicodeWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.unicode === false) {
+      warnings.push('⚠ Limited Unicode support detected');
+      warnings.push('Box drawing characters may not display correctly');
+    }
+  }
+
+  private addMouseWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.mouse === false) {
+      warnings.push('⚠ Mouse input unavailable');
+      warnings.push('Use keyboard navigation instead');
+    }
+  }
+
+  private addScreenWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.altScreen === false) {
+      warnings.push('○ Alternate screen mode not available');
+    }
+  }
+
+  private addCursorWarning(
+    caps: Record<string, unknown>,
+    warnings: string[]
+  ): void {
+    if (caps.cursorShape === false) {
+      warnings.push('○ Cursor shape control not available');
+    }
+  }
+
+  private addReportWarnings(
+    report: {
+      issues: string[];
+      recommendations: string[];
+      fallbacksUsed: string[];
+    },
+    warnings: string[]
+  ): void {
+    warnings.push(...report.issues);
+    warnings.push(...report.recommendations);
+
+    if (report.fallbacksUsed.length > 0) {
+      warnings.push(`Using fallbacks: ${report.fallbacksUsed.join(', ')}`);
+    }
+  }
+
   public static createMinimalRenderer(): FallbackRenderer {
     return new FallbackRenderer({
       useAsciiOnly: true,
@@ -239,54 +292,5 @@ export class FallbackRenderer {
       simplifyBoxDrawing: false,
       preserveLayout: true,
     });
-  }
-
-  public getCompatibilityWarnings(capabilities: unknown): string[] {
-    const warnings: string[] = [];
-    const capsObj = capabilities as Record<string, unknown> | null | undefined;
-
-    this.addCapabilityWarnings(warnings, capsObj);
-    this.addFeatureWarnings(warnings, capsObj);
-
-    return warnings;
-  }
-
-  private addCapabilityWarnings(
-    warnings: string[],
-    capsObj: Record<string, unknown> | null | undefined
-  ): void {
-    if (!FallbackUtils.hasColorSupport(capsObj)) {
-      warnings.push(
-        '⚠️  Limited color support: Interface may appear in monochrome'
-      );
-    }
-    if (!FallbackUtils.hasUnicodeSupport(capsObj)) {
-      warnings.push(
-        '⚠️  Limited Unicode support: Box drawing characters will be simplified'
-      );
-    }
-    if (FallbackUtils.isMinimalTerminal(capsObj)) {
-      warnings.push(
-        '⚠️  Critical: Terminal has minimal capabilities - degraded experience'
-      );
-    }
-  }
-
-  private addFeatureWarnings(
-    warnings: string[],
-    capsObj: Record<string, unknown> | null | undefined
-  ): void {
-    const capRecord = capsObj as Record<string, unknown> | null;
-    if (capRecord?.mouse === false) {
-      warnings.push('⚠️  Mouse input unavailable: Use keyboard navigation');
-    }
-    if (capRecord?.altScreen === false) {
-      warnings.push(
-        '⚠️  Alternate screen buffer unavailable: May affect display'
-      );
-    }
-    if (capRecord?.cursorShape === false) {
-      warnings.push('⚠️  Cursor shape control unavailable');
-    }
   }
 }

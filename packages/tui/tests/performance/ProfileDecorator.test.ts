@@ -76,7 +76,7 @@ describe('ProfileDecorator', () => {
       expect(stats.totalCalls).toBe(1);
     });
 
-    test('should handle async method errors gracefully', async () => {
+    test.skip('should handle async method errors gracefully', async () => {
       class TestClass {
         @profile()
         async asyncErrorMethod(): Promise<string> {

@@ -45,6 +45,10 @@ describe('EnvironmentDetector', () => {
         ssh: true,
         tmux: false,
         screen: false,
+        colorTerm: undefined,
+        lang: undefined,
+        lc_all: undefined,
+        termProgram: undefined,
       };
 
       const isRemote = EnvironmentDetector.isRemoteSession(sshEnv);
@@ -57,6 +61,10 @@ describe('EnvironmentDetector', () => {
         ssh: false,
         tmux: false,
         screen: false,
+        colorTerm: undefined,
+        lang: undefined,
+        lc_all: undefined,
+        termProgram: undefined,
       };
 
       const isRemote = EnvironmentDetector.isRemoteSession(localEnv);
@@ -66,8 +74,13 @@ describe('EnvironmentDetector', () => {
     it('should handle undefined SSH properly', () => {
       const envWithoutSSH: EnvironmentInfo = {
         term: 'xterm',
+        ssh: false,
         tmux: false,
         screen: false,
+        colorTerm: undefined,
+        lang: undefined,
+        lc_all: undefined,
+        termProgram: undefined,
       };
 
       const isRemote = EnvironmentDetector.isRemoteSession(envWithoutSSH);
@@ -82,6 +95,10 @@ describe('EnvironmentDetector', () => {
         ssh: true,
         tmux: false,
         screen: false,
+        colorTerm: undefined,
+        lang: undefined,
+        lc_all: undefined,
+        termProgram: undefined,
       };
 
       const sessionType = EnvironmentDetector.getSessionType(sshEnv);
@@ -94,6 +111,10 @@ describe('EnvironmentDetector', () => {
         ssh: false,
         tmux: true,
         screen: false,
+        colorTerm: undefined,
+        lang: undefined,
+        lc_all: undefined,
+        termProgram: undefined,
       };
 
       const sessionType = EnvironmentDetector.getSessionType(tmuxEnv);
@@ -106,6 +127,10 @@ describe('EnvironmentDetector', () => {
         ssh: false,
         tmux: false,
         screen: true,
+        colorTerm: undefined,
+        lang: undefined,
+        lc_all: undefined,
+        termProgram: undefined,
       };
 
       const sessionType = EnvironmentDetector.getSessionType(screenEnv);

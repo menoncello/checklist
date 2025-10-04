@@ -14,33 +14,27 @@ export class ErrorBoundaryMetricsCollector {
   collectMetrics(state: ErrorState, _maxRetries: number): ErrorBoundaryMetrics {
     const history = this.historyManager.getHistory();
     const totalErrors = history.length;
-    const retryAttempts = state.retryCount;
+    const _retryAttempts = state.retryCount;
     const successfulRecoveries = history.filter((e) => e.recovered).length;
     const failedRecoveries = totalErrors - successfulRecoveries;
 
     // Calculate average retry time
-    let averageRetryTime = 0;
+    let _averageRetryTime = 0;
     if (history.length > 1) {
-      const times = history.map((e) => e.timestamp);
+      const times = history.map((e) => Number(e.timestamp) || 0);
       const deltas = [];
       for (let i = 1; i < times.length; i++) {
         deltas.push(times[i] - times[i - 1]);
       }
       if (deltas.length > 0) {
-        averageRetryTime = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+        _averageRetryTime = deltas.reduce((a, b) => a + b, 0) / deltas.length;
       }
     }
 
     return {
       totalErrors,
-      retryAttempts,
-      successfulRecoveries,
-      failedRecoveries,
-      averageRetryTime,
-      currentRetryCount: state.retryCount,
-      hasActiveError: state.hasError,
-      errorFrequency: this.historyManager.getErrorFrequency(),
-      maxRetries: state.maxRetries,
+      recoveries: successfulRecoveries,
+      failures: failedRecoveries,
     };
   }
 

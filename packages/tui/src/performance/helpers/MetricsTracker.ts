@@ -1,13 +1,13 @@
-export class PerformanceMetric {
-  id!: string;
-  name!: string;
-  value!: number;
-  timestamp!: number;
+export interface PerformanceMetric {
+  id: string;
+  name: string;
+  value: number;
+  timestamp: number;
   tags?: Record<string, string>;
   metadata?: Record<string, unknown>;
 }
 
-export class MetricFilter {
+export interface MetricFilter {
   name?: string;
   tags?: Record<string, string>;
   startTime?: number;
@@ -148,5 +148,19 @@ export class MetricsTracker {
 
   public count(): number {
     return this.metrics.length;
+  }
+
+  public getMarks(): Map<string, number> {
+    return this.marks;
+  }
+
+  public startAutoSampling(): void {
+    // Placeholder for starting auto-sampling if implemented
+    // Currently auto-sampling is handled by the PerformanceMonitor
+  }
+
+  public stopAutoSampling(): void {
+    // Placeholder for stopping auto-sampling if implemented
+    // Currently auto-sampling is handled by the PerformanceMonitor
   }
 }

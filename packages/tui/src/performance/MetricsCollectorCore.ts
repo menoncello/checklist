@@ -1,6 +1,5 @@
 import { CollectionManager } from './CollectionManager';
 import { MetricsAggregationProcessor } from './MetricsAggregationProcessor';
-import { MetricsAlertManager } from './MetricsAlertManager';
 import { MetricsBufferManager } from './MetricsBufferManager';
 import { MetricsCleanupManager } from './MetricsCleanupManager';
 import { MetricsEventManager } from './MetricsEventManager';
@@ -12,6 +11,7 @@ import type {
   RecordOptions,
 } from './MetricsTypes';
 import { SeriesManager } from './SeriesManager';
+import { AlertManager as MetricsAlertManager } from './metrics/AlertManager';
 
 export class MetricsCollectorCore {
   protected config!: MetricsCollectorConfig;
@@ -56,7 +56,7 @@ export class MetricsCollectorCore {
   private initializeManagers(): void {
     this.eventManager = new MetricsEventManager();
     this.bufferManager = new MetricsBufferManager(this.config, () => {});
-    this.alertManager = new MetricsAlertManager(this.config, () => {});
+    this.alertManager = new MetricsAlertManager(100);
     this.aggregationProcessor = new MetricsAggregationProcessor(
       this.config,
       () => {}
@@ -123,7 +123,7 @@ export class MetricsCollectorCore {
   protected processPoint(name: string, point: MetricPoint): void {
     this.totalPointsCollected++;
 
-    this.alertManager.checkAlerts(name, point);
+    this.alertManager.checkAlerts(point);
 
     if (this.bufferManager.shouldFlush(name) === true) {
       this.bufferManager.flushBuffer();
@@ -142,8 +142,8 @@ export class MetricsCollectorCore {
     const _cleanedPoints = this.cleanupManager.performCleanup(
       this.bufferManager.getSeries()
     );
-    const cutoff = this.cleanupManager.getCutoffTime();
-    this.alertManager.cleanupOldAlerts(cutoff);
+    const _cutoff = this.cleanupManager.getCutoffTime();
+    // this.alertManager.cleanupOldAlerts(cutoff); // Method not available, cleanup handled automatically
   }
 
   public addAlertRule(rule: MetricAlert): void {
@@ -210,6 +210,11 @@ export class MetricsCollectorCore {
   }
 
   public getAlerts(): MetricAlert[] {
-    return this.alertManager.getAlerts() as MetricAlert[];
+    const alerts = this.alertManager.getAlerts();
+    return alerts.map((alert) => ({
+      ...alert,
+      metricName: alert.metric || '',
+      resolved: false, // Default to false since MetricAlert doesn't have resolved property
+    })) as MetricAlert[];
   }
 }
