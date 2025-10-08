@@ -10,12 +10,17 @@
     "test": {
       "dependsOn": ["build"],
       "outputs": ["../../coverage/packages/shared/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts"]
+      "inputs": ["src/**/*.ts", "tests/**/*.ts"]
     },
     "test:unit": {
       "dependsOn": ["build"],
       "outputs": ["../../coverage/packages/shared/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.test.ts"]
+      "inputs": ["src/**/*.ts", "tests/**/*.test.ts"]
+    },
+    "test:coverage": {
+      "dependsOn": ["build"],
+      "outputs": ["../../coverage/packages/shared/**"],
+      "inputs": ["src/**/*.ts", "tests/**/*.ts"]
     },
     "dev": {
       "cache": false,
