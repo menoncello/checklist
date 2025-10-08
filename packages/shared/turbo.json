@@ -1,0 +1,40 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["../../dist/packages/shared/**"],
+      "inputs": ["src/**/*.ts", "package.json"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["../../coverage/packages/shared/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "test:unit": {
+      "dependsOn": ["build"],
+      "outputs": ["../../coverage/packages/shared/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.test.ts"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "package.json"]
+    },
+    "lint:fix": {
+      "cache": false,
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "package.json"]
+    }
+  }
+}
