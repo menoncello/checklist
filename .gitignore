@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-bun.lockb
+# bun.lockb - lockfile should be committed for reproducible builds
 
 # Bun cache
 .bun/
