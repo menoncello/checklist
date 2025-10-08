@@ -71,7 +71,7 @@ jobs:
             ${{ runner.os }}-bun-
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile --ignore-optional
+        run: bun install --ignore-optional
         continue-on-error: ${{ matrix.platform == 'win32' }}
       
       - name: Build TypeScript

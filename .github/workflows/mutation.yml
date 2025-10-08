@@ -33,7 +33,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
       
       # Cache for faster builds
       - name: Cache Stryker Temp Files

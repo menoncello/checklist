@@ -38,7 +38,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Setup Turborepo Cache
         if: env.TURBO_TOKEN != ''
@@ -125,7 +125,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile --ignore-optional
+        run: bun install --ignore-optional
         continue-on-error: ${{ matrix.os == 'windows-latest' }}
       
       - name: Build Packages
@@ -211,7 +211,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
       
       - name: Run Benchmarks
         run: bun run bench
