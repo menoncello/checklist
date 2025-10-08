@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach} from 'bun:test';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { MigrationRunner } from '../../../src/state/migrations/MigrationRunner';
-import { MigrationRegistry } from '../../../src/state/migrations/MigrationRegistry';
-import { Migration } from '../../../src/state/migrations/types';
-
+import { MigrationRunner} from '../../../src/state/migrations/MigrationRunner';
+import { MigrationRegistry} from '../../../src/state/migrations/MigrationRegistry';
+import { Migration} from '../../../src/state/migrations/types';
 describe('MigrationRunner', () => {
   let runner: MigrationRunner;
   let registry: MigrationRegistry;
@@ -105,13 +104,16 @@ describe('MigrationRunner', () => {
     const { rm } = await import('fs/promises');
     try {
       await rm(testDir, { recursive: true, force: true });
-    } catch {}
+    } catch {
+      // Ignore cleanup errors
+    }
   });
 
   describe('migrate', () => {
-    it('should migrate from 0.0.0 to 1.0.0', async () => {
+    test('should migrate from 0.0.0 to 1.0.0', async () => {
       const initialState = {
         version: '0.0.0',
+        schemaVersion: '0.0.0', // CRITICAL: Add schemaVersion
         checklists: []
       };
       await Bun.write(statePath, yaml.dump(initialState));
@@ -136,7 +138,7 @@ describe('MigrationRunner', () => {
       expect(state.conflicts).toEqual([]);
     });
 
-    it('should skip migration if already at target version', async () => {
+    test('should skip migration if already at target version', async () => {
       const state = {
         version: '1.0.0',
         schemaVersion: '1.0.0'
@@ -149,9 +151,10 @@ describe('MigrationRunner', () => {
       expect(result.appliedMigrations).toHaveLength(0);
     });
 
-    it('should handle dry run without applying changes', async () => {
+    test('should handle dry run without applying changes', async () => {
       const initialState = {
         version: '0.0.0',
+        schemaVersion: '0.0.0', // CRITICAL: Add schemaVersion
         checklists: []
       };
       await Bun.write(statePath, yaml.dump(initialState));
@@ -168,9 +171,10 @@ describe('MigrationRunner', () => {
       expect(state.version).toBe('0.0.0');
     });
 
-    it('should create backup before migration', async () => {
+    test('should create backup before migration', async () => {
       const initialState = {
         version: '0.0.0',
+        schemaVersion: '0.0.0', // CRITICAL: Add schemaVersion
         checklists: []
       };
       await Bun.write(statePath, yaml.dump(initialState));
@@ -184,14 +188,14 @@ describe('MigrationRunner', () => {
         const backupFile = Bun.file(result.backupPath);
         const exists = await backupFile.exists();
         expect(exists).toBe(true);
-        
+
         const content = await backupFile.text();
         const backupState = yaml.load(content) as any;
         expect(backupState.version).toBe('0.0.0');
       }
     });
 
-    it('should rollback on migration failure', async () => {
+    test('should rollback on migration failure', async () => {
       const failingMigration: Migration = {
         fromVersion: '1.0.0',
         toVersion: '2.1.0',
@@ -223,7 +227,7 @@ describe('MigrationRunner', () => {
       expect(state.important).toBe('data');
     });
 
-    it('should validate migration if validator provided', async () => {
+    test('should validate migration if validator provided', async () => {
       const invalidMigration: Migration = {
         fromVersion: '1.0.0',
         toVersion: '2.2.0',
@@ -246,9 +250,10 @@ describe('MigrationRunner', () => {
       expect(result.error?.message).toContain('validation failed');
     });
 
-    it('should emit progress events', async () => {
+    test('should emit progress events', async () => {
       const initialState = {
         version: '0.0.0',
+        schemaVersion: '0.0.0', // CRITICAL: Add schemaVersion
         checklists: []
       };
       await Bun.write(statePath, yaml.dump(initialState));
@@ -266,7 +271,7 @@ describe('MigrationRunner', () => {
       expect(progressEvents[2].percentage).toBe(33);
     });
 
-    it('should handle non-existent state file', async () => {
+    test('should handle non-existent state file', async () => {
       const nonExistentPath = path.join(testDir, 'non-existent.yaml');
       
       const result = await runner.migrate(nonExistentPath, '1.0.0');
@@ -276,9 +281,10 @@ describe('MigrationRunner', () => {
       expect(result.toVersion).toBe('1.0.0');
     });
 
-    it('should track migration history', async () => {
+    test('should track migration history', async () => {
       const initialState = {
         version: '0.0.0',
+        schemaVersion: '0.0.0', // CRITICAL: Add schemaVersion
         checklists: []
       };
       await Bun.write(statePath, yaml.dump(initialState));
@@ -298,7 +304,7 @@ describe('MigrationRunner', () => {
   });
 
   describe('createBackup', () => {
-    it('should create backup file with timestamp', async () => {
+    test('should create backup file with timestamp', async () => {
       const state = { version: '1.0.0', data: 'test' };
       await Bun.write(statePath, yaml.dump(state));
 
@@ -312,7 +318,7 @@ describe('MigrationRunner', () => {
       expect(exists).toBe(true);
     });
 
-    it('should rotate old backups', async () => {
+    test('should rotate old backups', async () => {
       runner.setMaxBackups(3);
 
       const state = { version: '1.0.0', data: 'test' };
@@ -331,7 +337,7 @@ describe('MigrationRunner', () => {
   });
 
   describe('listBackups', () => {
-    it('should list all backup files', async () => {
+    test('should list all backup files', async () => {
       const state = { version: '1.0.0', data: 'test' };
       await Bun.write(statePath, yaml.dump(state));
 
@@ -347,7 +353,7 @@ describe('MigrationRunner', () => {
       expect(backups[0].size).toBeGreaterThan(0);
     });
 
-    it('should sort backups by timestamp descending', async () => {
+    test('should sort backups by timestamp descending', async () => {
       const state = { version: '1.0.0', data: 'test' };
       await Bun.write(statePath, yaml.dump(state));
 
@@ -363,7 +369,7 @@ describe('MigrationRunner', () => {
   });
 
   describe('rollback', () => {
-    it('should restore state from backup', async () => {
+    test('should restore state from backup', async () => {
       const originalState = { version: '1.0.0', original: true };
       await Bun.write(statePath, yaml.dump(originalState));
       
@@ -382,7 +388,7 @@ describe('MigrationRunner', () => {
       expect(state.original).toBe(true);
     });
 
-    it('should emit rollback events', async () => {
+    test('should emit rollback events', async () => {
       const state = { version: '1.0.0' };
       await Bun.write(statePath, yaml.dump(state));
       
@@ -401,3 +407,4 @@ describe('MigrationRunner', () => {
     });
   });
 });
+

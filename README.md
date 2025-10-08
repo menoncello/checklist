@@ -1,15 +1,16 @@
 # Checklist - Interactive Task Management System
 
-A high-performance, terminal-based interactive checklist application built with Bun and TypeScript.
+A high-performance, terminal-based interactive checklist application built with Bun, TypeScript, and Turborepo.
 
 ## Features
 
-- 🚀 **Blazing Fast**: Built with Bun runtime for optimal performance
+- 🚀 **Blazing Fast**: Built with Bun runtime and Turborepo for optimal performance
 - 📝 **Interactive TUI**: Rich terminal interface with keyboard navigation
 - 🔄 **State Management**: YAML-based state persistence with automatic saves
 - 📦 **Modular Architecture**: Clean separation between core, TUI, and CLI layers
 - 🧪 **Well-Tested**: Comprehensive test coverage (>80%) with Bun's native test runner
 - 🎨 **Customizable**: Template-based checklist system
+- ⚡ **Intelligent Caching**: Turborepo-powered build system with smart caching
 - 📊 **Performance Monitoring**: Built-in performance dashboard with budget tracking
 - 🔒 **Type-Safe**: Full TypeScript with strict mode enabled
 - 📋 **Structured Logging**: Pino-based logging with structured output
@@ -35,8 +36,8 @@ bun install
 # Run initial setup verification
 bun test tests/smoke.test.ts
 
-# Build all packages
-bun run build:all
+# Build all packages (using Turborepo)
+bun run build
 
 # Verify installation
 bun run quality
@@ -86,27 +87,68 @@ checklist/
 
 ## Available Scripts
 
+This project uses **Turborepo** for intelligent caching and parallel task execution.
+
+### Development Commands
 ```bash
-# Development
-bun run dev          # Start development mode
-bun run build        # Build all packages
-bun run clean        # Clean build artifacts
+bun run dev            # Start development mode (CLI package)
+bun run dev:all        # Start all development servers
+bun run build          # Build all packages (Turborepo)
+bun run clean          # Clean build artifacts
+```
 
-# Quality
-bun run lint         # Run ESLint
-bun run lint:fix     # Fix linting issues
-bun run format       # Format with Prettier
-bun run type-check   # TypeScript type checking
+### Quality Commands
+```bash
+bun run lint           # Run ESLint (Turborepo)
+bun run lint:fix       # Fix linting issues
+bun run format         # Format with Prettier (Turborepo)
+bun run format:check   # Check formatting
+bun run typecheck      # TypeScript type checking (Turborepo)
+bun run quality        # Run all quality checks (lint + format + typecheck)
+```
 
-# Testing
-bun test            # Run all tests
-bun test:watch      # Watch mode
-bun test:coverage   # Generate coverage report
-bun test:smoke      # Run smoke tests only
+### Testing Commands
+```bash
+bun test               # Run all tests (Turborepo)
+bun run test:unit      # Run unit tests only
+bun run test:integration # Run integration tests
+bun run test:coverage  # Generate coverage report (Turborepo)
+bun run test:watch     # Watch mode
+bun run test:mutation  # Run mutation testing
+```
 
-# Performance
-bun run perf        # Run performance benchmarks
-bun run perf:report # Generate performance report
+### Package-Specific Commands
+```bash
+# Build specific packages
+turbo run build --filter=@checklist/core
+turbo run build --filter=@checklist/cli
+turbo run build --filter=@checklist/tui
+
+# Test specific packages
+turbo run test --filter=@checklist/shared
+turbo run test:unit --filter=@checklist/core
+```
+
+### Performance Commands
+```bash
+bun run bench          # Run performance benchmarks
+bun run bench:assert   # Validate performance thresholds
+bun run bench:compare  # Compare benchmark results
+```
+
+### Turborepo Tips
+```bash
+# Clear cache
+rm -rf .turbo
+
+# Force rebuild (ignore cache)
+turbo run build --force
+
+# Check what would run (dry run)
+turbo run build --dry-run
+
+# Verbose output for debugging
+turbo run build --verbosity=2
 ```
 
 ## Architecture

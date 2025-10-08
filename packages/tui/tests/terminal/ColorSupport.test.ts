@@ -1,8 +1,6 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { ColorSupport } from '../../src/terminal/ColorSupport';
-import { ColorFormat, ColorSupportSummary } from '../../src/terminal/ColorSupport';
-import { isCIEnvironment } from '../helpers/CIEnvironmentDetector';
-
+import { describe, test, expect, beforeEach} from 'bun:test';
+import { ColorSupport, ColorFormat, ColorSupportSummary } from '../../src/terminal/ColorSupport';
+import { isCIEnvironment} from '../helpers/CIEnvironmentDetector';
 describe('ColorSupport', () => {
   let colorSupport: ColorSupport;
 
@@ -11,7 +9,7 @@ describe('ColorSupport', () => {
   });
 
   describe('Basic Detection', () => {
-    it('should detect basic color support from environment', () => {
+    test('should detect basic color support from environment', () => {
       // Test with mock environment
       const originalTerm = Bun.env.TERM;
       const originalColorTerm = Bun.env.COLORTERM;
@@ -27,7 +25,7 @@ describe('ColorSupport', () => {
       Bun.env.COLORTERM = originalColorTerm;
     });
 
-    it('should handle NO_COLOR environment variable', () => {
+    test('should handle NO_COLOR environment variable', () => {
       const originalNoColor = Bun.env.NO_COLOR;
       Bun.env.NO_COLOR = '1';
 
@@ -37,7 +35,7 @@ describe('ColorSupport', () => {
       Bun.env.NO_COLOR = originalNoColor;
     });
 
-    it('should handle FORCE_COLOR environment variable', () => {
+    test('should handle FORCE_COLOR environment variable', () => {
       const originalForceColor = Bun.env.FORCE_COLOR;
 
       Bun.env.FORCE_COLOR = '1';
@@ -51,7 +49,7 @@ describe('ColorSupport', () => {
       Bun.env.FORCE_COLOR = originalForceColor;
     });
 
-    it('should detect dumb terminal', () => {
+    test('should detect dumb terminal', () => {
       const originalTerm = Bun.env.TERM;
       const originalForceColor = Bun.env.FORCE_COLOR;
       const originalNoColor = Bun.env.NO_COLOR;
@@ -80,7 +78,7 @@ describe('ColorSupport', () => {
   });
 
   describe('256 Color Detection', () => {
-    it('should detect 256 color from TERM variable', () => {
+    test('should detect 256 color from TERM variable', () => {
       const originalTerm = Bun.env.TERM;
       const originalColorTerm = Bun.env.COLORTERM;
 
@@ -106,7 +104,7 @@ describe('ColorSupport', () => {
       if (originalColorTerm !== undefined) Bun.env.COLORTERM = originalColorTerm;
     });
 
-    it('should detect 256 color from COLORTERM', () => {
+    test('should detect 256 color from COLORTERM', () => {
       const originalColorTerm = Bun.env.COLORTERM;
 
       Bun.env.COLORTERM = '256color';
@@ -118,7 +116,7 @@ describe('ColorSupport', () => {
   });
 
   describe('True Color Detection', () => {
-    it('should detect true color from COLORTERM', () => {
+    test('should detect true color from COLORTERM', () => {
       const originalColorTerm = Bun.env.COLORTERM;
 
       Bun.env.COLORTERM = 'truecolor';
@@ -136,7 +134,7 @@ describe('ColorSupport', () => {
       Bun.env.COLORTERM = originalColorTerm;
     });
 
-    it('should detect true color from TERM_PROGRAM', () => {
+    test('should detect true color from TERM_PROGRAM', () => {
       const originalTermProgram = Bun.env.TERM_PROGRAM;
       const originalColorTerm = Bun.env.COLORTERM;
 
@@ -164,20 +162,20 @@ describe('ColorSupport', () => {
   });
 
   describe('Color Level and Format', () => {
-    it('should return correct color level', () => {
+    test('should return correct color level', () => {
       const level = colorSupport.getColorLevel();
       expect(level).toBeGreaterThanOrEqual(0);
       expect(level).toBeLessThanOrEqual(3);
     });
 
-    it('should get best supported format', () => {
+    test('should get best supported format', () => {
       const format = colorSupport.getBestSupportedFormat();
       const validFormats: ColorFormat[] = ['none', '16color', '256color', 'truecolor'];
 
       expect(validFormats).toContain(format);
     });
 
-    it('should format colors safely', () => {
+    test('should format colors safely', () => {
       // Test with valid RGB values
       const red = colorSupport.formatColor(255, 0, 0);
       const green = colorSupport.formatColor(0, 255, 0);
@@ -192,7 +190,7 @@ describe('ColorSupport', () => {
       expect(typeof redBg).toBe('string');
     });
 
-    it('should handle out of range color values', () => {
+    test('should handle out of range color values', () => {
       // Test with out of range values (should clamp or handle gracefully)
       const invalid1 = colorSupport.formatColor(-1, 300, 128);
       const invalid2 = colorSupport.formatColor(1000, -50, 500);
@@ -203,7 +201,7 @@ describe('ColorSupport', () => {
   });
 
   describe('Color Conversion', () => {
-    it('should convert RGB to 256-color index', () => {
+    test('should convert RGB to 256-color index', () => {
       // Test some known conversions
       const black = colorSupport['rgbTo256'](0, 0, 0); // Access private method for testing
       const white = colorSupport['rgbTo256'](255, 255, 255);
@@ -217,7 +215,7 @@ describe('ColorSupport', () => {
       expect(black).toBeLessThanOrEqual(255);
     });
 
-    it('should convert RGB to 16-color index', () => {
+    test('should convert RGB to 16-color index', () => {
       const black = colorSupport['rgbTo16'](0, 0, 0); // Access private method for testing
       const red = colorSupport['rgbTo16'](255, 0, 0);
       const green = colorSupport['rgbTo16'](0, 255, 0);
@@ -233,13 +231,13 @@ describe('ColorSupport', () => {
   });
 
   describe('Color Test Generation', () => {
-    it('should create color test string', () => {
+    test('should create color test string', () => {
       const test = colorSupport.createColorTest();
       expect(typeof test).toBe('string');
       expect(test.length).toBeGreaterThan(0);
     });
 
-    it('should handle no color support', () => {
+    test('should handle no color support', () => {
       // Set NO_COLOR to force no color support
       const originalNoColor = Bun.env.NO_COLOR;
       const originalTerm = Bun.env.TERM;
@@ -267,7 +265,7 @@ describe('ColorSupport', () => {
   });
 
   describe('Color Support Summary', () => {
-    it('should generate color support summary', () => {
+    test('should generate color support summary', () => {
       const summary = colorSupport.getColorSupportSummary();
 
       expect(summary).toHaveProperty('basic');
@@ -287,7 +285,7 @@ describe('ColorSupport', () => {
   });
 
   describe('Cache Management', () => {
-    it('should clear cache', () => {
+    test('should clear cache', () => {
       // First run a detection to populate cache
       colorSupport.detectBasicColor();
 
@@ -300,7 +298,7 @@ describe('ColorSupport', () => {
   });
 
   describe('Environment Detection', () => {
-    it('should handle CI environments', () => {
+    test('should handle CI environments', () => {
       const originalCi = Bun.env.CI;
 
       Bun.env.CI = 'true';
@@ -316,7 +314,7 @@ describe('ColorSupport', () => {
       expect(normalSupport === null || typeof normalSupport === 'boolean').toBe(true);
     });
 
-    it('should detect specific CI platforms', () => {
+    test('should detect specific CI platforms', () => {
       const originalEnv = { ...Bun.env };
 
       // Test GitHub Actions
@@ -342,7 +340,7 @@ describe('ColorSupport', () => {
   });
 
   describe('Terminal Capabilities Lookup', () => {
-    it('should have terminal capability mappings', () => {
+    test('should have terminal capability mappings', () => {
       const capabilities = colorSupport['getTerminalCapabilities']();
 
       expect(typeof capabilities).toBe('object');
@@ -353,7 +351,7 @@ describe('ColorSupport', () => {
       expect(capabilities).toHaveProperty('kitty');
     });
 
-    it('should have program capability mappings', () => {
+    test('should have program capability mappings', () => {
       const capabilities = colorSupport['getProgramCapabilities']();
 
       expect(typeof capabilities).toBe('object');
@@ -364,7 +362,7 @@ describe('ColorSupport', () => {
       expect(capabilities).toHaveProperty('terminal');
     });
 
-    it('should get color support from capability mapping', () => {
+    test('should get color support from capability mapping', () => {
       const capabilities = colorSupport['getTerminalCapabilities']();
       const xtermCaps = capabilities.xterm;
 

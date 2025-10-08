@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, test, expect, beforeEach} from 'bun:test';
 import { TerminalSizeValidator } from '../../src/terminal/TerminalSizeValidator';
 import type { SizeValidationResult, SizeValidationConfig } from '../../src/terminal/TerminalSizeValidator';
-
 describe('TerminalSizeValidator (Simple Tests)', () => {
   let validator: TerminalSizeValidator;
 
@@ -17,7 +16,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
   });
 
   describe('Configuration', () => {
-    it('should use default configuration', () => {
+    test('should use default configuration', () => {
       const defaultValidator = new TerminalSizeValidator();
       const config = defaultValidator.getConfig();
 
@@ -27,7 +26,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(config.enableAutoResize).toBe(false);
     });
 
-    it('should allow custom configuration', () => {
+    test('should allow custom configuration', () => {
       const customValidator = new TerminalSizeValidator({
         minWidth: 100,
         minHeight: 30,
@@ -40,7 +39,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(config.enableSuggestions).toBe(false);
     });
 
-    it('should update configuration dynamically', () => {
+    test('should update configuration dynamically', () => {
       validator.updateConfig({
         minWidth: 120,
         minHeight: 40,
@@ -55,7 +54,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
   });
 
   describe('Current Size Information', () => {
-    it('should return current terminal size', () => {
+    test('should return current terminal size', () => {
       const size = validator.getCurrentSize();
 
       expect(typeof size.width).toBe('number');
@@ -64,19 +63,19 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(size.height).toBeGreaterThan(0);
     });
 
-    it('should detect interactive terminal', () => {
+    test('should detect interactive terminal', () => {
       const isInteractive = validator.isInteractive();
       expect(typeof isInteractive).toBe('boolean');
     });
   });
 
   describe('Resize Attempts', () => {
-    it('should return false for resize attempts by default', async () => {
+    test('should return false for resize attempts by default', async () => {
       const result = await validator.attemptResize();
       expect(result.success).toBe(false);
     });
 
-    it('should handle resize attempts gracefully', async () => {
+    test('should handle resize attempts gracefully', async () => {
       // Test with auto-resize enabled
       const autoResizeValidator = new TerminalSizeValidator({
         enableAutoResize: true,
@@ -89,7 +88,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
   });
 
   describe('Message Generation', () => {
-    it('should generate empty message when terminal size is acceptable', () => {
+    test('should generate empty message when terminal size is acceptable', () => {
       // Create a validator with very small requirements that current terminal will meet
       const smallValidator = new TerminalSizeValidator({
         minWidth: 1,
@@ -101,7 +100,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(message).toBe('');
     });
 
-    it('should generate error message for undersized terminal', () => {
+    test('should generate error message for undersized terminal', () => {
       // Create a validator with very large requirements
       const largeValidator = new TerminalSizeValidator({
         minWidth: 1000,
@@ -115,7 +114,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(message).toContain('Terminal size too small');
     });
 
-    it('should include suggestions when enabled', () => {
+    test('should include suggestions when enabled', () => {
       const largeValidator = new TerminalSizeValidator({
         minWidth: 1000,
         minHeight: 1000,
@@ -127,7 +126,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(message).toContain('Suggestions');
     });
 
-    it('should not include suggestions when disabled', () => {
+    test('should not include suggestions when disabled', () => {
       const largeValidator = new TerminalSizeValidator({
         minWidth: 1000,
         minHeight: 1000,
@@ -142,7 +141,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
   });
 
   describe('Size Requirements Check', () => {
-    it('should validate size with different requirements', () => {
+    test('should validate size with different requirements', () => {
       // Test with very small requirements (should pass)
       const smallValidator = new TerminalSizeValidator({
         minWidth: 1,
@@ -164,7 +163,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(largeResult.isValid).toBe(false);
     });
 
-    it('should provide size adjustment information when needed', () => {
+    test('should provide size adjustment information when needed', () => {
       const largeValidator = new TerminalSizeValidator({
         minWidth: 1000,
         minHeight: 1000,
@@ -178,7 +177,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(adjustment.suggestions.length).toBeGreaterThan(0);
     });
 
-    it('should return needed:false for size adjustment when not needed', () => {
+    test('should return needed:false for size adjustment when not needed', () => {
       const smallValidator = new TerminalSizeValidator({
         minWidth: 1,
         minHeight: 1,
@@ -191,7 +190,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should handle zero minimum size', () => {
+    test('should handle zero minimum size', () => {
       const zeroValidator = new TerminalSizeValidator({
         minWidth: 0,
         minHeight: 0,
@@ -203,7 +202,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(result.suggestions.length).toBe(0);
     });
 
-    it('should handle negative minimum size', () => {
+    test('should handle negative minimum size', () => {
       const negativeValidator = new TerminalSizeValidator({
         minWidth: -1,
         minHeight: -1,
@@ -214,7 +213,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(result.isValid).toBe(true);
     });
 
-    it('should handle extremely large minimum size', () => {
+    test('should handle extremely large minimum size', () => {
       const extremeValidator = new TerminalSizeValidator({
         minWidth: 10000,
         minHeight: 10000,
@@ -228,7 +227,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
   });
 
   describe('Suggestions Generation', () => {
-    it('should generate platform-specific suggestions', () => {
+    test('should generate platform-specific suggestions', () => {
       const originalPlatform = process.platform;
 
       try {
@@ -269,7 +268,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       }
     });
 
-    it('should generate terminal-specific suggestions', () => {
+    test('should generate terminal-specific suggestions', () => {
       const originalTerm = Bun.env.TERM;
       const originalTermProgram = Bun.env.TERM_PROGRAM;
 
@@ -324,7 +323,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
   });
 
   describe('Validation Results Structure', () => {
-    it('should return properly structured validation results', () => {
+    test('should return properly structured validation results', () => {
       const largeValidator = new TerminalSizeValidator({
         minWidth: 1000,
         minHeight: 1000,
@@ -352,7 +351,7 @@ describe('TerminalSizeValidator (Simple Tests)', () => {
       expect(typeof result.canResize).toBe('boolean');
     });
 
-    it('should include accurate dimensions in validation results', () => {
+    test('should include accurate dimensions in validation results', () => {
       const validator = new TerminalSizeValidator({
         minWidth: 80,
         minHeight: 24,

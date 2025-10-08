@@ -1,7 +1,6 @@
-import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, mock, spyOn} from 'bun:test';
 import { StorageManager, StatePreservationMetrics } from '../../../src/errors/helpers/StorageManager';
-import { PreservedState } from '../../../src/errors/helpers/SnapshotManager';
-
+import type { PreservedState } from '../../../src/errors/helpers/SnapshotManager';
 describe('StorageManager', () => {
   let storageManager: StorageManager;
   let mockOnStateExpired: any;

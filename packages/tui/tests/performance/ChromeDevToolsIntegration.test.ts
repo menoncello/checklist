@@ -1,6 +1,5 @@
-import { describe, test, expect, beforeEach } from 'bun:test';
-import { ChromeDevToolsIntegration, chromeDevTools } from '../../src/performance/ChromeDevToolsIntegration';
-
+import { describe, test, expect, beforeEach} from 'bun:test';
+import { ChromeDevToolsIntegration, chromeDevTools} from '../../src/performance/ChromeDevToolsIntegration';
 describe('ChromeDevToolsIntegration', () => {
   let integration: ChromeDevToolsIntegration;
 
@@ -84,7 +83,7 @@ describe('ChromeDevToolsIntegration', () => {
         } catch (error) {
           expect(error).toBeInstanceOf(Error);
           expect((error as Error).message).toContain('Chrome DevTools');
-        }
+          }
       }).not.toThrow();
     });
 
@@ -96,7 +95,7 @@ describe('ChromeDevToolsIntegration', () => {
           expect(error).toBeInstanceOf(Error);
           // Should mention either DevTools or expose-gc
           expect((error as Error).message).toMatch(/(Chrome DevTools|expose-gc)/);
-        }
+          }
       }).not.toThrow();
     });
   });

@@ -12,7 +12,7 @@ import { spawn } from 'bun';
 const testBlocks = [
   {
     name: 'CLI Package Tests',
-    paths: ['packages/cli/'],
+    paths: ['apps/cli/'],
     timeout: 60000,
     priority: 1,
   },

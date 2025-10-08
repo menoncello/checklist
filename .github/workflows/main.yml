@@ -16,6 +16,9 @@ env:
   BUN_VERSION: 1.2
   # Enforce HTTPS for all requests (Security fix)
   NODE_TLS_REJECT_UNAUTHORIZED: 1
+  # Turborepo remote caching
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
 jobs:
   test:
@@ -36,10 +39,14 @@ jobs:
       
       - name: Install Dependencies
         run: bun install --frozen-lockfile
-      
+
+      - name: Setup Turborepo Cache
+        if: env.TURBO_TOKEN != ''
+        run: bun run turbo lint --filter=nothing  # This triggers cache setup
+
       - name: Run TypeScript Type Check
-        run: bun run type-check
-      
+        run: bun run typecheck
+
       - name: Run Linting
         run: bun run lint
 
@@ -62,7 +69,7 @@ jobs:
         run: rm -rf packages/*/dist
       
       - name: Run Tests with Coverage
-        run: bun run test:sequential
+        run: bun run test:coverage
       
       - name: Upload Coverage Reports
         uses: actions/upload-artifact@v4

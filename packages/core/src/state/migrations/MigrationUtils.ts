@@ -89,6 +89,40 @@ export class MigrationUtils {
     }
   }
 
+  static createSuccessResult(
+    fromVersion: string,
+    toVersion: string,
+    appliedMigrations: string[],
+    message?: string
+  ): MigrationResult {
+    if (message != null && message.length > 0) {
+      logger.info({ msg: message, fromVersion, toVersion });
+    }
+
+    return {
+      success: true,
+      fromVersion,
+      toVersion,
+      appliedMigrations,
+    };
+  }
+
+  static isVersionLess(fromVersion: string, toVersion: string): boolean {
+    // Simple version comparison for semantic versions
+    const fromParts = fromVersion.split('.').map(Number);
+    const toParts = toVersion.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(fromParts.length, toParts.length); i++) {
+      const fromPart = fromParts[i] || 0;
+      const toPart = toParts[i] || 0;
+
+      if (fromPart < toPart) return true;
+      if (fromPart > toPart) return false;
+    }
+
+    return false;
+  }
+
   static createErrorResult(
     error: unknown,
     targetVersion?: string

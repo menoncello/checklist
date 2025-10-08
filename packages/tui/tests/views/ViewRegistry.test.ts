@@ -4,10 +4,9 @@
  * Tests for view registration, retrieval, and lifecycle management.
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, test, expect, beforeEach} from 'bun:test';
 import { ViewRegistry } from '../../src/navigation/ViewRegistry.js';
-import { View, ViewParams, ViewState, KeyBinding } from '../../src/views/types.js';
-
+import type { View, ViewParams, ViewState, KeyBinding} from '../../src/views/types.js';
 // Mock view implementation for testing
 class MockView implements View {
   public readonly id: string;
@@ -62,14 +61,14 @@ describe('ViewRegistry', () => {
   });
 
   describe('Registration', () => {
-    it('should register views successfully', () => {
+    test('should register views successfully', () => {
       registry.register('view1', view1);
       
       expect(registry.has('view1')).toBe(true);
       expect(registry.get('view1')).toBe(view1);
     });
 
-    it('should throw error for duplicate registration', () => {
+    test('should throw error for duplicate registration', () => {
       registry.register('view1', view1);
       
       expect(() => registry.register('view1', view1)).toThrow(
@@ -77,13 +76,13 @@ describe('ViewRegistry', () => {
       );
     });
 
-    it('should throw error for mismatched id', () => {
+    test('should throw error for mismatched id', () => {
       expect(() => registry.register('different-id', view1)).toThrow(
         "View id 'view1' does not match registration id 'different-id'"
       );
     });
 
-    it('should unregister views successfully', () => {
+    test('should unregister views successfully', () => {
       registry.register('view1', view1);
       registry.setActive('view1', true);
       
@@ -94,7 +93,7 @@ describe('ViewRegistry', () => {
       expect(registry.get('view1')).toBeUndefined();
     });
 
-    it('should return false when unregistering non-existent view', () => {
+    test('should return false when unregistering non-existent view', () => {
       const result = registry.unregister('nonexistent');
       expect(result).toBe(false);
     });
@@ -106,28 +105,28 @@ describe('ViewRegistry', () => {
       registry.register('view2', view2);
     });
 
-    it('should retrieve view by id', () => {
+    test('should retrieve view by id', () => {
       expect(registry.get('view1')).toBe(view1);
       expect(registry.get('view2')).toBe(view2);
     });
 
-    it('should return undefined for non-existent view', () => {
+    test('should return undefined for non-existent view', () => {
       expect(registry.get('nonexistent')).toBeUndefined();
     });
 
-    it('should check view existence', () => {
+    test('should check view existence', () => {
       expect(registry.has('view1')).toBe(true);
       expect(registry.has('nonexistent')).toBe(false);
     });
 
-    it('should get all view ids', () => {
+    test('should get all view ids', () => {
       const ids = registry.getViewIds();
       expect(ids).toContain('view1');
       expect(ids).toContain('view2');
       expect(ids).toHaveLength(2);
     });
 
-    it('should get all views', () => {
+    test('should get all views', () => {
       const views = registry.getViews();
       expect(views).toContain(view1);
       expect(views).toContain(view2);
@@ -141,7 +140,7 @@ describe('ViewRegistry', () => {
       registry.register('view2', view2);
     });
 
-    it('should set views as active/inactive', () => {
+    test('should set views as active/inactive', () => {
       registry.setActive('view1', true);
       registry.setActive('view2', false);
       
@@ -151,7 +150,7 @@ describe('ViewRegistry', () => {
       expect(activeViews).toHaveLength(1);
     });
 
-    it('should handle setting active state for non-existent view', () => {
+    test('should handle setting active state for non-existent view', () => {
       // Should not throw error
       registry.setActive('nonexistent', true);
       
@@ -159,7 +158,7 @@ describe('ViewRegistry', () => {
       expect(activeViews).toHaveLength(0);
     });
 
-    it('should get registration info', () => {
+    test('should get registration info', () => {
       registry.setActive('view1', true);
       
       const info = registry.getRegistrationInfo('view1');
@@ -168,7 +167,7 @@ describe('ViewRegistry', () => {
       expect(info?.registeredAt).toBeTypeOf('number');
     });
 
-    it('should return undefined for non-existent registration info', () => {
+    test('should return undefined for non-existent registration info', () => {
       const info = registry.getRegistrationInfo('nonexistent');
       expect(info).toBeUndefined();
     });
@@ -182,7 +181,7 @@ describe('ViewRegistry', () => {
       registry.setActive('view2', true);
     });
 
-    it('should clear all views', () => {
+    test('should clear all views', () => {
       registry.clear();
       
       expect(registry.getViewIds()).toHaveLength(0);
@@ -199,7 +198,7 @@ describe('ViewRegistry', () => {
       registry.setActive('view1', true);
     });
 
-    it('should provide accurate statistics', () => {
+    test('should provide accurate statistics', () => {
       const stats = registry.getStats();
       
       expect(stats.totalViews).toBe(2);
@@ -208,7 +207,7 @@ describe('ViewRegistry', () => {
       expect(stats.registeredViews).toContain('view2');
     });
 
-    it('should update statistics when views change', () => {
+    test('should update statistics when views change', () => {
       registry.setActive('view2', true);
       
       const stats = registry.getStats();

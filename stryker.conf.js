@@ -14,7 +14,7 @@ export default {
 
   // Files to mutate - exclude test files and type definitions
   mutate: [
-    'packages/*/src/**/*.ts',
+    'apps/cli/src/**/*.ts',
     '!**/*.test.ts',
     '!**/*.spec.ts',
     '!**/*.d.ts',

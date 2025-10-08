@@ -1,73 +1,33 @@
 /**
- * TUI Package Test Setup with Process Isolation
+ * TUI Package Test Setup with Complete Logger Mocking
  */
 
 import { beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { TestIsolationManager, isolateTest, isolateCompletely, verifyNoProcessListeners } from './test-isolation';
+import { getLoggerMock, resetLoggerMock, MockLogger } from './test-mocks/TestLoggerMock';
+import { getPinoLoggerMock, resetPinoLoggerMock } from './test-mocks/PinoLoggerMock';
 
-// Set test environment
-process.env.NODE_ENV = 'test';
-process.env.LOG_LEVEL = 'silent';
-process.env.PINO_LOG_LEVEL = 'silent';
+// Initialize logger mocks
+let loggerMock: MockLogger;
+let pinoLoggerMock: any;
 
 // Initialize isolation manager
 const isolationManager = TestIsolationManager.getInstance();
 
-// Store original methods for selective suppression
-const originalConsole = {
-  log: console.log,
-  error: console.error,
-  warn: console.warn,
-  info: console.info,
-  debug: console.debug,
-};
-
-// Only suppress specific JSON logging output, preserve test functionality
-const originalLog = console.log;
-console.log = (...args) => {
-  const str = args.join(' ');
-
-  // Only suppress JSON logs and specific application logs
-  if (str.startsWith('{"level":') ||
-      str.includes('"module":') ||
-      str.includes('"traceId":') ||
-      str.includes('Initializing state system') ||
-      str.includes('Creating new state file') ||
-      str.includes('Cleaning up state manager resources') ||
-      str.includes('Panic Recovery initialized') ||
-      str.includes('Shutting down Panic Recovery') ||
-      str.includes('Performance Monitor initialized')) {
-    return;
-  }
-
-  originalLog.apply(console, args);
-};
-
-// Only suppress specific error logging, preserve test errors
-const originalError = console.error;
-console.error = (...args) => {
-  const str = args.join(' ');
-
-  // Only suppress JSON error logs and specific application logs
-  if (str.startsWith('{"level":') ||
-      str.includes('"module":') ||
-      str.includes('"traceId":') ||
-      str.includes('Backup restoration failed') ||
-      str.includes('Error in error hook:') ||
-      str.includes('Error in error handler:')) {
-    return;
-  }
-
-  originalError.apply(console, args);
-};
-
-// Preserve other console methods
-console.warn = originalConsole.warn;
-console.info = originalConsole.info;
-console.debug = originalConsole.debug;
+// Set test environment immediately at module load time
+process.env.NODE_ENV = 'test';
+Bun.env.NODE_ENV = 'test';
 
 // Global test setup hooks
 beforeAll(() => {
+  // Ensure test environment is set before mocks
+  process.env.NODE_ENV = 'test';
+  Bun.env.NODE_ENV = 'test';
+
+  // Initialize logger mocks FIRST before any other code runs
+  loggerMock = getLoggerMock();
+  pinoLoggerMock = getPinoLoggerMock();
+
   // Backup the initial state of process listeners
   isolationManager.backupProcessListeners();
 });
@@ -75,9 +35,17 @@ beforeAll(() => {
 afterAll(() => {
   // Clean up any remaining process listeners after all tests
   isolationManager.cleanupProcessListeners();
+
+  // Restore original console and logger
+  loggerMock?.restore();
+  pinoLoggerMock?.restore();
 });
 
 beforeEach(() => {
+  // Clear previous log entries
+  loggerMock?.clear();
+  pinoLoggerMock?.clear();
+
   // Ensure clean state before each test
   isolationManager.cleanupProcessListeners();
 });
@@ -90,8 +58,16 @@ afterEach(() => {
   isolationManager.resetTestState();
 });
 
+// Export logger mocks for use in tests
+export { loggerMock, pinoLoggerMock };
+
 // Export isolation helpers for individual test files
 export { isolateTest, isolateCompletely, verifyNoProcessListeners, TestIsolationManager };
 
-// Export original console for tests that need it
-export { originalConsole };
+// Export logger mock classes for custom usage
+export { TestLoggerMock } from './test-mocks/TestLoggerMock';
+export { PinoLoggerMock } from './test-mocks/PinoLoggerMock';
+
+// Export utility functions
+export { getLoggerMock, resetLoggerMock } from './test-mocks/TestLoggerMock';
+export { getPinoLoggerMock, resetPinoLoggerMock } from './test-mocks/PinoLoggerMock';

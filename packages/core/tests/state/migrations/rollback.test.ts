@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, mock} from 'bun:test';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { MigrationRunner } from '../../../src/state/migrations/MigrationRunner';
-import { MigrationRegistry } from '../../../src/state/migrations/MigrationRegistry';
-import { Migration, MigrationError } from '../../../src/state/migrations/types';
-
+import { MigrationRunner} from '../../../src/state/migrations/MigrationRunner';
+import { MigrationRegistry} from '../../../src/state/migrations/MigrationRegistry';
+import { Migration, MigrationError} from '../../../src/state/migrations/types';
 describe('Migration Rollback Scenarios', () => {
   let runner: MigrationRunner;
   let registry: MigrationRegistry;
@@ -30,11 +29,13 @@ describe('Migration Rollback Scenarios', () => {
     const { rm } = await import('fs/promises');
     try {
       await rm(testDir, { recursive: true, force: true });
-    } catch {}
+    } catch {
+      // Ignore cleanup errors
+    }
   });
 
   describe('Rollback on Migration Failure', () => {
-    it('should rollback when migration validation fails', async () => {
+    test('should rollback when migration validation fails', async () => {
       // Setup migrations where second one will fail validation
       registry.registerMigration({
         fromVersion: '0.0.0',
@@ -96,7 +97,7 @@ describe('Migration Rollback Scenarios', () => {
       expect(state.metadata).toBeUndefined(); // Should not have metadata from first migration
     });
 
-    it('should rollback when migration throws an error', async () => {
+    test('should rollback when migration throws an error', async () => {
       registry.registerMigration({
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
@@ -127,7 +128,7 @@ describe('Migration Rollback Scenarios', () => {
       expect(state.data).toBe('original');
     });
 
-    it('should rollback partial migration on failure', async () => {
+    test('should rollback partial migration on failure', async () => {
       // Three migrations, third will fail
       registry.registerMigration({
         fromVersion: '0.0.0',
@@ -182,7 +183,7 @@ describe('Migration Rollback Scenarios', () => {
       expect(state.step2).toBeUndefined();
     });
 
-    it('should emit rollback events', async () => {
+    test('should emit rollback events', async () => {
       registry.registerMigration({
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
@@ -208,7 +209,7 @@ describe('Migration Rollback Scenarios', () => {
       expect(events).toContain('rollback:complete');
     });
 
-    it('should handle rollback failure gracefully', async () => {
+    test('should handle rollback failure gracefully', async () => {
       registry.registerMigration({
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
@@ -239,7 +240,7 @@ describe('Migration Rollback Scenarios', () => {
   });
 
   describe('Backup Integrity During Rollback', () => {
-    it('should preserve backup file after rollback', async () => {
+    test('should preserve backup file after rollback', async () => {
       registry.registerMigration({
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
@@ -273,7 +274,7 @@ describe('Migration Rollback Scenarios', () => {
       expect(backupState.preserve).toBe('this data');
     });
 
-    it('should create backup even when migration fails immediately', async () => {
+    test('should create backup even when migration fails immediately', async () => {
       registry.registerMigration({
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
@@ -296,7 +297,7 @@ describe('Migration Rollback Scenarios', () => {
   });
 
   describe('Complex Rollback Scenarios', () => {
-    it('should handle corrupted state during migration', async () => {
+    test('should handle corrupted state during migration', async () => {
       registry.registerMigration({
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
@@ -326,7 +327,7 @@ describe('Migration Rollback Scenarios', () => {
       expect(state.valid).toBe(true);
     });
 
-    it('should handle multiple validation failures in sequence', async () => {
+    test('should handle multiple validation failures in sequence', async () => {
       let attempt = 0;
 
       registry.registerMigration({
@@ -360,7 +361,7 @@ describe('Migration Rollback Scenarios', () => {
       expect(result3.success).toBe(true);
     });
 
-    it('should not create backup when createBackup option is false', async () => {
+    test('should not create backup when createBackup option is false', async () => {
       registry.registerMigration({
         fromVersion: '0.0.0',
         toVersion: '1.0.0',
@@ -387,3 +388,4 @@ describe('Migration Rollback Scenarios', () => {
     });
   });
 });
+

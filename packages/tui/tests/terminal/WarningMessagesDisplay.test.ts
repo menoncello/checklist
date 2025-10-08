@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, mock} from 'bun:test';
 import { CapabilityDetector } from '../../src/terminal/CapabilityDetector';
 import { TerminalTestHarness } from '../../src/terminal/TerminalTestHarness';
-import { FallbackRenderer } from '../../src/terminal/FallbackRenderer';
-import type { TerminalCapabilities } from '../../src/framework/UIFramework';
-
+import { FallbackRenderer} from '../../src/terminal/FallbackRenderer';
+import type { TerminalCapabilities} from '../../src/framework/UIFramework';
 describe('Warning Messages Display', () => {
   describe('User-Facing Warning System', () => {
     let detector: CapabilityDetector;
@@ -16,7 +15,7 @@ describe('Warning Messages Display', () => {
       renderer = new FallbackRenderer();
     });
 
-    it('should display warnings for missing color support', async () => {
+    test('should display warnings for missing color support', async () => {
       const capabilities: TerminalCapabilities = {
         color: false,
         color256: false,
@@ -33,7 +32,7 @@ describe('Warning Messages Display', () => {
       expect(warnings.some(w => w.includes('monochrome'))).toBe(true);
     });
 
-    it('should display warnings for missing Unicode support', async () => {
+    test('should display warnings for missing Unicode support', async () => {
       const capabilities: TerminalCapabilities = {
         color: true,
         color256: true,
@@ -50,7 +49,7 @@ describe('Warning Messages Display', () => {
       expect(warnings.some(w => w.includes('Box drawing characters'))).toBe(true);
     });
 
-    it('should display warnings for limited terminal features', async () => {
+    test('should display warnings for limited terminal features', async () => {
       const capabilities: TerminalCapabilities = {
         color: true,
         color256: false, // Limited to basic colors
@@ -67,7 +66,7 @@ describe('Warning Messages Display', () => {
       expect(warnings.some(w => w.includes('Use keyboard navigation'))).toBe(true);
     });
 
-    it('should provide terminal upgrade suggestions', async () => {
+    test('should provide terminal upgrade suggestions', async () => {
       const terminalInfo = detector.getTerminalInfo();
       const terminalType = terminalInfo.getTerminalType();
       const capabilities = await detector.getCapabilities();
@@ -88,7 +87,7 @@ describe('Warning Messages Display', () => {
       }
     });
 
-    it('should implement progressive feature disclosure', async () => {
+    test('should implement progressive feature disclosure', async () => {
       const capabilities: TerminalCapabilities = {
         color: true,
         color256: true,
@@ -111,7 +110,7 @@ describe('Warning Messages Display', () => {
       expect(disclosedFeatures.optional).toContain('○ Cursor shape control (optional)');
     });
 
-    it('should display warnings in TUI header/footer', () => {
+    test('should display warnings in TUI header/footer', () => {
       const mockUI = {
         header: mock((content: string) => {}),
         footer: mock((content: string) => {}),
@@ -144,7 +143,7 @@ describe('Warning Messages Display', () => {
       );
     });
 
-    it('should prioritize warnings by severity', async () => {
+    test('should prioritize warnings by severity', async () => {
       const capabilities: TerminalCapabilities = {
         color: false, // High priority
         color256: false,
@@ -166,7 +165,7 @@ describe('Warning Messages Display', () => {
       expect(mouseWarningIndex).toBeGreaterThan(1);
     });
 
-    it('should provide actionable remediation steps', async () => {
+    test('should provide actionable remediation steps', async () => {
       const capabilities: TerminalCapabilities = {
         color: false,
         color256: false,
@@ -193,7 +192,7 @@ describe('Warning Messages Display', () => {
       });
     });
 
-    it('should handle warning dismissal and persistence', () => {
+    test('should handle warning dismissal and persistence', () => {
       const warningState = {
         dismissed: new Set<string>(),
         shown: new Map<string, number>(),
@@ -220,7 +219,7 @@ describe('Warning Messages Display', () => {
       expect(warningState.dismissed.has(warning)).toBe(true);
     });
 
-    it('should integrate with debug overlay for detailed info', () => {
+    test('should integrate with debug overlay for detailed info', () => {
       const debugInfo = {
         terminalType: 'xterm',
         capabilities: {
@@ -248,7 +247,7 @@ describe('Warning Messages Display', () => {
       expect(debugInfo.suggestions).toContain('Try TERM=xterm-256color');
     });
 
-    it('should display terminal recommendation based on platform', () => {
+    test('should display terminal recommendation based on platform', () => {
       const platform = process.platform;
       const recommendations = getTerminalRecommendations(platform);
 

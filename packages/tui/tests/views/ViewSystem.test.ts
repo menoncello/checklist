@@ -5,10 +5,10 @@
  * including navigation, state management, and lifecycle.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach} from 'bun:test';
 import { ViewSystem } from '../../src/views/ViewSystem.js';
-import { LayoutType, View, ViewParams, ViewState, KeyBinding } from '../../src/views/types.js';
-
+import { LayoutType } from '../../src/views/types.js';
+import type { View, ViewParams, ViewState, KeyBinding} from '../../src/views/types.js';
 // Mock view implementation for testing
 class MockView implements View {
   public readonly id: string;
@@ -101,7 +101,7 @@ describe('ViewSystem', () => {
   });
 
   describe('Initialization and Cleanup', () => {
-    it('should initialize successfully', async () => {
+    test('should initialize successfully', async () => {
       const newViewSystem = new ViewSystem();
       await newViewSystem.initialize();
       
@@ -109,14 +109,14 @@ describe('ViewSystem', () => {
       expect(newViewSystem.getRegisteredViews()).toEqual([]);
     });
 
-    it('should handle multiple initialization calls', async () => {
+    test('should handle multiple initialization calls', async () => {
       await viewSystem.initialize();
       await viewSystem.initialize(); // Should not cause issues
       
       expect(viewSystem.getRegisteredViews()).toContain('home');
     });
 
-    it('should destroy and cleanup properly', async () => {
+    test('should destroy and cleanup properly', async () => {
       await viewSystem.navigateTo('home');
       await viewSystem.destroy();
       
@@ -125,7 +125,7 @@ describe('ViewSystem', () => {
   });
 
   describe('View Registration', () => {
-    it('should register views correctly', () => {
+    test('should register views correctly', () => {
       const newView = new MockView('test', 'Test View');
       viewSystem.registerView('test', newView);
       
@@ -133,41 +133,41 @@ describe('ViewSystem', () => {
       expect(viewSystem.getRegisteredViews()).toContain('test');
     });
 
-    it('should unregister views correctly', () => {
+    test('should unregister views correctly', () => {
       viewSystem.unregisterView('help');
       
       expect(viewSystem.getView('help')).toBeUndefined();
       expect(viewSystem.getRegisteredViews()).not.toContain('help');
     });
 
-    it('should get view by id', () => {
+    test('should get view by id', () => {
       expect(viewSystem.getView('home')).toBe(homeView);
       expect(viewSystem.getView('nonexistent')).toBeUndefined();
     });
   });
 
   describe('Navigation', () => {
-    it('should navigate to view successfully', async () => {
+    test('should navigate to view successfully', async () => {
       await viewSystem.navigateTo('home');
       
       expect(viewSystem.getCurrentView()).toBe(homeView);
       expect(homeView.mountCalls).toHaveLength(1);
     });
 
-    it('should navigate with parameters', async () => {
+    test('should navigate with parameters', async () => {
       const params = { userId: 123, mode: 'edit' };
       await viewSystem.navigateTo('home', params);
       
       expect(homeView.mountCalls[0]).toEqual(params);
     });
 
-    it('should handle navigation to non-existent view', async () => {
+    test('should handle navigation to non-existent view', async () => {
       await expect(viewSystem.navigateTo('nonexistent')).rejects.toThrow(
         "View 'nonexistent' not found"
       );
     });
 
-    it('should require initialization before navigation', async () => {
+    test('should require initialization before navigation', async () => {
       const newViewSystem = new ViewSystem();
       newViewSystem.registerView('test', new MockView('test'));
       
@@ -176,7 +176,7 @@ describe('ViewSystem', () => {
       );
     });
 
-    it('should unmount previous view when navigating', async () => {
+    test('should unmount previous view when navigating', async () => {
       await viewSystem.navigateTo('home');
       await viewSystem.navigateTo('settings');
       
@@ -186,7 +186,7 @@ describe('ViewSystem', () => {
   });
 
   describe('Back Navigation', () => {
-    it('should go back successfully', async () => {
+    test('should go back successfully', async () => {
       await viewSystem.navigateTo('home');
       await viewSystem.navigateTo('settings');
       
@@ -198,12 +198,12 @@ describe('ViewSystem', () => {
       expect(homeView.mountCalls).toHaveLength(2); // Mounted twice
     });
 
-    it('should not go back when no history', async () => {
+    test('should not go back when no history', async () => {
       const result = await viewSystem.goBack();
       expect(result).toBe(false);
     });
 
-    it('should not go back from single view', async () => {
+    test('should not go back from single view', async () => {
       await viewSystem.navigateTo('home');
       
       expect(viewSystem.canGoBack()).toBe(false);
@@ -211,7 +211,7 @@ describe('ViewSystem', () => {
       expect(result).toBe(false);
     });
 
-    it('should check canGoBack correctly', async () => {
+    test('should check canGoBack correctly', async () => {
       expect(viewSystem.canGoBack()).toBe(false);
       
       await viewSystem.navigateTo('home');
@@ -221,7 +221,7 @@ describe('ViewSystem', () => {
       expect(viewSystem.canGoBack()).toBe(true);
     });
 
-    it('should clear history', async () => {
+    test('should clear history', async () => {
       await viewSystem.navigateTo('home');
       await viewSystem.navigateTo('settings');
       
@@ -233,7 +233,7 @@ describe('ViewSystem', () => {
   });
 
   describe('State Management', () => {
-    it('should save and restore view state', async () => {
+    test('should save and restore view state', async () => {
       homeView.setState({ scrollPosition: 100, selectedItem: 'item1' });
       
       await viewSystem.navigateTo('home');
@@ -246,7 +246,7 @@ describe('ViewSystem', () => {
       expect(homeView.getState().selectedItem).toBe('item1');
     });
 
-    it('should preserve state during navigation', async () => {
+    test('should preserve state during navigation', async () => {
       await viewSystem.navigateTo('home');
       homeView.setState({ data: 'preserved' });
       
@@ -259,12 +259,12 @@ describe('ViewSystem', () => {
   });
 
   describe('Layout Management', () => {
-    it('should set and get layout', () => {
+    test('should set and get layout', () => {
       viewSystem.setLayout(LayoutType.SPLIT_VERTICAL);
       expect(viewSystem.getLayout()).toBe(LayoutType.SPLIT_VERTICAL);
     });
 
-    it('should trigger resize on layout change', async () => {
+    test('should trigger resize on layout change', async () => {
       await viewSystem.navigateTo('home');
       homeView.clearCallHistory();
       
@@ -273,14 +273,14 @@ describe('ViewSystem', () => {
       expect(homeView.resizeCalls).toHaveLength(1);
     });
 
-    it('should handle split view navigation', async () => {
+    test('should handle split view navigation', async () => {
       await viewSystem.splitView('home', 'settings');
       
       expect(viewSystem.getLayout()).toBe(LayoutType.SPLIT_VERTICAL);
       expect(viewSystem.getCurrentView()).toBe(homeView);
     });
 
-    it('should throw error for split view with non-existent views', async () => {
+    test('should throw error for split view with non-existent views', async () => {
       await expect(viewSystem.splitView('nonexistent1', 'nonexistent2')).rejects.toThrow(
         'Both views must be registered for split view'
       );
@@ -288,7 +288,7 @@ describe('ViewSystem', () => {
   });
 
   describe('Modal and Overlay', () => {
-    it('should show and hide modal', async () => {
+    test('should show and hide modal', async () => {
       const modal = {
         id: 'test-modal',
         title: 'Test Modal',
@@ -305,7 +305,7 @@ describe('ViewSystem', () => {
       await promise; // Should resolve
     });
 
-    it('should show and hide overlay', () => {
+    test('should show and hide overlay', () => {
       const overlay = {
         id: 'test-overlay',
         content: 'Test overlay',
@@ -321,7 +321,7 @@ describe('ViewSystem', () => {
   });
 
   describe('Statistics and Debugging', () => {
-    it('should provide navigation history', async () => {
+    test('should provide navigation history', async () => {
       await viewSystem.navigateTo('home');
       await viewSystem.navigateTo('settings');
       await viewSystem.navigateTo('help');
@@ -331,7 +331,7 @@ describe('ViewSystem', () => {
       expect(history.map(entry => entry.viewId)).toEqual(['home', 'settings', 'help']);
     });
 
-    it('should provide accurate statistics', async () => {
+    test('should provide accurate statistics', async () => {
       await viewSystem.navigateTo('home');
       await viewSystem.navigateTo('settings');
       
@@ -341,7 +341,7 @@ describe('ViewSystem', () => {
       expect(stats.activeViews).toBe(1);
     });
 
-    it('should track saved states', async () => {
+    test('should track saved states', async () => {
       await viewSystem.navigateTo('home');
       viewSystem.saveViewState('home');
       
@@ -351,7 +351,7 @@ describe('ViewSystem', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle view mounting errors gracefully', async () => {
+    test('should handle view mounting errors gracefully', async () => {
       const errorView = new MockView('error-view');
       errorView.onMount = async () => {
         throw new Error('Mount failed');
@@ -362,7 +362,7 @@ describe('ViewSystem', () => {
       await expect(viewSystem.navigateTo('error-view')).rejects.toThrow('Mount failed');
     });
 
-    it('should handle state operations on non-existent views', () => {
+    test('should handle state operations on non-existent views', () => {
       // Should not throw errors
       viewSystem.saveViewState('nonexistent');
       viewSystem.restoreViewState('nonexistent');

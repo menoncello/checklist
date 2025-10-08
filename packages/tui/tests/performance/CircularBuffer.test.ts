@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach} from 'bun:test';
 import { CircularBuffer } from '../../src/performance/CircularBuffer';
 import { MetricsBuffer } from '../../src/performance/MetricsBuffer';
-
 describe('CircularBuffer', () => {
   let buffer: CircularBuffer<string>;
 
@@ -17,13 +16,13 @@ describe('CircularBuffer', () => {
   });
 
   describe('basic operations', () => {
-    it('should push items correctly', () => {
+    test('should push items correctly', () => {
       expect(buffer.push('item1')).toBe(true);
       expect(buffer.push('item2')).toBe(true);
       expect(buffer.getSize()).toBe(2);
     });
 
-    it('should overwrite oldest items when full', () => {
+    test('should overwrite oldest items when full', () => {
       for (let i = 1; i <= 7; i++) {
         buffer.push(`item${i}`);
       }
@@ -33,7 +32,7 @@ describe('CircularBuffer', () => {
       expect(buffer.get(4)).toBe('item7'); // Newest
     });
 
-    it('should pop items correctly', () => {
+    test('should pop items correctly', () => {
       buffer.push('item1');
       buffer.push('item2');
       buffer.push('item3');
@@ -44,7 +43,7 @@ describe('CircularBuffer', () => {
       expect(buffer.pop()).toBeNull();
     });
 
-    it('should shift items correctly', () => {
+    test('should shift items correctly', () => {
       buffer.push('item1');
       buffer.push('item2');
       buffer.push('item3');
@@ -55,7 +54,7 @@ describe('CircularBuffer', () => {
       expect(buffer.shift()).toBeNull();
     });
 
-    it('should get items by index', () => {
+    test('should get items by index', () => {
       buffer.push('item1');
       buffer.push('item2');
       buffer.push('item3');
@@ -68,7 +67,7 @@ describe('CircularBuffer', () => {
   });
 
   describe('array conversion', () => {
-    it('should convert to array in correct order', () => {
+    test('should convert to array in correct order', () => {
       buffer.push('item1');
       buffer.push('item2');
       buffer.push('item3');
@@ -77,12 +76,12 @@ describe('CircularBuffer', () => {
       expect(array).toEqual(['item1', 'item2', 'item3']);
     });
 
-    it('should handle empty buffer', () => {
+    test('should handle empty buffer', () => {
       const array = buffer.toArray();
       expect(array).toEqual([]);
     });
 
-    it('should handle wrapped buffer', () => {
+    test('should handle wrapped buffer', () => {
       for (let i = 1; i <= 7; i++) {
         buffer.push(`item${i}`);
       }
@@ -93,7 +92,7 @@ describe('CircularBuffer', () => {
   });
 
   describe('filtering', () => {
-    it('should filter items correctly', () => {
+    test('should filter items correctly', () => {
       buffer.push('item1');
       buffer.push('special');
       buffer.push('item3');
@@ -103,7 +102,7 @@ describe('CircularBuffer', () => {
       expect(filtered).toEqual(['special', 'special']);
     });
 
-    it('should return empty array for no matches', () => {
+    test('should return empty array for no matches', () => {
       buffer.push('item1');
       buffer.push('item2');
 
@@ -113,7 +112,7 @@ describe('CircularBuffer', () => {
   });
 
   describe('recent items', () => {
-    it('should get recent items correctly', () => {
+    test('should get recent items correctly', () => {
       for (let i = 1; i <= 5; i++) {
         buffer.push(`item${i}`);
       }
@@ -122,7 +121,7 @@ describe('CircularBuffer', () => {
       expect(recent).toEqual(['item3', 'item4', 'item5']);
     });
 
-    it('should handle count larger than buffer size', () => {
+    test('should handle count larger than buffer size', () => {
       buffer.push('item1');
       buffer.push('item2');
 
@@ -132,7 +131,7 @@ describe('CircularBuffer', () => {
   });
 
   describe('state methods', () => {
-    it('should report correct size and capacity', () => {
+    test('should report correct size and capacity', () => {
       expect(buffer.isEmpty()).toBe(true);
       expect(buffer.isFull()).toBe(false);
 
@@ -146,7 +145,7 @@ describe('CircularBuffer', () => {
       expect(buffer.isFull()).toBe(true);
     });
 
-    it('should get oldest and newest items', () => {
+    test('should get oldest and newest items', () => {
       buffer.push('item1');
       buffer.push('item2');
       buffer.push('item3');
@@ -155,14 +154,14 @@ describe('CircularBuffer', () => {
       expect(buffer.getNewest()).toBe('item3');
     });
 
-    it('return null for oldest/newest when empty', () => {
+    test('return null for oldest/newest when empty', () => {
       expect(buffer.getOldest()).toBeNull();
       expect(buffer.getNewest()).toBeNull();
     });
   });
 
   describe('clearing', () => {
-    it('should clear all items', () => {
+    test('should clear all items', () => {
       buffer.push('item1');
       buffer.push('item2');
       buffer.push('item3');
@@ -174,7 +173,7 @@ describe('CircularBuffer', () => {
   });
 
   describe('timestamps', () => {
-    it('should track timestamps correctly', () => {
+    test('should track timestamps correctly', () => {
       const before = Date.now();
       buffer.push('item1');
       const after = Date.now();
@@ -184,13 +183,13 @@ describe('CircularBuffer', () => {
       expect(timestamp).toBeLessThanOrEqual(after);
     });
 
-    it('return null for invalid index timestamp', () => {
+    test('return null for invalid index timestamp', () => {
       expect(buffer.getTimestamp(0)).toBeNull();
     });
   });
 
   describe('configuration updates', () => {
-    it('should update capacity correctly', () => {
+    test('should update capacity correctly', () => {
       buffer.push('item1');
       buffer.push('item2');
       buffer.push('item3');
@@ -202,7 +201,7 @@ describe('CircularBuffer', () => {
       expect(buffer.toArray()).toEqual(['item1', 'item2', 'item3']);
     });
 
-    it('should reduce capacity and keep newest items', () => {
+    test('should reduce capacity and keep newest items', () => {
       for (let i = 1; i <= 5; i++) {
         buffer.push(`item${i}`);
       }
@@ -213,7 +212,7 @@ describe('CircularBuffer', () => {
       expect(buffer.toArray()).toEqual(['item3', 'item4', 'item5']);
     });
 
-    it('should handle cleanup timer changes', () => {
+    test('should handle cleanup timer changes', () => {
       buffer.updateConfig({ autoCleanup: true, cleanupInterval: 1000, maxAge: 5000 });
       expect(buffer.getConfig().autoCleanup).toBe(true);
 
@@ -223,7 +222,7 @@ describe('CircularBuffer', () => {
   });
 
   describe('memory usage', () => {
-    it('should report memory usage', () => {
+    test('should report memory usage', () => {
       const usage = buffer.getMemoryUsage();
       expect(typeof usage.bufferSize).toBe('number');
       expect(typeof usage.timestampsSize).toBe('number');
@@ -246,7 +245,7 @@ describe('CircularBuffer', () => {
       metricsBuffer.destroy();
     });
 
-    it('should handle metric objects', () => {
+    test('should handle metric objects', () => {
       const metric = {
         id: 'test-1',
         name: 'render-time',
@@ -258,7 +257,7 @@ describe('CircularBuffer', () => {
       expect(metricsBuffer.getSize()).toBe(1);
     });
 
-    it('should filter metrics by name', () => {
+    test('should filter metrics by name', () => {
       metricsBuffer.push({
         id: '1',
         name: 'render-time',
@@ -286,7 +285,7 @@ describe('CircularBuffer', () => {
       expect(renderMetrics[1].name).toBe('render-time');
     });
 
-    it('should filter metrics by timestamp', () => {
+    test('should filter metrics by timestamp', () => {
       const now = Date.now();
       const old = now - 10000;
 
@@ -309,7 +308,7 @@ describe('CircularBuffer', () => {
       expect(recentMetrics[0].value).toBe(20);
     });
 
-    it('should calculate statistics correctly', () => {
+    test('should calculate statistics correctly', () => {
       metricsBuffer.push({
         id: '1',
         name: 'test-metric',
@@ -336,7 +335,7 @@ describe('CircularBuffer', () => {
       expect(metricsBuffer.getMinValue('test-metric')).toBe(10);
     });
 
-    it('should return zero for non-existent metrics', () => {
+    test('should return zero for non-existent metrics', () => {
       expect(metricsBuffer.getAverageValue('non-existent')).toBe(0);
       expect(metricsBuffer.getMaxValue('non-existent')).toBe(0);
       expect(metricsBuffer.getMinValue('non-existent')).toBe(0);
@@ -349,7 +348,7 @@ describe('CircularBuffer', () => {
       buffer.updateConfig({ maxAge: 60000 }); // 1 minute
     });
 
-    it('should cleanup old items based on age', () => {
+    test('should cleanup old items based on age', () => {
       const now = Date.now();
       const old = now - 100000; // Very old
 
@@ -367,7 +366,7 @@ describe('CircularBuffer', () => {
       expect(buffer.get(0)).toBe('new-item');
     });
 
-    it('should clear all items if all are expired', () => {
+    test('should clear all items if all are expired', () => {
       const now = Date.now();
       const old = now - 100000;
 
@@ -385,11 +384,11 @@ describe('CircularBuffer', () => {
   });
 
   describe('edge cases', () => {
-    it('should throw error for zero capacity', () => {
+    test('should throw error for zero capacity', () => {
       expect(() => new CircularBuffer({ capacity: 0 })).toThrow(RangeError);
     });
 
-    it('should throw error for negative capacity', () => {
+    test('should throw error for negative capacity', () => {
       expect(() => new CircularBuffer({ capacity: -1 })).toThrow(RangeError);
     });
   });

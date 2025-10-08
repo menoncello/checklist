@@ -19,6 +19,9 @@ coverage/
 # ESLint cache
 .eslintcache
 
+# Turborepo cache
+.turbo/
+
 # Environment
 .env
 .env.local
@@ -53,3 +56,4 @@ reports/mutation/index.html
 
 # Quality reports
 /reports/
+packages/shared/reports/mutation/

@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach} from 'bun:test';
 import { TerminalSizeValidator } from '../../src/terminal/TerminalSizeValidator';
 import type { SizeValidationResult, SizeValidationConfig } from '../../src/terminal/TerminalSizeValidator';
-
 describe('TerminalSizeValidator', () => {
   let validator: TerminalSizeValidator;
   let originalColumns: number | undefined;
@@ -44,7 +43,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Size Validation', () => {
-    it('should validate acceptable terminal size', () => {
+    test('should validate acceptable terminal size', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 100, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 30, configurable: true });
 
@@ -58,7 +57,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.message).toContain('OK');
     });
 
-    it('should detect undersized terminal width', () => {
+    test('should detect undersized terminal width', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 30, configurable: true });
 
@@ -70,7 +69,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.message).toContain('missing 20 columns');
     });
 
-    it('should detect undersized terminal height', () => {
+    test('should detect undersized terminal height', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 100, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
 
@@ -81,7 +80,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.message).toContain('missing 9 rows');
     });
 
-    it('should detect both width and height issues', () => {
+    test('should detect both width and height issues', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 70, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 20, configurable: true });
 
@@ -91,7 +90,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.message).toContain('missing 10 columns and 4 rows');
     });
 
-    it('should handle undefined terminal dimensions', () => {
+    test('should handle undefined terminal dimensions', () => {
       Object.defineProperty(process.stdout, 'columns', { value: undefined, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: undefined, configurable: true });
 
@@ -105,7 +104,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Size Requirements Check', () => {
-    it('should return true when terminal meets minimum size', () => {
+    test('should return true when terminal meets minimum size', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 80, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 24, configurable: true });
 
@@ -113,7 +112,7 @@ describe('TerminalSizeValidator', () => {
       expect(meetsSize).toBe(true);
     });
 
-    it('should return false when terminal is too narrow', () => {
+    test('should return false when terminal is too narrow', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 79, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 24, configurable: true });
 
@@ -121,7 +120,7 @@ describe('TerminalSizeValidator', () => {
       expect(meetsSize).toBe(false);
     });
 
-    it('should return false when terminal is too short', () => {
+    test('should return false when terminal is too short', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 80, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 23, configurable: true });
 
@@ -131,7 +130,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Size Adjustment Calculations', () => {
-    it('should return needed:false when no adjustment needed', () => {
+    test('should return needed:false when no adjustment needed', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 100, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 30, configurable: true });
 
@@ -139,7 +138,7 @@ describe('TerminalSizeValidator', () => {
       expect(adjustment.needed).toBe(false);
     });
 
-    it('should calculate width adjustment needed', () => {
+    test('should calculate width adjustment needed', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 70, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 30, configurable: true });
 
@@ -151,7 +150,7 @@ describe('TerminalSizeValidator', () => {
       expect(adjustment.suggestions.length).toBeGreaterThan(0);
     });
 
-    it('should calculate height adjustment needed', () => {
+    test('should calculate height adjustment needed', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 100, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 20, configurable: true });
 
@@ -163,7 +162,7 @@ describe('TerminalSizeValidator', () => {
       expect(adjustment.suggestions.length).toBeGreaterThan(0);
     });
 
-    it('should calculate both width and height adjustment', () => {
+    test('should calculate both width and height adjustment', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
 
@@ -177,7 +176,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Error Message Generation', () => {
-    it('should generate empty message for valid size', () => {
+    test('should generate empty message for valid size', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 100, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 30, configurable: true });
 
@@ -185,7 +184,7 @@ describe('TerminalSizeValidator', () => {
       expect(message).toBe('');
     });
 
-    it('should generate detailed error message for undersized terminal', () => {
+    test('should generate detailed error message for undersized terminal', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
 
@@ -197,7 +196,7 @@ describe('TerminalSizeValidator', () => {
       expect(message).toContain('Suggestions');
     });
 
-    it('should include suggestions when enabled', () => {
+    test('should include suggestions when enabled', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 70, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 20, configurable: true });
 
@@ -211,7 +210,7 @@ describe('TerminalSizeValidator', () => {
       expect(message).toContain('Suggestions');
     });
 
-    it('should not include suggestions when disabled', () => {
+    test('should not include suggestions when disabled', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 70, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 20, configurable: true });
 
@@ -238,7 +237,7 @@ describe('TerminalSizeValidator', () => {
       Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
-    it('should provide macOS-specific suggestions', () => {
+    test('should provide macOS-specific suggestions', () => {
       Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
@@ -249,7 +248,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.suggestions.some(s => s.includes('⌘'))).toBe(true);
     });
 
-    it('should provide Linux-specific suggestions', () => {
+    test('should provide Linux-specific suggestions', () => {
       Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
@@ -260,7 +259,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.suggestions.some(s => s.includes('tmux'))).toBe(true);
     });
 
-    it('should provide Windows-specific suggestions', () => {
+    test('should provide Windows-specific suggestions', () => {
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
@@ -294,7 +293,7 @@ describe('TerminalSizeValidator', () => {
       }
     });
 
-    it('should provide iTerm2-specific suggestions', () => {
+    test('should provide iTerm2-specific suggestions', () => {
       Bun.env.TERM_PROGRAM = 'iTerm.app';
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
@@ -305,7 +304,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.suggestions.some(s => s.includes('⌘+Enter'))).toBe(true);
     });
 
-    it('should provide Alacritty-specific suggestions', () => {
+    test('should provide Alacritty-specific suggestions', () => {
       Bun.env.TERM_PROGRAM = 'Alacritty';
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 15, configurable: true });
@@ -316,7 +315,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.suggestions.some(s => s.includes('config file'))).toBe(true);
     });
 
-    it('should provide generic terminal suggestions', () => {
+    test('should provide generic terminal suggestions', () => {
       Bun.env.TERM = 'xterm';
       delete Bun.env.TERM_PROGRAM;
       Object.defineProperty(process.stdout, 'columns', { value: 60, configurable: true });
@@ -329,7 +328,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Configuration', () => {
-    it('should allow custom minimum size', () => {
+    test('should allow custom minimum size', () => {
       const customValidator = new TerminalSizeValidator({
         minWidth: 100,
         minHeight: 30,
@@ -345,7 +344,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.requiredHeight).toBe(30);
     });
 
-    it('should update configuration dynamically', () => {
+    test('should update configuration dynamically', () => {
       validator.updateConfig({ minWidth: 120, minHeight: 40 });
 
       const config = validator.getConfig();
@@ -353,7 +352,7 @@ describe('TerminalSizeValidator', () => {
       expect(config.minHeight).toBe(40);
     });
 
-    it('should enable/disable suggestions', () => {
+    test('should enable/disable suggestions', () => {
       const noSuggestionsValidator = new TerminalSizeValidator({
         enableSuggestions: false,
       });
@@ -367,14 +366,14 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Interactive Terminal Detection', () => {
-    it('should detect interactive terminal', () => {
+    test('should detect interactive terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
 
       const isInteractive = validator.isInteractive();
       expect(isInteractive).toBe(true);
     });
 
-    it('should detect non-interactive terminal', () => {
+    test('should detect non-interactive terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
 
       const isInteractive = validator.isInteractive();
@@ -383,7 +382,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Resize Attempts', () => {
-    it('should return false when auto-resize is disabled', async () => {
+    test('should return false when auto-resize is disabled', async () => {
       const noAutoResizeValidator = new TerminalSizeValidator({
         enableAutoResize: false,
       });
@@ -392,7 +391,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should handle resize attempts gracefully', async () => {
+    test('should handle resize attempts gracefully', async () => {
       // This test mainly ensures the method doesn't throw errors
       const result = await validator.attemptResize();
       expect(typeof result.success).toBe('boolean');
@@ -400,7 +399,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Current Size Information', () => {
-    it('should return current terminal size', () => {
+    test('should return current terminal size', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 100, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 30, configurable: true });
 
@@ -410,7 +409,7 @@ describe('TerminalSizeValidator', () => {
       expect(size.height).toBe(30);
     });
 
-    it('should handle undefined dimensions gracefully', () => {
+    test('should handle undefined dimensions gracefully', () => {
       Object.defineProperty(process.stdout, 'columns', { value: undefined, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: undefined, configurable: true });
 
@@ -422,7 +421,7 @@ describe('TerminalSizeValidator', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should handle very small terminals', () => {
+    test('should handle very small terminals', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 1, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 1, configurable: true });
 
@@ -432,7 +431,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.suggestions.length).toBeGreaterThan(0);
     });
 
-    it('should handle very large terminals', () => {
+    test('should handle very large terminals', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 500, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 200, configurable: true });
 
@@ -441,7 +440,7 @@ describe('TerminalSizeValidator', () => {
       expect(result.isValid).toBe(true);
     });
 
-    it('should handle exactly minimum size', () => {
+    test('should handle exactly minimum size', () => {
       Object.defineProperty(process.stdout, 'columns', { value: 80, configurable: true });
       Object.defineProperty(process.stdout, 'rows', { value: 24, configurable: true });
 

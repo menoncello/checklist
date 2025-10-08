@@ -4,7 +4,7 @@
 [test]
 
 # Setup file to run before tests
-preload = ["./packages/core/tests/setup.ts"]
+preload = ["./packages/core/tests/setup.ts", "./packages/tui/tests/setup.ts", "./apps/cli/tests/setup.ts"]
 
 # Enable coverage reporting
 # coverage = true
@@ -24,7 +24,7 @@ timeout = 10000
 # Path Aliases (matching tsconfig paths)
 [test.alias]
 "@checklist/core" = "./packages/core/src"
-"@checklist/cli" = "./packages/cli/src"  
+"@checklist/cli" = "./apps/cli/src"  
 "@checklist/tui" = "./packages/tui/src"
 "@checklist/shared" = "./packages/shared/src"
 
