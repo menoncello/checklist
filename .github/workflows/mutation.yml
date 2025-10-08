@@ -14,6 +14,9 @@ concurrency:
 
 env:
   BUN_VERSION: 1.2.23
+  # Turborepo remote caching
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
 jobs:
   mutation-test:
@@ -34,7 +37,11 @@ jobs:
       
       - name: Install Dependencies
         run: bun install
-      
+
+      - name: Setup Turborepo Cache
+        if: env.TURBO_TOKEN != ''
+        run: bun run turbo lint --filter=nothing  # This triggers cache setup
+
       # Cache for faster builds
       - name: Cache Stryker Temp Files
         uses: actions/cache@v3
