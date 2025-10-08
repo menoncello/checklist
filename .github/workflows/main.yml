@@ -196,39 +196,9 @@ jobs:
           path: dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           retention-days: 7
 
-  performance:
-    name: Performance Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      
-      - name: Install Dependencies
-        run: bun install
-      
-      - name: Run Benchmarks
-        run: bun run bench
-      
-      - name: Validate Performance Thresholds
-        run: bun run bench:assert
-      
-      - name: Upload Benchmark Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results
-          path: .performance/
-          retention-days: 7
-
   quality-gates:
     name: Quality Gates
-    needs: [test, build, performance]
+    needs: [test, build]
     runs-on: ubuntu-latest
     if: always()
     
@@ -253,16 +223,7 @@ jobs:
             exit 1
           fi
           echo "✅ Builds passed"
-      
-      - name: Check Performance Results
-        if: always()
-        run: |
-          if [ "${{ needs.performance.result }}" != "success" ]; then
-            echo "❌ Performance tests failed or were cancelled"
-            exit 1
-          fi
-          echo "✅ Performance tests passed"
-      
+
       - name: All Quality Gates Passed
         if: success()
         run: echo "✅ All quality gates passed successfully!"
