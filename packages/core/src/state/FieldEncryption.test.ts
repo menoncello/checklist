@@ -1,8 +1,8 @@
-import { describe, expect, test, beforeEach, afterEach} from 'bun:test';
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { FieldEncryption,typeEncryptedField} from './FieldEncryption';
-import { STATE_DIR} from './constants';
+import { FieldEncryption, typeEncryptedField } from './FieldEncryption';
+import { STATE_DIR } from './constants';
 describe('FieldEncryption', () => {
   const testDir = path.join(process.cwd(), '.test-encryption');
 
@@ -11,7 +11,10 @@ describe('FieldEncryption', () => {
     await fs.mkdir(testDir, { recursive: true });
     // Override file paths for tests
     FieldEncryption.KEY_FILE = path.join(testDir, '.encryption-key');
-    FieldEncryption.METADATA_FILE = path.join(testDir, '.encryption-metadata.json');
+    FieldEncryption.METADATA_FILE = path.join(
+      testDir,
+      '.encryption-metadata.json'
+    );
   });
 
   afterEach(async () => {
