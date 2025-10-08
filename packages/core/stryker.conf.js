@@ -28,12 +28,9 @@ const config = {
     low: 90,
     break: 85,
   },
-  reporters: ['html', 'json', 'clear-text', 'progress'],
+  reporters: ['html', 'clear-text', 'progress'],
   htmlReporter: {
     fileName: 'reports/mutation/index.html',
-  },
-  jsonReporter: {
-    fileName: 'reports/mutation/mutation-report.json',
   },
   incremental: true,
   incrementalFile: '.stryker-tmp/incremental.json',
@@ -70,11 +67,7 @@ const config = {
     unserializableOptions: true,
     slow: true,
   },
-  plugins: [
-    '@stryker-mutator/core',
-    '@stryker-mutator/javascript-mutator',
-    '@stryker-mutator/typescript-checker',
-  ],
+  plugins: ['@stryker-mutator/typescript-checker'],
 };
 
 export default config;

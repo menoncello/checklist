@@ -15,11 +15,22 @@ export default {
   // Files to mutate - exclude test files and type definitions
   mutate: [
     'apps/cli/src/**/*.ts',
+    'packages/core/src/**/*.ts',
+    'packages/tui/src/**/*.ts',
+    'packages/shared/src/**/*.ts',
     '!**/*.test.ts',
     '!**/*.spec.ts',
     '!**/*.d.ts',
     '!**/index.ts', // Often just re-exports
     '!**/~/**', // Exclude any tilde directories
+    // Exclude files with dynamic imports that break Stryker/Bun
+    '!**/state/DirectoryManager.ts',
+    '!**/state/BackupManager.ts',
+    '!**/state/EncryptionKeyManager.ts',
+    '!**/state/migrations/MigrationRunnerHelpers.ts',
+    '!**/state/migrations/BackupManager.ts',
+    '!**/services/filesystem/FileOperations.ts',
+    '!**/container/ServiceConfiguration.ts',
   ],
 
   // Ignore patterns for file copying
@@ -39,16 +50,11 @@ export default {
   },
 
   // Reporters for output
-  reporters: ['html', 'json', 'progress', 'clear-text'],
+  reporters: ['html', 'progress', 'clear-text'],
 
   // HTML reporter configuration
   htmlReporter: {
     fileName: 'reports/mutation/index.html',
-  },
-
-  // JSON reporter configuration
-  jsonReporter: {
-    fileName: 'reports/mutation/mutation-report.json',
   },
 
   // Enable incremental testing for faster PR validation
@@ -57,7 +63,7 @@ export default {
   incrementalFile: '.stryker-tmp/incremental.json',
 
   // Force incremental mode even on CI (unless explicitly disabled)
-  force: process.env.STRYKER_INCREMENTAL_FORCE !== 'false',
+  force: false,
 
   // Performance settings - reduced for faster runs
   concurrency: 4,
