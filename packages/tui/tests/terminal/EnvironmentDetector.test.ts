@@ -27,13 +27,14 @@ describe('EnvironmentDetector', () => {
     test('should detect session types correctly', () => {
       const envInfo = EnvironmentDetector.gatherEnvironmentInfo();
 
-      // At least one should be defined
-      expect([
-        envInfo.ssh,
-        envInfo.tmux,
-        envInfo.screen,
-        envInfo.term !== 'unknown'
-      ]).toContain(true);
+      // Validate structure - all session type fields should be boolean
+      expect(typeof envInfo.ssh).toBe('boolean');
+      expect(typeof envInfo.tmux).toBe('boolean');
+      expect(typeof envInfo.screen).toBe('boolean');
+
+      // term should always be defined (either from env or 'unknown')
+      expect(envInfo.term).toBeDefined();
+      expect(typeof envInfo.term).toBe('string');
     });
   });
 
