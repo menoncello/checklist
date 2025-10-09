@@ -21,10 +21,11 @@ stories/
 **Total: 49 user stories + 1 setup story across 5 epics**
 
 ### 📊 Current Progress
-- **Completed**: 21 stories (41.2%)
-- **Remaining**: 29 stories (58.8%)
+- **Completed**: 22 stories (43.1%)
+- **Remaining**: 28 stories (56.9%)
 - **Epic 1**: 19/19 stories complete (100%) ✅ **EPIC 1 COMPLETE!**
 - **Epic 2**: 2/7 stories complete (28.6%)
+- **Epic 3**: 1/8 stories complete (12.5%)
 
 ## Implementation Order
 
@@ -79,7 +80,7 @@ stories/
 **Timeline: Weeks 5-6** (can partially overlap with Epic 2)
 
 - [ ] [Epic 3: Template System & Security](epic-3/epic-3-overview.md)
-  - [ ] [Story 3.1: Template Parser Engine](epic-3/story-3.1-template-parser.md)
+  - [x] [Story 3.1: Template Loading with Sandbox](3.1.template-loading-with-sandbox.story.md) ✅ **COMPLETE**
   - [ ] [Story 3.2: Variable System](epic-3/story-3.2-variable-system.md)
   - [ ] [Story 3.3: Conditional Logic Engine](epic-3/story-3.3-conditional-logic.md)
   - [ ] [Story 3.4: Template Validation](epic-3/story-3.4-template-validation.md)

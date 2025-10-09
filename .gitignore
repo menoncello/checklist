@@ -57,3 +57,4 @@ reports/mutation/index.html
 # Quality reports
 /reports/
 packages/shared/reports/mutation/
+flattened-codebase.xml

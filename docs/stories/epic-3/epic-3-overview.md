@@ -1,6 +1,6 @@
 # Epic 3: Templates & Security
 
-## Status: 📝 READY TO START (0% Complete - 0/8 stories)
+## Status: 🚧 IN PROGRESS (12.5% Complete - 1/8 stories)
 
 ## Goal
 
@@ -14,10 +14,12 @@ Implement a powerful and secure template engine with advanced variable substitut
 - ✅ Sandboxed execution prevents malicious code
 - ✅ Template inheritance supported
 
-## Stories (8 total, 0 complete)
+## Stories (8 total, 1 complete)
+
+### ✅ Complete
+1. [Story 3.1: Template Loading with Sandbox](../3.1.template-loading-with-sandbox.story.md) ✅ **COMPLETE** (Quality Score: 94/100)
 
 ### 📝 Ready to Start
-1. [Story 3.1: Template Parser Engine](story-3.1-template-parser.md) 📝 **READY**
 2. [Story 3.2: Variable System](story-3.2-variable-system.md) 📝 **READY**
 3. [Story 3.3: Conditional Logic Engine](story-3.3-conditional-logic.md) 📝 **READY**
 4. [Story 3.4: Template Validation](story-3.4-template-validation.md) 📝 **READY**
