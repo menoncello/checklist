@@ -58,12 +58,13 @@ jobs:
           fi
           
           # Extract coverage percentage - look for the All files line
-          COVERAGE=$(grep "All files" test-output.txt | awk '{print $(NF-1)}' | tr -d '%' || echo "0")
-          
+          # Remove newlines and clean the value
+          COVERAGE=$(grep "All files" test-output.txt | awk '{print $(NF-1)}' | tr -d '%\n\r ' || echo "0")
+
           if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "0" ]; then
             echo "WARNING: Could not parse coverage percentage"
             # Try alternative parsing
-            COVERAGE=$(grep -E "^\s*[0-9]+\.[0-9]+\s*\|" test-output.txt | tail -1 | awk -F'|' '{print $3}' | tr -d ' %' || echo "0")
+            COVERAGE=$(grep -E "^\s*[0-9]+\.[0-9]+\s*\|" test-output.txt | tail -1 | awk -F'|' '{print $3}' | tr -d ' %\n\r' || echo "0")
           fi
           
           echo "" >> coverage-summary.md
@@ -74,7 +75,7 @@ jobs:
             echo "❌ Coverage could not be determined" >> coverage-summary.md
             cat coverage-summary.md
             exit 1
-          elif (( $(echo "$COVERAGE < 70" | bc -l) )); then
+          elif [ $(awk "BEGIN {print ($COVERAGE < 70)}") -eq 1 ]; then
             echo "" >> coverage-summary.md
             echo "❌ Coverage is below 70% threshold" >> coverage-summary.md
             cat coverage-summary.md

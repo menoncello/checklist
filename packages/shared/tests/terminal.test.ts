@@ -438,6 +438,13 @@ describe('Terminal Capabilities', () => {
     });
 
     it('should return false when not in CI', () => {
+      // Delete all CI environment variables to simulate non-CI environment
+      delete process.env.CI;
+      delete process.env.CONTINUOUS_INTEGRATION;
+      delete process.env.GITHUB_ACTIONS;
+      delete process.env.GITLAB_CI;
+      delete process.env.JENKINS_URL;
+
       const result = terminal.isCI();
 
       expect(result).toBe(false);
