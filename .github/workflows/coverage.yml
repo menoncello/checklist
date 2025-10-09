@@ -57,19 +57,18 @@ jobs:
             echo '```' >> coverage-summary.md
           fi
           
-          # Extract coverage percentage - get the last "All files" line (aggregated coverage)
-          # Turbo shows multiple packages, we want the last one which is usually the summary
-          COVERAGE=$(grep "All files" test-output.txt | tail -1 | awk '{print $(NF-1)}' | tr -d '%\n\r ' || echo "0")
+          # Extract coverage percentage - calculate average across all packages
+          # Turbo runs coverage for each package separately (shared, core, tui)
+          # We calculate the average coverage across all packages
+          COVERAGES=$(grep "All files" test-output.txt | awk '{print $(NF-1)}' | tr -d '%')
 
-          if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "0" ]; then
+          if [ -n "$COVERAGES" ]; then
+            COVERAGE=$(echo "$COVERAGES" | awk '{sum+=$1; count++} END {if (count>0) printf "%.2f", sum/count; else print "0"}')
+            echo "Package coverages: $COVERAGES"
+            echo "Average coverage: $COVERAGE%"
+          else
             echo "WARNING: Could not parse coverage percentage"
-            # Try alternative parsing - get average of all package coverages
-            COVERAGES=$(grep "All files" test-output.txt | awk '{print $(NF-1)}' | tr -d '%')
-            if [ -n "$COVERAGES" ]; then
-              COVERAGE=$(echo "$COVERAGES" | awk '{sum+=$1; count++} END {if (count>0) printf "%.2f", sum/count; else print "0"}')
-            else
-              COVERAGE="0"
-            fi
+            COVERAGE="0"
           fi
           
           echo "" >> coverage-summary.md
