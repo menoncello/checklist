@@ -28,7 +28,7 @@
   "dependencies": {
     "@checklist/core": "workspace:*",
     "@checklist/shared": "workspace:*",
-    "ansis": "^3.3.2",
+    "ansis": "^4.2.0",
     "supports-color": "^10.2.2"
   },
   "devDependencies": {
