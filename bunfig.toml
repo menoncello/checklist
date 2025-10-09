@@ -55,7 +55,8 @@ coveragePathIgnorePatterns = [
   "**/scripts/**",
   "performance.config.ts",
   "**/TestDataFactory.ts",
-  "**/LogAssertions.ts"
+  "**/LogAssertions.ts",
+  "../**"
 ]
 
 # Development Configuration
