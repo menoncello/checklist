@@ -134,15 +134,15 @@ jobs:
       - name: Compile Binary (Unix)
         if: matrix.os != 'windows-latest'
         run: |
-          bun build ./packages/cli/src/index.ts \
+          bun build ./apps/cli/src/index.ts \
             --compile \
             --target=bun-${{ matrix.platform }}-${{ matrix.arch }} \
             --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}
-      
+
       - name: Compile Binary (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
-        run: bun build ./packages/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
+        run: bun build ./apps/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
       
       - name: Validate Binary Size (Unix)
         if: matrix.os != 'windows-latest'
