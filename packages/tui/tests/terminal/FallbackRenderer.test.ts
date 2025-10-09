@@ -397,12 +397,16 @@ describe('FallbackUtils', () => {
     });
 
     test('should convert to ASCII', () => {
-      const unicode = 'Box: ┌──┐ Arrows: →← Emoji: ✔✘';
+      // Use Unicode escape sequences to avoid CI encoding issues
+      const unicode = `Box: \u250C\u2500\u2500\u2510 Arrows: \u2192\u2190 Emoji: \u2714\u2718`;
       const ascii = FallbackUtils.convertToAscii(unicode);
 
-      expect(ascii).not.toContain('┌');
-      expect(ascii).not.toContain('→');
-      expect(ascii).not.toContain('✔');
+      // Check that Unicode characters were converted
+      expect(ascii).not.toContain('\u250C'); // ┌
+      expect(ascii).not.toContain('\u2192'); // →
+      expect(ascii).not.toContain('\u2714'); // ✔
+
+      // Check for ASCII replacements
       expect(ascii).toContain('+');
       expect(ascii).toContain('>');
       expect(ascii).toContain('v');
