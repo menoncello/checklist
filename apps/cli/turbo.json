@@ -1,0 +1,45 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["@checklist/core#build", "@checklist/shared#build"],
+      "outputs": ["../../dist/apps/cli/**"],
+      "inputs": ["src/**/*.ts", "package.json"]
+    },
+    "test": {
+      "dependsOn": ["build", "@checklist/core#test"],
+      "outputs": ["../../coverage/apps/cli/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "test:unit": {
+      "dependsOn": ["build", "@checklist/core#test:unit"],
+      "outputs": ["../../coverage/apps/cli/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.test.ts"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["@checklist/core#build", "@checklist/shared#build"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["build"]
+    },
+    "typecheck": {
+      "dependsOn": ["@checklist/core#build", "@checklist/shared#build"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "package.json", "tsconfig.json"]
+    },
+    "lint": {
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "package.json"]
+    },
+    "lint:fix": {
+      "cache": false,
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "package.json"]
+    }
+  }
+}
