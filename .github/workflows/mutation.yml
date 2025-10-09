@@ -44,7 +44,7 @@ jobs:
 
       # Cache for faster builds
       - name: Cache Stryker Temp Files
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.bun/install/cache
