@@ -1,0 +1,101 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": [".env", "bun.lockb", "tsconfig.json", "eslint.config.js", ".prettierrc.js"],
+  "globalEnv": ["NODE_ENV", "LOG_LEVEL", "BUN_VERSION"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "inputs": ["src/**/*.ts", "package.json", "tsconfig.json"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "package.json", "tsconfig.json"]
+    },
+    "test:unit": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.test.ts", "package.json", "tsconfig.json"]
+    },
+    "test:integration": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.test.ts", "test/**/*.integration.test.ts", "package.json", "tsconfig.json"]
+    },
+    "test:coverage": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "package.json", "tsconfig.json"]
+    },
+    "test:mutation": {
+      "dependsOn": ["build"],
+      "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+    },
+    "test:mutation:ci": {
+      "dependsOn": ["build"],
+      "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+    },
+    "test:mutation:report": {
+      "dependsOn": ["build"],
+      "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+    },
+    "test:mutation:full": {
+      "dependsOn": ["build"],
+      "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+    },
+    "test:mutation:clean": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", "eslint.config.js", ".prettierrc.js"]
+    },
+    "lint:fix": {
+      "dependsOn": ["^lint:fix"],
+      "cache": false,
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", "eslint.config.js", ".prettierrc.js"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "package.json", "tsconfig.json"]
+    },
+    "format": {
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", ".prettierrc.js"]
+    },
+    "format:check": {
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", ".prettierrc.js"]
+    },
+    "quality": {
+      "dependsOn": ["^build", "lint", "typecheck"],
+      "outputs": []
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "bench": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "test/**/*.bench.ts", "package.json", "tsconfig.json"]
+    }
+  }
+}

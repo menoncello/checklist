@@ -101,7 +101,13 @@ export class DebugManager {
     // This is a TUI app, not a browser app
   }
 
-  private getKeyCombo(event: KeyboardEvent): string {
+  private getKeyCombo(event: {
+    key?: string;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    metaKey?: boolean;
+  }): string {
     const parts: string[] = [];
     if ('ctrlKey' in event && event.ctrlKey) parts.push('ctrl');
     if ('shiftKey' in event && event.shiftKey) parts.push('shift');

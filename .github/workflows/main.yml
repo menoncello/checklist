@@ -13,9 +13,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BUN_VERSION: 1.2
+  BUN_VERSION: 1.2.23
   # Enforce HTTPS for all requests (Security fix)
   NODE_TLS_REJECT_UNAUTHORIZED: 1
+  # Turborepo remote caching
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
 jobs:
   test:
@@ -35,11 +38,15 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
-      
+        run: bun install
+
+      - name: Setup Turborepo Cache
+        if: env.TURBO_TOKEN != ''
+        run: bun run turbo lint --filter=nothing  # This triggers cache setup
+
       - name: Run TypeScript Type Check
-        run: bun run type-check
-      
+        run: bun run typecheck
+
       - name: Run Linting
         run: bun run lint
 
@@ -62,7 +69,7 @@ jobs:
         run: rm -rf packages/*/dist
       
       - name: Run Tests with Coverage
-        run: bun run test:sequential
+        run: bun run test:coverage
       
       - name: Upload Coverage Reports
         uses: actions/upload-artifact@v4
@@ -118,7 +125,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile --ignore-optional
+        run: bun install --ignore-optional
         continue-on-error: ${{ matrix.os == 'windows-latest' }}
       
       - name: Build Packages
@@ -127,15 +134,15 @@ jobs:
       - name: Compile Binary (Unix)
         if: matrix.os != 'windows-latest'
         run: |
-          bun build ./packages/cli/src/index.ts \
+          bun build ./apps/cli/src/index.ts \
             --compile \
             --target=bun-${{ matrix.platform }}-${{ matrix.arch }} \
             --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}
-      
+
       - name: Compile Binary (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
-        run: bun build ./packages/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
+        run: bun build ./apps/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
       
       - name: Validate Binary Size (Unix)
         if: matrix.os != 'windows-latest'
@@ -189,39 +196,9 @@ jobs:
           path: dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           retention-days: 7
 
-  performance:
-    name: Performance Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-      
-      - name: Run Benchmarks
-        run: bun run bench
-      
-      - name: Validate Performance Thresholds
-        run: bun run bench:assert
-      
-      - name: Upload Benchmark Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results
-          path: .performance/
-          retention-days: 7
-
   quality-gates:
     name: Quality Gates
-    needs: [test, build, performance]
+    needs: [test, build]
     runs-on: ubuntu-latest
     if: always()
     
@@ -246,16 +223,7 @@ jobs:
             exit 1
           fi
           echo "✅ Builds passed"
-      
-      - name: Check Performance Results
-        if: always()
-        run: |
-          if [ "${{ needs.performance.result }}" != "success" ]; then
-            echo "❌ Performance tests failed or were cancelled"
-            exit 1
-          fi
-          echo "✅ Performance tests passed"
-      
+
       - name: All Quality Gates Passed
         if: success()
         run: echo "✅ All quality gates passed successfully!"

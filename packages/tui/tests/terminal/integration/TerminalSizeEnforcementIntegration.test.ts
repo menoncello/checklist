@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach} from 'bun:test';
 import { TerminalSizeValidator } from '../../../src/terminal/TerminalSizeValidator';
 import { FallbackRenderer } from '../../../src/terminal/FallbackRenderer';
-import type { TerminalSize } from '../../../src/terminal/types';
-
+import type { TerminalSize} from '../../../src/terminal/types';
 describe('Terminal Size Enforcement Integration', () => {
   let validator: TerminalSizeValidator;
   let renderer: FallbackRenderer;
@@ -35,7 +34,7 @@ describe('Terminal Size Enforcement Integration', () => {
   });
 
   describe('UI Blocking Mechanism', () => {
-    it('should prevent UI rendering when terminal is undersized', () => {
+    test('should prevent UI rendering when terminal is undersized', () => {
       // Set terminal to undersized dimensions
       mockStdout.columns = 60;
       mockStdout.rows = 20;
@@ -51,7 +50,7 @@ describe('Terminal Size Enforcement Integration', () => {
       expect(validation.errors).toContain('Terminal height too small');
     });
 
-    it('should display error screen instead of main UI when undersized', () => {
+    test('should display error screen instead of main UI when undersized', () => {
       // Set terminal to undersized dimensions
       mockStdout.columns = 70;
       mockStdout.rows = 18;
@@ -74,7 +73,7 @@ describe('Terminal Size Enforcement Integration', () => {
       expect(capturedOutput.join('')).toContain('80x24');
     });
 
-    it('should block complex layouts when terminal width insufficient', () => {
+    test('should block complex layouts when terminal width insufficient', () => {
       // Terminal with sufficient height but insufficient width
       mockStdout.columns = 75;
       mockStdout.rows = 30;
@@ -89,7 +88,7 @@ describe('Terminal Size Enforcement Integration', () => {
       expect(validation.reason).toContain('width');
     });
 
-    it('should block scrollable lists when terminal height insufficient', () => {
+    test('should block scrollable lists when terminal height insufficient', () => {
       // Terminal with sufficient width but insufficient height
       mockStdout.columns = 100;
       mockStdout.rows = 10;
@@ -103,7 +102,7 @@ describe('Terminal Size Enforcement Integration', () => {
       expect(validation.reason).toContain('height');
     });
 
-    it('should transition from blocked to active when terminal resized', () => {
+    test('should transition from blocked to active when terminal resized', () => {
       // Start with undersized terminal
       let currentSize = { width: 60, height: 20 };
 
@@ -117,7 +116,7 @@ describe('Terminal Size Enforcement Integration', () => {
       expect(validation.isValid).toBe(true);
     });
 
-    it('should show platform-specific resize instructions when blocked', () => {
+    test('should show platform-specific resize instructions when blocked', () => {
       mockStdout.columns = 50;
       mockStdout.rows = 15;
 
@@ -149,7 +148,7 @@ describe('Terminal Size Enforcement Integration', () => {
       }
     });
 
-    it('should prevent navigation commands when terminal undersized', () => {
+    test('should prevent navigation commands when terminal undersized', () => {
       const currentSize = { width: 60, height: 20 };
 
       const validation = validator.validateSize(currentSize);
@@ -160,7 +159,7 @@ describe('Terminal Size Enforcement Integration', () => {
       expect(navigationAllowed).toBe(false);
     });
 
-    it('should provide clear feedback loop for size requirements', () => {
+    test('should provide clear feedback loop for size requirements', () => {
       const sizes: TerminalSize[] = [
         { width: 50, height: 20 },
         { width: 80, height: 20 },
@@ -194,7 +193,7 @@ describe('Terminal Size Enforcement Integration', () => {
   });
 
   describe('Integration with Error Recovery', () => {
-    it('should maintain size enforcement after error recovery', () => {
+    test('should maintain size enforcement after error recovery', () => {
       // Start with valid size
       let currentSize = { width: 80, height: 24 };
       let validation = validator.validateSize(currentSize);
@@ -210,7 +209,7 @@ describe('Terminal Size Enforcement Integration', () => {
   });
 
   describe('Fallback Rendering Integration', () => {
-    it('should use fallback renderer when size constraints met but capabilities limited', () => {
+    test('should use fallback renderer when size constraints met but capabilities limited', () => {
       // Valid size
       const size = { width: 80, height: 24 };
       const validation = validator.validateSize(size);

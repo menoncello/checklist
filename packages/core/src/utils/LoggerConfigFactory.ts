@@ -14,10 +14,10 @@ export interface LoggerConfig {
 
 export class LoggerConfigFactory {
   static createOptions(config: LoggerConfig): LoggerOptions {
-    // Temporarily allow error logs during tests for debugging migration issues
+    // CRITICAL: Use silent logger during tests to prevent any output
     if (Bun.env.NODE_ENV === 'test' && config.enableFileLogging !== true) {
       return {
-        level: 'error',
+        level: 'silent',
         base: null,
       };
     }

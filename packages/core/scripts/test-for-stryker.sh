@@ -14,9 +14,8 @@ if [[ ! -f "package.json" ]]; then
 fi
 
 # Run tests using Bun with configurations optimized for mutation testing
+# Note: Bun only supports 'junit' reporter, not 'json'
 exec bun test \
   --timeout 10000 \
-  --coverage \
   --bail \
-  --reporter json \
   "$@"

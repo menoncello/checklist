@@ -1,0 +1,8 @@
+[test]
+
+# Exclude other packages from coverage
+coveragePathIgnorePatterns = [
+  "../../packages/!(shared)/**",
+  "../../apps/**",
+  "**/tests/**"
+]

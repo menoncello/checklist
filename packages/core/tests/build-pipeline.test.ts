@@ -1,8 +1,7 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test} from 'bun:test';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'js-yaml';
-
+import { load} from 'js-yaml';
 // Skip these tests in CI as they expect configuration files that don't exist yet
 describe.skip('Build Pipeline Configuration', () => {
   const cwd = process.cwd();

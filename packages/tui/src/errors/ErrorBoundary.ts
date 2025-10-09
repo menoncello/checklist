@@ -1,9 +1,9 @@
-import { createLogger } from "@checklist/core/utils/logger";
-import { LifecycleManager, LifecycleHooks } from "../framework/Lifecycle";
+import { createLogger } from '@checklist/core/utils/logger';
+import { LifecycleManager, LifecycleHooks } from '../framework/Lifecycle';
 import {
   ApplicationErrorContext,
   ApplicationErrorReport,
-} from "./ApplicationErrorHandler";
+} from './ApplicationErrorHandler';
 import {
   ErrorBoundaryConfig,
   ErrorBoundaryMetrics,
@@ -11,26 +11,26 @@ import {
   ErrorRecordParams,
   ErrorUpdateParams,
   type ErrorState,
-} from "./ErrorBoundaryHelpers";
+} from './ErrorBoundaryHelpers';
 import {
   ErrorBoundaryInitializers,
   ErrorBoundaryDependencies,
-} from "./ErrorBoundaryInitializers";
-import { ErrorBoundaryMethods } from "./ErrorBoundaryMethods";
+} from './ErrorBoundaryInitializers';
+import { ErrorBoundaryMethods } from './ErrorBoundaryMethods';
 
-const _logger = createLogger("checklist:tui:error-boundary");
+const _logger = createLogger('checklist:tui:error-boundary');
 
 export {
   type ErrorBoundaryConfig,
   type ErrorBoundaryMetrics,
   type ErrorInfo,
   type ErrorState,
-} from "./ErrorBoundaryHelpers";
+} from './ErrorBoundaryHelpers';
 
 export {
   type ApplicationErrorContext,
   type ApplicationErrorReport,
-} from "./ApplicationErrorHandler";
+} from './ApplicationErrorHandler';
 
 export class ErrorBoundary implements LifecycleHooks {
   private deps: ErrorBoundaryDependencies;
@@ -63,7 +63,7 @@ export class ErrorBoundary implements LifecycleHooks {
 
   public handleApplicationError(
     error: Error,
-    context: ApplicationErrorContext,
+    context: ApplicationErrorContext
   ): void {
     this.methods.handleApplicationError(error, context);
   }
@@ -266,7 +266,9 @@ export class ErrorBoundary implements LifecycleHooks {
     return Promise.resolve();
   }
 
-  public onErrorWithInfo(handler: (error: Error, errorInfo: ErrorInfo) => void): void {
+  public onErrorWithInfo(
+    handler: (error: Error, errorInfo: ErrorInfo) => void
+  ): void {
     // Keep the original signature for component-specific error handling
     // Wrap the handler to match the expected event signature
     this.on('error', (...args: unknown[]) => {

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["../../dist/packages/core/**"],
+      "inputs": ["src/**/*.ts", "package.json"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["../../coverage/packages/core/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "test:unit": {
+      "dependsOn": ["build"],
+      "outputs": ["../../coverage/packages/core/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.test.ts"]
+    },
+    "bench": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "test/**/*.bench.ts"]
+    },
+    "test:mutation": {
+      "dependsOn": ["build", "test"],
+      "outputs": ["../../reports/mutation/**"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", "eslint.config.js", ".prettierrc.js"]
+    },
+    "lint:fix": {
+      "cache": false,
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", "eslint.config.js", ".prettierrc.js"]
+    },
+    "format": {
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", ".prettierrc.js"]
+    },
+    "format:check": {
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "*.md", "*.json", "*.yaml", "*.yml", ".prettierrc.js"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts", "package.json", "tsconfig.json"]
+    }
+  }
+}

@@ -1,13 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, mock} from 'bun:test';
 import * as yaml from 'js-yaml';
-import { StateInitializer } from '../../../src/state/manager/StateInitializer';
-import { DirectoryManager } from '../../../src/state/DirectoryManager';
-import { StateValidator } from '../../../src/state/validation';
-import { MigrationRunner } from '../../../src/state/migrations/MigrationRunner';
-import { StateError, StateCorruptedError } from '../../../src/state/errors';
-import { SCHEMA_VERSION } from '../../../src/state/constants';
-import type { ChecklistState } from '../../../src/state/types';
-
+import { StateInitializer} from '../../../src/state/manager/StateInitializer';
+import { DirectoryManager} from '../../../src/state/DirectoryManager';
+import { StateValidator} from '../../../src/state/validation';
+import { MigrationRunner} from '../../../src/state/migrations/MigrationRunner';
+import { StateError, StateCorruptedError} from '../../../src/state/errors';
+import { SCHEMA_VERSION} from '../../../src/state/constants';
+import type { ChecklistState} from '../../../src/state/types';
 describe('StateInitializer', () => {
   let stateInitializer: StateInitializer;
   let mockDirectoryManager: DirectoryManager;
@@ -58,7 +57,7 @@ describe('StateInitializer', () => {
   });
 
   describe('initializeState', () => {
-    it('should initialize state successfully when file exists', async () => {
+    test('should initialize state successfully when file exists', async () => {
       const result = await stateInitializer.initializeState();
 
       expect(mockDirectoryManager.ensureDirectoriesExist).toHaveBeenCalled();
@@ -67,7 +66,7 @@ describe('StateInitializer', () => {
       expect(result).toEqual(mockValidState);
     });
 
-    it('should create new state when file does not exist', async () => {
+    test('should create new state when file does not exist', async () => {
       mockDirectoryManager.fileExists = mock(() => Promise.resolve(false));
 
       const result = await stateInitializer.initializeState();
@@ -80,7 +79,7 @@ describe('StateInitializer', () => {
       expect(result.recovery.dataLoss).toBe(false);
     });
 
-    it('should throw StateError when directory creation fails', async () => {
+    test('should throw StateError when directory creation fails', async () => {
       const error = new Error('Directory creation failed');
       mockDirectoryManager.ensureDirectoriesExist = mock(() => Promise.reject(error));
 
@@ -88,7 +87,7 @@ describe('StateInitializer', () => {
       await expect(stateInitializer.initializeState()).rejects.toThrow('Failed to initialize state: Directory creation failed');
     });
 
-    it('should throw StateError when file existence check fails', async () => {
+    test('should throw StateError when file existence check fails', async () => {
       const error = new Error('File check failed');
       mockDirectoryManager.fileExists = mock(() => Promise.reject(error));
 
@@ -98,7 +97,7 @@ describe('StateInitializer', () => {
   });
 
   describe('loadExistingState', () => {
-    it('should load and validate existing state successfully', async () => {
+    test('should load and validate existing state successfully', async () => {
       const result = await stateInitializer.initializeState();
 
       expect(mockDirectoryManager.readFile).toHaveBeenCalledWith(mockStatePath);
@@ -106,7 +105,7 @@ describe('StateInitializer', () => {
       expect(result).toEqual(mockValidState);
     });
 
-    it('should throw StateError when state validation fails', async () => {
+    test('should throw StateError when state validation fails', async () => {
       mockValidator.validateState = mock(() => ({
         isValid: false,
         errors: ['Invalid schema', 'Missing required field']
@@ -116,13 +115,13 @@ describe('StateInitializer', () => {
       await expect(stateInitializer.initializeState()).rejects.toThrow('Failed to initialize state');
     });
 
-    it('should handle YAML parsing errors', async () => {
+    test('should handle YAML parsing errors', async () => {
       mockDirectoryManager.readFile = mock(() => Promise.resolve('invalid: yaml: content:'));
 
       await expect(stateInitializer.initializeState()).rejects.toThrow(StateError);
     });
 
-    it('should handle file read errors', async () => {
+    test('should handle file read errors', async () => {
       const error = new Error('File read failed');
       mockDirectoryManager.readFile = mock(() => Promise.reject(error));
 
@@ -132,14 +131,14 @@ describe('StateInitializer', () => {
   });
 
   describe('handleMigrationIfNeeded', () => {
-    it('should not migrate when versions match', async () => {
+    test('should not migrate when versions match', async () => {
       const result = await stateInitializer.initializeState();
 
       expect(mockMigrationRunner.migrateState).not.toHaveBeenCalled();
       expect(result).toEqual(mockValidState);
     });
 
-    it('should migrate when versions differ', async () => {
+    test('should migrate when versions differ', async () => {
       // Since SCHEMA_VERSION equals mockValidState.version, use different version
       const oldState = {
         ...mockValidState,
@@ -163,7 +162,7 @@ describe('StateInitializer', () => {
       expect(result).toEqual(migratedState);
     });
 
-    it('should handle state without version (default to 1.0.0)', async () => {
+    test('should handle state without version (default to 1.0.0)', async () => {
       const stateWithoutVersion = {
         schemaVersion: SCHEMA_VERSION,
         checksum: 'mock-checksum',
@@ -171,6 +170,7 @@ describe('StateInitializer', () => {
         recovery: { dataLoss: false },
         conflicts: {}
       };
+
       mockDirectoryManager.readFile = mock(() => Promise.resolve(yaml.dump(stateWithoutVersion)));
 
       await stateInitializer.initializeState();
@@ -182,7 +182,7 @@ describe('StateInitializer', () => {
       );
     });
 
-    it('should handle migration errors', async () => {
+    test('should handle migration errors', async () => {
       const oldState = {
         ...mockValidState,
         version: '0.9.0'
@@ -198,7 +198,7 @@ describe('StateInitializer', () => {
   });
 
   describe('createNewState', () => {
-    it('should create and save new state successfully', async () => {
+    test('should create and save new state successfully', async () => {
       mockDirectoryManager.fileExists = mock(() => Promise.resolve(false));
 
       const result = await stateInitializer.initializeState();
@@ -217,7 +217,7 @@ describe('StateInitializer', () => {
       expect(result.metadata?.modified).toBeDefined();
     });
 
-    it('should handle file write errors during new state creation', async () => {
+    test('should handle file write errors during new state creation', async () => {
       mockDirectoryManager.fileExists = mock(() => Promise.resolve(false));
       const writeError = new Error('Write failed');
       mockDirectoryManager.writeFile = mock(() => Promise.reject(writeError));
@@ -228,7 +228,7 @@ describe('StateInitializer', () => {
   });
 
   describe('createEmptyState', () => {
-    it('should create empty state with correct structure', async () => {
+    test('should create empty state with correct structure', async () => {
       mockDirectoryManager.fileExists = mock(() => Promise.resolve(false));
 
       const result = await stateInitializer.initializeState();
@@ -246,7 +246,7 @@ describe('StateInitializer', () => {
   });
 
   describe('saveNewState', () => {
-    it('should save state as YAML with correct formatting', async () => {
+    test('should save state as YAML with correct formatting', async () => {
       mockDirectoryManager.fileExists = mock(() => Promise.resolve(false));
 
       await stateInitializer.initializeState();
@@ -269,19 +269,19 @@ describe('StateInitializer', () => {
   });
 
   describe('error handling and edge cases', () => {
-    it('should handle invalid YAML content gracefully', async () => {
+    test('should handle invalid YAML content gracefully', async () => {
       mockDirectoryManager.readFile = mock(() => Promise.resolve('invalid yaml content: [missing bracket'));
 
       await expect(stateInitializer.initializeState()).rejects.toThrow(StateError);
     });
 
-    it('should handle null state from YAML parsing', async () => {
+    test('should handle null state from YAML parsing', async () => {
       mockDirectoryManager.readFile = mock(() => Promise.resolve(''));
 
       await expect(stateInitializer.initializeState()).rejects.toThrow();
     });
 
-    it('should handle validation with multiple errors', async () => {
+    test('should handle validation with multiple errors', async () => {
       mockValidator.validateState = mock(() => ({
         isValid: false,
         errors: ['Error 1', 'Error 2', 'Error 3']
@@ -290,7 +290,7 @@ describe('StateInitializer', () => {
       await expect(stateInitializer.initializeState()).rejects.toThrow('Invalid state: Error 1, Error 2, Error 3');
     });
 
-    it('should maintain state structure consistency during migration', async () => {
+    test('should maintain state structure consistency during migration', async () => {
       const oldState = {
         version: '1.0.0',
         schemaVersion: '1.0.0',
@@ -307,6 +307,7 @@ describe('StateInitializer', () => {
         recovery: { dataLoss: true },
         conflicts: { detected: '2025-01-01T00:00:00Z' }
       };
+
       mockDirectoryManager.readFile = mock(() => Promise.resolve(yaml.dump(oldState)));
 
       const migratedState = {
@@ -325,7 +326,7 @@ describe('StateInitializer', () => {
   });
 
   describe('integration scenarios', () => {
-    it('should handle complete initialization flow with existing valid state', async () => {
+    test('should handle complete initialization flow with existing valid state', async () => {
       const complexState: ChecklistState = {
         version: SCHEMA_VERSION,
         schemaVersion: SCHEMA_VERSION,
@@ -393,7 +394,7 @@ describe('StateInitializer', () => {
       expect(result.items).toHaveLength(1);
     });
 
-    it('should handle initialization with corrupt state and failure', async () => {
+    test('should handle initialization with corrupt state and failure', async () => {
       mockValidator.validateState = mock(() => ({
         isValid: false,
         errors: ['Corruption detected']

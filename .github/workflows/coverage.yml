@@ -11,6 +11,12 @@ permissions:
   pull-requests: write
   issues: write
 
+env:
+  BUN_VERSION: 1.2.23
+  # Turborepo remote caching
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
 jobs:
   coverage:
     runs-on: ubuntu-latest
@@ -19,19 +25,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.2
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
         run: bun install
+
+      - name: Setup Turborepo Cache
+        if: env.TURBO_TOKEN != ''
+        run: bun run turbo lint --filter=nothing  # This triggers cache setup
 
       - name: Clean build artifacts
         run: rm -rf dist coverage
 
       - name: Run tests with coverage
         run: |
-          bun run test:sequential --coverage > test-output.txt 2>&1 || true
+          bun run test:coverage > test-output.txt 2>&1 || true
           cat test-output.txt
 
       - name: Generate coverage report
@@ -47,13 +57,18 @@ jobs:
             echo '```' >> coverage-summary.md
           fi
           
-          # Extract coverage percentage - look for the All files line
-          COVERAGE=$(grep "All files" test-output.txt | awk '{print $(NF-1)}' | tr -d '%' || echo "0")
-          
-          if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "0" ]; then
+          # Extract coverage percentage - calculate average across all packages
+          # Turbo runs coverage for each package separately (shared, core, tui)
+          # We calculate the average coverage across all packages
+          COVERAGES=$(grep "All files" test-output.txt | awk '{print $(NF-1)}' | tr -d '%')
+
+          if [ -n "$COVERAGES" ]; then
+            COVERAGE=$(echo "$COVERAGES" | awk '{sum+=$1; count++} END {if (count>0) printf "%.2f", sum/count; else print "0"}')
+            echo "Package coverages: $COVERAGES"
+            echo "Average coverage: $COVERAGE%"
+          else
             echo "WARNING: Could not parse coverage percentage"
-            # Try alternative parsing
-            COVERAGE=$(grep -E "^\s*[0-9]+\.[0-9]+\s*\|" test-output.txt | tail -1 | awk -F'|' '{print $3}' | tr -d ' %' || echo "0")
+            COVERAGE="0"
           fi
           
           echo "" >> coverage-summary.md
@@ -64,7 +79,7 @@ jobs:
             echo "❌ Coverage could not be determined" >> coverage-summary.md
             cat coverage-summary.md
             exit 1
-          elif (( $(echo "$COVERAGE < 70" | bc -l) )); then
+          elif [ $(awk "BEGIN {print ($COVERAGE < 70)}") -eq 1 ]; then
             echo "" >> coverage-summary.md
             echo "❌ Coverage is below 70% threshold" >> coverage-summary.md
             cat coverage-summary.md

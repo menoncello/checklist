@@ -1,0 +1,27 @@
+{
+  "name": "@checklist/cli",
+  "version": "0.0.1",
+  "main": "../../dist/apps/cli/index.js",
+  "types": "../../dist/apps/cli/index.d.ts",
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir=../../dist/apps/cli --target=bun",
+    "test": "bun test",
+    "test:unit": "bun test",
+    "test:integration": "bun test tests/integration/",
+    "test:coverage": "bun test --coverage",
+    "test:mutation": "bunx stryker run --incremental",
+    "test:mutation:ci": "bunx stryker run --incremental --reporters=html,json --report-dir=../../reports/mutation/cli",
+    "test:mutation:report": "bunx stryker run --incremental --reporters=html,clear-text,json --report-dir=../../reports/mutation/cli",
+    "test:mutation:full": "bunx stryker run --incremental false",
+    "test:mutation:clean": "rm -rf .stryker-tmp reports/mutation && bunx stryker run --incremental",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "check-types": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "dev": "bun --watch src/index.ts",
+    "test:watch": "bun test --watch"
+  }
+}

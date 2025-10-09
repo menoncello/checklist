@@ -1,4 +1,4 @@
-# Development Workflow (Enhanced with All Improvements)
+# Development Workflow (Enhanced with Turborepo Integration)
 
 ## Development Container Setup
 
@@ -19,13 +19,15 @@ COPY package.json bun.lockb ./
 RUN bun install
 ```
 
-## Development Commands (Complete)
+## Development Commands (Complete with Turborepo)
 
 ```bash
-# Development
-bun run dev              # Start all services
-bun run dev:tui          # TUI only
-bun run dev:cli          # CLI only
+# Development (Turborepo-powered)
+bun run dev              # Start CLI development server
+bun run dev:all          # Start all development servers
+bun run dev:tui          # TUI only development
+bun run dev:cli          # CLI only development
+turbo run dev --filter=@checklist/tui  # Start TUI dev only
 
 # State Management
 bun run dev:reset        # Reset to clean state
@@ -34,17 +36,26 @@ bun run dev:restore      # Restore from backup
 bun run dev:snapshot     # Create named snapshot
 bun run dev:load-fixture # Load test fixture state
 
-# Testing
+# Testing (Turborepo-powered)
+bun test                 # Run all tests (Turborepo)
 bun run test:unit        # Unit tests only
 bun run test:integration # Integration tests
 bun run test:e2e        # End-to-end tests
 bun run test:smoke      # Quick smoke tests
 bun run test:all        # All test suites
-bunx stryker run   # StrykerJS mutation tests via command runner (85% threshold)
+bun run test:coverage    # Coverage report (Turborepo)
+bun run test:mutation    # Mutation testing (Turborepo)
+bunx stryker run        # StrykerJS mutation tests via command runner (85% threshold)
 bunx stryker run --incremental # Incremental mutation testing for PRs (Story 1.12)
 bun run test:debug      # Run tests with debugger
 bun run test:verbose    # Verbose output
 bun run test:failed     # Re-run only failed tests
+
+# Package-specific testing
+turbo run test --filter=@checklist/core     # Test core package only
+turbo run test --filter=@checklist/cli      # Test CLI package only
+turbo run test --filter=@checklist/tui      # Test TUI package only
+turbo run test --filter=@checklist/shared   # Test shared package only
 
 # Logging
 bun run logs:tail       # Tail all log files

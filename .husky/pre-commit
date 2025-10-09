@@ -5,10 +5,10 @@ echo "🔍 Running pre-commit checks..."
 
 # Security: Scanning for potential secrets
 echo "🔒 Scanning for potential secrets..."
-# Skip certain known false positives: XML files, Stryker temp files, dist files, test patterns, and SecretsDetector module
+# Skip certain known false positives: XML files, HTML files, Stryker temp files, dist files, test patterns, and SecretsDetector module
 if grep -rn --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.stryker-tmp --exclude-dir=dist --exclude-dir="~" \
-  --exclude-dir=".husky" \
-  --exclude="*.xml" --exclude="*.gitleaksignore" --exclude="SecretsDetector.ts" --exclude="SecretsDetector.test.ts" \
+  --exclude-dir=".husky" --exclude-dir="reports" --exclude-dir="coverage" \
+  --exclude="*.xml" --exclude="*.html" --exclude="*.gitleaksignore" --exclude="SecretsDetector.ts" --exclude="SecretsDetector.test.ts" \
   --exclude-dir=".bun" --exclude="bun.lock" --exclude="flattened-codebase.xml" \
   -E "(api[_-]?key.*=.*['\"][^'\"]{20,}|secret.*=.*['\"][^'\"]{20,}|token.*=.*['\"][^'\"]{20,}|password.*=.*['\"][^'\"]{8,}|AKIA[0-9A-Z]{16})" . ; then
   echo "❌ Potential secrets detected! Please review and remove before committing."

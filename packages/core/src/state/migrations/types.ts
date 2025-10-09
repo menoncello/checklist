@@ -140,3 +140,11 @@ export function parseVersion(version: string): {
   const [major = 0, minor = 0, patch = 0] = version.split('.').map(Number);
   return { major, minor, patch };
 }
+
+export interface MigrationContext {
+  state: StateSchema;
+  fromVersion: string;
+  toVersion: string;
+  migrationPath: { migrations: Migration[]; totalSteps: number };
+  statePath: string;
+}

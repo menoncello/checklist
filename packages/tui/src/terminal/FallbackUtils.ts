@@ -21,7 +21,9 @@ export class FallbackUtils {
 
     // Replace Unicode characters with ASCII equivalents
     for (const [unicode, ascii] of UNICODE_REPLACEMENTS) {
-      result = result.replace(new RegExp(unicode, 'g'), ascii);
+      // Escape special regex characters to ensure proper matching
+      const escapedUnicode = unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result = result.replace(new RegExp(escapedUnicode, 'g'), ascii);
     }
 
     // Handle remaining non-ASCII characters

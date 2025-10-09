@@ -1,0 +1,9 @@
+[test]
+preload = ["./tests/setup.ts"]
+
+# Exclude other packages from coverage
+coveragePathIgnorePatterns = [
+  "../../packages/!(tui)/**",
+  "../../apps/**",
+  "**/tests/**"
+]

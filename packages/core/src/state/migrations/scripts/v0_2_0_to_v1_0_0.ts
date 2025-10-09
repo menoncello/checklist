@@ -1,7 +1,10 @@
 import { Migration } from '../types';
 
 // Helper functions for up migration
-function createBaseState(s: Record<string, unknown>, now: string): Record<string, unknown> {
+function createBaseState(
+  s: Record<string, unknown>,
+  now: string
+): Record<string, unknown> {
   // Generate a placeholder checksum (in real scenario, this would be calculated from the state)
   const placeholderChecksum = 'sha256:' + '0'.repeat(64);
 
@@ -58,8 +61,15 @@ function upgradeCompletedSteps(steps: unknown, now: string): unknown[] {
   });
 }
 
-function upgradeChecklists(s: Record<string, unknown>, enhancedState: Record<string, unknown>): void {
-  if (s.checklists === null || s.checklists === undefined || !Array.isArray(s.checklists)) {
+function upgradeChecklists(
+  s: Record<string, unknown>,
+  enhancedState: Record<string, unknown>
+): void {
+  if (
+    s.checklists === null ||
+    s.checklists === undefined ||
+    !Array.isArray(s.checklists)
+  ) {
     return;
   }
 
@@ -93,7 +103,10 @@ function removeV1Fields(s: Record<string, unknown>): Record<string, unknown> {
 
 function downgradeActiveInstance(rest: Record<string, unknown>): void {
   const instance = rest.activeInstance as Record<string, unknown> | undefined;
-  if (instance?.completedSteps === undefined || !Array.isArray(instance.completedSteps)) {
+  if (
+    instance?.completedSteps === undefined ||
+    !Array.isArray(instance.completedSteps)
+  ) {
     return;
   }
 

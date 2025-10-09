@@ -15,14 +15,14 @@
     "paths": {
       "@checklist/core": ["packages/core/src/index.ts"],
       "@checklist/core/*": ["packages/core/src/*"],
-      "@checklist/cli": ["packages/cli/src/index.ts"],
-      "@checklist/cli/*": ["packages/cli/src/*"],
+      "@checklist/cli": ["apps/cli/src/index.ts"],
+      "@checklist/cli/*": ["apps/cli/src/*"],
       "@checklist/tui": ["packages/tui/src/index.ts"],
       "@checklist/tui/*": ["packages/tui/src/*"],
       "@checklist/shared": ["packages/shared/src/index.ts"],
       "@checklist/shared/*": ["packages/shared/src/*"]
     }
   },
-  "include": ["packages/*/src/**/*", "packages/*/tests/**/*"],
+  "include": ["packages/*/src/**/*", "packages/*/tests/**/*", "apps/*/src/**/*", "apps/*/tests/**/*"],
   "exclude": ["node_modules", "dist"]
 }

@@ -43,6 +43,13 @@ bun test:coverage        # Generate coverage report
 bun test:watch          # Watch mode
 bun test:mutation       # Mutation testing
 
+# IMPORTANT: Always run tests from the root directory
+# The project uses comprehensive logger mocks that require global setup
+# Running tests from subdirectories will not load the logger suppression
+bun test ./packages/tui   # Run TUI tests with clean output
+bun test ./apps/cli       # Run CLI tests with clean output
+bun test ./apps/cli/tests/commands/migrate.test.ts  # Run specific test file
+
 # Performance
 bun run bench           # Run benchmarks
 ```

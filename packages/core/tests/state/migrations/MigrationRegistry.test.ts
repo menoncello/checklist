@@ -1,7 +1,5 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, test, expect, beforeEach} from 'bun:test';
 import { MigrationRegistry } from '../../../src/state/migrations/MigrationRegistry';
-import { Migration } from '../../../src/state/migrations/types';
-
 describe('MigrationRegistry', () => {
   let registry: MigrationRegistry;
 
@@ -10,7 +8,7 @@ describe('MigrationRegistry', () => {
   });
 
   describe('registerMigration', () => {
-    it('should register a migration', () => {
+    test('should register a migration', () => {
       const migration: Migration = {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
@@ -25,7 +23,7 @@ describe('MigrationRegistry', () => {
       expect(retrieved).toEqual(migration);
     });
 
-    it('should throw error for duplicate migration', () => {
+    test('should throw error for duplicate migration', () => {
       const migration: Migration = {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
@@ -41,7 +39,7 @@ describe('MigrationRegistry', () => {
       );
     });
 
-    it('should emit migration:registered event', (done) => {
+    test('should emit migration:registered event', (done) => {
       const migration: Migration = {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
@@ -98,7 +96,7 @@ describe('MigrationRegistry', () => {
       migrations.forEach(m => registry.registerMigration(m));
     });
 
-    it('should find direct migration path', () => {
+    test('should find direct migration path', () => {
       const path = registry.findPath('0.0.0', '0.1.0');
       
       expect(path.migrations).toHaveLength(1);
@@ -107,7 +105,7 @@ describe('MigrationRegistry', () => {
       expect(path.totalSteps).toBe(1);
     });
 
-    it('should find multi-step migration path', () => {
+    test('should find multi-step migration path', () => {
       const path = registry.findPath('0.0.0', '1.0.0');
       
       expect(path.migrations.length).toBeGreaterThanOrEqual(2);
@@ -115,7 +113,7 @@ describe('MigrationRegistry', () => {
       expect(path.toVersion).toBe('1.0.0');
     });
 
-    it('should find shortest path when multiple paths exist', () => {
+    test('should find shortest path when multiple paths exist', () => {
       const path = registry.findPath('0.1.0', '1.0.0');
       
       expect(path.migrations).toHaveLength(1);
@@ -124,20 +122,20 @@ describe('MigrationRegistry', () => {
       expect(path.migrations[0].description).toBe('Direct path to 1.0.0');
     });
 
-    it('should return empty path for same version', () => {
+    test('should return empty path for same version', () => {
       const path = registry.findPath('1.0.0', '1.0.0');
       
       expect(path.migrations).toHaveLength(0);
       expect(path.totalSteps).toBe(0);
     });
 
-    it('should throw error for backwards migration', () => {
+    test('should throw error for backwards migration', () => {
       expect(() => registry.findPath('1.0.0', '0.1.0')).toThrow(
         'Cannot migrate backwards from 1.0.0 to 0.1.0'
       );
     });
 
-    it('should throw error for non-existent path', () => {
+    test('should throw error for non-existent path', () => {
       expect(() => registry.findPath('0.0.0', '2.0.0')).toThrow(
         'No migration path found from 0.0.0 to 2.0.0'
       );
@@ -155,19 +153,19 @@ describe('MigrationRegistry', () => {
       });
     });
 
-    it('should return true for valid migration path', () => {
+    test('should return true for valid migration path', () => {
       expect(registry.canMigrate('1.0.0', '1.1.0')).toBe(true);
     });
 
-    it('should return false for invalid migration path', () => {
+    test('should return false for invalid migration path', () => {
       expect(registry.canMigrate('1.0.0', '2.0.0')).toBe(false);
     });
 
-    it('should return false for backwards migration', () => {
+    test('should return false for backwards migration', () => {
       expect(registry.canMigrate('1.1.0', '1.0.0')).toBe(false);
     });
 
-    it('should return true for same version', () => {
+    test('should return true for same version', () => {
       expect(registry.canMigrate('1.0.0', '1.0.0')).toBe(true);
     });
   });
@@ -201,7 +199,7 @@ describe('MigrationRegistry', () => {
       migrations.forEach(m => registry.registerMigration(m));
     });
 
-    it('should return all reachable versions', () => {
+    test('should return all reachable versions', () => {
       const targets = registry.getAvailableTargets('1.0.0');
       
       expect(targets).toContain('1.1.0');
@@ -209,7 +207,7 @@ describe('MigrationRegistry', () => {
       expect(targets).toContain('2.0.0');
     });
 
-    it('should return versions in descending order', () => {
+    test('should return versions in descending order', () => {
       const targets = registry.getAvailableTargets('1.0.0');
       
       expect(targets[0]).toBe('2.0.0');
@@ -217,7 +215,7 @@ describe('MigrationRegistry', () => {
       expect(targets[2]).toBe('1.1.0');
     });
 
-    it('should return empty array for isolated version', () => {
+    test('should return empty array for isolated version', () => {
       const targets = registry.getAvailableTargets('3.0.0');
       
       expect(targets).toHaveLength(0);
@@ -225,7 +223,7 @@ describe('MigrationRegistry', () => {
   });
 
   describe('clear', () => {
-    it('should clear all migrations', () => {
+    test('should clear all migrations', () => {
       registry.registerMigration({
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
@@ -240,7 +238,7 @@ describe('MigrationRegistry', () => {
       expect(registry.getMigration('1.0.0', '1.1.0')).toBeUndefined();
     });
 
-    it('should emit registry:cleared event', (done) => {
+    test('should emit registry:cleared event', (done) => {
       registry.on('registry:cleared', () => {
         done();
       });
@@ -250,7 +248,7 @@ describe('MigrationRegistry', () => {
   });
 
   describe('toJSON', () => {
-    it('should serialize registry state', () => {
+    test('should serialize registry state', () => {
       registry.registerMigration({
         fromVersion: '1.0.0',
         toVersion: '1.1.0',

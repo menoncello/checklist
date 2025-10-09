@@ -14,7 +14,10 @@ on:
       - 'bun.lockb'
 
 env:
-  BUN_VERSION: 1.2
+  BUN_VERSION: 1.2.23
+  # Turborepo remote caching
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
 jobs:
   compile:
@@ -71,9 +74,13 @@ jobs:
             ${{ runner.os }}-bun-
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile --ignore-optional
+        run: bun install --ignore-optional
         continue-on-error: ${{ matrix.platform == 'win32' }}
-      
+
+      - name: Setup Turborepo Cache
+        if: env.TURBO_TOKEN != ''
+        run: bun run turbo lint --filter=nothing  # This triggers cache setup
+
       - name: Build TypeScript
         run: bun run build
       
@@ -81,15 +88,15 @@ jobs:
         if: matrix.platform != 'win32'
         run: |
           echo "Compiling for ${{ matrix.platform }}-${{ matrix.arch }}..."
-          bun build ./packages/cli/src/index.ts \
+          bun build ./apps/cli/src/index.ts \
             --compile \
             --target=bun-${{ matrix.platform }}-${{ matrix.arch }} \
             --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}
-      
+
       - name: Compile Binary (Windows)
         if: matrix.platform == 'win32'
         shell: cmd
-        run: bun build ./packages/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
+        run: bun build ./apps/cli/src/index.ts --compile --target=bun-${{ matrix.platform }}-${{ matrix.arch }} --outfile=dist/checklist-${{ matrix.platform }}-${{ matrix.arch }}.exe
       
       - name: Validate Binary Size (Unix)
         if: matrix.platform != 'win32'

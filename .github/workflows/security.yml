@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false # Don't cancel security scans
 
 env:
-  BUN_VERSION: 1.2
+  BUN_VERSION: 1.2.23
   # Enforce HTTPS for all external requests
   NODE_TLS_REJECT_UNAUTHORIZED: 1
 
@@ -40,7 +40,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
       
       - name: Run npm Audit
         run: |

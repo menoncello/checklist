@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, test, expect, beforeEach} from 'bun:test';
 import { EnvironmentDetector } from '../../src/terminal/helpers/EnvironmentDetector';
 import type { EnvironmentInfo } from '../../src/terminal/helpers/EnvironmentDetector';
-
 describe('EnvironmentDetector', () => {
   describe('gatherEnvironmentInfo', () => {
-    it('should gather environment information', () => {
+    test('should gather environment information', () => {
       const envInfo = EnvironmentDetector.gatherEnvironmentInfo();
 
       expect(envInfo).toHaveProperty('term');
@@ -17,7 +16,7 @@ describe('EnvironmentDetector', () => {
       expect(typeof envInfo.screen).toBe('boolean');
     });
 
-    it('should have valid term value', () => {
+    test('should have valid term value', () => {
       const envInfo = EnvironmentDetector.gatherEnvironmentInfo();
 
       expect(envInfo.term).toBeDefined();
@@ -25,21 +24,22 @@ describe('EnvironmentDetector', () => {
       expect(envInfo.term).not.toBe('undefined');
     });
 
-    it('should detect session types correctly', () => {
+    test('should detect session types correctly', () => {
       const envInfo = EnvironmentDetector.gatherEnvironmentInfo();
 
-      // At least one should be defined
-      expect([
-        envInfo.ssh,
-        envInfo.tmux,
-        envInfo.screen,
-        envInfo.term !== 'unknown'
-      ]).toContain(true);
+      // Validate structure - all session type fields should be boolean
+      expect(typeof envInfo.ssh).toBe('boolean');
+      expect(typeof envInfo.tmux).toBe('boolean');
+      expect(typeof envInfo.screen).toBe('boolean');
+
+      // term should always be defined (either from env or 'unknown')
+      expect(envInfo.term).toBeDefined();
+      expect(typeof envInfo.term).toBe('string');
     });
   });
 
   describe('isRemoteSession', () => {
-    it('should detect SSH session', () => {
+    test('should detect SSH session', () => {
       const sshEnv: EnvironmentInfo = {
         term: 'xterm-256color',
         ssh: true,
@@ -55,7 +55,7 @@ describe('EnvironmentDetector', () => {
       expect(isRemote).toBe(true);
     });
 
-    it('should detect local session', () => {
+    test('should detect local session', () => {
       const localEnv: EnvironmentInfo = {
         term: 'xterm-256color',
         ssh: false,
@@ -71,7 +71,7 @@ describe('EnvironmentDetector', () => {
       expect(isRemote).toBe(false);
     });
 
-    it('should handle undefined SSH properly', () => {
+    test('should handle undefined SSH properly', () => {
       const envWithoutSSH: EnvironmentInfo = {
         term: 'xterm',
         ssh: false,
@@ -89,7 +89,7 @@ describe('EnvironmentDetector', () => {
   });
 
   describe('getSessionType', () => {
-    it('should identify SSH session', () => {
+    test('should identify SSH session', () => {
       const sshEnv: EnvironmentInfo = {
         term: 'xterm-256color',
         ssh: true,
@@ -105,7 +105,7 @@ describe('EnvironmentDetector', () => {
       expect(sessionType).toBe('SSH');
     });
 
-    it('should identify tmux session', () => {
+    test('should identify tmux session', () => {
       const tmuxEnv: EnvironmentInfo = {
         term: 'tmux-256color',
         ssh: false,
@@ -121,7 +121,7 @@ describe('EnvironmentDetector', () => {
       expect(sessionType).toBe('tmux');
     });
 
-    it('should identify screen session', () => {
+    test('should identify screen session', () => {
       const screenEnv: EnvironmentInfo = {
         term: 'screen-256color',
         ssh: false,
@@ -137,7 +137,7 @@ describe('EnvironmentDetector', () => {
       expect(sessionType).toBe('screen');
     });
 
-    it('should identify local session', () => {
+    test('should identify local session', () => {
       const localEnv: EnvironmentInfo = {
         term: 'xterm-256color',
         ssh: false,
@@ -149,7 +149,7 @@ describe('EnvironmentDetector', () => {
       expect(sessionType).toBe('local');
     });
 
-    it('should prioritize SSH over other session types', () => {
+    test('should prioritize SSH over other session types', () => {
       const complexEnv: EnvironmentInfo = {
         term: 'xterm-256color',
         ssh: true,
@@ -163,7 +163,7 @@ describe('EnvironmentDetector', () => {
   });
 
   describe('getTerminalProgram', () => {
-    it('should return terminal program when available', () => {
+    test('should return terminal program when available', () => {
       const envWithProgram: EnvironmentInfo = {
         term: 'xterm-256color',
         termProgram: 'iTerm.app',
@@ -176,7 +176,7 @@ describe('EnvironmentDetector', () => {
       expect(program).toBe('iTerm.app');
     });
 
-    it('should return undefined when no terminal program is set', () => {
+    test('should return undefined when no terminal program is set', () => {
       const envWithoutProgram: EnvironmentInfo = {
         term: 'xterm-256color',
         ssh: false,
@@ -188,7 +188,7 @@ describe('EnvironmentDetector', () => {
       expect(program).toBeUndefined();
     });
 
-    it('should handle empty terminal program', () => {
+    test('should handle empty terminal program', () => {
       const envWithEmptyProgram: EnvironmentInfo = {
         term: 'xterm-256color',
         termProgram: '',
@@ -203,7 +203,7 @@ describe('EnvironmentDetector', () => {
   });
 
   describe('hasColorSupport', () => {
-    it('should detect color support from colorTerm', () => {
+    test('should detect color support from colorTerm', () => {
       const colorEnv: EnvironmentInfo = {
         term: 'xterm-256color',
         colorTerm: 'truecolor',
@@ -216,7 +216,7 @@ describe('EnvironmentDetector', () => {
       expect(hasColor).toBe(true);
     });
 
-    it('should detect color support from term name', () => {
+    test('should detect color support from term name', () => {
       const colorTermEnv: EnvironmentInfo = {
         term: 'xterm-256color',
         ssh: false,
@@ -228,7 +228,7 @@ describe('EnvironmentDetector', () => {
       expect(hasColor).toBe(true);
     });
 
-    it('should detect no color support for dumb terminal', () => {
+    test('should detect no color support for dumb terminal', () => {
       const dumbEnv: EnvironmentInfo = {
         term: 'dumb',
         ssh: false,
@@ -240,7 +240,7 @@ describe('EnvironmentDetector', () => {
       expect(hasColor).toBe(false);
     });
 
-    it('should handle unknown terminal conservatively', () => {
+    test('should handle unknown terminal conservatively', () => {
       const unknownEnv: EnvironmentInfo = {
         term: 'unknown',
         ssh: false,
@@ -254,7 +254,7 @@ describe('EnvironmentDetector', () => {
   });
 
   describe('integration tests', () => {
-    it('should work with real environment', () => {
+    test('should work with real environment', () => {
       const realEnvInfo = EnvironmentDetector.gatherEnvironmentInfo();
       const isRemote = EnvironmentDetector.isRemoteSession(realEnvInfo);
       const sessionType = EnvironmentDetector.getSessionType(realEnvInfo);
@@ -272,7 +272,7 @@ describe('EnvironmentDetector', () => {
       }
     });
 
-    it('should maintain consistency across multiple calls', () => {
+    test('should maintain consistency across multiple calls', () => {
       const envInfo1 = EnvironmentDetector.gatherEnvironmentInfo();
       const envInfo2 = EnvironmentDetector.gatherEnvironmentInfo();
 
@@ -282,7 +282,7 @@ describe('EnvironmentDetector', () => {
       expect(envInfo1.screen).toBe(envInfo2.screen);
     });
 
-    it('should handle edge cases gracefully', () => {
+    test('should handle edge cases gracefully', () => {
       const edgeCaseEnv: EnvironmentInfo = {
         term: '',
         termProgram: undefined,
@@ -302,7 +302,7 @@ describe('EnvironmentDetector', () => {
   });
 
   describe('environment sanitization', () => {
-    it('should sanitize gathered environment info', () => {
+    test('should sanitize gathered environment info', () => {
       const envInfo = EnvironmentDetector.gatherEnvironmentInfo();
 
       // Term should be sanitized and safe

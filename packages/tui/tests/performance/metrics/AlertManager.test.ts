@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, mock} from 'bun:test';
 import { AlertManager } from '../../../src/performance/metrics/AlertManager';
-import { MetricPoint, AlertRule, MetricAlert } from '../../../src/performance/metrics/types';
-
+import type { MetricPoint, AlertRule, MetricAlert } from '../../../src/performance/metrics/types';
 describe('AlertManager', () => {
   let alertManager: AlertManager;
   let originalMathRandom: typeof Math.random;
@@ -19,17 +18,17 @@ describe('AlertManager', () => {
   });
 
   describe('Constructor', () => {
-    it('should initialize with default max alerts', () => {
+    test('should initialize with default max alerts', () => {
       const manager = new AlertManager();
       expect(manager.getAlerts()).toEqual([]);
     });
 
-    it('should initialize with custom max alerts', () => {
+    test('should initialize with custom max alerts', () => {
       const manager = new AlertManager(50);
       expect(manager.getAlerts()).toEqual([]);
     });
 
-    it('should setup default alert rules', () => {
+    test('should setup default alert rules', () => {
       // The constructor calls setupDefaultAlertRules, which creates default rules
       // We can verify by checking if rules exist for default metrics
       const memoryPoint: MetricPoint = {
@@ -45,7 +44,7 @@ describe('AlertManager', () => {
   });
 
   describe('Default Rule Creation', () => {
-    it('should create memory usage rule', () => {
+    test('should create memory usage rule', () => {
       const memoryPoint: MetricPoint = {
         timestamp: Date.now(),
         value: 150 * 1024 * 1024, // Above 100MB threshold
@@ -61,7 +60,7 @@ describe('AlertManager', () => {
       expect(alerts[0].message).toBe('High memory usage detected');
     });
 
-    it('should create CPU usage rule', () => {
+    test('should create CPU usage rule', () => {
       const cpuPoint: MetricPoint = {
         timestamp: Date.now(),
         value: 85, // Above 80% threshold
@@ -77,7 +76,7 @@ describe('AlertManager', () => {
       expect(alerts[0].message).toBe('High CPU usage detected');
     });
 
-    it('should create response time rule', () => {
+    test('should create response time rule', () => {
       const responsePoint: MetricPoint = {
         timestamp: Date.now(),
         value: 1500, // Above 1000ms threshold
@@ -93,7 +92,7 @@ describe('AlertManager', () => {
       expect(alerts[0].message).toBe('Slow response time detected');
     });
 
-    it('should create error rate rule', () => {
+    test('should create error rate rule', () => {
       const errorPoint: MetricPoint = {
         timestamp: Date.now(),
         value: 10, // Above 5% threshold
@@ -109,7 +108,7 @@ describe('AlertManager', () => {
       expect(alerts[0].message).toBe('High error rate detected');
     });
 
-    it('should create disk usage rule', () => {
+    test('should create disk usage rule', () => {
       const diskPoint: MetricPoint = {
         timestamp: Date.now(),
         value: 95, // Above 90% threshold
@@ -127,7 +126,7 @@ describe('AlertManager', () => {
   });
 
   describe('Alert Rule Management', () => {
-    it('should add custom alert rule', () => {
+    test('should add custom alert rule', () => {
       const customRule: AlertRule = {
         id: 'custom-rule',
         metric: 'custom.metric',
@@ -155,7 +154,7 @@ describe('AlertManager', () => {
       expect(alerts[0].message).toBe('Custom alert triggered');
     });
 
-    it('should replace existing alert rule', () => {
+    test('should replace existing alert rule', () => {
       const newMemoryRule: AlertRule = {
         id: 'new-memory-rule',
         metric: 'memory.usage',
@@ -182,7 +181,7 @@ describe('AlertManager', () => {
       expect(alerts[0].message).toBe('Memory usage is very high');
     });
 
-    it('should remove alert rule', () => {
+    test('should remove alert rule', () => {
       alertManager.removeAlertRule('memory.usage');
 
       const memoryPoint: MetricPoint = {
@@ -197,7 +196,7 @@ describe('AlertManager', () => {
       expect(alerts.length).toBe(0);
     });
 
-    it('should handle removing non-existent rule', () => {
+    test('should handle removing non-existent rule', () => {
       expect(() => {
         alertManager.removeAlertRule('non.existent.metric');
       }).not.toThrow();
@@ -218,7 +217,7 @@ describe('AlertManager', () => {
         alertManager.addAlertRule(testRule);
       });
 
-      it('should trigger alert with > operator', () => {
+      test('should trigger alert with > operator', () => {
         const rule = {
           id: 'test-gt',
           metric: 'test.gt',
@@ -233,13 +232,13 @@ describe('AlertManager', () => {
           timestamp: Date.now(),
           value: 150,
           metadata: { metric: 'test.gt' }
-        };
+      };
 
-        alertManager.checkAlerts(point);
+      alertManager.checkAlerts(point);
         expect(alertManager.getAlerts().length).toBe(1);
       });
 
-      it('should trigger alert with < operator', () => {
+      test('should trigger alert with < operator', () => {
         const rule = {
           id: 'test-lt',
           metric: 'test.lt',
@@ -254,13 +253,13 @@ describe('AlertManager', () => {
           timestamp: Date.now(),
           value: 50,
           metadata: { metric: 'test.lt' }
-        };
+      };
 
-        alertManager.checkAlerts(point);
+      alertManager.checkAlerts(point);
         expect(alertManager.getAlerts().length).toBe(1);
       });
 
-      it('should trigger alert with >= operator', () => {
+      test('should trigger alert with >= operator', () => {
         const rule = {
           id: 'test-gte',
           metric: 'test.gte',
@@ -275,13 +274,13 @@ describe('AlertManager', () => {
           timestamp: Date.now(),
           value: 100, // Exactly equal
           metadata: { metric: 'test.gte' }
-        };
+      };
 
-        alertManager.checkAlerts(point);
+      alertManager.checkAlerts(point);
         expect(alertManager.getAlerts().length).toBe(1);
       });
 
-      it('should trigger alert with <= operator', () => {
+      test('should trigger alert with <= operator', () => {
         const rule = {
           id: 'test-lte',
           metric: 'test.lte',
@@ -296,13 +295,13 @@ describe('AlertManager', () => {
           timestamp: Date.now(),
           value: 100, // Exactly equal
           metadata: { metric: 'test.lte' }
-        };
+      };
 
-        alertManager.checkAlerts(point);
+      alertManager.checkAlerts(point);
         expect(alertManager.getAlerts().length).toBe(1);
       });
 
-      it('should trigger alert with == operator', () => {
+      test('should trigger alert with == operator', () => {
         const rule = {
           id: 'test-eq',
           metric: 'test.eq',
@@ -317,13 +316,13 @@ describe('AlertManager', () => {
           timestamp: Date.now(),
           value: 100,
           metadata: { metric: 'test.eq' }
-        };
+      };
 
-        alertManager.checkAlerts(point);
+      alertManager.checkAlerts(point);
         expect(alertManager.getAlerts().length).toBe(1);
       });
 
-      it('should trigger alert with != operator', () => {
+      test('should trigger alert with != operator', () => {
         const rule = {
           id: 'test-neq',
           metric: 'test.neq',
@@ -338,13 +337,13 @@ describe('AlertManager', () => {
           timestamp: Date.now(),
           value: 50,
           metadata: { metric: 'test.neq' }
-        };
+      };
 
-        alertManager.checkAlerts(point);
+      alertManager.checkAlerts(point);
         expect(alertManager.getAlerts().length).toBe(1);
       });
 
-      it('should not trigger with unknown operator', () => {
+      test('should not trigger with unknown operator', () => {
         const rule = {
           id: 'test-unknown',
           metric: 'test.unknown',
@@ -359,14 +358,14 @@ describe('AlertManager', () => {
           timestamp: Date.now(),
           value: 150,
           metadata: { metric: 'test.unknown' }
-        };
+      };
 
-        alertManager.checkAlerts(point);
+      alertManager.checkAlerts(point);
         expect(alertManager.getAlerts().length).toBe(0);
       });
     });
 
-    it('should not trigger when rule has no threshold', () => {
+    test('should not trigger when rule has no threshold', () => {
       const rule: AlertRule = {
         id: 'no-threshold',
         metric: 'test.metric',
@@ -386,7 +385,7 @@ describe('AlertManager', () => {
       expect(alertManager.getAlerts().length).toBe(0);
     });
 
-    it('should not trigger when rule has no operator', () => {
+    test('should not trigger when rule has no operator', () => {
       const rule: AlertRule = {
         id: 'no-operator',
         metric: 'test.metric',
@@ -406,7 +405,7 @@ describe('AlertManager', () => {
       expect(alertManager.getAlerts().length).toBe(0);
     });
 
-    it('should not trigger for metric without rule', () => {
+    test('should not trigger for metric without rule', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 1000,
@@ -417,7 +416,7 @@ describe('AlertManager', () => {
       expect(alertManager.getAlerts().length).toBe(0);
     });
 
-    it('should not trigger when condition is not met', () => {
+    test('should not trigger when condition is not met', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 50, // Below memory threshold
@@ -435,7 +434,7 @@ describe('AlertManager', () => {
       Math.random = mock(() => 0.123456789);
     });
 
-    it('should create alert with correct structure', () => {
+    test('should create alert with correct structure', () => {
       const point: MetricPoint = {
         timestamp: 1234567890,
         value: 150 * 1024 * 1024,
@@ -458,7 +457,7 @@ describe('AlertManager', () => {
       expect(alerts[0].id).toMatch(/^alert-1234567890-/);
     });
 
-    it('should generate unique alert IDs', () => {
+    test('should generate unique alert IDs', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 150 * 1024 * 1024,
@@ -477,7 +476,7 @@ describe('AlertManager', () => {
       expect(alerts[0].id).not.toBe(alerts[1].id);
     });
 
-    it('should merge rule tags with point tags', () => {
+    test('should merge rule tags with point tags', () => {
       const ruleWithTags: AlertRule = {
         id: 'tagged-rule',
         metric: 'test.metric',
@@ -506,7 +505,7 @@ describe('AlertManager', () => {
       });
     });
 
-    it('should handle missing tags gracefully', () => {
+    test('should handle missing tags gracefully', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 150 * 1024 * 1024,
@@ -521,7 +520,7 @@ describe('AlertManager', () => {
   });
 
   describe('Alert Storage and Retrieval', () => {
-    it('should store and retrieve alerts', () => {
+    test('should store and retrieve alerts', () => {
       const points: MetricPoint[] = [
         {
           timestamp: Date.now(),
@@ -543,7 +542,7 @@ describe('AlertManager', () => {
       expect(alerts[1].metric).toBe('cpu.usage');
     });
 
-    it('should return copy of alerts array', () => {
+    test('should return copy of alerts array', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 150 * 1024 * 1024,
@@ -558,7 +557,7 @@ describe('AlertManager', () => {
       expect(alerts1).toEqual(alerts2); // Same content
     });
 
-    it('should clear all alerts', () => {
+    test('should clear all alerts', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 150 * 1024 * 1024,
@@ -572,7 +571,7 @@ describe('AlertManager', () => {
       expect(alertManager.getAlerts().length).toBe(0);
     });
 
-    it('should trim alerts when max limit is exceeded', () => {
+    test('should trim alerts when max limit is exceeded', () => {
       const smallManager = new AlertManager(2); // Max 2 alerts
 
       const points: MetricPoint[] = [
@@ -596,7 +595,7 @@ describe('AlertManager', () => {
       Date.now = mock(() => 1000000); // Fixed current time
     });
 
-    it('should return recent alerts as active', () => {
+    test('should return recent alerts as active', () => {
       const recentPoint: MetricPoint = {
         timestamp: 1000000 - 60000, // 1 minute ago
         value: 150 * 1024 * 1024,
@@ -610,7 +609,7 @@ describe('AlertManager', () => {
       expect(activeAlerts[0].metric).toBe('memory.usage');
     });
 
-    it('should filter out old alerts', () => {
+    test('should filter out old alerts', () => {
       const oldPoint: MetricPoint = {
         timestamp: 1000000 - (6 * 60 * 1000), // 6 minutes ago (older than 5 min threshold)
         value: 150 * 1024 * 1024,
@@ -623,7 +622,7 @@ describe('AlertManager', () => {
       expect(activeAlerts.length).toBe(0);
     });
 
-    it('should mix active and inactive alerts correctly', () => {
+    test('should mix active and inactive alerts correctly', () => {
       const points: MetricPoint[] = [
         {
           timestamp: 1000000 - (6 * 60 * 1000), // 6 minutes ago (inactive)
@@ -652,7 +651,7 @@ describe('AlertManager', () => {
       expect(activeAlerts.map(a => a.metric)).toEqual(['cpu.usage', 'response.time']);
     });
 
-    it('should return empty array when no active alerts', () => {
+    test('should return empty array when no active alerts', () => {
       const oldPoint: MetricPoint = {
         timestamp: 1000000 - (10 * 60 * 1000), // 10 minutes ago
         value: 150 * 1024 * 1024,
@@ -667,7 +666,7 @@ describe('AlertManager', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should handle point without metadata', () => {
+    test('should handle point without metadata', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 150
@@ -680,7 +679,7 @@ describe('AlertManager', () => {
       expect(alertManager.getAlerts().length).toBe(0);
     });
 
-    it('should handle point with null metadata', () => {
+    test('should handle point with null metadata', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 150,
@@ -694,7 +693,7 @@ describe('AlertManager', () => {
       expect(alertManager.getAlerts().length).toBe(0);
     });
 
-    it('should handle point with undefined metric in metadata', () => {
+    test('should handle point with undefined metric in metadata', () => {
       const point: MetricPoint = {
         timestamp: Date.now(),
         value: 150,
@@ -708,7 +707,7 @@ describe('AlertManager', () => {
       expect(alertManager.getAlerts().length).toBe(0);
     });
 
-    it('should handle very large values', () => {
+    test('should handle very large values', () => {
       const rule: AlertRule = {
         id: 'large-value-rule',
         metric: 'large.metric',
@@ -732,7 +731,7 @@ describe('AlertManager', () => {
       expect(alerts[0].value).toBe(Number.MAX_SAFE_INTEGER);
     });
 
-    it('should handle negative values', () => {
+    test('should handle negative values', () => {
       const rule: AlertRule = {
         id: 'negative-rule',
         metric: 'negative.metric',
@@ -756,7 +755,7 @@ describe('AlertManager', () => {
       expect(alerts[0].value).toBe(-20);
     });
 
-    it('should handle zero values', () => {
+    test('should handle zero values', () => {
       const rule: AlertRule = {
         id: 'zero-rule',
         metric: 'zero.metric',

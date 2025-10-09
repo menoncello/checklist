@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, test, expect, beforeEach} from 'bun:test';
 import { StateValidator } from '../../src/state/validation';
 import { ChecklistState } from '../../src/state/types';
-import { StateCorruptedError } from '../../src/state/errors';
-
+import { StateCorruptedError} from '../../src/state/errors';
 describe('StateValidator', () => {
   let validator: StateValidator;
   let validState: ChecklistState;
@@ -31,12 +30,12 @@ describe('StateValidator', () => {
   });
 
   describe('Schema Validation', () => {
-    it('should validate a correct state', async () => {
+    test('should validate a correct state', async () => {
       const result = await validator.validateStateSchema(validState);
       expect(result).toEqual(validState);
     });
 
-    it('should reject state with missing required fields', async () => {
+    test('should reject state with missing required fields', async () => {
       const invalidState = {
         schemaVersion: '1.0.0',
       };
@@ -46,7 +45,7 @@ describe('StateValidator', () => {
       );
     });
 
-    it('should reject state with invalid schema version format', async () => {
+    test('should reject state with invalid schema version format', async () => {
       const invalidState = {
         ...validState,
         schemaVersion: 'invalid',
@@ -57,7 +56,7 @@ describe('StateValidator', () => {
       );
     });
 
-    it('should reject state with invalid status', async () => {
+    test('should reject state with invalid status', async () => {
       const invalidState = {
         ...validState,
         activeInstance: {
@@ -71,7 +70,7 @@ describe('StateValidator', () => {
       );
     });
 
-    it('should accept state without activeInstance', async () => {
+    test('should accept state without activeInstance', async () => {
       const stateWithoutInstance = {
         ...validState,
         activeInstance: undefined,
@@ -81,7 +80,7 @@ describe('StateValidator', () => {
       expect(result.activeInstance).toBeUndefined();
     });
 
-    it('should validate completed steps', async () => {
+    test('should validate completed steps', async () => {
       const stateWithSteps = {
         ...validState,
         completedSteps: [
@@ -109,12 +108,12 @@ describe('StateValidator', () => {
   });
 
   describe('Checksum Validation', () => {
-    it('should calculate checksum correctly', () => {
+    test('should calculate checksum correctly', () => {
       const checksum = validator.calculateChecksum(validState);
       expect(checksum).toMatch(/^sha256:[a-f0-9]{64}$/);
     });
 
-    it('should verify valid checksum', async () => {
+    test('should verify valid checksum', async () => {
       const checksum = validator.calculateChecksum(validState);
       const stateWithChecksum = {
         ...validState,
@@ -124,7 +123,7 @@ describe('StateValidator', () => {
       await expect(validator.verifyChecksum(stateWithChecksum)).resolves.toBeUndefined();
     });
 
-    it('should reject invalid checksum', async () => {
+    test('should reject invalid checksum', async () => {
       const stateWithBadChecksum = {
         ...validState,
         checksum: 'sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
@@ -135,7 +134,7 @@ describe('StateValidator', () => {
       );
     });
 
-    it('should produce different checksums for different states', () => {
+    test('should produce different checksums for different states', () => {
       const checksum1 = validator.calculateChecksum(validState);
       const modifiedState = {
         ...validState,
@@ -151,7 +150,7 @@ describe('StateValidator', () => {
   });
 
   describe('Full Validation', () => {
-    it('should validate state with schema and checksum', async () => {
+    test('should validate state with schema and checksum', async () => {
       const checksum = validator.calculateChecksum(validState);
       const completeState = {
         ...validState,
@@ -162,12 +161,12 @@ describe('StateValidator', () => {
       expect(result).toEqual(completeState);
     });
 
-    it('should skip checksum validation for initial state', async () => {
+    test('should skip checksum validation for initial state', async () => {
       const result = await validator.validate(validState);
       expect(result).toEqual(validState);
     });
 
-    it('should detect corrupted state', async () => {
+    test('should detect corrupted state', async () => {
       const stateWithBadData = {
         ...validState,
         checksum: 'sha256:badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadb',
@@ -178,7 +177,7 @@ describe('StateValidator', () => {
   });
 
   describe('Version Management', () => {
-    it('should validate supported schema versions', () => {
+    test('should validate supported schema versions', () => {
       const supported = ['1.0.0', '1.1.0', '2.0.0'];
 
       expect(validator.isValidSchemaVersion('1.0.0', supported)).toBe(true);
@@ -186,7 +185,7 @@ describe('StateValidator', () => {
       expect(validator.isValidSchemaVersion('3.0.0', supported)).toBe(false);
     });
 
-    it('should determine migration compatibility', () => {
+    test('should determine migration compatibility', () => {
       expect(validator.canMigrate('1.0.0', '1.1.0')).toBe(true);
       expect(validator.canMigrate('1.2.0', '2.0.0')).toBe(true);
       expect(validator.canMigrate('1.0.0', '3.0.0')).toBe(false);

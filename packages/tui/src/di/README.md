@@ -7,6 +7,7 @@ Lightweight IoC (Inversion of Control) container for managing dependencies in th
 ## Why Use DI?
 
 ### Before (Tight Coupling)
+
 ```typescript
 class NavigationCommandHandler {
   constructor() {
@@ -25,6 +26,7 @@ test('should handle commands', () => {
 ```
 
 ### After (Loose Coupling)
+
 ```typescript
 class NavigationCommandHandler {
   constructor(
@@ -73,10 +75,14 @@ const container = new Container();
 container.register(EVENT_BUS, () => new EventBus(), Lifecycle.Singleton);
 
 // Transient - new instance each time
-container.register(COMMAND_QUEUE, (c) => {
-  const eventBus = c.resolve<IEventBus>(EVENT_BUS);
-  return new CommandQueue(eventBus);
-}, Lifecycle.Transient);
+container.register(
+  COMMAND_QUEUE,
+  (c) => {
+    const eventBus = c.resolve<IEventBus>(EVENT_BUS);
+    return new CommandQueue(eventBus);
+  },
+  Lifecycle.Transient
+);
 ```
 
 ### 3. Resolve Dependencies
@@ -107,9 +113,7 @@ describe('NavigationCommandHandler', () => {
     container.registerInstance(EVENT_BUS, mockEventBus);
 
     // Handler now uses mock
-    const handler = new NavigationCommandHandler(
-      container.resolve(EVENT_BUS)
-    );
+    const handler = new NavigationCommandHandler(container.resolve(EVENT_BUS));
   });
 
   afterEach(async () => {
@@ -227,6 +231,7 @@ afterEach(async () => {
 ## Best Practices
 
 ### 1. Use Interfaces
+
 ```typescript
 // ✅ Good - testable
 constructor(private eventBus: IEventBus) {}
@@ -236,6 +241,7 @@ constructor(private eventBus: EventBus) {}
 ```
 
 ### 2. Register Early, Resolve Late
+
 ```typescript
 // ✅ Good - at app startup
 container.register(EVENT_BUS, () => new EventBus());
@@ -250,6 +256,7 @@ container.register(HANDLER, () => {
 ```
 
 ### 3. One Container Per Test
+
 ```typescript
 // ✅ Good
 beforeEach(() => {
@@ -265,6 +272,7 @@ beforeEach(() => {
 ```
 
 ### 4. Always Dispose
+
 ```typescript
 afterEach(async () => {
   await container.dispose(); // Prevents leaks
@@ -274,6 +282,7 @@ afterEach(async () => {
 ## Common Patterns
 
 ### Factory Pattern
+
 ```typescript
 container.register(COMMAND_QUEUE_FACTORY, (c) => {
   return (options: QueueOptions) => {
@@ -288,12 +297,13 @@ const queue = factory({ maxSize: 10 });
 ```
 
 ### Configuration Objects
+
 ```typescript
 const CONFIG = Symbol('Config');
 
 container.registerInstance(CONFIG, {
   maxRetries: 3,
-  timeout: 5000
+  timeout: 5000,
 });
 
 container.register(MY_SERVICE, (c) => {
@@ -303,6 +313,7 @@ container.register(MY_SERVICE, (c) => {
 ```
 
 ### Optional Dependencies
+
 ```typescript
 constructor(
   private eventBus: IEventBus,
@@ -323,13 +334,13 @@ const logger = container.tryResolve(LOGGER) ?? new NullLogger();
 
 ## Comparison with Libraries
 
-| Feature | Our Container | TSyringe | InversifyJS |
-|---------|--------------|----------|-------------|
-| Size | ~200 LOC | ~15KB | ~50KB |
-| Dependencies | Zero | reflect-metadata | reflect-metadata |
-| Decorators | No | Yes | Yes |
-| Async Disposal | Yes | No | Partial |
-| Learning Curve | Low | Medium | High |
+| Feature        | Our Container | TSyringe         | InversifyJS      |
+| -------------- | ------------- | ---------------- | ---------------- |
+| Size           | ~200 LOC      | ~15KB            | ~50KB            |
+| Dependencies   | Zero          | reflect-metadata | reflect-metadata |
+| Decorators     | No            | Yes              | Yes              |
+| Async Disposal | Yes           | No               | Partial          |
+| Learning Curve | Low           | Medium           | High             |
 
 ## FAQ
 
@@ -344,6 +355,7 @@ A: Negligible. Singletons are cached after first resolution. The clarity and tes
 
 **Q: Can I use it with existing code?**
 A: Yes! You can wrap existing classes without modifying them:
+
 ```typescript
 container.register(LEGACY_SERVICE, () => {
   const instance = LegacyService.getInstance();

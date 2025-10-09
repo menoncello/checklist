@@ -1,60 +1,47 @@
 /**
- * Global test setup - suppress only specific logging output during tests
+ * Core Package Test Setup with Complete Logger Mocking
  */
 
-// Set test environment
+import { beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
+
+// Set test environment IMMEDIATELY
 process.env.NODE_ENV = 'test';
 process.env.LOG_LEVEL = 'silent';
-
-// Suppress pino logging only
 process.env.PINO_LOG_LEVEL = 'silent';
 
-// Store original methods
-const originalConsole = {
-  log: console.log,
-  error: console.error,
-  warn: console.warn,
-  info: console.info,
-  debug: console.debug,
-};
+// Initialize logger mocks IMMEDIATELY to catch early logging
+const { getLoggerMock } = require('../../tui/tests/test-mocks/TestLoggerMock');
+const { getPinoLoggerMock } = require('../../tui/tests/test-mocks/PinoLoggerMock');
 
-// Only suppress specific JSON logging output, preserve test functionality
-const originalLog = console.log;
-console.log = (...args) => {
-  const str = args.join(' ');
+let loggerMock: any;
+let pinoLoggerMock: any;
 
-  // Only suppress JSON logs and specific application logs
-  if (str.startsWith('{"level":') ||
-      str.includes('"module":') ||
-      str.includes('"traceId":') ||
-      str.includes('Initializing state system') ||
-      str.includes('Creating new state file') ||
-      str.includes('Cleaning up state manager resources')) {
-    return;
+// Setup mocks immediately during module loading
+loggerMock = getLoggerMock();
+pinoLoggerMock = getPinoLoggerMock();
+
+// Global test setup hooks
+beforeAll(() => {
+  // Ensure mocks are still active (in case they were reset)
+  if (!loggerMock) {
+    loggerMock = getLoggerMock();
   }
-
-  originalLog.apply(console, args);
-};
-
-// Only suppress specific error logging, preserve test errors
-const originalError = console.error;
-console.error = (...args) => {
-  const str = args.join(' ');
-
-  // Only suppress JSON error logs and specific application logs
-  if (str.startsWith('{"level":') ||
-      str.includes('"module":') ||
-      str.includes('"traceId":') ||
-      str.includes('Backup restoration failed')) {
-    return;
+  if (!pinoLoggerMock) {
+    pinoLoggerMock = getPinoLoggerMock();
   }
+});
 
-  originalError.apply(console, args);
-};
+afterAll(() => {
+  // Restore original console and logger
+  loggerMock?.restore();
+  pinoLoggerMock?.restore();
+});
 
-// Don't suppress warn, info, or debug as they might be needed for debugging
-console.warn = originalConsole.warn;
-console.info = originalConsole.info;
-console.debug = originalConsole.debug;
+beforeEach(() => {
+  // Clear previous log entries
+  loggerMock?.clear();
+  pinoLoggerMock?.clear();
+});
 
-export { originalConsole };
+// Export for use in core tests
+export { loggerMock, pinoLoggerMock };

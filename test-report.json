@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-10-06T18:55:02.607Z",
+  "memoryUsage": {
+    "rss": 46120960,
+    "heapTotal": 2660352,
+    "heapUsed": 1575502,
+    "external": 558638,
+    "arrayBuffers": 0,
+    "heapUsagePercent": 59.22156165800616
+  },
+  "profiling": {
+    "totalCalls": 0,
+    "averageDuration": 0,
+    "maxDuration": 0,
+    "minDuration": 0,
+    "slowOperations": []
+  },
+  "devTools": {
+    "available": false,
+    "url": null
+  },
+  "system": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "nodeVersion": "v24.3.0",
+    "uptime": 0.035505084
+  }
+}

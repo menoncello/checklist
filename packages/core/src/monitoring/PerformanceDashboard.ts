@@ -36,8 +36,11 @@ export class PerformanceDashboard {
     this.performanceMonitor = performanceMonitor;
     this.logger = logger;
 
+    // CRITICAL: Disable dashboard during tests to prevent terminal interference
+    const isTestEnvironment = Bun.env.NODE_ENV === 'test';
+
     this.config = {
-      enabled: Bun.env.PERFORMANCE_DASHBOARD !== 'false',
+      enabled: !isTestEnvironment && Bun.env.PERFORMANCE_DASHBOARD !== 'false',
       refreshInterval: Number(Bun.env.DASHBOARD_REFRESH_INTERVAL) || 5000,
       displayMode:
         (Bun.env.DASHBOARD_DISPLAY_MODE as 'console' | 'table' | 'json') ??
@@ -111,8 +114,10 @@ export class PerformanceDashboard {
       return; // No metrics to display
     }
 
-    // Clear terminal display is intentional for dashboard
-    process.stdout.write('\x1Bc');
+    // CRITICAL: Skip terminal clear during tests to prevent interference
+    if (Bun.env.NODE_ENV !== 'test') {
+      process.stdout.write('\x1Bc');
+    }
     this.logger.info({ msg: '🎯 Performance Dashboard' });
     this.displayTopOperations(report);
     this.displayViolations(report);
@@ -155,8 +160,10 @@ export class PerformanceDashboard {
       return;
     }
 
-    // Clear terminal display is intentional for dashboard
-    process.stdout.write('\x1Bc');
+    // CRITICAL: Skip terminal clear during tests to prevent interference
+    if (Bun.env.NODE_ENV !== 'test') {
+      process.stdout.write('\x1Bc');
+    }
     this.logger.info({ msg: '🎯 Performance Dashboard - Table View' });
     this.displayMetricsTable(report);
     this.displayViolationsTable(report.violations);
@@ -180,8 +187,10 @@ export class PerformanceDashboard {
   }
 
   private displayJsonReport(report: PerformanceReport): void {
-    // Clear terminal display is intentional for dashboard
-    process.stdout.write('\x1Bc');
+    // CRITICAL: Skip terminal clear during tests to prevent interference
+    if (Bun.env.NODE_ENV !== 'test') {
+      process.stdout.write('\x1Bc');
+    }
     this.logger.info({ msg: '🎯 Performance Dashboard - JSON View' });
     this.logger.info({ msg: 'Performance report', report });
   }

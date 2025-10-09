@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-bun.lockb
+# bun.lockb - lockfile should be committed for reproducible builds
 
 # Bun cache
 .bun/
@@ -18,6 +18,9 @@ coverage/
 
 # ESLint cache
 .eslintcache
+
+# Turborepo cache
+.turbo/
 
 # Environment
 .env
@@ -53,3 +56,4 @@ reports/mutation/index.html
 
 # Quality reports
 /reports/
+packages/shared/reports/mutation/

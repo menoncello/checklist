@@ -77,19 +77,67 @@ export class LoggerService {
   private config: LoggerConfig;
 
   private constructor(config: LoggerConfig = {}) {
-    this.config = {
-      level: Bun.env.LOG_LEVEL ?? 'info',
-      prettyPrint: Bun.env.NODE_ENV === 'development',
-      enableFileLogging: Bun.env.ENABLE_FILE_LOGGING === 'true',
-      enableRotation: Bun.env.ENABLE_LOG_ROTATION === 'true',
+    const isTest = this.detectTestEnvironment();
+    const isLoggerTest = this.detectLoggerTest(config, isTest);
+
+    this.config = this.buildConfig(config, isTest, isLoggerTest);
+    this.defaultLogger = this.createPinoLogger();
+  }
+
+  private detectTestEnvironment(): boolean {
+    return Bun.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'test';
+  }
+
+  private detectLoggerTest(config: LoggerConfig, isTest: boolean): boolean {
+    return config.level !== undefined && isTest;
+  }
+
+  private buildConfig(
+    config: LoggerConfig,
+    isTest: boolean,
+    isLoggerTest: boolean
+  ): LoggerConfig {
+    return {
+      level: this.resolveLogLevel(config, isTest, isLoggerTest),
+      prettyPrint: this.resolvePrettyPrint(isTest),
+      enableFileLogging: this.resolveFileLogging(config, isTest, isLoggerTest),
+      enableRotation: this.resolveRotation(isTest),
       logDirectory: Bun.env.LOG_DIRECTORY ?? '.logs',
       maxFileSize: Bun.env.LOG_MAX_FILE_SIZE ?? '10M',
       maxFiles: parseInt(Bun.env.LOG_MAX_FILES ?? '7', 10),
       maxAge: Bun.env.LOG_MAX_AGE ?? '7d',
       ...config,
     };
+  }
 
-    this.defaultLogger = this.createPinoLogger();
+  private resolveLogLevel(
+    config: LoggerConfig,
+    isTest: boolean,
+    isLoggerTest: boolean
+  ): string {
+    if (isLoggerTest) {
+      return config.level as string;
+    }
+    return isTest ? 'silent' : (Bun.env.LOG_LEVEL ?? 'info');
+  }
+
+  private resolvePrettyPrint(isTest: boolean): boolean {
+    return !isTest && Bun.env.NODE_ENV === 'development';
+  }
+
+  private resolveFileLogging(
+    config: LoggerConfig,
+    isTest: boolean,
+    isLoggerTest: boolean
+  ): boolean {
+    if (isLoggerTest) {
+      return config.enableFileLogging ?? false;
+    }
+    return !isTest && Bun.env.ENABLE_FILE_LOGGING === 'true';
+  }
+
+  private resolveRotation(isTest: boolean): boolean {
+    return !isTest && Bun.env.ENABLE_LOG_ROTATION === 'true';
   }
 
   static getInstance(config?: LoggerConfig): LoggerService {
@@ -115,9 +163,8 @@ export class LoggerService {
   }
 
   private isTestEnvironment(): boolean {
-    return (
-      Bun.env.NODE_ENV === 'test' && this.config.enableFileLogging !== true
-    );
+    // CRITICAL: Force silent mode during tests, regardless of config
+    return Bun.env.NODE_ENV === 'test';
   }
 
   private createSilentLogger(): Logger {

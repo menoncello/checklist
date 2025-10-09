@@ -4,10 +4,9 @@
  * Tests for the BaseView abstract class functionality.
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { BaseView } from '../../src/views/BaseView.js';
+import { describe, test, expect, beforeEach} from 'bun:test';
+import { BaseView } from '../../src/views/BaseView';
 import { KeyBinding, ViewState } from '../../src/views/types.js';
-
 // Concrete implementation of BaseView for testing
 class TestView extends BaseView {
   public renderCallCount = 0;
@@ -88,20 +87,20 @@ describe('BaseView', () => {
   });
 
   describe('Construction', () => {
-    it('should create view with correct properties', () => {
+    test('should create view with correct properties', () => {
       expect(view.id).toBe('test-view');
       expect(view.title).toBe('Test View Title');
       expect(view.canGoBack).toBe(true);
     });
 
-    it('should create view with canGoBack false', () => {
+    test('should create view with canGoBack false', () => {
       const rootView = new TestView('root', 'Root View', false);
       expect(rootView.canGoBack).toBe(false);
     });
   });
 
   describe('Lifecycle Management', () => {
-    it('should handle mount lifecycle', async () => {
+    test('should handle mount lifecycle', async () => {
       expect(view.testIsMounted()).toBe(false);
       
       await view.onMount({ param1: 'value1' });
@@ -110,7 +109,7 @@ describe('BaseView', () => {
       expect(view.handleMountCallCount).toBe(1);
     });
 
-    it('should handle unmount lifecycle', async () => {
+    test('should handle unmount lifecycle', async () => {
       await view.onMount();
       expect(view.testIsMounted()).toBe(true);
       
@@ -120,7 +119,7 @@ describe('BaseView', () => {
       expect(view.handleUnmountCallCount).toBe(1);
     });
 
-    it('should handle resize events', () => {
+    test('should handle resize events', () => {
       view.onResize(100, 50);
       
       expect(view.handleResizeCallCount).toBe(1);
@@ -129,7 +128,7 @@ describe('BaseView', () => {
   });
 
   describe('State Management', () => {
-    it('should save and restore state', () => {
+    test('should save and restore state', () => {
       view.testSetState({ key1: 'value1', key2: 42 });
       
       const savedState = view.saveState();
@@ -142,7 +141,7 @@ describe('BaseView', () => {
       expect(view.testGetState<number>('key2')).toBe(42);
     });
 
-    it('should handle state operations', () => {
+    test('should handle state operations', () => {
       view.testSetState({ existing: 'value' });
       view.testSetState({ new: 'addition' });
       
@@ -150,7 +149,7 @@ describe('BaseView', () => {
       expect(view.testGetState<string>('new')).toBe('addition');
     });
 
-    it('should get state with default values', () => {
+    test('should get state with default values', () => {
       const result1 = view.testGetStateWithDefault('nonexistent', 'default');
       expect(result1).toBe('default');
       
@@ -159,7 +158,7 @@ describe('BaseView', () => {
       expect(result2).toBe('actual');
     });
 
-    it('should clear all state', () => {
+    test('should clear all state', () => {
       view.testSetState({ key1: 'value1', key2: 'value2' });
       view.testClearState();
       
@@ -169,13 +168,13 @@ describe('BaseView', () => {
   });
 
   describe('Abstract Method Requirements', () => {
-    it('should require render implementation', () => {
+    test('should require render implementation', () => {
       const result = view.render();
       expect(result).toBe('Test View: Test View Title');
       expect(view.renderCallCount).toBe(1);
     });
 
-    it('should require getKeyBindings implementation', () => {
+    test('should require getKeyBindings implementation', () => {
       const bindings = view.getKeyBindings();
       expect(bindings).toHaveLength(4); // 1 custom + 3 common
       expect(view.keyBindingsCallCount).toBe(1);
@@ -183,7 +182,7 @@ describe('BaseView', () => {
   });
 
   describe('Common Key Bindings', () => {
-    it('should include help and exit bindings', () => {
+    test('should include help and exit bindings', () => {
       const bindings = view.getKeyBindings();
       
       const helpBinding = bindings.find(b => b.key === 'F1');
@@ -193,13 +192,13 @@ describe('BaseView', () => {
       expect(exitBinding?.description).toBe('Exit');
     });
 
-    it('should include back binding when canGoBack is true', () => {
+    test('should include back binding when canGoBack is true', () => {
       const bindings = view.getKeyBindings();
       const backBinding = bindings.find(b => b.key === 'Escape');
       expect(backBinding?.description).toBe('Go back');
     });
 
-    it('should not include back binding when canGoBack is false', () => {
+    test('should not include back binding when canGoBack is false', () => {
       const rootView = new TestView('root', 'Root', false);
       const bindings = rootView.getKeyBindings();
       const backBinding = bindings.find(b => b.key === 'Escape');
@@ -208,7 +207,7 @@ describe('BaseView', () => {
   });
 
   describe('Utility Methods', () => {
-    it('should create formatted sections', () => {
+    test('should create formatted sections', () => {
       const section = view.testCreateSection('Test Section', 'Line 1\nLine 2', 20);
       
       expect(section).toContain('Test Section');
@@ -218,7 +217,7 @@ describe('BaseView', () => {
       expect(section).toContain('└─');
     });
 
-    it('should center text correctly', () => {
+    test('should center text correctly', () => {
       const centered = view.testCenterText('Hello', 10);
       expect(centered).toBe('  Hello'); // 2 spaces + Hello
       
@@ -226,7 +225,7 @@ describe('BaseView', () => {
       expect(exactFit).toBe('Hello'); // No padding needed
     });
 
-    it('should truncate text with ellipsis', () => {
+    test('should truncate text with ellipsis', () => {
       const truncated = view.testTruncateText('This is a long text', 10);
       expect(truncated).toBe('This is...');
       
@@ -239,7 +238,7 @@ describe('BaseView', () => {
   });
 
   describe('State Isolation', () => {
-    it('should maintain separate state between instances', () => {
+    test('should maintain separate state between instances', () => {
       const view1 = new TestView('view1', 'View 1');
       const view2 = new TestView('view2', 'View 2');
       
