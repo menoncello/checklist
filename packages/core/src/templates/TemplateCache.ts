@@ -254,14 +254,10 @@ export class TemplateCache {
    */
   validateIntegrity(): void {
     if (this.cache.size !== this.stats.size) {
-      throw new TemplateCacheError(
-        'integrity check',
-        'Cache size mismatch',
-        {
-          actualSize: this.cache.size,
-          recordedSize: this.stats.size,
-        }
-      );
+      throw new TemplateCacheError('integrity check', 'Cache size mismatch', {
+        actualSize: this.cache.size,
+        recordedSize: this.stats.size,
+      });
     }
 
     if (this.cache.size > this.maxSize) {

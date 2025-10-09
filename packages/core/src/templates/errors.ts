@@ -42,24 +42,15 @@ export abstract class TemplateError extends Error {
  * Error thrown when template loading fails
  */
 export class TemplateLoadError extends TemplateError {
-  constructor(
-    templatePath: string,
-    reason: string,
-    originalError?: Error
-  ) {
+  constructor(templatePath: string, reason: string, originalError?: Error) {
     const message = `Failed to load template from "${templatePath}": ${reason}`;
     const recovery = TemplateLoadError.getRecoveryStrategy(reason);
 
-    super(
-      message,
-      'TEMPLATE_LOAD_ERROR',
-      true,
-      {
-        templatePath,
-        details: { reason, originalError: originalError?.message },
-        recovery,
-      }
-    );
+    super(message, 'TEMPLATE_LOAD_ERROR', true, {
+      templatePath,
+      details: { reason, originalError: originalError?.message },
+      recovery,
+    });
   }
 
   private static getRecoveryStrategy(reason: string): string {
@@ -88,16 +79,11 @@ export class TemplateValidationError extends TemplateError {
     const message = `Template validation failed for "${templateId}":\n${violations.map((v) => `  - ${v}`).join('\n')}`;
     const recovery = 'Review and fix the validation errors in the template';
 
-    super(
-      message,
-      'TEMPLATE_VALIDATION_ERROR',
-      true,
-      {
-        templateId,
-        details: { violations, ...context },
-        recovery,
-      }
-    );
+    super(message, 'TEMPLATE_VALIDATION_ERROR', true, {
+      templateId,
+      details: { violations, ...context },
+      recovery,
+    });
   }
 }
 
@@ -113,16 +99,11 @@ export class SandboxViolationError extends TemplateError {
     const message = `Sandbox security violation in template "${templateId}": ${violation}`;
     const recovery = 'Remove the dangerous operation from the template';
 
-    super(
-      message,
-      'SANDBOX_VIOLATION_ERROR',
-      false,
-      {
-        templateId,
-        details: { violation, ...details },
-        recovery,
-      }
-    );
+    super(message, 'SANDBOX_VIOLATION_ERROR', false, {
+      templateId,
+      details: { violation, ...details },
+      recovery,
+    });
   }
 }
 
@@ -130,25 +111,17 @@ export class SandboxViolationError extends TemplateError {
  * Error thrown when template execution exceeds time limit
  */
 export class TimeoutError extends TemplateError {
-  constructor(
-    templateId: string,
-    timeoutMs: number,
-    operation?: string
-  ) {
+  constructor(templateId: string, timeoutMs: number, operation?: string) {
     const opInfo = operation !== undefined ? ` during ${operation}` : '';
     const message = `Template "${templateId}" execution timeout${opInfo} (limit: ${timeoutMs}ms)`;
-    const recovery = 'Simplify the template logic or increase the timeout limit';
+    const recovery =
+      'Simplify the template logic or increase the timeout limit';
 
-    super(
-      message,
-      'TIMEOUT_ERROR',
-      false,
-      {
-        templateId,
-        details: { timeoutMs, operation },
-        recovery,
-      }
-    );
+    super(message, 'TIMEOUT_ERROR', false, {
+      templateId,
+      details: { timeoutMs, operation },
+      recovery,
+    });
   }
 }
 
@@ -156,24 +129,16 @@ export class TimeoutError extends TemplateError {
  * Error thrown when template execution exceeds memory limit
  */
 export class MemoryLimitError extends TemplateError {
-  constructor(
-    templateId: string,
-    memoryUsed: number,
-    memoryLimit: number
-  ) {
+  constructor(templateId: string, memoryUsed: number, memoryLimit: number) {
     const message = `Template "${templateId}" exceeded memory limit: ${(memoryUsed / 1024 / 1024).toFixed(2)}MB (limit: ${(memoryLimit / 1024 / 1024).toFixed(2)}MB)`;
-    const recovery = 'Reduce memory usage in the template or increase the limit';
+    const recovery =
+      'Reduce memory usage in the template or increase the limit';
 
-    super(
-      message,
-      'MEMORY_LIMIT_ERROR',
-      false,
-      {
-        templateId,
-        details: { memoryUsed, memoryLimit },
-        recovery,
-      }
-    );
+    super(message, 'MEMORY_LIMIT_ERROR', false, {
+      templateId,
+      details: { memoryUsed, memoryLimit },
+      recovery,
+    });
   }
 }
 
@@ -194,18 +159,14 @@ export class TemplateInheritanceError extends TemplateError {
       message += `\nInheritance chain: ${chain.join(' → ')}`;
     }
 
-    const recovery = 'Check the template inheritance configuration and resolve circular dependencies';
+    const recovery =
+      'Check the template inheritance configuration and resolve circular dependencies';
 
-    super(
-      message,
-      'TEMPLATE_INHERITANCE_ERROR',
-      true,
-      {
-        templateId,
-        details: { issue, ...context },
-        recovery,
-      }
-    );
+    super(message, 'TEMPLATE_INHERITANCE_ERROR', true, {
+      templateId,
+      details: { issue, ...context },
+      recovery,
+    });
   }
 }
 
@@ -221,15 +182,10 @@ export class TemplateCacheError extends TemplateError {
     const message = `Template cache ${operation} failed: ${reason}`;
     const recovery = 'Clear the template cache and reload';
 
-    super(
-      message,
-      'TEMPLATE_CACHE_ERROR',
-      true,
-      {
-        details: { operation, reason, ...context },
-        recovery,
-      }
-    );
+    super(message, 'TEMPLATE_CACHE_ERROR', true, {
+      details: { operation, reason, ...context },
+      recovery,
+    });
   }
 }
 
@@ -243,20 +199,16 @@ export class ResourceLimitError extends TemplateError {
     limit: number,
     templateId?: string
   ) {
-    const templateInfo = templateId !== undefined ? ` in template "${templateId}"` : '';
+    const templateInfo =
+      templateId !== undefined ? ` in template "${templateId}"` : '';
     const message = `Resource limit exceeded${templateInfo}: ${resourceType} used ${used}, limit ${limit}`;
     const recovery = `Reduce ${resourceType} usage or increase the limit`;
 
-    super(
-      message,
-      'RESOURCE_LIMIT_ERROR',
-      false,
-      {
-        templateId,
-        details: { resourceType, used, limit },
-        recovery,
-      }
-    );
+    super(message, 'RESOURCE_LIMIT_ERROR', false, {
+      templateId,
+      details: { resourceType, used, limit },
+      recovery,
+    });
   }
 }
 

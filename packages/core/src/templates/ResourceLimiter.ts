@@ -40,9 +40,10 @@ export class ResourceLimiter {
     templateId?: string,
     customLimits?: Partial<ResourceLimits>
   ): Promise<T> {
-    const limits = customLimits !== undefined
-      ? { ...this.limits, ...customLimits }
-      : this.limits;
+    const limits =
+      customLimits !== undefined
+        ? { ...this.limits, ...customLimits }
+        : this.limits;
 
     const monitor = this.startMonitoring(limits);
     const abortController = new AbortController();

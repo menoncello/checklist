@@ -6,10 +6,7 @@
 import Ajv, { type ValidateFunction } from 'ajv';
 import { TemplateValidationError } from './errors';
 import { TEMPLATE_SCHEMA } from './schema';
-import type {
-  ChecklistTemplate,
-  TemplateValidationResult,
-} from './types';
+import type { ChecklistTemplate, TemplateValidationResult } from './types';
 
 /**
  * TemplateValidator validates template structure and content
@@ -38,8 +35,7 @@ export class TemplateValidator {
     const schemaValid = this.validateFn(template);
     if (!schemaValid && this.validateFn.errors !== null) {
       for (const error of this.validateFn.errors) {
-        const path =
-          error.instancePath !== '' ? error.instancePath : 'root';
+        const path = error.instancePath !== '' ? error.instancePath : 'root';
         errors.push(`${path}: ${error.message ?? 'validation error'}`);
       }
     }
@@ -106,10 +102,7 @@ export class TemplateValidator {
         errors.push(
           `Variable "${variable.name}": default value must be an array`
         );
-      } else if (
-        variable.type !== 'array' &&
-        defaultType !== variable.type
-      ) {
+      } else if (variable.type !== 'array' && defaultType !== variable.type) {
         errors.push(
           `Variable "${variable.name}": default value type "${defaultType}" does not match declared type "${variable.type}"`
         );
@@ -289,11 +282,9 @@ export class TemplateValidator {
     const result = this.validate(template);
 
     if (!result.valid) {
-      throw new TemplateValidationError(
-        templateId,
-        result.errors,
-        { warnings: result.warnings }
-      );
+      throw new TemplateValidationError(templateId, result.errors, {
+        warnings: result.warnings,
+      });
     }
   }
 }

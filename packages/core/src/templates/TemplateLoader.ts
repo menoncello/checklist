@@ -25,7 +25,11 @@ export class TemplateLoader {
   private fileWatcher?: ReturnType<typeof Bun.watch>;
   private readonly watchedFiles = new Set<string>();
 
-  constructor(templatesDir: string = '/templates', cache?: TemplateCache, enableFileWatching: boolean = true) {
+  constructor(
+    templatesDir: string = '/templates',
+    cache?: TemplateCache,
+    enableFileWatching: boolean = true
+  ) {
     this.validator = new TemplateValidator();
     this.templatesDir = templatesDir;
     this.cache = cache ?? new TemplateCache();
@@ -195,9 +199,7 @@ export class TemplateLoader {
   /**
    * Extract metadata from a template file without full loading
    */
-  async extractMetadata(
-    filePath: string
-  ): Promise<TemplateMetadataResult> {
+  async extractMetadata(filePath: string): Promise<TemplateMetadataResult> {
     try {
       const file = await this.getTemplateFile(filePath);
       const stat = await this.getFileStats(file, filePath);
@@ -356,7 +358,10 @@ export class TemplateLoader {
   /**
    * Handle file system events
    */
-  private handleFileSystemEvent(event: { type: 'rename' | 'change'; path: string }): void {
+  private handleFileSystemEvent(event: {
+    type: 'rename' | 'change';
+    path: string;
+  }): void {
     // Only handle YAML template files
     if (!event.path.match(/\.(yaml|yml)$/)) {
       return;
