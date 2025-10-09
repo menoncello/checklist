@@ -1,0 +1,28 @@
+id: valid-template
+name: Valid Test Template
+version: 1.0.0
+description: A valid template for testing
+variables:
+  - name: projectName
+    type: string
+    required: true
+    description: Name of the project
+steps:
+  - id: step-1
+    title: Initialize Project
+    description: Create project structure
+    type: automated
+    commands:
+      - id: cmd-1
+        type: bash
+        content: mkdir -p ${projectName}
+        dangerous: false
+        requiresConfirmation: false
+    dependencies: []
+    executionMode: sequential
+metadata:
+  author: test
+  tags: [test, demo]
+  visibility: public
+  created: '2025-01-01T00:00:00Z'
+  updated: '2025-01-01T00:00:00Z'

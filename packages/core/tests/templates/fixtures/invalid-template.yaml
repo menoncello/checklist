@@ -1,0 +1,11 @@
+id: invalid-template
+name: Invalid Template
+# Missing required version field
+description: An invalid template for testing
+steps: []
+metadata:
+  author: test
+  tags: []
+  visibility: public
+  created: '2025-01-01T00:00:00Z'
+  updated: '2025-01-01T00:00:00Z'

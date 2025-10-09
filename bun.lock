@@ -4,6 +4,7 @@
     "": {
       "name": "@bmad/checklist",
       "dependencies": {
+        "acorn": "8.15.0",
         "ajv": "^8.17.1",
         "ajv-formats": "^3.0.1",
         "ansis": "^4.1.0",
