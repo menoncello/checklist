@@ -170,11 +170,11 @@ describe('TemplateAuditLogger', () => {
     });
 
     test('should filter by time range', () => {
-      const now = new Date();
-      const future = new Date(now.getTime() + 1000);
+      const past = new Date(Date.now() - 10000);
+      const future = new Date(Date.now() + 10000);
 
       const results = logger.query({
-        startTime: now,
+        startTime: past,
         endTime: future,
       });
 
