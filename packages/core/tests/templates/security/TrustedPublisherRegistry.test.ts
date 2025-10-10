@@ -510,6 +510,7 @@ describe('TrustedPublisherRegistry', () => {
         id: 'pub-1',
         name: 'Test',
         trustLevel: 'verified',
+        templates: [],
       });
 
       expect(inherited).toBe('verified');
@@ -527,6 +528,7 @@ describe('TrustedPublisherRegistry', () => {
         id: 'pub-1',
         name: 'Test',
         trustLevel: 'verified',
+        templates: [],
       });
 
       expect(inherited).toBe('community');
@@ -534,8 +536,10 @@ describe('TrustedPublisherRegistry', () => {
 
     test('should use default for unknown publisher', () => {
       const inherited = registry.inheritTrust({
+        id: 'unknown-id',
         name: 'Unknown',
         trustLevel: 'verified',
+        templates: [],
       });
 
       expect(inherited).toBe('untrusted');
@@ -557,6 +561,7 @@ describe('TrustedPublisherRegistry', () => {
         id: 'pub-1',
         name: 'Test',
         trustLevel: 'verified',
+        templates: [],
       });
 
       expect(inherited).toBe('verified');

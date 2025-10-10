@@ -204,7 +204,7 @@ describe('Terminal Capabilities', () => {
     });
 
     it('should detect Windows Terminal', () => {
-      process.platform = 'win32';
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
       process.env.WT_SESSION = 'some-value';
 
       const result = terminal.hasUnicode();
@@ -213,7 +213,7 @@ describe('Terminal Capabilities', () => {
     });
 
     it('should detect ConEmu', () => {
-      process.platform = 'win32';
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
       process.env.ConEmuDir = 'C:\\Program Files\\ConEmu';
 
       const result = terminal.hasUnicode();
@@ -224,7 +224,7 @@ describe('Terminal Capabilities', () => {
     it('should return false when no Unicode support is detected', () => {
       process.env.LANG = 'en_US.ISO-8859-1';
       process.env.TERM = 'dumb';
-      process.platform = 'linux';
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
 
       const result = terminal.hasUnicode();
 
@@ -284,22 +284,22 @@ describe('Terminal Capabilities', () => {
       // Test process.platform === 'win32' logic
       const originalPlatform = process.platform;
 
-      process.platform = 'win32';
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
       delete process.env.WT_SESSION;
       delete process.env.ConEmuDir;
       // Windows detection might have other fallbacks
       expect(typeof terminal.hasUnicode()).toBe('boolean');
 
-      process.platform = 'linux';
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
       expect(typeof terminal.hasUnicode()).toBe('boolean');
 
       // Restore
-      process.platform = originalPlatform;
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should validate Boolean conversion in Windows checks', () => {
       // Test Boolean(process.env.WT_SESSION ?? process.env.ConEmuDir)
-      process.platform = 'win32';
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
 
       delete process.env.WT_SESSION;
       delete process.env.ConEmuDir;

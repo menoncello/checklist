@@ -4,6 +4,7 @@
  */
 
 import Ajv, { type ValidateFunction } from 'ajv';
+import addFormats from 'ajv-formats';
 import { TemplateValidationError } from './errors';
 import { TEMPLATE_SCHEMA } from './schema';
 import type { ChecklistTemplate, TemplateValidationResult } from './types';
@@ -21,6 +22,7 @@ export class TemplateValidator {
       verbose: true,
       strict: false,
     });
+    addFormats(this.ajv);
     this.validateFn = this.ajv.compile(TEMPLATE_SCHEMA);
   }
 
@@ -33,7 +35,11 @@ export class TemplateValidator {
 
     // Schema validation
     const schemaValid = this.validateFn(template);
-    if (!schemaValid && this.validateFn.errors !== null) {
+    if (
+      !schemaValid &&
+      this.validateFn.errors !== null &&
+      this.validateFn.errors !== undefined
+    ) {
       for (const error of this.validateFn.errors) {
         const path = error.instancePath !== '' ? error.instancePath : 'root';
         errors.push(`${path}: ${error.message ?? 'validation error'}`);
@@ -198,7 +204,11 @@ export class TemplateValidator {
   ): void {
     for (const step of template.steps) {
       if (step.condition !== undefined && step.condition !== '') {
-        this.validateStepCondition(step, template.variables, warnings);
+        this.validateStepCondition(
+          { id: step.id, condition: step.condition },
+          template.variables,
+          warnings
+        );
       }
     }
   }

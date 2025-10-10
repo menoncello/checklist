@@ -202,7 +202,7 @@ export class ASTValidator {
     expression: string
   ): void {
     for (const key of Object.keys(node)) {
-      const child = (node as Record<string, unknown>)[key];
+      const child = (node as unknown as Record<string, unknown>)[key];
       this.validateChild(child, templateId, expression);
     }
   }

@@ -7,10 +7,16 @@ describe('TemplateCache', () => {
   let cache: TemplateCache;
 
   const createTemplate = (name: string): ChecklistTemplate => ({
+    id: `template-${name}`,
+    name,
     version: '1.0.0',
+    description: `Template ${name}`,
     metadata: {
-      name,
-      description: `Template ${name}`,
+      author: 'test',
+      tags: [],
+      visibility: 'public',
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
     },
     variables: [],
     steps: [],
@@ -45,7 +51,7 @@ describe('TemplateCache', () => {
 
       const cached = cache.get('test.yaml');
       expect(cached).toBeDefined();
-      expect(cached?.content.metadata.name).toBe('test');
+      expect(cached?.content.name).toBe('test');
     });
 
     test('should return undefined for missing template', () => {
@@ -368,7 +374,7 @@ describe('TemplateCache', () => {
 
       expect(cache.getSize()).toBe(1);
       const cached = cache.get('test.yaml');
-      expect(cached?.content.metadata.name).toBe('test-3');
+      expect(cached?.content.name).toBe('test-3');
     });
 
     test('should handle empty cache operations', () => {

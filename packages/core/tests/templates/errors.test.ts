@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  TemplateError,
   TemplateLoadError,
   TemplateValidationError,
   SandboxViolationError,
@@ -290,7 +291,7 @@ describe('Template Error Classes', () => {
   describe('Utility Functions', () => {
     test('createTemplateError should add timestamp to context', () => {
       const error = createTemplateError(
-        TemplateLoadError,
+        TemplateLoadError as new (...args: unknown[]) => TemplateError,
         '/templates/test.yaml',
         'Test error'
       );

@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach} from 'bun:test';
 import { MigrationRegistry } from '../../../src/state/migrations/MigrationRegistry';
+import type { Migration } from '../../../src/state/migrations/types';
 describe('MigrationRegistry', () => {
   let registry: MigrationRegistry;
 
@@ -13,8 +14,8 @@ describe('MigrationRegistry', () => {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
         description: 'Test migration',
-        up: (state) => state as Record<string, unknown>,
-        down: (state) => state as Record<string, unknown>
+        up: (state: unknown) => state as Record<string, unknown>,
+        down: (state: unknown) => state as Record<string, unknown>
       };
 
       registry.registerMigration(migration);
@@ -28,8 +29,8 @@ describe('MigrationRegistry', () => {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
         description: 'Test migration',
-        up: (state) => state as Record<string, unknown>,
-        down: (state) => state as Record<string, unknown>
+        up: (state: unknown) => state as Record<string, unknown>,
+        down: (state: unknown) => state as Record<string, unknown>
       };
 
       registry.registerMigration(migration);
@@ -44,8 +45,8 @@ describe('MigrationRegistry', () => {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
         description: 'Test migration',
-        up: (state) => state as Record<string, unknown>,
-        down: (state) => state as Record<string, unknown>
+        up: (state: unknown) => state as Record<string, unknown>,
+        down: (state: unknown) => state as Record<string, unknown>
       };
 
       registry.on('migration:registered', (m) => {
@@ -64,16 +65,16 @@ describe('MigrationRegistry', () => {
           fromVersion: '0.0.0',
           toVersion: '0.1.0',
           description: 'Initial migration',
-          up: (state) => ({ ...(state as Record<string, unknown>), version: '0.1.0' }),
-          down: (state) => ({ ...(state as Record<string, unknown>), version: '0.0.0' })
+          up: (state: unknown) => ({ ...(state as Record<string, unknown>), version: '0.1.0' }),
+          down: (state: unknown) => ({ ...(state as Record<string, unknown>), version: '0.0.0' })
         },
         {
           fromVersion: '0.1.0',
           toVersion: '0.2.0',
           description: 'Add templates',
-          up: (state) => ({ ...(state as Record<string, unknown>), version: '0.2.0', templates: [] }),
-          down: (state) => {
-            const { templates, ...rest } = state as any;
+          up: (state: unknown) => ({ ...(state as Record<string, unknown>), version: '0.2.0', templates: [] }),
+          down: (state: unknown) => {
+            const { templates, ...rest } = state as Record<string, unknown> & { templates?: unknown };
             return { ...rest, version: '0.1.0' };
           }
         },
@@ -81,15 +82,15 @@ describe('MigrationRegistry', () => {
           fromVersion: '0.2.0',
           toVersion: '1.0.0',
           description: 'Major release',
-          up: (state) => ({ ...(state as Record<string, unknown>), version: '1.0.0' }),
-          down: (state) => ({ ...(state as Record<string, unknown>), version: '0.2.0' })
+          up: (state: unknown) => ({ ...(state as Record<string, unknown>), version: '1.0.0' }),
+          down: (state: unknown) => ({ ...(state as Record<string, unknown>), version: '0.2.0' })
         },
         {
           fromVersion: '0.1.0',
           toVersion: '1.0.0',
           description: 'Direct path to 1.0.0',
-          up: (state) => ({ ...(state as Record<string, unknown>), version: '1.0.0', templates: [] }),
-          down: (state) => ({ ...(state as Record<string, unknown>), version: '0.1.0' })
+          up: (state: unknown) => ({ ...(state as Record<string, unknown>), version: '1.0.0', templates: [] }),
+          down: (state: unknown) => ({ ...(state as Record<string, unknown>), version: '0.1.0' })
         }
       ];
 
@@ -148,8 +149,8 @@ describe('MigrationRegistry', () => {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
         description: 'Test',
-        up: (state) => state as Record<string, unknown>,
-        down: (state) => state as Record<string, unknown>
+        up: (state: unknown) => state as Record<string, unknown>,
+        down: (state: unknown) => state as Record<string, unknown>
       });
     });
 
@@ -177,22 +178,22 @@ describe('MigrationRegistry', () => {
           fromVersion: '1.0.0',
           toVersion: '1.1.0',
           description: 'Minor update',
-          up: (state) => state as Record<string, unknown>,
-          down: (state) => state as Record<string, unknown>
+          up: (state: unknown) => state as Record<string, unknown>,
+          down: (state: unknown) => state as Record<string, unknown>
         },
         {
           fromVersion: '1.1.0',
           toVersion: '1.2.0',
           description: 'Another minor update',
-          up: (state) => state as Record<string, unknown>,
-          down: (state) => state as Record<string, unknown>
+          up: (state: unknown) => state as Record<string, unknown>,
+          down: (state: unknown) => state as Record<string, unknown>
         },
         {
           fromVersion: '1.0.0',
           toVersion: '2.0.0',
           description: 'Major update',
-          up: (state) => state as Record<string, unknown>,
-          down: (state) => state as Record<string, unknown>
+          up: (state: unknown) => state as Record<string, unknown>,
+          down: (state: unknown) => state as Record<string, unknown>
         }
       ];
 
@@ -228,8 +229,8 @@ describe('MigrationRegistry', () => {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
         description: 'Test',
-        up: (state) => state as Record<string, unknown>,
-        down: (state) => state as Record<string, unknown>
+        up: (state: unknown) => state as Record<string, unknown>,
+        down: (state: unknown) => state as Record<string, unknown>
       });
 
       registry.clear();
@@ -253,8 +254,8 @@ describe('MigrationRegistry', () => {
         fromVersion: '1.0.0',
         toVersion: '1.1.0',
         description: 'Test migration',
-        up: (state) => state as Record<string, unknown>,
-        down: (state) => state as Record<string, unknown>
+        up: (state: unknown) => state as Record<string, unknown>,
+        down: (state: unknown) => state as Record<string, unknown>
       });
 
       const json = registry.toJSON() as any;

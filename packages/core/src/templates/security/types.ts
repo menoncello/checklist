@@ -148,3 +148,15 @@ export interface SecurityEvent {
   details: Record<string, unknown>;
   includeStack?: boolean;
 }
+
+/**
+ * Audit log query options
+ */
+export interface AuditLogQuery {
+  startTime?: Date;
+  endTime?: Date;
+  templateId?: string;
+  eventType?: SecurityEvent['type'];
+  severity?: SecurityEvent['severity'];
+  limit?: number;
+}

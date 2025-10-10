@@ -18,21 +18,21 @@ describe('Clipboard Utilities', () => {
       const text = 'Hello, World!';
 
       // Should complete without throwing
-      const result = await writeToClipboard(text).catch(() => 'handled');
+      const result = await writeToClipboard(text).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
     it('should accept empty string', async () => {
       const text = '';
 
-      const result = await writeToClipboard(text).catch(() => 'handled');
+      const result = await writeToClipboard(text).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
     it('should accept special characters', async () => {
       const text = 'Hello 🌍! Special chars: \n\t\r';
 
-      const result = await writeToClipboard(text).catch(() => 'handled');
+      const result = await writeToClipboard(text).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
@@ -40,21 +40,21 @@ describe('Clipboard Utilities', () => {
       const text = 'test';
       const options: ClipboardOptions = { timeout: 5000, fallback: true };
 
-      const result = await writeToClipboard(text, options).catch(() => 'handled');
+      const result = await writeToClipboard(text, options).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
     it('should handle very long text', async () => {
       const longText = 'a'.repeat(1000);
 
-      const result = await writeToClipboard(longText).catch(() => 'handled');
+      const result = await writeToClipboard(longText).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
     it('should handle Unicode text', async () => {
       const unicodeText = '测试中文 🎉 ñiño';
 
-      const result = await writeToClipboard(unicodeText).catch(() => 'handled');
+      const result = await writeToClipboard(unicodeText).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
@@ -63,7 +63,7 @@ describe('Clipboard Utilities', () => {
       const options: ClipboardOptions = { fallback: false };
 
       // May throw if clipboard is not available, which is expected behavior
-      const result = await writeToClipboard(text, options).catch(() => 'fallback worked');
+      const result = await writeToClipboard(text, options).then(() => undefined).catch(() => 'fallback worked');
 
       expect(['fallback worked', undefined]).toContain(result);
     });
@@ -124,7 +124,7 @@ describe('Clipboard Utilities', () => {
       await expect(writeToClipboard(text, { fallback: true })).resolves.toBeUndefined();
 
       // Test fallback=false (may throw)
-      const result = await writeToClipboard(text, { fallback: false }).catch(() => 'fallback-disabled');
+      const result = await writeToClipboard(text, { fallback: false }).then(() => undefined).catch(() => 'fallback-disabled');
       expect(['fallback-disabled', undefined]).toContain(result);
     });
   });
@@ -274,27 +274,27 @@ describe('Clipboard Utilities', () => {
 
   describe('clearClipboard', () => {
     it('should complete without error', async () => {
-      const result = await clearClipboard().catch(() => 'handled');
+      const result = await clearClipboard().then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
     it('should accept options parameter', async () => {
       const options: ClipboardOptions = { timeout: 1000, fallback: true };
 
-      const result = await clearClipboard(options).catch(() => 'handled');
+      const result = await clearClipboard(options).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
     it('should handle fallback disabled', async () => {
       const options: ClipboardOptions = { fallback: false };
 
-      const result = await clearClipboard(options).catch(() => 'fallback worked');
+      const result = await clearClipboard(options).then(() => undefined).catch(() => 'fallback worked');
 
       expect(['fallback worked', undefined]).toContain(result);
     });
 
     it('should not throw when fallback is enabled', async () => {
-      const result = await clearClipboard({ fallback: true }).catch(() => 'handled');
+      const result = await clearClipboard({ fallback: true }).then(() => undefined).catch(() => 'handled');
       expect(['handled', undefined]).toContain(result);
     });
 
@@ -328,7 +328,7 @@ describe('Clipboard Utilities', () => {
       await expect(clearClipboard({ fallback: true })).resolves.toBeUndefined();
 
       // Test with fallback=false (may throw)
-      const result = await clearClipboard({ fallback: false }).catch(() => 'fallback-disabled');
+      const result = await clearClipboard({ fallback: false }).then(() => undefined).catch(() => 'fallback-disabled');
       expect(['fallback-disabled', undefined]).toContain(result);
     });
 
@@ -373,7 +373,7 @@ describe('Clipboard Utilities', () => {
 
     it('should handle very short timeout', async () => {
       // Test with 1ms timeout
-      const result = await writeToClipboard('test', { timeout: 1 }).catch(() => 'timeout');
+      const result = await writeToClipboard('test', { timeout: 1 }).then(() => undefined).catch(() => 'timeout');
       expect(['timeout', undefined]).toContain(result);
     });
 
@@ -395,7 +395,7 @@ describe('Clipboard Utilities', () => {
 
       // Test with partial options
       await expect(writeToClipboard('test', { timeout: 100 })).resolves.toBeUndefined();
-      const result = await writeToClipboard('test', { fallback: false }).catch(() => 'fallback-worked');
+      const result = await writeToClipboard('test', { fallback: false }).then(() => undefined).catch(() => 'fallback-worked');
       expect(['fallback-worked', undefined]).toContain(result);
     });
 
@@ -441,7 +441,7 @@ describe('Clipboard Utilities', () => {
       const fallbackValues = [true, false];
 
       for (const fallback of fallbackValues) {
-        const result = await writeToClipboard(text, { fallback }).catch(() => 'handled');
+        const result = await writeToClipboard(text, { fallback }).then(() => undefined).catch(() => 'handled');
         expect(['handled', undefined]).toContain(result);
       }
     });

@@ -15,6 +15,11 @@ import type {
   TemplateMetadataResult,
 } from './types';
 
+// Type declarations for Bun-specific APIs
+type BunFile = ReturnType<typeof Bun.file>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BunWatcher = any; // Bun.watch type not available in TypeScript definitions
+
 /**
  * TemplateLoader handles loading templates from the filesystem
  */
@@ -22,7 +27,7 @@ export class TemplateLoader {
   private readonly validator: TemplateValidator;
   private readonly templatesDir: string;
   private readonly cache: TemplateCache;
-  private fileWatcher?: ReturnType<typeof Bun.watch>;
+  private fileWatcher?: BunWatcher;
   private readonly watchedFiles = new Set<string>();
 
   constructor(
@@ -336,7 +341,10 @@ export class TemplateLoader {
   private startFileWatching(): void {
     try {
       // Use Bun.watch to monitor the templates directory
-      this.fileWatcher = Bun.watch(this.templatesDir);
+      // Type assertion needed as TypeScript doesn't recognize Bun.watch
+      this.fileWatcher = (
+        Bun as unknown as { watch: (path: string) => BunWatcher }
+      ).watch(this.templatesDir);
 
       // Handle file system events
       (async () => {

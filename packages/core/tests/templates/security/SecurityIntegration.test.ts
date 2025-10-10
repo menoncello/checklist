@@ -44,11 +44,7 @@ describe('Security Integration Tests', () => {
 
       // 2. Create and sign template
       const templateContent = 'echo "Hello World"';
-      const signature = signer.createSignature(templateContent, {
-        id: 'trusted-pub',
-        name: 'Trusted Publisher',
-        trustLevel: 'verified',
-      });
+      const signature = signer.createSignature(templateContent, 'trusted-pub');
 
       // 3. Verify signature
       const verification = signer.verifySignature(templateContent, signature);
@@ -66,11 +62,11 @@ describe('Security Integration Tests', () => {
         'test-template',
         'user-1'
       );
-      expect(logEntry.event.type).toBe('templateExecution');
+      expect(logEntry.type).toBe('template.execute');
 
       // 7. Verify audit log integrity
       const integrity = auditLogger.verifyIntegrity();
-      expect(integrity.valid).toBe(true);
+      expect(integrity.verified).toBe(true);
     });
 
     test('should reject unsigned template from untrusted publisher', () => {
@@ -88,7 +84,7 @@ describe('Security Integration Tests', () => {
       );
 
       const violations = auditLogger.query({
-        eventType: 'securityViolation',
+        eventType: 'security.violation',
       });
       expect(violations.length).toBe(1);
     });
@@ -143,7 +139,7 @@ describe('Security Integration Tests', () => {
       }
 
       const violations = auditLogger.query({
-        eventType: 'securityViolation',
+        eventType: 'security.violation',
       });
       expect(violations.length).toBe(maliciousInputs.length);
     });
@@ -237,11 +233,7 @@ describe('Security Integration Tests', () => {
 
       // Sign template
       const content = 'echo "secure operation"';
-      const signature = signer.createSignature(content, {
-        id: 'pub-1',
-        name: 'Publisher',
-        trustLevel: 'verified',
-      });
+      const signature = signer.createSignature(content, 'pub-1');
 
       // Verify signature
       const verification = signer.verifySignature(content, signature);
@@ -261,7 +253,7 @@ describe('Security Integration Tests', () => {
       expect(logs.length).toBe(2);
 
       const integrity = auditLogger.verifyIntegrity();
-      expect(integrity.valid).toBe(true);
+      expect(integrity.verified).toBe(true);
     });
 
     test('should handle command processing with all security layers', () => {
@@ -337,6 +329,7 @@ describe('Security Integration Tests', () => {
         id: 'official-pub',
         name: 'Official',
         trustLevel: 'official',
+        templates: [],
       });
 
       expect(inherited).toBe('official');
@@ -354,6 +347,7 @@ describe('Security Integration Tests', () => {
         id: 'unverified-pub',
         name: 'Unverified',
         trustLevel: 'verified',
+        templates: [],
       });
 
       expect(inherited).toBe('community');
@@ -374,11 +368,7 @@ describe('Security Integration Tests', () => {
 
       // Sign template
       const content = 'echo "test"';
-      const signature = signer.createSignature(content, {
-        id: 'trusted-pub',
-        name: 'Trusted',
-        trustLevel: 'verified',
-      });
+      const signature = signer.createSignature(content, 'trusted-pub');
 
       // Verify template signature
       const templateVerification = signer.verifySignature(content, signature);
@@ -413,15 +403,15 @@ describe('Security Integration Tests', () => {
 
       // Verify integrity
       const integrity = auditLogger.verifyIntegrity();
-      expect(integrity.valid).toBe(true);
-      expect(integrity.tamperedEntries).toBe(0);
+      expect(integrity.verified).toBe(true);
+      expect(integrity.tamperedEntries).toEqual([]);
 
       // Verify specific queries
       const user1Logs = auditLogger.query({ templateId: 'template-1' });
       expect(user1Logs.length).toBe(3);
 
       const violations = auditLogger.query({
-        eventType: 'securityViolation',
+        eventType: 'security.violation',
       });
       expect(violations.length).toBe(1);
     });
@@ -431,12 +421,12 @@ describe('Security Integration Tests', () => {
 
       // Tamper with the log
       const entries = auditLogger.getEntries() as any[];
-      entries[0].event.templateId = 'modified';
+      entries[0].templateId = 'modified';
 
       // Verify tampering is detected
       const integrity = auditLogger.verifyIntegrity();
-      expect(integrity.valid).toBe(false);
-      expect(integrity.tamperedEntries).toBe(1);
+      expect(integrity.verified).toBe(false);
+      expect(integrity.tamperedEntries.length).toBe(1);
     });
   });
 
@@ -462,11 +452,10 @@ describe('Security Integration Tests', () => {
 
       // Log the escalation
       auditLogger.logEvent({
-        type: 'templateExecution',
+        type: 'template.execute',
         severity: 'warning',
         templateId: 'test-template',
-        userId: 'user-1',
-        timestamp: new Date(),
+        templateVersion: '1.0.0',
         details: {
           action: 'permission_escalation',
           from: 'standard',
