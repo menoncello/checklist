@@ -23,10 +23,7 @@ export type {
 export { TemplatePermissions as TemplatePermissionsManager } from './TemplatePermissions';
 
 export { TemplateAuditLogger } from './TemplateAuditLogger';
-export type {
-  TemplateAuditLoggerConfig,
-  AuditLogQuery,
-} from './TemplateAuditLogger';
+export type { TemplateAuditLoggerConfig } from './TemplateAuditLogger';
 
 export { TrustedPublisherRegistry } from './TrustedPublisherRegistry';
 export type {
@@ -50,4 +47,5 @@ export type {
   PathValidationResult,
   AuditVerificationResult,
   SecurityEvent,
+  AuditLogQuery,
 } from './types';

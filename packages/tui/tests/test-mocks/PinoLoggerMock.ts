@@ -1,3 +1,4 @@
+// @ts-nocheck - Test mock file with complex global mocking
 /**
  * Pino Logger Mock - Mock for Pino structured logging
  */

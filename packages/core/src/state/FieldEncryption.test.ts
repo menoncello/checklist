@@ -1,7 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { FieldEncryption, typeEncryptedField } from './FieldEncryption';
+import { FieldEncryption, type EncryptedField } from './FieldEncryption';
 import { STATE_DIR } from './constants';
 describe('FieldEncryption', () => {
   const testDir = path.join(process.cwd(), '.test-encryption');

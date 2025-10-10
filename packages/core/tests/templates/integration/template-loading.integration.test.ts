@@ -129,7 +129,8 @@ describe('Integration: Template Loading System', () => {
    */
   describe('Scenario 3: Template Inheritance Chain', () => {
     test('should resolve single-level inheritance', async () => {
-      const inheritance = new TemplateInheritance();
+      const mockLoader = async (path: string) => parent;
+      const inheritance = new TemplateInheritance(mockLoader);
 
       // Create parent template
       const parent: ChecklistTemplate = {
@@ -168,11 +169,12 @@ describe('Integration: Template Loading System', () => {
         variables: [
           ...parent.variables,
           { name: 'childVar', type: 'string', required: false, description: 'Child variable', default: 'test' }
-        ]
+        ],
+        extends: 'parent-template'
       };
 
       // Resolve inheritance
-      const resolved = await inheritance.resolveInheritance(child, () => Promise.resolve(parent));
+      const resolved = await inheritance.resolveInheritance(child, 'child-template');
 
       expect(resolved.id).toBe('child-template');
       expect(resolved.name).toBe('Child Template');
@@ -180,9 +182,7 @@ describe('Integration: Template Loading System', () => {
       expect(resolved.steps).toHaveLength(1);
     });
 
-    test('should detect circular inheritance', () => {
-      const inheritance = new TemplateInheritance();
-
+    test('should detect circular inheritance', async () => {
       const template1: ChecklistTemplate = {
         id: 'template-1',
         name: 'Template 1',
@@ -196,8 +196,8 @@ describe('Integration: Template Loading System', () => {
           visibility: 'public',
           created: '2025-01-01',
           updated: '2025-01-01',
-          parent: 'template-2'
-        }
+        },
+        extends: 'template-2'
       };
 
       const template2: ChecklistTemplate = {
@@ -206,14 +206,20 @@ describe('Integration: Template Loading System', () => {
         name: 'Template 2',
         metadata: {
           ...template1.metadata,
-          parent: 'template-1'
-        }
+        },
+        extends: 'template-1'
       };
 
+      const mockLoader = async (path: string) => {
+        if (path === 'template-2') return template2;
+        if (path === 'template-1') return template1;
+        throw new Error('Template not found');
+      };
+
+      const inheritance = new TemplateInheritance(mockLoader);
+
       // Should detect circular dependency
-      expect(() => {
-        inheritance.detectCircularInheritance('template-1', ['template-1', 'template-2']);
-      }).toThrow();
+      await expect(inheritance.resolveInheritance(template1, 'template-1')).rejects.toThrow();
     });
   });
 
@@ -260,7 +266,7 @@ describe('Integration: Template Loading System', () => {
       const template = await loader.load(templatePath);
 
       // Validate
-      const validation = validator.validate(template, templatePath);
+      const validation = validator.validate(template);
       expect(validation.valid).toBe(true);
 
       // Execute sandbox expression
@@ -456,7 +462,7 @@ describe('Integration: Template Loading System', () => {
       expect(template).toBeDefined();
 
       // 2. Validate template
-      const validation = validator.validate(template, templatePath);
+      const validation = validator.validate(template);
       expect(validation.valid).toBe(true);
       expect(validation.errors).toHaveLength(0);
 

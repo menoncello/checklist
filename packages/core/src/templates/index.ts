@@ -35,7 +35,6 @@ export type {
   ResourceLimits,
   ResourceUsage,
   SandboxContext,
-  TemplateInheritance,
   CacheStatistics,
   CacheEntry,
   TemplateDiscoveryResult,

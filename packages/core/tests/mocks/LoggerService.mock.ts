@@ -1,6 +1,122 @@
 import { test, expect, beforeEach, afterEach, describe } from 'bun:test';
-import { MockLoggerService, LogEntry } from './LoggerService.mock';
 import type { LogContext } from '../../src/interfaces/ILogger';
+import type { ILogger } from '../../src/interfaces/ILogger';
+
+export interface LogEntry {
+  level: 'debug' | 'info' | 'warn' | 'error' | 'fatal';
+  context: LogContext;
+  bindings?: Record<string, unknown>;
+  timestamp: Date;
+}
+
+export class MockLoggerService implements ILogger {
+  logs: LogEntry[] = [];
+  childLoggers: MockLoggerService[] = [];
+  private bindings: Record<string, unknown>;
+
+  constructor(bindings: Record<string, unknown> = {}) {
+    this.bindings = bindings;
+  }
+
+  debug(context: LogContext): void {
+    this.log('debug', context);
+  }
+
+  info(context: LogContext): void {
+    this.log('info', context);
+  }
+
+  warn(context: LogContext): void {
+    this.log('warn', context);
+  }
+
+  error(context: LogContext): void {
+    this.log('error', context);
+  }
+
+  fatal(context: LogContext): void {
+    this.log('fatal', context);
+  }
+
+  child(bindings: Record<string, unknown>, options?: unknown): ILogger {
+    const childLogger = new MockLoggerService({ ...this.bindings, ...bindings });
+    this.childLoggers.push(childLogger);
+    return childLogger;
+  }
+
+  private log(level: LogEntry['level'], context: LogContext): void {
+    const entry: LogEntry = {
+      level,
+      context: { ...this.bindings, ...context },
+      bindings: this.bindings,
+      timestamp: new Date(),
+    };
+    this.logs.push(entry);
+  }
+
+  clear(): void {
+    this.logs = [];
+    this.childLoggers = [];
+  }
+
+  getLogCount(): number {
+    return this.logs.length;
+  }
+
+  getChildLoggerCount(): number {
+    return this.childLoggers.length;
+  }
+
+  getLogsByLevel(level: LogEntry['level']): LogEntry[] {
+    return this.logs.filter(log => log.level === level);
+  }
+
+  hasLoggedMessage(message: string): boolean {
+    return this.logs.some(log => log.context.msg === message);
+  }
+
+  hasLoggedError(errorMessage: string | Error): boolean {
+    const errorString = errorMessage instanceof Error ? errorMessage.message : errorMessage;
+    return this.logs.some(log => {
+      const contextError = log.context.error;
+      if (typeof contextError === 'string') {
+        return contextError.includes(errorString);
+      }
+      if (contextError instanceof Error) {
+        return contextError.message.includes(errorString);
+      }
+      return log.context.msg?.toString().includes(errorString) ?? false;
+    });
+  }
+
+  getLastLog(): LogEntry | undefined {
+    return this.logs[this.logs.length - 1];
+  }
+
+  assertLogged(level: LogEntry['level'], message: string): void {
+    const found = this.logs.some(
+      log => log.level === level && log.context.msg === message
+    );
+    if (!found) {
+      throw new Error(`Expected log not found: [${level}] ${message}`);
+    }
+  }
+
+  assertNotLogged(level: LogEntry['level'], message: string): void {
+    const found = this.logs.some(
+      log => log.level === level && log.context.msg === message
+    );
+    if (found) {
+      throw new Error(`Unexpected log found: [${level}] ${message}`);
+    }
+  }
+
+  assertLogCount(expectedCount: number): void {
+    if (this.logs.length !== expectedCount) {
+      throw new Error(`Expected ${expectedCount} logs, but found ${this.logs.length}`);
+    }
+  }
+}
 
 describe('MockLoggerService', () => {
   let mockLogger: MockLoggerService;

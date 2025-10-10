@@ -20,10 +20,10 @@ export interface Variable {
  */
 export interface Command {
   id: string;
-  type: 'bash' | 'node' | 'python' | 'custom';
+  type?: 'bash' | 'node' | 'python' | 'custom';
   content: string;
-  dangerous: boolean;
-  requiresConfirmation: boolean;
+  dangerous?: boolean;
+  requiresConfirmation?: boolean;
 }
 
 /**
@@ -74,6 +74,7 @@ export interface ChecklistTemplate {
   variables: Variable[];
   steps: Step[];
   metadata: TemplateMetadata;
+  extends?: string;
 }
 
 /**

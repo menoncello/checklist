@@ -177,7 +177,10 @@ export class TemplateInheritance {
     derived: ChecklistTemplate
   ): ChecklistTemplate {
     return {
+      id: derived.id,
+      name: derived.name,
       version: derived.version,
+      description: derived.description,
       metadata: this.mergeMetadata(base.metadata, derived.metadata),
       variables: this.mergeVariables(base.variables, derived.variables),
       steps: this.mergeSteps(base.steps, derived.steps),
@@ -193,10 +196,15 @@ export class TemplateInheritance {
     derived: TemplateMetadata
   ): TemplateMetadata {
     return {
-      name: derived.name,
-      description: derived.description ?? base.description,
-      author: derived.author ?? base.author,
+      author:
+        derived.author && derived.author !== ''
+          ? derived.author
+          : (base.author ?? ''),
       tags: this.mergeTags(base.tags ?? [], derived.tags ?? []),
+      visibility: derived.visibility ?? base.visibility ?? 'private',
+      created: base.created ?? new Date().toISOString(),
+      updated: new Date().toISOString(),
+      parent: derived.parent ?? base.parent,
     };
   }
 
