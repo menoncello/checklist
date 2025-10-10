@@ -5,7 +5,11 @@
 
 import { ASTValidator } from './ASTValidator';
 import { ResourceLimiter } from './ResourceLimiter';
-import { SandboxViolationError, TimeoutError } from './errors';
+import {
+  SandboxViolationError,
+  TimeoutError,
+  NetworkAccessError,
+} from './errors';
 import type { SandboxContext } from './types';
 
 /**
@@ -23,6 +27,25 @@ const BLOCKED_GLOBALS = new Set([
   '__filename',
   'global',
   'globalThis',
+  // Network access globals
+  'fetch',
+  'XMLHttpRequest',
+  'WebSocket',
+  'EventSource',
+  'navigator',
+  'location',
+]);
+
+/**
+ * Blocked network-related modules (reserved for module import blocking)
+ */
+const _BLOCKED_NETWORK_MODULES = new Set([
+  'http',
+  'https',
+  'net',
+  'dgram',
+  'tls',
+  'dns',
 ]);
 
 /**
@@ -133,8 +156,36 @@ export class TemplateSandbox {
       },
     };
 
+    // Block network globals by defining error-throwing getters
+    this.blockNetworkGlobals(sandbox);
+
     // Freeze the sandbox to prevent modifications
     return Object.freeze(sandbox);
+  }
+
+  /**
+   * Block network-related globals in sandbox
+   */
+  private blockNetworkGlobals(sandbox: SandboxContext): void {
+    const networkGlobals = [
+      'fetch',
+      'XMLHttpRequest',
+      'WebSocket',
+      'EventSource',
+    ];
+
+    for (const global of networkGlobals) {
+      Object.defineProperty(sandbox, global, {
+        get() {
+          throw new NetworkAccessError(
+            'unknown',
+            `Network access via '${global}' is blocked in templates`
+          );
+        },
+        configurable: false,
+        enumerable: false,
+      });
+    }
   }
 
   /**

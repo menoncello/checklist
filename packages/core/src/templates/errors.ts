@@ -108,6 +108,22 @@ export class SandboxViolationError extends TemplateError {
 }
 
 /**
+ * Error thrown when network access is attempted in sandbox
+ */
+export class NetworkAccessError extends TemplateError {
+  constructor(templateId: string, resource: string, details?: Record<string, unknown>) {
+    const message = `Network access blocked in template "${templateId}": ${resource}`;
+    const recovery = 'Templates should not access network resources';
+
+    super(message, 'NETWORK_ACCESS_ERROR', false, {
+      templateId,
+      details: { resource, ...details },
+      recovery,
+    });
+  }
+}
+
+/**
  * Error thrown when template execution exceeds time limit
  */
 export class TimeoutError extends TemplateError {
