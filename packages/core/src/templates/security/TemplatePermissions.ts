@@ -130,8 +130,7 @@ export class TemplatePermissions {
     ) {
       return {
         allowed: false,
-        reason:
-          'Restriction cannot have both allowed and denied paths',
+        reason: 'Restriction cannot have both allowed and denied paths',
       };
     }
 
@@ -141,10 +140,7 @@ export class TemplatePermissions {
   /**
    * Validate path against restriction
    */
-  validatePath(
-    path: string,
-    restriction: PermissionRestriction
-  ): boolean {
+  validatePath(path: string, restriction: PermissionRestriction): boolean {
     // Check denied paths
     if (restriction.deniedPaths) {
       for (const denied of restriction.deniedPaths) {
@@ -289,12 +285,7 @@ export class TemplatePermissions {
 
   private elevatedConfig(): PermissionLevelConfig {
     return {
-      allowedOperations: [
-        'fileRead',
-        'fileWrite',
-        'processSpawn',
-        'envAccess',
-      ],
+      allowedOperations: ['fileRead', 'fileWrite', 'processSpawn', 'envAccess'],
       requiresConfirmation: true,
     };
   }

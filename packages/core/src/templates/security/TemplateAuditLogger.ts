@@ -176,9 +176,7 @@ export class TemplateAuditLogger {
    * Verify audit log integrity
    */
   verifyIntegrity(): AuditVerificationResult {
-    const results = this.entries.map((entry) =>
-      this.verifyEntry(entry)
-    );
+    const results = this.entries.map((entry) => this.verifyEntry(entry));
 
     const tampered = results.filter((r) => !r.valid);
 
@@ -272,9 +270,10 @@ export class TemplateAuditLogger {
   /**
    * Verify entry integrity
    */
-  private verifyEntry(
-    entry: AuditEntry
-  ): { valid: boolean; entry: AuditEntry } {
+  private verifyEntry(entry: AuditEntry): {
+    valid: boolean;
+    entry: AuditEntry;
+  } {
     const expected = this.calculateIntegrity(entry);
     const valid = entry.integrity === expected;
 
@@ -299,9 +298,7 @@ export class TemplateAuditLogger {
 
   /** Check if event requires alerting */
   private shouldAlert(event: SecurityEvent): boolean {
-    return (
-      this.config.alertOnCritical && event.severity === 'critical'
-    );
+    return this.config.alertOnCritical && event.severity === 'critical';
   }
 
   /** Alert on critical event */
@@ -351,9 +348,7 @@ export class TemplateAuditLogger {
     if (options.templateId === undefined || options.templateId === '') {
       return entries;
     }
-    return entries.filter(
-      (e) => e.event.templateId === options.templateId
-    );
+    return entries.filter((e) => e.event.templateId === options.templateId);
   }
 
   /** Filter by event type */

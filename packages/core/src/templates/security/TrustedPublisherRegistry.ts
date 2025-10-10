@@ -239,10 +239,7 @@ export class TrustedPublisherRegistry {
   }
 
   /** Check if trust level is sufficient */
-  requiresTrustLevel(
-    publisherId: string,
-    required: TrustLevel
-  ): boolean {
+  requiresTrustLevel(publisherId: string, required: TrustLevel): boolean {
     const actual = this.getTrustLevel(publisherId);
     return this.compareTrustLevels(actual, required) >= 0;
   }

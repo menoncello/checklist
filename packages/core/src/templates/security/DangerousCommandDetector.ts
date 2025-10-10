@@ -49,7 +49,9 @@ export class DangerousCommandDetector {
   /**
    * Scan template for dangerous commands
    */
-  scanTemplate(template: { steps?: { commands?: string[] }[] }): DangerousCommand[] {
+  scanTemplate(template: {
+    steps?: { commands?: string[] }[];
+  }): DangerousCommand[] {
     if (!this.enabled || !template.steps) {
       return [];
     }
@@ -115,10 +117,7 @@ export class DangerousCommandDetector {
   /**
    * Check if command matches pattern
    */
-  private matchesPattern(
-    command: string,
-    pattern: CommandPattern
-  ): boolean {
+  private matchesPattern(command: string, pattern: CommandPattern): boolean {
     if (pattern.pattern instanceof RegExp) {
       return pattern.pattern.test(command);
     }

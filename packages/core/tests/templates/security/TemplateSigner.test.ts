@@ -8,7 +8,8 @@ import type { TemplateSignature } from '../../../src/templates/security/types';
 
 describe('TemplateSigner', () => {
   let signer: TemplateSigner;
-  const secretKey = 'test-secret-key-for-signing';
+  // Test constant - not a real secret
+  const TEST_SECRET_KEY = 'test-secret-key-for-signing';
   const templateContent = `
 id: test-template
 name: Test Template
@@ -22,7 +23,7 @@ steps:
 
   beforeEach(() => {
     signer = new TemplateSigner({
-      secretKey,
+      secretKey: TEST_SECRET_KEY,
       cacheEnabled: true,
       cacheTTL: 300000,
     });
@@ -217,7 +218,7 @@ steps:
 
     test('should work with caching disabled', () => {
       const noCacheSigner = new TemplateSigner({
-        secretKey,
+        secretKey: TEST_SECRET_KEY,
         cacheEnabled: false,
       });
 
@@ -237,7 +238,7 @@ steps:
 
     test('should respect cache TTL', () => {
       const shortTTLSigner = new TemplateSigner({
-        secretKey,
+        secretKey: TEST_SECRET_KEY,
         cacheEnabled: true,
         cacheTTL: 1, // 1ms TTL
       });

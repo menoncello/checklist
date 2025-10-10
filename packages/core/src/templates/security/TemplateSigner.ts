@@ -4,10 +4,7 @@
 
 import { createHmac, timingSafeEqual } from 'crypto';
 import { createLogger } from '../../utils/logger';
-import type {
-  TemplateSignature,
-  SignatureVerificationResult,
-} from './types';
+import type { TemplateSignature, SignatureVerificationResult } from './types';
 
 const logger = createLogger('checklist:templates:security:signer');
 
@@ -53,10 +50,7 @@ export class TemplateSigner {
   /**
    * Create HMAC-SHA256 signature for template content
    */
-  createSignature(
-    templateContent: string,
-    signer: string
-  ): TemplateSignature {
+  createSignature(templateContent: string, signer: string): TemplateSignature {
     const startTime = Date.now();
 
     const hmac = createHmac('sha256', this.key);
@@ -225,9 +219,7 @@ export class TemplateSigner {
     return {
       valid: false,
       error:
-        error instanceof Error
-          ? error.message
-          : 'Unknown verification error',
+        error instanceof Error ? error.message : 'Unknown verification error',
     };
   }
 
@@ -243,10 +235,7 @@ export class TemplateSigner {
   /**
    * Timing-safe signature comparison to prevent timing attacks
    */
-  private timingSafeCompare(
-    computed: string,
-    provided: string
-  ): boolean {
+  private timingSafeCompare(computed: string, provided: string): boolean {
     try {
       const computedBuffer = Buffer.from(computed, 'hex');
       const providedBuffer = Buffer.from(provided, 'hex');
