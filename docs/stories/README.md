@@ -83,9 +83,9 @@ stories/
   - [x] [Story 3.2: Template Security System](3.2.template-security-system.story.md) ✅ **COMPLETE**
   - [x] [Story 3.3: Variable Management System](3.3.variable-management-system.story.md) ✅ **COMPLETE**
   - [x] [Story 3.4: Basic Template Substitution](3.4.story.md) ✅ **COMPLETE**
-  - [ ] [Story 3.5: Security Sandbox](epic-3/story-3.5-security-sandbox.md)
-  - [ ] [Story 3.6: Built-in Templates](epic-3/story-3.6-builtin-templates.md)
-  - [ ] [Story 3.7: Template Import/Export](epic-3/story-3.7-template-import-export.md)
+  - [ ] [Story 3.5: Advanced Template Features](epic-3/story-3.5-advanced-template-features.md)
+  - [ ] [Story 3.6: Conditional Workflow Branching](epic-3/story-3.6-conditional-workflow-branching.md)
+  - [ ] [Story 3.7: Template Marketplace Foundation](epic-3/story-3.7-template-marketplace-foundation.md)
   - [ ] [Story 3.8: Template Creator Documentation](epic-3/story-3.8-template-documentation.md) 🚨 **NEW**
 
 ### 🛡️ Phase 4: Production Readiness (Epic 4)
