@@ -236,17 +236,14 @@ export class ResourceLimitError extends TemplateError {
  * Error thrown when variable substitution fails
  */
 export class VariableSubstitutionError extends TemplateError {
-  constructor(
-    variableName: string,
-    reason: string,
-    suggestions?: string[]
-  ) {
+  constructor(variableName: string, reason: string, suggestions?: string[]) {
     const suggestionText =
       suggestions !== undefined && suggestions.length > 0
         ? `\nDid you mean: ${suggestions.join(', ')}?`
         : '';
     const message = `Variable substitution failed for "\${${variableName}}": ${reason}${suggestionText}`;
-    const recovery = 'Define the variable or check for typos in the variable name';
+    const recovery =
+      'Define the variable or check for typos in the variable name';
 
     super(message, 'VARIABLE_SUBSTITUTION_ERROR', true, {
       details: { variableName, reason, suggestions },
@@ -261,7 +258,8 @@ export class VariableSubstitutionError extends TemplateError {
 export class NestingDepthExceededError extends TemplateError {
   constructor(maxDepth: number, currentDepth: number) {
     const message = `Maximum nesting depth of ${maxDepth} exceeded (current: ${currentDepth})`;
-    const recovery = 'Simplify variable nesting or increase maxNestingDepth configuration';
+    const recovery =
+      'Simplify variable nesting or increase maxNestingDepth configuration';
 
     super(message, 'NESTING_DEPTH_EXCEEDED_ERROR', false, {
       details: { maxDepth, currentDepth },

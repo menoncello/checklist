@@ -56,8 +56,7 @@ export class VariableSubstitutor {
     const errors: SubstitutionError[] = [];
 
     try {
-      const { processed: unescaped, escapes } =
-        this.processEscapes(template);
+      const { processed: unescaped, escapes } = this.processEscapes(template);
 
       const { output, nestingDepth } = this.resolveNested(
         unescaped,
@@ -69,7 +68,12 @@ export class VariableSubstitutor {
       const finalOutput = this.restoreEscapes(output, escapes);
       const duration = performance.now() - startTime;
 
-      this.logSuccess(duration, variablesUsed.length, nestingDepth, errors.length);
+      this.logSuccess(
+        duration,
+        variablesUsed.length,
+        nestingDepth,
+        errors.length
+      );
 
       return this.buildResult(finalOutput, variablesUsed, errors, {
         duration,
@@ -214,7 +218,13 @@ export class VariableSubstitutor {
 
     return value !== undefined
       ? this.formatValue(value)
-      : this.handleMissingVariable({ match, varName, defaultValue, stepId, errors });
+      : this.handleMissingVariable({
+          match,
+          varName,
+          defaultValue,
+          stepId,
+          errors,
+        });
   }
 
   /**
@@ -286,10 +296,7 @@ export class VariableSubstitutor {
   /**
    * Restore escaped sequences
    */
-  private restoreEscapes(
-    text: string,
-    escapes: Map<string, string>
-  ): string {
+  private restoreEscapes(text: string, escapes: Map<string, string>): string {
     let result = text;
     for (const [placeholder, original] of escapes) {
       result = result.replace(placeholder, original);

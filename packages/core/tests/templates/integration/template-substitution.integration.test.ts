@@ -22,11 +22,12 @@ describe('Template Substitution Integration', () => {
   let substitutor: VariableSubstitutor;
 
   beforeEach(() => {
-    variableStore = new VariableStore();
+    variableStore = new VariableStore('/tmp/test-variables.yaml');
     const config: SubstitutionConfig = {
       maxNestingDepth: 5,
       allowUndefinedVariables: false,
       useDefaultValues: true,
+      enableCaching: true,
       escapePattern: '\\',
     };
     substitutor = new VariableSubstitutor(variableStore, config);
