@@ -430,7 +430,7 @@ describe('TemplateAuditLogger', () => {
     test('should handle events without userId', () => {
       const entry = logger.logTemplateLoad('template-1');
 
-      expect(entry.user).toBeUndefined();
+      expect(entry.user).toBe('system');
     });
 
     test('should handle events without metadata', () => {

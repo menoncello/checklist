@@ -243,7 +243,7 @@ export class TemplateAuditLogger {
       severity: event.severity,
       templateId: event.templateId,
       templateVersion: event.templateVersion,
-      user: userId,
+      user: userId ?? 'system',
       pid: process.pid,
       details: event.details,
       integrity: '', // Will be set below

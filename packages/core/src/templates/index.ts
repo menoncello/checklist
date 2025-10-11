@@ -13,6 +13,8 @@ export {
   TemplateInheritanceError,
   TemplateCacheError,
   ResourceLimitError,
+  VariableSubstitutionError,
+  NestingDepthExceededError,
   createTemplateError,
   isTemplateError,
   getRecoverySuggestion,
@@ -57,3 +59,19 @@ export { TemplateInheritance } from './TemplateInheritance';
 
 // TemplateCache
 export { TemplateCache } from './TemplateCache';
+
+// Variable Substitution
+export { VariableSubstitutor } from './VariableSubstitutor';
+export { SubstitutionPreview } from './SubstitutionPreview';
+
+// Substitution types
+export type {
+  SubstitutionConfig,
+  SubstitutionContext,
+  SubstitutionError,
+  SubstitutionResult,
+  SubstitutionMetadata,
+  VariablePosition,
+  VariablePreview,
+  SubstitutionPreview as SubstitutionPreviewResult,
+} from './substitution-types';

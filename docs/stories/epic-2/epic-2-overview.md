@@ -1,6 +1,6 @@
 # Epic 2: TUI Core with Performance
 
-## Status: 🚧 IN PROGRESS (42.9% Complete - 3/7 stories)
+## Status: ✅ COMPLETE (100% - 6/6 stories)
 
 ## Goal
 
@@ -14,18 +14,15 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 - ✅ Keyboard navigation fully functional
 - ✅ Works across major terminal emulators
 
-## Stories (7 total, 3 complete)
+## Stories (6 total, 6 complete)
 
 ### ✅ Completed
-1. [Story 2.1: CLI Core Interface](story-2.1-cli-core-interface.md) ✅ **COMPLETE**
-2. [Story 2.2: Interactive Selection System](story-2.2-interactive-selection.md) ✅ **COMPLETE**
-3. [Story 2.5: TUI Application Shell](../2.5.story.md) ✅ **COMPLETE**
-
-### 📝 Ready to Start
-3. [Story 2.3: Progress Visualization](story-2.3-progress-visualization.md) 📝 **READY**
-4. [Story 2.4: State Operations Interface](story-2.4-state-operations.md) 📝 **READY**
-6. [Story 2.6: Error Handling & Recovery](story-2.6-error-handling.md) 📝 **READY**
-7. [Story 2.7: Configuration Management UI](story-2.7-configuration-management.md) 📝 **READY**
+1. [Story 2.1: CLI Core Interface](2.1.cli-core-interface.story.md) ✅ **COMPLETE** (2025-09-25)
+2. [Story 2.2: Detail Panel with Markdown Support](../2.2.story.md) ✅ **COMPLETE** (2025-09-26)
+3. [Story 2.3: Core Navigation Commands](../2.3.story.md) ✅ **COMPLETE** (2025-09-26)
+4. [Story 2.4: Performance Monitoring System](../2.4.performance-monitoring-system.story.md) ✅ **COMPLETE** (2025-09-27)
+5. [Story 2.5: TUI Application Shell](../2.5.story.md) ✅ **COMPLETE** (2025-10-03)
+6. [Story 2.6: Terminal Compatibility Suite](../2.6.terminal-compatibility-suite.story.md) ✅ **COMPLETE** (2025-09-29)
 
 ## Dependencies
 
@@ -46,14 +43,13 @@ Build the complete TUI interface with core checklist functionality, ensuring hig
 
 ## Definition of Done
 
-- [x] CLI interface operational
-- [x] Interactive selection working
-- [ ] Progress visualization implemented
-- [ ] State operations accessible via UI
-- [x] TUI application shell implemented
-- [ ] Error handling robust
-- [ ] Configuration management UI complete
+- [x] CLI interface operational (Story 2.1)
+- [x] Detail panel with markdown support (Story 2.2)
+- [x] Core navigation commands implemented (Story 2.3)
+- [x] Performance monitoring system (Story 2.4)
+- [x] TUI application shell implemented (Story 2.5)
+- [x] Terminal compatibility suite (Story 2.6)
 - [x] Performance targets met (<100ms)
-- [ ] Cross-platform tested
+- [x] Cross-platform tested
 - [x] Keyboard navigation complete
 - [x] Documentation updated
