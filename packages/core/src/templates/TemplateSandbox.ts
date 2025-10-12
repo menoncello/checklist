@@ -4,6 +4,7 @@
  */
 
 import { ASTValidator } from './ASTValidator';
+import { BooleanExpressionEvaluator } from './BooleanExpressionEvaluator';
 import { ResourceLimiter } from './ResourceLimiter';
 import {
   SandboxViolationError,
@@ -67,17 +68,42 @@ const DANGEROUS_PATTERNS = [
 export class TemplateSandbox {
   private readonly resourceLimiter: ResourceLimiter;
   private readonly astValidator: ASTValidator;
+  private readonly booleanEvaluator: BooleanExpressionEvaluator;
   private readonly allowedModules = new Set(['path', 'url']);
 
   constructor(resourceLimiter?: ResourceLimiter) {
     this.resourceLimiter = resourceLimiter ?? new ResourceLimiter();
     this.astValidator = new ASTValidator();
+    this.booleanEvaluator = new BooleanExpressionEvaluator();
   }
 
   /**
    * Execute a template expression in sandboxed environment
    */
   async executeExpression(
+    expression: string,
+    context: Record<string, unknown>,
+    templateId: string,
+    timeout: number = 5000
+  ): Promise<unknown> {
+    // Validate expression for dangerous patterns
+    this.validateExpression(expression, templateId);
+
+    // Execute with resource limits
+    return await this.resourceLimiter.executeWithLimits(
+      async () => {
+        // For template expressions, perform variable substitution
+        return this.substituteVariables(expression, context, templateId);
+      },
+      templateId,
+      { executionTime: timeout }
+    );
+  }
+
+  /**
+   * Evaluate JavaScript expression safely (for math, etc)
+   */
+  async evaluateSafeExpression(
     expression: string,
     context: Record<string, unknown>,
     templateId: string,
@@ -233,17 +259,31 @@ export class TemplateSandbox {
     expression: string,
     sandbox: SandboxContext
   ): unknown {
-    // Simple variable substitution (not full JS evaluation)
-    // This is a safe implementation that only handles ${variable} patterns
-    const varPattern = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+    // Use Function constructor with limited scope for safe evaluation
+    // This is safer than eval() because we control the scope
+    try {
+      // Create function parameters from sandbox variables
+      const varNames = Object.keys(sandbox.variables);
+      const varValues = Object.values(sandbox.variables);
 
-    return expression.replace(varPattern, (match, varName) => {
-      const value = sandbox.variables[varName];
-      if (value === undefined) {
-        return match; // Keep original if variable not found
-      }
-      return String(value);
-    });
+      // Also include Math object
+      varNames.push('Math');
+      varValues.push(sandbox.Math ?? Math);
+
+      // Create a function that evaluates the expression with available variables
+      // eslint-disable-next-line no-new-func
+      const fn = new Function(
+        ...varNames,
+        `'use strict'; return (${expression});`
+      );
+
+      // Execute the function with the variable values
+      return fn(...varValues);
+    } catch (error) {
+      throw new Error(
+        `Expression evaluation failed: ${(error as Error).message}`
+      );
+    }
   }
 
   /**
@@ -257,19 +297,52 @@ export class TemplateSandbox {
     // Validate condition
     this.validateExpression(condition, templateId);
 
-    // For simple variable checks like ${variableName}
-    const varPattern = /^\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}$/;
-    const match = condition.match(varPattern);
+    // Strip ${} wrapper if present for simple variable checks
+    const processedCondition = condition.trim();
+    const simpleVarPattern = /^\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}$/;
+    const simpleMatch = processedCondition.match(simpleVarPattern);
 
-    if (match !== null) {
-      const varName = match[1];
+    if (simpleMatch !== null) {
+      // Simple variable check - just evaluate truthiness
+      const varName = simpleMatch[1];
       const value = context[varName];
       return Boolean(value);
     }
 
-    // For more complex conditions, we'd need a safe expression evaluator
-    // For now, return false for unsupported conditions
-    return false;
+    // Complex condition - substitute variables and evaluate
+    const substituted = this.substituteVariablesInCondition(
+      processedCondition,
+      context
+    );
+
+    // Evaluate the condition using boolean evaluator
+    return this.booleanEvaluator.evaluate(substituted);
+  }
+
+  /**
+   * Substitute variables in condition expression
+   */
+  private substituteVariablesInCondition(
+    condition: string,
+    context: Record<string, unknown>
+  ): string {
+    const varPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+
+    return condition.replace(varPattern, (match) => {
+      const value = context[match];
+      if (value === undefined) {
+        return match;
+      }
+
+      if (typeof value === 'string') {
+        return `'${value.replace(/'/g, "\\'")}'`;
+      }
+      if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+      }
+
+      return match;
+    });
   }
 
   /**

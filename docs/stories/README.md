@@ -21,11 +21,11 @@ stories/
 **Total: 49 user stories + 1 setup story across 5 epics**
 
 ### 📊 Current Progress
-- **Completed**: 29 stories (56.9%)
-- **Remaining**: 22 stories (43.1%)
+- **Completed**: 30 stories (58.8%)
+- **Remaining**: 21 stories (41.2%)
 - **Epic 1**: 19/19 stories complete (100%) ✅ **EPIC 1 COMPLETE!**
 - **Epic 2**: 6/6 stories complete (100%) ✅ **EPIC 2 COMPLETE!**
-- **Epic 3**: 4/8 stories complete (50.0%)
+- **Epic 3**: 5/8 stories complete (62.5%)
 
 ## Implementation Order
 
@@ -83,9 +83,9 @@ stories/
   - [x] [Story 3.2: Template Security System](3.2.template-security-system.story.md) ✅ **COMPLETE**
   - [x] [Story 3.3: Variable Management System](3.3.variable-management-system.story.md) ✅ **COMPLETE**
   - [x] [Story 3.4: Basic Template Substitution](3.4.story.md) ✅ **COMPLETE**
-  - [ ] [Story 3.5: Security Sandbox](epic-3/story-3.5-security-sandbox.md)
-  - [ ] [Story 3.6: Built-in Templates](epic-3/story-3.6-builtin-templates.md)
-  - [ ] [Story 3.7: Template Import/Export](epic-3/story-3.7-template-import-export.md)
+  - [x] [Story 3.5: Advanced Template Features](3.5.advanced-template-features.story.md) ✅ **COMPLETE**
+  - [ ] [Story 3.6: Conditional Workflow Branching](epic-3/story-3.6-conditional-workflow-branching.md)
+  - [ ] [Story 3.7: Template Marketplace Foundation](epic-3/story-3.7-template-marketplace-foundation.md)
   - [ ] [Story 3.8: Template Creator Documentation](epic-3/story-3.8-template-documentation.md) 🚨 **NEW**
 
 ### 🛡️ Phase 4: Production Readiness (Epic 4)
@@ -230,7 +230,7 @@ When creating new stories:
 
 ---
 
-_Last Updated: 2025-10-11_ ✅ **Stories Status Updated**
-_Next Review: Ready for Epic 3 completion and Epic 4 planning_
-_Recent Changes: Epic 2 COMPLETE! All 6 stories finished (2.1-2.6). Story 3.4 completed._
-_Project Status: 56.9% complete - Epic 1 & Epic 2 100% complete, Epic 3 at 50%_
+_Last Updated: 2025-10-12_ ✅ **Stories Status Updated**
+_Next Review: Ready for Epic 3 continuation and Epic 4 planning_
+_Recent Changes: Story 3.5 (Advanced Template Features) COMPLETE! 731 tests passing, 100% AC coverage._
+_Project Status: 58.8% complete - Epic 1 & Epic 2 100% complete, Epic 3 at 62.5%_

@@ -75,3 +75,25 @@ export type {
   VariablePreview,
   SubstitutionPreview as SubstitutionPreviewResult,
 } from './substitution-types';
+
+// Advanced template features
+export { ConditionalEvaluator } from './ConditionalEvaluator';
+export { LoopEvaluator } from './LoopEvaluator';
+export { TemplateFunctions } from './TemplateFunctions';
+export { MathExpressionEvaluator } from './MathExpressionEvaluator';
+export { TemplateEngine } from './TemplateEngine';
+
+// Advanced types
+export type {
+  EvaluationContext,
+  LoopContext,
+  PerformanceMetrics,
+  ConditionalBlock,
+  ConditionalResult,
+  LoopBlock,
+  LoopResult,
+  TemplateFunction,
+  FunctionRegistry,
+  MathExpression,
+  MathResult,
+} from './advanced-types';
