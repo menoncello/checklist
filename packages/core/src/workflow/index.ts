@@ -1,4 +1,6 @@
 export { WorkflowEngine } from './WorkflowEngine';
+export { ConditionalEvaluationEngine } from './ConditionalEvaluationEngine';
+export { ConditionDebugger } from './ConditionDebugger';
 export { safeEval } from './conditions';
 export { validateStep } from './validators';
 
@@ -27,4 +29,8 @@ export type {
   StepValidator,
   ConditionEvaluator,
   WorkflowEngineEvents,
+  ConditionalEvaluationContext,
+  ConditionEvaluationResult,
+  ConditionDebugReport,
+  StepGroup,
 } from './types';

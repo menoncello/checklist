@@ -99,18 +99,69 @@ export class SimpleConsoleCapture {
         return true;
       }
 
+      // For single argument with matcher (expect.stringContaining, etc)
+      if (searchArgs.length === 1 && this.isMatcher(searchArgs[0])) {
+        return call.args.some(arg => this.matcherMatches(searchArgs[0], arg));
+      }
+
       if (call.args.length !== searchArgs.length) {
         return false;
       }
 
       return call.args.every((arg, index) => {
         const searchArg = searchArgs[index];
+
+        // Handle matchers
+        if (this.isMatcher(searchArg)) {
+          return this.matcherMatches(searchArg, arg);
+        }
+
         if (typeof arg === 'string' && typeof searchArg === 'string') {
           return arg.includes(searchArg);
         }
         return arg === searchArg;
       });
     });
+  }
+
+  /**
+   * Check if a value is a Bun/Jest matcher
+   */
+  private isMatcher(value: any): boolean {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+
+    // Check for Jest-style matchers
+    if ('$$typeof' in value || 'asymmetricMatch' in value) {
+      return true;
+    }
+
+    // Check for Bun matchers by prototype name
+    const protoName = Object.getPrototypeOf(value)?.constructor?.name;
+    return protoName && protoName.startsWith('Expect');
+  }
+
+  /**
+   * Match a value against a matcher
+   */
+  private matcherMatches(matcher: any, value: any): boolean {
+    // Handle Jest-style asymmetric matchers
+    if (matcher.asymmetricMatch) {
+      return matcher.asymmetricMatch(value);
+    }
+
+    // Handle Bun matchers
+    const protoName = Object.getPrototypeOf(matcher)?.constructor?.name;
+    if (protoName === 'ExpectStringContaining') {
+      // Access internal property - Bun stores the expected string internally
+      const expected = (matcher as any).expected || (matcher as any)[Symbol.for('expected')];
+      if (expected && typeof value === 'string') {
+        return value.includes(expected);
+      }
+    }
+
+    return false;
   }
 
   /**

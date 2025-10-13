@@ -1,6 +1,9 @@
 import { StateManager } from '../state/StateManager';
 import { TransactionCoordinator } from '../state/TransactionCoordinator';
 import { createLogger, type Logger } from '../utils/logger';
+import type { ConditionalEvaluationEngine } from './ConditionalEvaluationEngine';
+import { WorkflowConditionalHelper } from './WorkflowConditionalHelper';
+import { WorkflowEventHelper } from './WorkflowEventHelper';
 import { WorkflowNavigator } from './WorkflowNavigator';
 import { WorkflowStateManager } from './WorkflowStateManager';
 import { WorkflowValidator } from './WorkflowValidator';
@@ -14,19 +17,11 @@ import {
   Variables,
   WorkflowEngineEvents,
   WorkflowState,
-  Progress,
-  Summary,
 } from './types';
 
 /**
- * WorkflowEngine - Pure business logic engine for checklist workflows
- *
- * This engine provides UI-agnostic workflow management with:
- * - State persistence and recovery
- * - Event-driven architecture for UI integration
- * - Conditional step evaluation
- * - Transaction support for atomic operations
- * - Comprehensive error handling and recovery
+ * Pure business logic engine for checklist workflows with state persistence,
+ * event-driven architecture, conditional evaluation, and transaction support.
  */
 export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
   private state: WorkflowState;
@@ -37,13 +32,20 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
   private stateManager: WorkflowStateManager;
   private navigator: WorkflowNavigator;
   private validator: WorkflowValidator;
+  private conditionalHelper: WorkflowConditionalHelper;
+  private eventHelper: WorkflowEventHelper;
 
   constructor(
     stateManagerImpl: StateManager,
-    transactionCoordinator: TransactionCoordinator
+    transactionCoordinator: TransactionCoordinator,
+    conditionalEngine?: ConditionalEvaluationEngine
   ) {
     super();
     this.logger = createLogger('checklist:workflow:engine');
+
+    // Initialize empty state and template first
+    this.state = this.createInitialState();
+    this.template = this.createEmptyTemplate();
 
     // Initialize composed services
     this.stateManager = new WorkflowStateManager(
@@ -52,10 +54,12 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
     );
     this.navigator = new WorkflowNavigator();
     this.validator = new WorkflowValidator();
-
-    // Initialize empty state and template
-    this.state = this.createInitialState();
-    this.template = this.createEmptyTemplate();
+    this.conditionalHelper = new WorkflowConditionalHelper(conditionalEngine);
+    this.eventHelper = new WorkflowEventHelper(
+      this,
+      () => this.state,
+      () => this.template
+    );
   }
 
   async init(templateId: string, vars: Variables = {}): Promise<void> {
@@ -65,12 +69,10 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
       await this.stateManager.recoverFromIncompleteTransactions();
       this.state = await this.stateManager.initializeState(templateId, vars);
       this.template = await this.stateManager.loadTemplate(templateId);
+      await this.evaluateAllConditions();
 
       this.emit('initialized', { templateId, state: this.state });
-      this.logger.info({
-        msg: 'Workflow engine initialized successfully',
-        templateId,
-      });
+      this.logger.info({ msg: 'Workflow engine initialized', templateId });
     } catch (error) {
       this.handleError(error);
       throw error;
@@ -89,8 +91,9 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
 
         this.state = newState;
         await this.stateManager.saveState(this.state);
+        await this.evaluateAllConditions();
 
-        this.emitStepEvents(result, 'stepCompleted');
+        this.eventHelper.emitStepEvents(result, 'stepCompleted');
         return result;
       });
     } catch (error) {
@@ -136,13 +139,14 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
 
         this.state = newState;
         await this.stateManager.saveState(this.state);
+        await this.evaluateAllConditions();
 
         this.emit('stepSkipped', {
           step: result.step,
           reason: reason ?? '',
           state: this.state,
         });
-        this.emitWorkflowCompletedIfFinished(result);
+        this.eventHelper.emitStepEvents(result, 'stepSkipped');
 
         return result;
       });
@@ -161,11 +165,11 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
           this.state.templateId ?? '',
           this.state.variables
         );
-
         await this.stateManager.saveState(this.state);
+        await this.evaluateAllConditions();
 
         this.emit('workflowReset', { state: this.state });
-        this.logger.info({ msg: 'Workflow reset successfully' });
+        this.logger.info({ msg: 'Workflow reset' });
       });
     } catch (error) {
       this.handleError(error);
@@ -178,28 +182,16 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
 
     const targetStep = step ?? this.getCurrentStep();
     if (!targetStep) {
-      return {
-        valid: false,
-        error: 'No step to validate',
-      };
+      return { valid: false, error: 'No step to validate' };
     }
 
-    try {
-      return await this.validator.validateStep(
-        targetStep,
-        this.state,
-        this.template
-      );
-    } catch (error) {
-      this.logger.error({ msg: 'Step validation failed', error });
-      return {
-        valid: false,
-        error: `Validation error: ${(error as Error).message}`,
-      };
-    }
+    return await this.validator.validateStep(
+      targetStep,
+      this.state,
+      this.template
+    );
   }
 
-  // Getter methods
   getCurrentStep(): Step | null {
     if (
       this.template?.steps === undefined ||
@@ -222,7 +214,19 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
     return Boolean(this.state.templateId !== '' && this.template.id !== '');
   }
 
-  // Error handling and recovery
+  getVisibleSteps(): Step[] {
+    return this.conditionalHelper.getVisibleSteps(this.template);
+  }
+
+  async evaluateAllConditions(): Promise<void> {
+    await this.conditionalHelper.evaluateAll(this.template, this.state);
+  }
+
+  async reevaluateConditions(): Promise<void> {
+    await this.conditionalHelper.reevaluate(this.template, this.state);
+    this.emit('state:changed', this.state);
+  }
+
   private handleError(error: unknown): void {
     const workflowError =
       error instanceof WorkflowError
@@ -250,7 +254,6 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
 
   async cleanup(): Promise<void> {
     try {
-      this.logger.info({ msg: 'Cleaning up workflow engine' });
       this.removeAllListeners();
       this.logger.info({ msg: 'Workflow engine cleanup completed' });
     } catch (error) {
@@ -258,7 +261,6 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
     }
   }
 
-  // Helper methods
   private async executeWithTransaction<T>(
     operation: string,
     fn: () => Promise<T>
@@ -275,50 +277,6 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
     }
   }
 
-  private emitStepEvents(result: StepResult, eventType: string): void {
-    this.emit(eventType, { step: result.step, state: this.state });
-
-    // Emit common events that tests expect
-    if (eventType === 'stepCompleted' && result.step) {
-      this.emit('step:completed', result.step);
-    }
-    if (result.step) {
-      this.emit('step:changed', result.step);
-    }
-    const progress: Progress = {
-      currentStepIndex: this.state.currentStepIndex,
-      totalSteps: this.template.steps.length,
-      completedSteps: this.state.completedSteps.length,
-      skippedSteps: this.state.skippedSteps.length,
-      percentComplete:
-        (this.state.completedSteps.length / this.template.steps.length) * 100,
-    };
-    this.emit('progress:updated', progress);
-
-    this.emitWorkflowCompletedIfFinished(result);
-  }
-
-  private emitWorkflowCompletedIfFinished(_result: StepResult): void {
-    if (this.state.status === 'completed') {
-      const summary: Summary = {
-        templateId: this.template.id,
-        instanceId: this.state.currentStep?.id ?? '',
-        startedAt: this.state.startedAt ?? new Date(),
-        completedAt: new Date(),
-        duration:
-          this.state.startedAt != null
-            ? Date.now() - this.state.startedAt.getTime()
-            : 0,
-        completedSteps: this.state.completedSteps.length,
-        skippedSteps: this.state.skippedSteps.length,
-        totalSteps: this.template.steps.length,
-        status: this.state.status === 'completed' ? 'completed' : 'failed',
-      };
-      this.emit('workflowCompleted', summary);
-      this.emit('workflow:completed', summary);
-    }
-  }
-
   private createInitialState(): WorkflowState {
     return {
       currentStepIndex: 0,
@@ -327,24 +285,6 @@ export class WorkflowEngine extends TypedEventEmitter<WorkflowEngineEvents> {
       completedSteps: [],
       skippedSteps: [],
       templateId: '',
-    };
-  }
-
-  private createInitialProgress() {
-    return {
-      totalSteps: 0,
-      completedSteps: 0,
-      percentage: 0,
-    };
-  }
-
-  private createInitialSummary() {
-    return {
-      totalSteps: 0,
-      completedSteps: 0,
-      skippedSteps: 0,
-      completionRate: 0,
-      estimatedTimeRemaining: 0,
     };
   }
 
