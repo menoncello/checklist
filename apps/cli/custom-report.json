@@ -1,12 +1,12 @@
 {
-  "timestamp": "2025-10-12T21:58:26.059Z",
+  "timestamp": "2025-10-13T01:54:09.052Z",
   "memoryUsage": {
-    "rss": 155566080,
-    "heapTotal": 54166528,
-    "heapUsed": 10016472,
-    "external": 5925848,
+    "rss": 205275136,
+    "heapTotal": 53554176,
+    "heapUsed": 42243688,
+    "external": 22278984,
     "arrayBuffers": 116,
-    "heapUsagePercent": 18.491995647201165
+    "heapUsagePercent": 78.88028750549724
   },
   "profiling": {
     "totalCalls": 0,
@@ -23,6 +23,6 @@
     "platform": "darwin",
     "arch": "arm64",
     "nodeVersion": "v24.3.0",
-    "uptime": 2.202291167
+    "uptime": 0.789166
   }
 }

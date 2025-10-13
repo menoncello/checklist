@@ -18,6 +18,7 @@ import { InitCommand } from './commands/init';
 import { ListCommand } from './commands/list';
 import { MigrateCommand } from './commands/migrate';
 import { PerformanceCommand } from './commands/performance';
+import { ReevaluateCommand } from './commands/reevaluate';
 import { ResetCommand } from './commands/reset';
 import { RunCommand } from './commands/run';
 import { StatusCommand } from './commands/status';
@@ -42,6 +43,7 @@ class CLIApplication {
     this.registry.register(new AddCommand());
     this.registry.register(new StatusCommand());
     this.registry.register(new ResetCommand());
+    this.registry.register(new ReevaluateCommand());
     this.registry.register(new ListCommand());
     this.registry.register(new MigrateCommand());
     this.registry.register(new PerformanceCommand());

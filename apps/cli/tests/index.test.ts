@@ -192,7 +192,7 @@ describe('CLIApplication', () => {
       const app = createApp();
       const registry = (app as any).registry;
       const allCommands = registry.getAllCommands();
-      expect(allCommands.length).toBe(9); // 8 commands + help
+      expect(allCommands.length).toBe(10); // 9 commands + help
     });
   });
 
