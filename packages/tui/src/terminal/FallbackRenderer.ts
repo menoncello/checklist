@@ -54,7 +54,7 @@ export class FallbackRenderer {
     // Apply fallbacks in priority order
     for (const fallback of this.fallbacks) {
       try {
-        if (fallback.condition(capabilities)) {
+        if (fallback.condition(capabilities, this.options)) {
           result = fallback.transform(result, this.options);
           applicableFallbacks.push(fallback.name);
         }
@@ -130,7 +130,7 @@ export class FallbackRenderer {
   ): void {
     for (const fallback of this.fallbacks) {
       try {
-        if (fallback.condition(capabilities)) {
+        if (fallback.condition(capabilities, this.options)) {
           // Special handling for limitDimensions - only count if dimensions are finite
           this.addFallbackToReport(fallback, report);
         }
@@ -156,7 +156,7 @@ export class FallbackRenderer {
 
     // Apply fallbacks and track which ones were used
     for (const fallback of this.fallbacks) {
-      if (fallback.condition(testCapabilities)) {
+      if (fallback.condition(testCapabilities, this.options)) {
         result = fallback.transform(result, this.options);
         fallbacksApplied.push(fallback.name);
       }

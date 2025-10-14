@@ -15,12 +15,14 @@ export function createDefaultFallbacks(): RenderFallback[] {
 function createStripColorsFallback(): RenderFallback {
   return {
     name: 'stripColors',
-    condition: (capabilities) => {
+    condition: (capabilities, options) => {
       const capsObj = capabilities as
         | Record<string, unknown>
         | null
         | undefined;
-      return !FallbackUtils.hasColorSupport(capsObj);
+      return (
+        options?.stripColors === true || !FallbackUtils.hasColorSupport(capsObj)
+      );
     },
     transform: (content) => FallbackUtils.stripAnsiColors(content),
     priority: 90,
@@ -30,7 +32,7 @@ function createStripColorsFallback(): RenderFallback {
 function createStripAnsieFallback(): RenderFallback {
   return {
     name: 'stripAllAnsi',
-    condition: (capabilities) => {
+    condition: (capabilities, _options) => {
       const capsObj = capabilities as
         | Record<string, unknown>
         | null
@@ -45,12 +47,16 @@ function createStripAnsieFallback(): RenderFallback {
 function createAsciiOnlyFallback(): RenderFallback {
   return {
     name: 'asciiOnly',
-    condition: (capabilities) => {
+    condition: (capabilities, options) => {
+      // Only apply if useAsciiOnly option is enabled OR if terminal doesn't support Unicode
       const capsObj = capabilities as
         | Record<string, unknown>
         | null
         | undefined;
-      return !FallbackUtils.hasUnicodeSupport(capsObj);
+      return (
+        options?.useAsciiOnly === true ||
+        !FallbackUtils.hasUnicodeSupport(capsObj)
+      );
     },
     transform: (content) => FallbackUtils.convertToAscii(content),
     priority: 75,
@@ -60,12 +66,16 @@ function createAsciiOnlyFallback(): RenderFallback {
 function createSimplifyBoxDrawingFallback(): RenderFallback {
   return {
     name: 'simplifyBoxDrawing',
-    condition: (capabilities) => {
+    condition: (capabilities, options) => {
+      // Only apply if simplifyBoxDrawing option is enabled OR if terminal doesn't support Unicode
       const capsObj = capabilities as
         | Record<string, unknown>
         | null
         | undefined;
-      return !FallbackUtils.hasUnicodeSupport(capsObj);
+      return (
+        options?.simplifyBoxDrawing === true ||
+        !FallbackUtils.hasUnicodeSupport(capsObj)
+      );
     },
     transform: (content) => FallbackUtils.simplifyBoxDrawing(content),
     priority: 80,
@@ -75,7 +85,13 @@ function createSimplifyBoxDrawingFallback(): RenderFallback {
 function createLimitDimensionsFallback(): RenderFallback {
   return {
     name: 'limitDimensions',
-    condition: () => true, // Always check - transform will handle if limiting is needed based on options
+    condition: (_capabilities, options) => {
+      // Always check - transform will handle if limiting is needed based on options
+      return (
+        isFinite(options?.maxWidth ?? Infinity) ||
+        isFinite(options?.maxHeight ?? Infinity)
+      );
+    },
     transform: (content, options) => {
       // Only limit if dimensions are finite
       if (isFinite(options.maxWidth) || isFinite(options.maxHeight)) {
@@ -90,12 +106,15 @@ function createLimitDimensionsFallback(): RenderFallback {
 function createSimplifyLayoutFallback(): RenderFallback {
   return {
     name: 'simplifyLayout',
-    condition: (capabilities) => {
+    condition: (capabilities, options) => {
       const capsObj = capabilities as
         | Record<string, unknown>
         | null
         | undefined;
-      return FallbackUtils.isMinimalTerminal(capsObj);
+      return (
+        options?.preserveLayout === false ||
+        FallbackUtils.isMinimalTerminal(capsObj)
+      );
     },
     transform: (content) => FallbackUtils.simplifyLayout(content),
     priority: 50,
