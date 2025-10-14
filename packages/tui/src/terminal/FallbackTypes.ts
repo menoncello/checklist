@@ -9,7 +9,7 @@ export type FallbackOptions = {
 
 export type RenderFallback = {
   name: string;
-  condition: (capabilities: unknown) => boolean;
+  condition: (capabilities: unknown, options?: FallbackOptions) => boolean;
   transform: (content: string, options: FallbackOptions) => string;
   priority: number;
 };

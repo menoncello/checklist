@@ -5,9 +5,9 @@ import type { FallbackOptions } from '../../src/terminal/FallbackTypes';
 // Mock the UnicodeReplacements module
 const mockUnicodeReplacements = new Map([
   ['▲', '^'],
-  ['△', 'v'],
-  ['▼', 'V'],
-  ['▽', 'A'],
+  ['△', '^'],
+  ['▼', 'v'],
+  ['▽', 'v'],
   ['◆', '*'],
   ['◇', 'o'],
   ['○', 'O'],
@@ -104,7 +104,7 @@ describe('FallbackUtils', () => {
         const content = '▲△▼▽';
         const result = FallbackUtils.convertToAscii(content);
 
-        expect(result).toBe('^vVA');
+        expect(result).toBe('^^vv');
       });
 
       test('should preserve ASCII characters', () => {

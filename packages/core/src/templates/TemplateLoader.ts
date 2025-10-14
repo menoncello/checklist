@@ -3,11 +3,18 @@
  * Uses Bun.file() for fast file operations
  */
 
-import { join } from 'path';
-import * as yaml from 'js-yaml';
 import { TemplateCache } from './TemplateCache';
 import { TemplateValidator } from './TemplateValidator';
 import { TemplateLoadError } from './errors';
+import {
+  readTemplateFile,
+  parseYaml,
+  findTemplateFiles,
+} from './loaders/fileOperations';
+import {
+  extractMetadata,
+  processTemplateFiles,
+} from './loaders/metadataExtractor';
 import type {
   ChecklistTemplate,
   TemplateDiscoveryResult,
@@ -16,7 +23,6 @@ import type {
 } from './types';
 
 // Type declarations for Bun-specific APIs
-type BunFile = ReturnType<typeof Bun.file>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type BunWatcher = any; // Bun.watch type not available in TypeScript definitions
 
@@ -91,8 +97,8 @@ export class TemplateLoader {
     filePath: string,
     options?: TemplateLoadOptions
   ): Promise<ChecklistTemplate> {
-    const content = await this.readTemplateFile(filePath);
-    const parsed = this.parseYaml(content, filePath);
+    const content = await readTemplateFile(filePath);
+    const parsed = parseYaml(content, filePath);
 
     if (options?.skipValidation !== true) {
       this.validator.validateOrThrow(parsed, filePath);
@@ -130,30 +136,12 @@ export class TemplateLoader {
   }
 
   /**
-   * Read template file content
-   */
-  private async readTemplateFile(filePath: string): Promise<string> {
-    const file = Bun.file(filePath);
-    const exists = await file.exists();
-
-    if (!exists) {
-      throw new TemplateLoadError(
-        filePath,
-        'Template file not found',
-        new Error('ENOENT')
-      );
-    }
-
-    return await file.text();
-  }
-
-  /**
    * Discover all templates in the templates directory
    */
   async discover(): Promise<TemplateDiscoveryResult[]> {
     try {
-      const files = this.findTemplateFiles();
-      return await this.processTemplateFiles(files);
+      const files = findTemplateFiles(this.templatesDir);
+      return await processTemplateFiles(files, this.templatesDir);
     } catch (error) {
       throw new TemplateLoadError(
         this.templatesDir,
@@ -164,147 +152,10 @@ export class TemplateLoader {
   }
 
   /**
-   * Find all template files in directory
-   */
-  private findTemplateFiles(): string[] {
-    const glob = new Bun.Glob('**/*.{yaml,yml}');
-    return Array.from(glob.scanSync({ cwd: this.templatesDir }));
-  }
-
-  /**
-   * Process template files and extract metadata
-   */
-  private async processTemplateFiles(
-    files: string[]
-  ): Promise<TemplateDiscoveryResult[]> {
-    const results: TemplateDiscoveryResult[] = [];
-
-    for (const relativePath of files) {
-      const fullPath = join(this.templatesDir, relativePath);
-
-      try {
-        const metadata = await this.extractMetadata(fullPath);
-        results.push({
-          path: fullPath,
-          id: metadata.id,
-          name: metadata.name,
-          version: metadata.version,
-          size: metadata.size,
-          modifiedAt: metadata.modifiedAt,
-        });
-      } catch (_error) {
-        // Skip files that cannot be parsed
-        continue;
-      }
-    }
-
-    return results;
-  }
-
-  /**
    * Extract metadata from a template file without full loading
    */
   async extractMetadata(filePath: string): Promise<TemplateMetadataResult> {
-    try {
-      const file = await this.getTemplateFile(filePath);
-      const stat = await this.getFileStats(file, filePath);
-      const template = await this.parseTemplateFile(file, filePath);
-
-      return this.buildMetadataResult(template, filePath, stat);
-    } catch (error) {
-      if (error instanceof TemplateLoadError) {
-        throw error;
-      }
-
-      throw new TemplateLoadError(
-        filePath,
-        'Failed to extract metadata',
-        error as Error
-      );
-    }
-  }
-
-  /**
-   * Get and validate template file
-   */
-  private async getTemplateFile(filePath: string): Promise<BunFile> {
-    const file = Bun.file(filePath);
-    const exists = await file.exists();
-
-    if (!exists) {
-      throw new TemplateLoadError(
-        filePath,
-        'Template file not found',
-        new Error('ENOENT')
-      );
-    }
-
-    return file;
-  }
-
-  /**
-   * Get file statistics
-   */
-  private async getFileStats(
-    file: BunFile,
-    filePath: string
-  ): Promise<{ size: number; mtime: Date }> {
-    const stat = await file.stat();
-    if (stat === null) {
-      throw new TemplateLoadError(
-        filePath,
-        'Failed to read file stats',
-        new Error('ENOSTAT')
-      );
-    }
-
-    return { size: stat.size, mtime: stat.mtime };
-  }
-
-  /**
-   * Parse template file
-   */
-  private async parseTemplateFile(
-    file: BunFile,
-    filePath: string
-  ): Promise<ChecklistTemplate> {
-    const content = await file.text();
-    const parsed = this.parseYaml(content, filePath);
-    return parsed as ChecklistTemplate;
-  }
-
-  /**
-   * Build metadata result
-   */
-  private buildMetadataResult(
-    template: ChecklistTemplate,
-    filePath: string,
-    stat: { size: number; mtime: Date }
-  ): TemplateMetadataResult {
-    return {
-      id: template.id,
-      name: template.name,
-      version: template.version,
-      description: template.description,
-      path: filePath,
-      size: stat.size,
-      modifiedAt: stat.mtime.getTime(),
-    };
-  }
-
-  /**
-   * Parse YAML content
-   */
-  private parseYaml(content: string, filePath: string): unknown {
-    try {
-      return yaml.load(content);
-    } catch (error) {
-      throw new TemplateLoadError(
-        filePath,
-        `YAML parsing failed: ${(error as Error).message}`,
-        error as Error
-      );
-    }
+    return extractMetadata(filePath);
   }
 
   /**
@@ -375,6 +226,7 @@ export class TemplateLoader {
       return;
     }
 
+    const { join } = require('path');
     const fullPath = join(this.templatesDir, event.path);
 
     // Invalidate cache for changed files

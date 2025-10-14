@@ -10,49 +10,46 @@
     },
     "test": {
       "dependsOn": ["build"],
-      "outputs": ["coverage/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "package.json", "tsconfig.json"]
+      "cache": false
     },
     "test:unit": {
       "dependsOn": ["build"],
-      "outputs": ["coverage/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.test.ts", "package.json", "tsconfig.json"]
+      "cache": false
     },
     "test:integration": {
       "dependsOn": ["build"],
-      "outputs": ["coverage/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.test.ts", "test/**/*.integration.test.ts", "package.json", "tsconfig.json"]
+      "cache": false
     },
     "test:coverage": {
       "dependsOn": ["build"],
       "outputs": ["coverage/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "package.json", "tsconfig.json"]
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "tests/**/*.ts", "package.json", "tsconfig.json"]
     },
     "test:mutation": {
       "dependsOn": ["build"],
       "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "tests/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
     },
     "test:mutation:ci": {
       "dependsOn": ["build"],
       "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "tests/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
     },
     "test:mutation:report": {
       "dependsOn": ["build"],
       "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "tests/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
     },
     "test:mutation:full": {
       "dependsOn": ["build"],
       "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "tests/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
     },
     "test:mutation:clean": {
       "dependsOn": ["build"],
       "cache": false,
       "outputs": ["reports/mutation/**", ".stryker-tmp/**"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "tests/**/*.ts", "stryker.conf.json", "package.json", "tsconfig.json"]
     },
     "test:watch": {
       "cache": false,
@@ -95,7 +92,7 @@
     "bench": {
       "dependsOn": ["build"],
       "outputs": [],
-      "inputs": ["src/**/*.ts", "test/**/*.bench.ts", "package.json", "tsconfig.json"]
+      "inputs": ["src/**/*.ts", "test/**/*.bench.ts", "tests/**/*.bench.ts", "package.json", "tsconfig.json"]
     }
   }
 }

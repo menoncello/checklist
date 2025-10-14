@@ -1,0 +1,166 @@
+[
+  {
+    "name": "should have all required fields",
+    "description": "Template should have version, metadata, variables, dependencies, and steps",
+    "inputs": {
+      "appName": "MyFullstackApp",
+      "frontendFramework": "react",
+      "backendFramework": "express",
+      "database": "postgres",
+      "author": "Development Team",
+      "includeDocker": "true",
+      "includeCI": "true",
+      "deploymentTarget": "aws"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "version",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "metadata",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "variables",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "dependencies",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should have correct metadata with fullstack tag",
+    "description": "Metadata should identify this as a fullstack template",
+    "inputs": {
+      "appName": "TestApp",
+      "author": "Test Team"
+    },
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "metadata.id",
+        "value": "fullstack-app"
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "fullstack"
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "web"
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "api"
+      }
+    ]
+  },
+  {
+    "name": "should declare required dependencies",
+    "description": "Template must declare dependencies on basic-project-setup and deployment-workflow",
+    "inputs": {},
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "dependencies",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should include optional code-review dependency",
+    "description": "Template should include code-review-checklist as optional dependency",
+    "inputs": {},
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "dependencies",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should support multiple frontend frameworks",
+    "description": "Template should work with different frontend framework choices",
+    "inputs": {
+      "appName": "VueApp",
+      "frontendFramework": "vue",
+      "backendFramework": "fastify",
+      "database": "mongodb",
+      "author": "Vue Team"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should support multiple backend frameworks",
+    "description": "Template should work with different backend framework choices",
+    "inputs": {
+      "appName": "NestApp",
+      "frontendFramework": "angular",
+      "backendFramework": "nestjs",
+      "database": "mysql",
+      "author": "Nest Team"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should handle all database options",
+    "description": "Template should support postgres, mysql, mongodb, and sqlite",
+    "inputs": {
+      "appName": "SQLiteApp",
+      "frontendFramework": "svelte",
+      "backendFramework": "koa",
+      "database": "sqlite",
+      "author": "Svelte Team"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should include comprehensive step categories",
+    "description": "Template must include steps for foundation, frontend, backend, database, deployment, and security",
+    "inputs": {
+      "appName": "CompleteApp",
+      "author": "Full Team"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  }
+]

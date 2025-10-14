@@ -1,0 +1,35 @@
+{
+  "name": "deployment-workflow",
+  "version": "1.0.0",
+  "description": "Production-ready deployment workflow with safety checks and monitoring",
+  "author": {
+    "name": "BMAD Team",
+    "email": "team@bmad.dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bmad/templates/deployment-workflow"
+  },
+  "homepage": "https://github.com/bmad/templates/deployment-workflow#readme",
+  "keywords": [
+    "deployment",
+    "devops",
+    "production",
+    "cicd",
+    "workflow"
+  ],
+  "tags": [
+    "deployment",
+    "devops",
+    "production"
+  ],
+  "files": [
+    "template.yaml",
+    "README.md"
+  ],
+  "main": "template.yaml",
+  "engines": {
+    "bmad": ">=1.0.0"
+  }
+}

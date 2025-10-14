@@ -34,6 +34,7 @@
 | State Format                 | YAML               | js-yaml 4.1.x | State persistence             | Human-readable, Git-friendly        |
 | Schema Validation            | Ajv                | 8.12.x        | YAML/JSON schema validation   | Ensures state file integrity        |
 | File Watching                | Bun.watch          | Built-in      | File change detection         | Native file system watching         |
+| Version Management           | semver             | 7.6.x         | Semantic version parsing      | Template version resolution         |
 | **Build & Distribution**     |
 | Compiler                     | Bun                | 1.1.x         | Binary compilation            | Single executable output            |
 | CI/CD                        | GitHub Actions     | latest        | Multi-platform builds         | Automated testing and releases      |

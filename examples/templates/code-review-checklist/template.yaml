@@ -1,0 +1,281 @@
+version: "1.0.0"
+metadata:
+  id: code-review-checklist
+  title: "Code Review: {{prTitle}}"
+  description: Comprehensive code review checklist for PR #{{prNumber}}
+  tags:
+    - code-review
+    - quality
+    - development
+
+variables:
+  - name: prNumber
+    description: Pull request number
+    required: true
+
+  - name: prTitle
+    description: Pull request title
+    required: true
+
+  - name: prAuthor
+    description: Pull request author
+    required: true
+
+  - name: reviewer
+    description: Name of the reviewer
+    required: true
+
+  - name: prType
+    description: Type of changes (feature, bugfix, refactor, docs)
+    default: "feature"
+
+  - name: hasTests
+    description: PR includes tests (yes/no)
+    default: "yes"
+
+steps:
+  - id: review-description
+    title: Review PR description and context
+    description: |
+      Review PR #{{prNumber}}: {{prTitle}}
+      Author: {{prAuthor}}
+      Type: {{prType}}
+
+      Check:
+      ✓ Clear description of changes
+      ✓ Link to relevant issue/ticket
+      ✓ Breaking changes documented
+      ✓ Migration guide (if needed)
+    completed: false
+    metadata:
+      category: documentation
+      priority: high
+
+  - id: check-scope
+    title: Verify PR scope is focused
+    description: |
+      Ensure PR #{{prNumber}} has a focused scope
+
+      ✓ Single responsibility/concern
+      ✓ Not mixing unrelated changes
+      ✓ Reasonable size (<500 lines preferred)
+      ✓ Atomic commits with clear messages
+    completed: false
+    metadata:
+      category: structure
+      priority: high
+
+  - id: code-quality
+    title: Review code quality
+    description: |
+      Assess code quality for {{prTitle}}
+
+      ✓ Follows project coding standards
+      ✓ Clear and descriptive naming
+      ✓ Appropriate abstraction levels
+      ✓ DRY principle followed
+      ✓ No code smells
+      ✓ Commented where necessary
+      ✓ No commented-out code
+    completed: false
+    metadata:
+      category: quality
+      priority: critical
+
+  - id: functionality
+    title: Verify functionality
+    description: |
+      Test the changes in PR #{{prNumber}}
+
+      ✓ Changes work as described
+      ✓ Edge cases handled
+      ✓ Error handling appropriate
+      ✓ No regression in existing features
+      ✓ Performance impact acceptable
+
+      Type: {{prType}}
+    completed: false
+    metadata:
+      category: functionality
+      priority: critical
+
+  - id: test-coverage
+    title: Review test coverage
+    description: |
+      Evaluate tests for {{prTitle}}
+
+      Has tests: {{hasTests}}
+
+      ✓ Unit tests for new code
+      ✓ Integration tests if needed
+      ✓ Edge cases covered
+      ✓ Tests are meaningful (not just for coverage)
+      ✓ Tests pass locally
+      ✓ CI pipeline green
+    completed: false
+    metadata:
+      category: testing
+      priority: critical
+
+  - id: security-review
+    title: Security considerations
+    description: |
+      Check security aspects of PR #{{prNumber}}
+
+      ✓ No hardcoded secrets/credentials
+      ✓ Input validation present
+      ✓ SQL injection prevention
+      ✓ XSS prevention
+      ✓ Authentication/authorization correct
+      ✓ Dependencies are trustworthy
+      ✓ No sensitive data in logs
+    completed: false
+    metadata:
+      category: security
+      priority: critical
+
+  - id: performance-review
+    title: Performance impact
+    description: |
+      Assess performance impact of {{prTitle}}
+
+      ✓ No N+1 queries
+      ✓ Database indexes appropriate
+      ✓ Caching used where beneficial
+      ✓ No unnecessary computations
+      ✓ Resource usage acceptable
+      ✓ Scalability considered
+    completed: false
+    metadata:
+      category: performance
+      priority: high
+
+  - id: error-handling
+    title: Error handling and logging
+    description: |
+      Review error handling in PR #{{prNumber}}
+
+      ✓ Errors handled gracefully
+      ✓ Appropriate error messages
+      ✓ Logging levels correct
+      ✓ Stack traces preserved
+      ✓ User-friendly error messages
+      ✓ Recovery mechanisms in place
+    completed: false
+    metadata:
+      category: reliability
+      priority: high
+
+  - id: api-design
+    title: API design review
+    description: |
+      Review API changes in {{prTitle}}
+
+      ✓ RESTful principles followed
+      ✓ Consistent with existing APIs
+      ✓ Versioning strategy correct
+      ✓ Request/response formats documented
+      ✓ Error responses standardized
+      ✓ Backwards compatible (or documented)
+    completed: false
+    metadata:
+      category: design
+      priority: high
+
+  - id: documentation
+    title: Documentation review
+    description: |
+      Check documentation for PR #{{prNumber}}
+
+      ✓ Code comments are clear
+      ✓ README updated if needed
+      ✓ API docs updated
+      ✓ CHANGELOG.md entry added
+      ✓ Migration guide (if breaking changes)
+      ✓ Examples provided
+    completed: false
+    metadata:
+      category: documentation
+      priority: medium
+
+  - id: accessibility
+    title: Accessibility check
+    description: |
+      Verify accessibility for frontend changes
+
+      ✓ Semantic HTML used
+      ✓ ARIA labels appropriate
+      ✓ Keyboard navigation works
+      ✓ Screen reader compatible
+      ✓ Color contrast sufficient
+      ✓ Focus indicators visible
+    completed: false
+    metadata:
+      category: accessibility
+      priority: medium
+
+  - id: mobile-responsive
+    title: Mobile responsiveness
+    description: |
+      Check mobile/responsive design
+
+      ✓ Works on mobile devices
+      ✓ Touch targets appropriate size
+      ✓ Responsive breakpoints correct
+      ✓ Text readable on small screens
+      ✓ No horizontal scrolling
+    completed: false
+    metadata:
+      category: design
+      priority: medium
+
+  - id: dependencies-check
+    title: Review dependency changes
+    description: |
+      Check dependency updates in PR #{{prNumber}}
+
+      ✓ Dependencies necessary
+      ✓ Versions are stable (not pre-release)
+      ✓ License compatible
+      ✓ No known vulnerabilities
+      ✓ Bundle size impact acceptable
+    completed: false
+    metadata:
+      category: dependencies
+      priority: medium
+
+  - id: ci-cd-check
+    title: CI/CD pipeline status
+    description: |
+      Verify CI/CD for {{prTitle}}
+
+      ✓ All checks passing
+      ✓ Tests passing
+      ✓ Linting passing
+      ✓ Type checking passing
+      ✓ Build succeeds
+      ✓ Security scans clean
+    completed: false
+    metadata:
+      category: automation
+      priority: critical
+
+  - id: final-approval
+    title: Final review decision
+    description: |
+      Make final decision on PR #{{prNumber}}
+
+      Reviewed by: {{reviewer}}
+      Author: {{prAuthor}}
+
+      Decision:
+      □ Approve
+      □ Request changes
+      □ Comment
+
+      Summary of feedback:
+      [Add your comments here]
+    completed: false
+    metadata:
+      category: review
+      priority: critical

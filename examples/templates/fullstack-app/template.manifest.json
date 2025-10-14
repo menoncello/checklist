@@ -1,0 +1,42 @@
+{
+  "name": "fullstack-app",
+  "version": "1.0.0",
+  "description": "Complete fullstack application setup with frontend, backend, and deployment",
+  "author": "BMAD Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bmad/templates/fullstack-app"
+  },
+  "tags": [
+    "fullstack",
+    "web",
+    "api",
+    "deployment",
+    "advanced"
+  ],
+  "files": [
+    "template.yaml",
+    "README.md"
+  ],
+  "dependencies": [
+    {
+      "name": "basic-project-setup",
+      "version": "^1.0.0",
+      "optional": false
+    },
+    {
+      "name": "deployment-workflow",
+      "version": "^1.0.0",
+      "optional": false
+    },
+    {
+      "name": "code-review-checklist",
+      "version": "^1.0.0",
+      "optional": true
+    }
+  ],
+  "engines": {
+    "bmad": ">=1.0.0"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-10-13T00:00:00Z",
+  "templates": [
+    {
+      "name": "basic-checklist",
+      "version": "1.0.0",
+      "description": "A basic checklist template for getting started",
+      "author": "BMAD Team",
+      "repository": "https://github.com/bmad/templates/basic-checklist",
+      "tags": ["basic", "starter", "checklist"]
+    },
+    {
+      "name": "project-setup",
+      "version": "2.1.0",
+      "description": "Complete project setup template with variables",
+      "author": "John Doe",
+      "repository": "https://github.com/johndoe/project-setup",
+      "tags": ["project", "setup", "advanced"]
+    },
+    {
+      "name": "deployment-workflow",
+      "version": "1.5.0",
+      "description": "Deployment workflow with conditional logic",
+      "author": "Jane Smith",
+      "repository": "https://github.com/janesmith/deployment",
+      "tags": ["deployment", "workflow", "cicd"]
+    }
+  ]
+}
