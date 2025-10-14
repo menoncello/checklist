@@ -186,13 +186,14 @@ describe('CLIApplication', () => {
       expect(registry.has('reset')).toBe(true);
       expect(registry.has('migrate')).toBe(true);
       expect(registry.has('performance')).toBe(true);
+      expect(registry.has('template test')).toBe(true);
     });
 
     it('should register correct number of commands', () => {
       const app = createApp();
       const registry = (app as any).registry;
       const allCommands = registry.getAllCommands();
-      expect(allCommands.length).toBe(10); // 9 commands + help
+      expect(allCommands.length).toBe(11); // 10 commands + help
     });
   });
 

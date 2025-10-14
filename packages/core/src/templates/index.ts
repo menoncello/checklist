@@ -40,7 +40,24 @@ export type {
   CacheStatistics,
   CacheEntry,
   TemplateDiscoveryResult,
+  // Marketplace types
+  TemplateManifest,
+  TemplateAuthor,
+  TemplateRepository,
+  TemplateDependency,
+  TemplateIndex,
+  TemplateIndexEntry,
+  DependencyTree,
+  DependencyNode,
+  TemplateTestCase,
+  TemplateAssertion,
+  TemplateTestResults,
+  TestCaseResult,
+  AssertionFailure,
 } from './types';
+
+// Constants
+export { TEMPLATE_MANIFEST_FILENAME } from './types';
 
 // ResourceLimiter
 export { ResourceLimiter } from './ResourceLimiter';
@@ -97,3 +114,43 @@ export type {
   MathExpression,
   MathResult,
 } from './advanced-types';
+
+// Manifest validation
+export {
+  validateManifest,
+  validateManifestWithDetails,
+  validateLicense,
+  manifestSchema,
+  COMMON_SPDX_LICENSES,
+} from './ManifestValidator';
+
+export type { LicenseValidationResult } from './ManifestValidator';
+
+// Repository implementations
+export { GitTemplateRepository } from './repositories/GitTemplateRepository';
+export type { GitRepositoryConfig } from './repositories/GitTemplateRepository';
+
+// Template registry
+export { TemplateRegistry } from './TemplateRegistry';
+
+// Version management
+export { TemplateVersionManager } from './TemplateVersionManager';
+export type {
+  VersionResolutionOptions,
+  VersionComparison,
+} from './TemplateVersionManager';
+
+// Dependency resolution
+export {
+  TemplateDependencyResolver,
+  DependencyResolutionError,
+  CircularDependencyError,
+} from './TemplateDependencyResolver';
+export type {
+  DependencyResolverOptions,
+  DependencyFetcher,
+} from './TemplateDependencyResolver';
+
+// Template testing
+export { TemplateTestRunner, TestExecutionError } from './TemplateTestRunner';
+export type { TestRunnerOptions } from './TemplateTestRunner';

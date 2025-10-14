@@ -1,0 +1,256 @@
+version: "1.0.0"
+metadata:
+  id: deployment-workflow
+  title: "Deploy {{serviceName}} to {{environment}}"
+  description: Production-ready deployment workflow for {{serviceName}}
+  tags:
+    - deployment
+    - devops
+    - production
+
+variables:
+  - name: serviceName
+    description: Name of the service being deployed
+    required: true
+
+  - name: environment
+    description: Target environment
+    required: true
+    validation:
+      pattern: "^(development|staging|production)$"
+      message: Must be development, staging, or production
+
+  - name: version
+    description: Version being deployed
+    required: true
+    validation:
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+      message: Must be semantic version (e.g., 1.2.3)
+
+  - name: deployedBy
+    description: Person performing the deployment
+    required: true
+
+  - name: rollbackPlan
+    description: Rollback plan if deployment fails
+    default: "Revert to previous version"
+
+  - name: includeDatabase
+    description: Include database migration steps
+    default: "false"
+
+steps:
+  - id: pre-deploy-check
+    title: Pre-deployment checklist
+    description: |
+      Verify readiness for {{serviceName}} v{{version}} deployment
+
+      ✓ All tests passing
+      ✓ Code review completed
+      ✓ Security scan passed
+      ✓ Documentation updated
+      ✓ Stakeholders notified
+
+      Environment: {{environment}}
+      Deployed by: {{deployedBy}}
+    completed: false
+    metadata:
+      category: preparation
+      priority: critical
+
+  - id: backup-current
+    title: Backup current {{environment}} state
+    description: |
+      Create backup of {{serviceName}} before deployment
+
+      - Database snapshot (if applicable)
+      - Configuration backup
+      - Current version tag: pre-{{version}}
+
+      Rollback plan: {{rollbackPlan}}
+    completed: false
+    metadata:
+      category: safety
+      priority: critical
+
+  - id: notify-start
+    title: Send deployment start notification
+    description: |
+      Notify team about {{serviceName}} deployment
+
+      Service: {{serviceName}}
+      Version: {{version}}
+      Environment: {{environment}}
+      Deployed by: {{deployedBy}}
+      Time: [Current timestamp]
+    completed: false
+    metadata:
+      category: communication
+      priority: high
+
+  - id: db-migration
+    title: Run database migrations
+    description: |
+      Execute database migrations for {{serviceName}}
+
+      ⚠️  CAUTION: Production database changes
+
+      - Review migration scripts
+      - Test on staging first
+      - Ensure migrations are reversible
+      - Monitor migration progress
+    completed: false
+    metadata:
+      category: database
+      priority: critical
+      conditional: "{{includeDatabase}}"
+
+  - id: stop-services
+    title: Stop {{serviceName}} services (if needed)
+    description: |
+      Gracefully stop {{serviceName}} in {{environment}}
+
+      - Drain connections
+      - Stop accepting new requests
+      - Complete in-flight requests
+      - Stop service processes
+    completed: false
+    metadata:
+      category: deployment
+      priority: high
+
+  - id: deploy-build
+    title: Deploy {{serviceName}} v{{version}}
+    description: |
+      Deploy new version to {{environment}}
+
+      Steps:
+      1. Upload build artifacts
+      2. Update configuration
+      3. Deploy to {{environment}}
+      4. Verify deployment checksum
+    completed: false
+    metadata:
+      category: deployment
+      priority: critical
+
+  - id: start-services
+    title: Start {{serviceName}} services
+    description: |
+      Start {{serviceName}} v{{version}} in {{environment}}
+
+      - Start service processes
+      - Wait for readiness probes
+      - Verify service startup
+    completed: false
+    metadata:
+      category: deployment
+      priority: critical
+
+  - id: health-check
+    title: Verify {{serviceName}} health
+    description: |
+      Run health checks for {{serviceName}}
+
+      Checks:
+      - Service is responding
+      - Database connections working
+      - API endpoints accessible
+      - Performance metrics normal
+      - No error spikes in logs
+
+      Environment: {{environment}}
+      Version: {{version}}
+    completed: false
+    metadata:
+      category: verification
+      priority: critical
+
+  - id: smoke-tests
+    title: Run smoke tests
+    description: |
+      Execute smoke test suite for {{serviceName}}
+
+      - Critical path tests
+      - Integration tests
+      - User flow tests
+      - Performance baseline
+    completed: false
+    metadata:
+      category: verification
+      priority: critical
+
+  - id: monitor-metrics
+    title: Monitor {{serviceName}} metrics
+    description: |
+      Monitor {{serviceName}} for 15-30 minutes
+
+      Watch for:
+      - Error rates
+      - Response times
+      - Resource usage (CPU, memory)
+      - Database performance
+      - User-reported issues
+
+      Environment: {{environment}}
+      Version: {{version}}
+    completed: false
+    metadata:
+      category: monitoring
+      priority: high
+
+  - id: update-docs
+    title: Update deployment documentation
+    description: |
+      Document {{serviceName}} v{{version}} deployment
+
+      Record:
+      - Deployment timestamp
+      - Version deployed: {{version}}
+      - Environment: {{environment}}
+      - Deployed by: {{deployedBy}}
+      - Any issues encountered
+      - Resolution steps taken
+    completed: false
+    metadata:
+      category: documentation
+      priority: medium
+
+  - id: notify-complete
+    title: Send deployment completion notification
+    description: |
+      Notify team of successful deployment
+
+      ✅ {{serviceName}} v{{version}} deployed to {{environment}}
+
+      Deployed by: {{deployedBy}}
+      Status: Success
+      Monitoring: Active
+
+      Next steps:
+      - Continue monitoring for 24 hours
+      - Watch for user feedback
+      - Be ready for rollback if needed
+    completed: false
+    metadata:
+      category: communication
+      priority: high
+
+  - id: post-deploy-review
+    title: Post-deployment review
+    description: |
+      Schedule post-deployment review
+
+      Topics:
+      - Deployment went smoothly?
+      - Any unexpected issues?
+      - Lessons learned
+      - Process improvements
+
+      Service: {{serviceName}}
+      Version: {{version}}
+      Environment: {{environment}}
+    completed: false
+    metadata:
+      category: retrospective
+      priority: low

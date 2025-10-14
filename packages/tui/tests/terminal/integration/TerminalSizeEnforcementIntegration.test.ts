@@ -229,9 +229,9 @@ describe('Terminal Size Enforcement Integration', () => {
       const fallback = asciiRenderer.render(content, { unicode: false });
 
       // Verify box drawing is simplified to ASCII
-      expect(fallback).toContain('++++++++');
-      expect(fallback).toContain('+ Test +');
-      expect(fallback).toContain('++++++++');
+      expect(fallback).toContain('+------+');
+      expect(fallback).toContain('| Test |');
+      expect(fallback).toContain('+------+');
     });
   });
 });

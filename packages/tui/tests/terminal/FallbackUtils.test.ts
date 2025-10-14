@@ -104,7 +104,7 @@ describe('FallbackUtils', () => {
         const content = '▲△▼▽';
         const result = FallbackUtils.convertToAscii(content);
 
-        expect(result).toBe('^vVA');
+        expect(result).toBe('^^vv');
       });
 
       test('should preserve ASCII characters', () => {

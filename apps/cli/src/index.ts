@@ -22,6 +22,7 @@ import { ReevaluateCommand } from './commands/reevaluate';
 import { ResetCommand } from './commands/reset';
 import { RunCommand } from './commands/run';
 import { StatusCommand } from './commands/status';
+import { TemplateTestCommand } from './commands/template';
 import { ErrorHandler, CommandNotFoundError } from './errors';
 import { CommandParser } from './parser';
 import { CommandRegistry } from './registry';
@@ -47,6 +48,9 @@ class CLIApplication {
     this.registry.register(new ListCommand());
     this.registry.register(new MigrateCommand());
     this.registry.register(new PerformanceCommand());
+
+    // Template commands
+    this.registry.register(new TemplateTestCommand());
 
     // Help command needs registry reference
     this.registry.register(new HelpCommand(this.registry));

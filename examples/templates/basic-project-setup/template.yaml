@@ -1,0 +1,169 @@
+version: "1.0.0"
+metadata:
+  id: basic-project-setup
+  title: "Setup {{projectName}}"
+  description: Basic project setup checklist for {{projectName}}
+  tags:
+    - setup
+    - beginner
+    - project
+
+variables:
+  - name: projectName
+    description: Name of the project
+    required: true
+
+  - name: projectType
+    description: Type of project (web, api, library, cli)
+    default: "web"
+
+  - name: packageManager
+    description: Package manager to use (npm, yarn, pnpm, bun)
+    default: "npm"
+
+  - name: author
+    description: Project author or team name
+    default: "Development Team"
+
+  - name: includeTests
+    description: Include testing setup (true/false)
+    default: "true"
+
+steps:
+  - id: init-repo
+    title: Initialize Git repository
+    description: |
+      Initialize a new Git repository for {{projectName}}
+
+      Commands:
+      - git init
+      - git add .
+      - git commit -m "Initial commit"
+    completed: false
+    metadata:
+      category: setup
+      priority: high
+
+  - id: create-structure
+    title: Create project structure
+    description: |
+      Set up the basic directory structure for {{projectType}} project
+
+      Typical structure:
+      - src/
+      - tests/
+      - docs/
+      - .github/
+    completed: false
+    metadata:
+      category: setup
+      priority: high
+
+  - id: init-package
+    title: Initialize package with {{packageManager}}
+    description: |
+      Initialize the project with {{packageManager}}:
+
+      Command: {{packageManager}} init -y
+
+      Update package.json with:
+      - name: {{projectName}}
+      - author: {{author}}
+      - description
+      - license
+    completed: false
+    metadata:
+      category: setup
+      priority: high
+
+  - id: install-deps
+    title: Install core dependencies
+    description: |
+      Install essential dependencies for {{projectType}} project
+
+      Command: {{packageManager}} install
+    completed: false
+    metadata:
+      category: dependencies
+      priority: medium
+
+  - id: setup-linting
+    title: Setup linting and formatting
+    description: |
+      Configure linting tools:
+      - ESLint for code quality
+      - Prettier for code formatting
+
+      Install: {{packageManager}} install -D eslint prettier
+    completed: false
+    metadata:
+      category: tooling
+      priority: medium
+
+  - id: setup-tests
+    title: Setup testing framework
+    description: |
+      Configure testing for {{projectName}}
+
+      For {{packageManager}} projects, consider:
+      - Jest
+      - Vitest
+      - Bun Test
+    completed: false
+    metadata:
+      category: testing
+      priority: medium
+      conditional: "{{includeTests}}"
+
+  - id: create-readme
+    title: Create README.md
+    description: |
+      Document {{projectName}} with comprehensive README:
+
+      Sections to include:
+      - Project title and description
+      - Installation instructions
+      - Usage examples
+      - Development setup
+      - Contributing guidelines
+      - License
+    completed: false
+    metadata:
+      category: documentation
+      priority: medium
+
+  - id: setup-ci
+    title: Setup CI/CD pipeline
+    description: |
+      Configure continuous integration:
+      - Create .github/workflows/ci.yml
+      - Add build and test jobs
+      - Configure deployment (optional)
+    completed: false
+    metadata:
+      category: devops
+      priority: low
+
+  - id: create-license
+    title: Add LICENSE file
+    description: |
+      Add appropriate license file
+
+      Author: {{author}}
+      Project: {{projectName}}
+    completed: false
+    metadata:
+      category: legal
+      priority: low
+
+  - id: initial-commit
+    title: Create initial commit
+    description: |
+      Commit the initial project setup
+
+      git add .
+      git commit -m "chore: initial {{projectName}} setup"
+    completed: false
+    metadata:
+      category: setup
+      priority: high

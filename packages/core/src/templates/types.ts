@@ -1,204 +1,52 @@
 /**
  * Type definitions for the template system
- * Based on the ChecklistTemplate specification from the story
+ * Re-exports all types from domain-specific modules
  */
 
-/**
- * Variable definition in a template
- */
-export interface Variable {
-  name: string;
-  type: 'string' | 'number' | 'boolean' | 'array';
-  required: boolean;
-  default?: unknown;
-  description: string;
-  validation?: string;
-}
+// Core template types
+export type {
+  Variable,
+  Command,
+  StepValidation,
+  Step,
+  TemplateMetadata,
+  ChecklistTemplate,
+  CachedTemplate,
+  TemplateLoadOptions,
+  TemplateValidationResult,
+  TemplateMetadataResult,
+  TemplateInheritance,
+  CacheStatistics,
+  CacheEntry,
+  TemplateDiscoveryResult,
+} from './types/coreTypes';
 
-/**
- * Command within a step
- */
-export interface Command {
-  id: string;
-  type?: 'bash' | 'node' | 'python' | 'custom';
-  content: string;
-  dangerous?: boolean;
-  requiresConfirmation?: boolean;
-}
+export { TEMPLATE_MANIFEST_FILENAME } from './types/coreTypes';
 
-/**
- * Step validation configuration
- */
-export interface StepValidation {
-  type: 'command' | 'file_exists' | 'custom' | 'regex';
-  check: string;
-  errorMessage?: string;
-}
+// Marketplace types
+export type {
+  TemplateAuthor,
+  TemplateRepository,
+  TemplateDependency,
+  TemplateManifest,
+  TemplateIndex,
+  TemplateIndexEntry,
+  DependencyTree,
+  DependencyNode,
+} from './types/marketplaceTypes';
 
-/**
- * Step definition in a template
- */
-export interface Step {
-  id: string;
-  title: string;
-  description: string;
-  type: 'task' | 'confirmation' | 'input' | 'automated' | 'multi-command';
-  commands: Command[];
-  condition?: string;
-  dependencies: string[];
-  validation?: StepValidation;
-  executionMode: 'sequential' | 'parallel';
-  continueOnError?: boolean;
-}
+// Testing types
+export type {
+  TemplateTestCase,
+  TemplateAssertion,
+  TemplateTestResults,
+  TestCaseResult,
+  AssertionFailure,
+} from './types/testingTypes';
 
-/**
- * Template metadata
- */
-export interface TemplateMetadata {
-  author: string;
-  tags: string[];
-  visibility: 'public' | 'private' | 'internal';
-  created: string;
-  updated: string;
-  parent?: string;
-}
-
-/**
- * Complete template definition
- */
-export interface ChecklistTemplate {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  variables: Variable[];
-  steps: Step[];
-  metadata: TemplateMetadata;
-  extends?: string;
-}
-
-/**
- * Cached template with metadata
- */
-export interface CachedTemplate {
-  content: ChecklistTemplate;
-  loadedAt: number;
-  filePath: string;
-}
-
-/**
- * Template loading options
- */
-export interface TemplateLoadOptions {
-  skipValidation?: boolean;
-  skipInheritance?: boolean;
-  skipCache?: boolean;
-  maxInheritanceDepth?: number;
-  timeout?: number;
-}
-
-/**
- * Template validation result
- */
-export interface TemplateValidationResult {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-/**
- * Template metadata extraction result
- */
-export interface TemplateMetadataResult {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  path: string;
-  size: number;
-  modifiedAt: number;
-}
-
-/**
- * Resource usage limits
- */
-export interface ResourceLimits {
-  executionTime: number;
-  memoryDelta: number;
-  cpuUsage: number;
-  fileHandles: number;
-  processCount: number;
-}
-
-/**
- * Resource usage monitoring
- */
-export interface ResourceUsage {
-  memoryDelta: number;
-  cpuUsage: number;
-  fileHandles: number;
-  processCount: number;
-  duration: number;
-}
-
-/**
- * Sandbox execution context
- */
-export interface SandboxContext {
-  variables: Record<string, unknown>;
-  console: {
-    log: (...args: unknown[]) => void;
-    error: (...args: unknown[]) => void;
-  };
-  Math: typeof Math;
-  Date: {
-    now: () => number;
-    parse: (dateString: string) => number;
-  };
-  JSON: {
-    parse: (text: string) => unknown;
-    stringify: (value: unknown) => string;
-  };
-}
-
-/**
- * Template inheritance configuration
- */
-export interface TemplateInheritance {
-  parentId: string;
-  overrides?: {
-    variables?: Partial<Record<string, Variable>>;
-    steps?: Partial<Record<string, Step>>;
-    metadata?: Partial<TemplateMetadata>;
-  };
-}
-
-/**
- * Cache statistics
- */
-export interface CacheStatistics {
-  size: number;
-  hits: number;
-  misses: number;
-  evictions: number;
-}
-
-/**
- * Cache entry metadata
- */
-export interface CacheEntry {
-  template: CachedTemplate;
-  lastAccessed: number;
-}
-
-/**
- * Template discovery result
- */
-export interface TemplateDiscoveryResult {
-  path: string;
-  id: string;
-  name: string;
-  version: string;
-  size: number;
-  modifiedAt: number;
-}
+// Resource and sandbox types
+export type {
+  ResourceLimits,
+  ResourceUsage,
+  SandboxContext,
+} from './types/resourceTypes';

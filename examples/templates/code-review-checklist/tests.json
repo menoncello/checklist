@@ -1,0 +1,75 @@
+[
+  {
+    "name": "should have all required fields",
+    "description": "Template should have version, metadata, variables, and steps",
+    "inputs": {
+      "prNumber": "123",
+      "prTitle": "Add user authentication",
+      "prAuthor": "johndoe",
+      "reviewer": "janedoe",
+      "prType": "feature",
+      "hasTests": "yes"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "version",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "metadata",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "variables",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should have correct metadata",
+    "description": "Metadata should contain correct id and tags",
+    "inputs": {
+      "prNumber": "456",
+      "prTitle": "Fix bug",
+      "prAuthor": "dev",
+      "reviewer": "reviewer"
+    },
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "metadata.id",
+        "value": "code-review-checklist"
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "code-review"
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "quality"
+      }
+    ]
+  },
+  {
+    "name": "should include critical review steps",
+    "description": "Template must include security, testing, and quality checks",
+    "inputs": {},
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  }
+]

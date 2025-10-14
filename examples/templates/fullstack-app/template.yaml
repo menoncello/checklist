@@ -1,0 +1,386 @@
+version: "1.0.0"
+metadata:
+  id: fullstack-app
+  title: "Fullstack App: {{appName}}"
+  description: Complete fullstack application setup for {{appName}} with {{frontendFramework}} and {{backendFramework}}
+  tags:
+    - fullstack
+    - web
+    - api
+    - deployment
+
+variables:
+  - name: appName
+    description: Name of the fullstack application
+    required: true
+
+  - name: frontendFramework
+    description: Frontend framework (react, vue, angular, svelte)
+    default: "react"
+    validation:
+      pattern: "^(react|vue|angular|svelte)$"
+      message: Must be react, vue, angular, or svelte
+
+  - name: backendFramework
+    description: Backend framework (express, fastify, nestjs, koa)
+    default: "express"
+    validation:
+      pattern: "^(express|fastify|nestjs|koa)$"
+      message: Must be express, fastify, nestjs, or koa
+
+  - name: database
+    description: Database system (postgres, mysql, mongodb, sqlite)
+    default: "postgres"
+    validation:
+      pattern: "^(postgres|mysql|mongodb|sqlite)$"
+      message: Must be postgres, mysql, mongodb, or sqlite
+
+  - name: author
+    description: Application author or team name
+    required: true
+
+  - name: includeDocker
+    description: Include Docker setup (true/false)
+    default: "true"
+
+  - name: includeCI
+    description: Include CI/CD pipeline (true/false)
+    default: "true"
+
+  - name: deploymentTarget
+    description: Deployment target (aws, azure, gcp, heroku, vercel)
+    default: "aws"
+
+dependencies:
+  - template: basic-project-setup
+    description: Initialize project structure and basic configuration
+    required: true
+
+  - template: deployment-workflow
+    description: Setup deployment workflow for production
+    required: true
+
+  - template: code-review-checklist
+    description: Establish code review standards
+    optional: true
+
+steps:
+  - id: project-foundation
+    title: Initialize project foundation
+    description: |
+      Setup {{appName}} project structure
+
+      This step uses the 'basic-project-setup' template to:
+      - Initialize Git repository
+      - Create project structure
+      - Setup package management
+      - Configure linting and formatting
+
+      Project: {{appName}}
+      Author: {{author}}
+    completed: false
+    metadata:
+      category: foundation
+      priority: critical
+      dependency: basic-project-setup
+
+  - id: setup-monorepo
+    title: Configure monorepo structure
+    description: |
+      Setup monorepo for {{appName}} with frontend and backend
+
+      Structure:
+      - packages/frontend/ - {{frontendFramework}} application
+      - packages/backend/ - {{backendFramework}} API
+      - packages/shared/ - Shared types and utilities
+      - packages/database/ - Database schemas and migrations
+    completed: false
+    metadata:
+      category: architecture
+      priority: critical
+
+  - id: frontend-setup
+    title: Setup {{frontendFramework}} frontend
+    description: |
+      Initialize frontend application with {{frontendFramework}}
+
+      Tasks:
+      - Install {{frontendFramework}} and dependencies
+      - Configure build tools (Vite/Webpack/etc)
+      - Setup routing
+      - Configure state management
+      - Add UI component library
+      - Setup environment variables
+    completed: false
+    metadata:
+      category: frontend
+      priority: high
+
+  - id: backend-setup
+    title: Setup {{backendFramework}} backend
+    description: |
+      Initialize backend API with {{backendFramework}}
+
+      Tasks:
+      - Install {{backendFramework}} and dependencies
+      - Configure middleware (CORS, helmet, rate limiting)
+      - Setup authentication/authorization
+      - Configure logging with Pino
+      - Setup error handling
+      - Add API documentation (Swagger/OpenAPI)
+    completed: false
+    metadata:
+      category: backend
+      priority: high
+
+  - id: database-setup
+    title: Configure {{database}} database
+    description: |
+      Setup {{database}} database for {{appName}}
+
+      Tasks:
+      - Install {{database}} client library
+      - Create database connection pool
+      - Setup migrations system
+      - Define database schemas
+      - Create seed data scripts
+      - Configure database backups
+    completed: false
+    metadata:
+      category: database
+      priority: high
+
+  - id: api-integration
+    title: Integrate frontend with backend API
+    description: |
+      Connect {{frontendFramework}} frontend to {{backendFramework}} backend
+
+      Tasks:
+      - Create API client with typed interfaces
+      - Setup API base URL and configuration
+      - Implement authentication flow
+      - Add error handling and retries
+      - Configure API request/response interceptors
+      - Setup API mocking for development
+    completed: false
+    metadata:
+      category: integration
+      priority: high
+
+  - id: docker-setup
+    title: Setup Docker containers
+    description: |
+      Configure Docker for {{appName}} development and deployment
+
+      Containers:
+      - Frontend ({{frontendFramework}})
+      - Backend ({{backendFramework}})
+      - Database ({{database}})
+      - Nginx (reverse proxy)
+
+      Tasks:
+      - Create Dockerfiles for each service
+      - Setup docker-compose.yml for local development
+      - Configure multi-stage builds for production
+      - Setup container networking
+      - Configure volume mounts
+    completed: false
+    metadata:
+      category: devops
+      priority: high
+      conditional: "{{includeDocker}}"
+
+  - id: environment-config
+    title: Configure environment variables
+    description: |
+      Setup environment configuration for {{appName}}
+
+      Environments:
+      - development
+      - staging
+      - production
+
+      Variables:
+      - API endpoints
+      - Database connection strings
+      - Authentication secrets
+      - Feature flags
+      - Third-party API keys
+    completed: false
+    metadata:
+      category: configuration
+      priority: high
+
+  - id: testing-setup
+    title: Setup comprehensive testing
+    description: |
+      Configure testing for {{appName}}
+
+      Frontend Tests:
+      - Unit tests (Vitest/Jest)
+      - Component tests (Testing Library)
+      - E2E tests (Playwright/Cypress)
+
+      Backend Tests:
+      - Unit tests (Bun Test/Jest)
+      - Integration tests (API testing)
+      - Database tests (test containers)
+
+      Tasks:
+      - Configure test runners
+      - Setup test coverage reporting
+      - Create test fixtures and mocks
+      - Add pre-commit test hooks
+    completed: false
+    metadata:
+      category: testing
+      priority: high
+
+  - id: ci-cd-pipeline
+    title: Setup CI/CD pipeline
+    description: |
+      Configure continuous integration and deployment
+
+      Uses 'deployment-workflow' template for:
+      - Build automation
+      - Test automation
+      - Deployment to {{deploymentTarget}}
+      - Environment management
+
+      Pipeline stages:
+      1. Code quality checks (lint, typecheck)
+      2. Run test suites
+      3. Build artifacts
+      4. Deploy to staging
+      5. Run smoke tests
+      6. Deploy to production
+    completed: false
+    metadata:
+      category: devops
+      priority: high
+      conditional: "{{includeCI}}"
+      dependency: deployment-workflow
+
+  - id: monitoring-setup
+    title: Configure monitoring and logging
+    description: |
+      Setup observability for {{appName}}
+
+      Monitoring:
+      - Application metrics (response times, error rates)
+      - Infrastructure metrics (CPU, memory, disk)
+      - User analytics
+      - Performance tracking
+
+      Logging:
+      - Structured logging with Pino
+      - Log aggregation
+      - Error tracking (Sentry/Rollbar)
+      - Audit logging
+    completed: false
+    metadata:
+      category: observability
+      priority: medium
+
+  - id: security-hardening
+    title: Implement security measures
+    description: |
+      Harden security for {{appName}}
+
+      Tasks:
+      - Enable HTTPS/TLS
+      - Configure CSP headers
+      - Setup rate limiting
+      - Implement input validation
+      - Add SQL injection prevention
+      - Configure CORS properly
+      - Setup security headers (helmet)
+      - Enable API authentication
+      - Add audit logging
+    completed: false
+    metadata:
+      category: security
+      priority: critical
+
+  - id: performance-optimization
+    title: Optimize application performance
+    description: |
+      Performance optimization for {{appName}}
+
+      Frontend:
+      - Code splitting and lazy loading
+      - Image optimization
+      - Caching strategies
+      - Bundle size optimization
+
+      Backend:
+      - Database query optimization
+      - API response caching
+      - Connection pooling
+      - Load balancing setup
+    completed: false
+    metadata:
+      category: performance
+      priority: medium
+
+  - id: documentation
+    title: Write comprehensive documentation
+    description: |
+      Document {{appName}} architecture and usage
+
+      Documentation:
+      - README.md with setup instructions
+      - Architecture decision records (ADRs)
+      - API documentation (OpenAPI/Swagger)
+      - Database schema documentation
+      - Deployment guide
+      - Troubleshooting guide
+      - Contributing guidelines
+    completed: false
+    metadata:
+      category: documentation
+      priority: medium
+
+  - id: code-review-process
+    title: Establish code review process
+    description: |
+      Setup code review workflow for {{appName}}
+
+      Uses 'code-review-checklist' template (optional) for:
+      - PR review guidelines
+      - Code quality standards
+      - Security review checklist
+      - Performance review criteria
+
+      Tasks:
+      - Create PR template
+      - Define review criteria
+      - Setup automated checks
+      - Document review process
+    completed: false
+    metadata:
+      category: process
+      priority: low
+      dependency: code-review-checklist
+      optional: true
+
+  - id: launch-preparation
+    title: Prepare for production launch
+    description: |
+      Final preparation for {{appName}} launch
+
+      Checklist:
+      ✓ All tests passing
+      ✓ Security audit completed
+      ✓ Performance benchmarks met
+      ✓ Documentation complete
+      ✓ Monitoring configured
+      ✓ Backup strategy in place
+      ✓ Rollback plan documented
+      ✓ Team trained on operations
+
+      Deployment target: {{deploymentTarget}}
+    completed: false
+    metadata:
+      category: launch
+      priority: critical

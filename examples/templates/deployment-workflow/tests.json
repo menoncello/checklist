@@ -1,0 +1,87 @@
+[
+  {
+    "name": "should have all required fields",
+    "description": "Template should have version, metadata, variables, and steps",
+    "inputs": {
+      "serviceName": "api-service",
+      "environment": "production",
+      "version": "1.2.3",
+      "deployedBy": "DevOps Team",
+      "rollbackPlan": "Revert to v1.2.2",
+      "includeDatabase": "true"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "version",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "metadata",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "variables",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should have correct metadata",
+    "description": "Metadata should contain deployment-workflow id and relevant tags",
+    "inputs": {
+      "serviceName": "web-app",
+      "environment": "staging",
+      "version": "2.0.0",
+      "deployedBy": "John Doe"
+    },
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "metadata.id",
+        "value": "deployment-workflow"
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "deployment"
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "devops"
+      }
+    ]
+  },
+  {
+    "name": "should include critical deployment steps",
+    "description": "Template must include backup, deployment, health check, and monitoring steps",
+    "inputs": {},
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should have validation rules for variables",
+    "description": "Variables should have proper validation patterns",
+    "inputs": {},
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "variables",
+        "value": true
+      }
+    ]
+  }
+]

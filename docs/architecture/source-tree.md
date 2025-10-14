@@ -100,15 +100,17 @@ checklist/
 │   │   │       └── DebugRenderer.test.ts
 │   │   └── dist/
 │   │
-│   ├── shared/                 # Shared utilities
-│   │   ├── src/
-│   │   │   └── index.ts
-│   │   ├── tests/              # Test files
-│   │   └── dist/
-│   │
-│   └── cli/                    # CLI application
+│   └── shared/                 # Shared utilities
 │       ├── src/
 │       │   └── index.ts
+│       ├── tests/              # Test files
+│       └── dist/
+│
+├── apps/                       # Application packages
+│   └── cli/                    # CLI application
+│       ├── src/
+│       │   ├── index.ts        # CLI entry point
+│       │   └── commands/       # CLI commands
 │       ├── tests/              # Test files
 │       └── dist/
 │
@@ -171,11 +173,16 @@ checklist/
 
 ### `/packages`
 
-Monorepo workspace containing all the modular components of the application:
+Monorepo workspace containing the reusable library packages:
 
 - **core**: Core business logic and domain models
 - **tui**: Terminal UI components and interactions
 - **shared**: Shared utilities and common types
+
+### `/apps`
+
+Application packages that use the library packages:
+
 - **cli**: Command-line interface application
 
 ### `/docs`

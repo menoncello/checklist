@@ -1,0 +1,71 @@
+[
+  {
+    "name": "should have all required fields",
+    "description": "Template should have version, metadata, variables, and steps",
+    "inputs": {
+      "projectName": "test-project",
+      "projectType": "web",
+      "packageManager": "npm",
+      "author": "Test Author",
+      "includeTests": "true"
+    },
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "version",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "metadata",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "variables",
+        "value": true
+      },
+      {
+        "type": "exists",
+        "path": "steps",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "should have correct metadata structure",
+    "description": "Metadata should contain id, title, description, and tags",
+    "inputs": {
+      "projectName": "MyApp"
+    },
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "metadata.id",
+        "value": "basic-project-setup"
+      },
+      {
+        "type": "exists",
+        "path": "metadata.title",
+        "value": true
+      },
+      {
+        "type": "contains",
+        "path": "metadata.tags",
+        "value": "setup"
+      }
+    ]
+  },
+  {
+    "name": "should have all required variables defined",
+    "description": "Template should define projectName, projectType, packageManager, author, and includeTests variables",
+    "inputs": {},
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "variables",
+        "value": true
+      }
+    ]
+  }
+]

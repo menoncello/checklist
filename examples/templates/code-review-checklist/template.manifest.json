@@ -1,0 +1,35 @@
+{
+  "name": "code-review-checklist",
+  "version": "1.0.0",
+  "description": "Comprehensive code review checklist covering quality, security, and best practices",
+  "author": {
+    "name": "BMAD Team",
+    "email": "team@bmad.dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bmad/templates/code-review-checklist"
+  },
+  "homepage": "https://github.com/bmad/templates/code-review-checklist#readme",
+  "keywords": [
+    "code-review",
+    "pull-request",
+    "quality",
+    "security",
+    "development"
+  ],
+  "tags": [
+    "code-review",
+    "quality",
+    "development"
+  ],
+  "files": [
+    "template.yaml",
+    "README.md"
+  ],
+  "main": "template.yaml",
+  "engines": {
+    "bmad": ">=1.0.0"
+  }
+}
