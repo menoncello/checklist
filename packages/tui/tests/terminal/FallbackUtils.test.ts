@@ -5,9 +5,9 @@ import type { FallbackOptions } from '../../src/terminal/FallbackTypes';
 // Mock the UnicodeReplacements module
 const mockUnicodeReplacements = new Map([
   ['▲', '^'],
-  ['△', 'v'],
-  ['▼', 'V'],
-  ['▽', 'A'],
+  ['△', '^'],
+  ['▼', 'v'],
+  ['▽', 'v'],
   ['◆', '*'],
   ['◇', 'o'],
   ['○', 'O'],

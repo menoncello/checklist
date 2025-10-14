@@ -53,7 +53,7 @@ function createAsciiOnlyFallback(): RenderFallback {
       return !FallbackUtils.hasUnicodeSupport(capsObj);
     },
     transform: (content) => FallbackUtils.convertToAscii(content),
-    priority: 80,
+    priority: 75,
   };
 }
 
@@ -68,7 +68,7 @@ function createSimplifyBoxDrawingFallback(): RenderFallback {
       return !FallbackUtils.hasUnicodeSupport(capsObj);
     },
     transform: (content) => FallbackUtils.simplifyBoxDrawing(content),
-    priority: 70,
+    priority: 80,
   };
 }
 
