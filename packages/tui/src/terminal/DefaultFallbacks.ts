@@ -48,6 +48,11 @@ function createAsciiOnlyFallback(): RenderFallback {
   return {
     name: 'asciiOnly',
     condition: (capabilities, options) => {
+      // Don't apply if simplifyBoxDrawing is explicitly enabled (they're mutually exclusive)
+      if (options?.simplifyBoxDrawing === true) {
+        return false;
+      }
+
       // Only apply if useAsciiOnly option is enabled OR if terminal doesn't support Unicode
       const capsObj = capabilities as
         | Record<string, unknown>
