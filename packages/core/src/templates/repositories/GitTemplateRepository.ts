@@ -237,6 +237,26 @@ export class GitTemplateRepository {
   }
 
   /**
+   * Validate that path is a valid Git repository
+   * @param path - Path to validate
+   * @throws Error if path is not a valid Git repository
+   */
+  private async validateGitRepository(path: string): Promise<void> {
+    const gitConfigPath = `${path}/.git/config`;
+    const isGitRepo = await Bun.file(gitConfigPath).exists();
+
+    if (!isGitRepo) {
+      const error = new Error(`Path is not a valid Git repository: ${path}`);
+      logger.error({
+        msg: 'Not a valid Git repository',
+        path,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Fetch repository updates
    * @param localPath - Local repository path
    */
@@ -245,6 +265,8 @@ export class GitTemplateRepository {
       msg: 'Fetching repository updates',
       path: localPath,
     });
+
+    await this.validateGitRepository(localPath);
 
     try {
       const proc = Bun.spawn(['git', '-C', localPath, 'pull', '--ff-only'], {
